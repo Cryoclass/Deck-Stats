@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Card, Category, ComboPair, DeckCard, Relevance, StartRequirement } from '../types.js';
 import { pairKey } from '../types.js';
 import type { EngineInput, EngineResult, Prereq } from '../engine/types.js';
+import type { QueryCriterion, SavedQuery } from '../engine/query.js';
 import { computeInWorker } from '../worker/client.js';
 import { api } from '../lib/api.js';
 import type { ParsedDeck } from '../lib/ydk.js';
@@ -38,6 +39,11 @@ interface State {
   horizonFirst: number; // §B.3.5
   horizonSecond: number;
   statsView: string; // itération 6 : vue du panneau de stats ('starts' | 'nonengine' | catId)
+  savedQueries: SavedQuery[]; // itération 7 : requêtes nommées (param du deck)
+  // Requête en cours (brouillon de travail, non enregistrée) + filtre du mur de mains
+  // unifié avec elle (§D) : les deux sont transitoires, hors params.
+  queryCriteria: QueryCriterion[];
+  handFilterByQuery: boolean;
 
   online: boolean;
   result: EngineResult | null;
@@ -84,6 +90,11 @@ interface State {
   setImportance: (v: number) => void;
   setHorizon: (pass: 'first' | 'second', value: number) => void;
   setStatsView: (view: string) => void;
+  setQueryCriteria: (criteria: QueryCriterion[]) => void;
+  saveQuery: (name: string) => void;
+  loadSavedQuery: (id: string) => void;
+  deleteSavedQuery: (id: string) => void;
+  setHandFilterByQuery: (on: boolean) => void;
   setExtraSideHidden: (hidden: boolean) => void;
   renameDeck: (name: string) => void;
 }
@@ -95,6 +106,11 @@ function clampHorizon(v: number): number {
 
 const toDeck = (m: Map<number, number>, zone: DeckCard['zone']): DeckCard[] =>
   [...m].map(([cardId, copies]) => ({ cardId, copies, zone }));
+
+const uid = (): string => Math.random().toString(36).slice(2);
+const defaultQuery = (): QueryCriterion[] => [
+  { id: uid(), subject: { kind: 'starts' }, min: 1, max: null },
+];
 
 // ─── Construction du modèle moteur à partir du deck + annotations (§B.1) ───
 // Prend l'état en PARAMÈTRE, ne lit aucun global : prêt pour la comparaison de decks (§4D).
@@ -219,6 +235,7 @@ function scheduleDraft(get: () => State): void {
       horizonSecond: s.horizonSecond,
       importance: s.importance,
       statsView: s.statsView,
+      savedQueries: s.savedQueries,
     });
   }, 500);
 }
@@ -241,6 +258,7 @@ function localSig(o: {
   horizonSecond: number;
   importance: number;
   statsView: string;
+  savedQueries: SavedQuery[];
 }): string {
   const norm = (arr: DeckCard[]) =>
     arr.map((c) => `${c.cardId}:${c.zone}:${c.copies}`).sort().join(',');
@@ -258,6 +276,7 @@ function localSig(o: {
     h2: o.horizonSecond,
     im: o.importance,
     sv: o.statsView,
+    sq: JSON.stringify(o.savedQueries),
   });
 }
 
@@ -293,6 +312,9 @@ export const useDeck = create<State>((set, get) => {
     horizonFirst: 1,
     horizonSecond: 2,
     statsView: 'starts',
+    savedQueries: [],
+    queryCriteria: defaultQuery(),
+    handFilterByQuery: false,
     online: true,
     result: null,
     model: null,
@@ -429,6 +451,11 @@ export const useDeck = create<State>((set, get) => {
         horizonSecond: clampHorizon(Number(params.horizonSecond ?? 2)),
         importance: typeof params.importance === 'number' ? params.importance : 0.5,
         statsView: typeof params.statsView === 'string' ? params.statsView : 'starts',
+        savedQueries: Array.isArray(params.savedQueries)
+          ? (params.savedQueries as SavedQuery[])
+          : [],
+        queryCriteria: defaultQuery(),
+        handFilterByQuery: false,
         dirty: false,
         lastSavedAt: detail.updated_at ? Date.parse(detail.updated_at) : Date.now(),
         draftAvailable: null,
@@ -452,6 +479,7 @@ export const useDeck = create<State>((set, get) => {
           horizonSecond: s.horizonSecond,
           importance: s.importance,
           statsView: s.statsView,
+          savedQueries: s.savedQueries,
         });
         if (localSig(draft) !== savedSig) set({ draftAvailable: draft });
         else void clearDraft(id); // brouillon identique = obsolète
@@ -482,6 +510,7 @@ export const useDeck = create<State>((set, get) => {
               horizonSecond: s.horizonSecond,
               importance: s.importance,
               statsView: s.statsView,
+              savedQueries: s.savedQueries,
             },
             summary,
           }),
@@ -519,6 +548,7 @@ export const useDeck = create<State>((set, get) => {
         horizonSecond: clampHorizon(d.horizonSecond),
         importance: d.importance,
         statsView: d.statsView ?? 'starts',
+        savedQueries: d.savedQueries ?? [],
         draftAvailable: null,
         dirty: true,
       });
@@ -607,6 +637,36 @@ export const useDeck = create<State>((set, get) => {
     setStatsView(view) {
       set({ statsView: view });
       markDirty(); // pur affichage, mais mémorisé dans les params du deck (itération 6)
+    },
+
+    // ─── Mode requête (itération 7) : la requête en cours est transitoire ; seules les
+    //     requêtes NOMMÉES rejoignent les params du deck (enregistrables). ───
+    setQueryCriteria(criteria) {
+      set({ queryCriteria: criteria });
+    },
+
+    saveQuery(name) {
+      const q: SavedQuery = {
+        id: uid(),
+        name: name.trim() || 'Requête',
+        criteria: get().queryCriteria,
+      };
+      set({ savedQueries: [...get().savedQueries, q] });
+      markDirty();
+    },
+
+    loadSavedQuery(id) {
+      const q = get().savedQueries.find((x) => x.id === id);
+      if (q) set({ queryCriteria: q.criteria.map((c) => ({ ...c, id: uid() })) });
+    },
+
+    deleteSavedQuery(id) {
+      set({ savedQueries: get().savedQueries.filter((x) => x.id !== id) });
+      markDirty();
+    },
+
+    setHandFilterByQuery(on) {
+      set({ handFilterByQuery: on });
     },
 
     setHorizon(pass, value) {

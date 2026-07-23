@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
 import { drawHandsFromStore, noteHandsFromStore } from '../store/selectors.js';
+import { queryMatches, handContext, criterionInvalid } from '../engine/query.js';
 import { imageSmall } from '../types.js';
 import { Segmented } from './ui.js';
 
@@ -11,6 +12,10 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
   const setImportance = useDeck((s) => s.setImportance);
   const cards = useDeck((s) => s.cards);
   const mainLen = useDeck((s) => s.main.length);
+  // Filtre unifié avec le mode requête (§D) : mêmes critères que le panneau de requête.
+  const queryCriteria = useDeck((s) => s.queryCriteria);
+  const handFilterByQuery = useDeck((s) => s.handFilterByQuery);
+  const setHandFilterByQuery = useDeck((s) => s.setHandFilterByQuery);
   // Signature de composition : change à tout ajout / retrait / modif de copies.
   const mainSig = useDeck((s) => s.main.map((c) => `${c.cardId}:${c.copies}`).join(','));
 
@@ -18,9 +23,6 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
   const [count, setCount] = useState(60);
   const [rawHands, setRawHands] = useState<number[][]>([]);
   const [sortByNote, setSortByNote] = useState(true);
-  const [minStarts, setMinStarts] = useState(0);
-  const [minNe, setMinNe] = useState(0);
-  const [onlyBricks, setOnlyBricks] = useState(false);
 
   const handSize = col === 'first' ? 5 : 6;
 
@@ -40,13 +42,21 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
     [rawHands, handSize, result, model, importance],
   );
 
+  // Le filtre du mur de mains EST la requête (§D) : une main est retenue ssi elle
+  // satisfait la requête, évaluée avec le même contexte que les buckets (mêmes
+  // signatures non-engine). Requête invalide (min > max) → pas de filtre.
+  const neSignatures = handSize <= 5 ? result?.first.neSignatures : result?.second.neSignatures;
+  const filterActive =
+    handFilterByQuery && !!neSignatures && !queryCriteria.some(criterionInvalid);
+
   const view = useMemo(() => {
-    let v = noted.filter(
-      (h) => h.starts >= minStarts && h.neTotal >= minNe && (!onlyBricks || h.starts === 0),
-    );
+    let v = noted;
+    if (filterActive && neSignatures) {
+      v = v.filter((h) => queryMatches(queryCriteria, handContext(h, neSignatures)));
+    }
     if (sortByNote) v = [...v].sort((a, b) => b.note - a.note || b.starts - a.starts);
     return v;
-  }, [noted, minStarts, minNe, onlyBricks, sortByNote]);
+  }, [noted, filterActive, neSignatures, queryCriteria, sortByNote]);
 
   if (!result || mainLen === 0) {
     return (
@@ -104,13 +114,15 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
         </div>
 
         <div className="ml-auto flex items-center gap-2 text-ink-400">
-          <FilterStep label="starts ≥" value={minStarts} onChange={setMinStarts} max={6} />
-          <FilterStep label="non-eng ≥" value={minNe} onChange={setMinNe} max={6} />
+          {/* Le filtre du mur = la requête (§D). Édition dans le panneau « Mode requête ». */}
           <button
-            onClick={() => setOnlyBricks((v) => !v)}
-            className={`rounded px-2 py-1 ${onlyBricks ? 'bg-red-500/20 text-red-300' : 'bg-ink-800 text-ink-300'}`}
+            onClick={() => setHandFilterByQuery(!handFilterByQuery)}
+            title="Filtrer par la requête en cours (éditée dans le panneau de droite)"
+            className={`rounded px-2 py-1 ${
+              handFilterByQuery ? 'bg-emerald-500/20 text-emerald-200' : 'bg-ink-800 text-ink-300'
+            }`}
           >
-            bricks
+            {handFilterByQuery ? 'filtré par requête' : 'filtrer par requête'}
           </button>
           <button
             onClick={() => setSortByNote((v) => !v)}
@@ -199,33 +211,3 @@ function NoteBadge({ note }: { note: number }) {
   );
 }
 
-function FilterStep({
-  label,
-  value,
-  onChange,
-  max,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  max: number;
-}) {
-  return (
-    <span className="flex items-center gap-1">
-      <span>{label}</span>
-      <button
-        onClick={() => onChange(Math.max(0, value - 1))}
-        className="h-5 w-5 rounded bg-ink-800 hover:bg-ink-700"
-      >
-        −
-      </button>
-      <span className="tnum w-4 text-center text-ink-100">{value}</span>
-      <button
-        onClick={() => onChange(Math.min(max, value + 1))}
-        className="h-5 w-5 rounded bg-ink-800 hover:bg-ink-700"
-      >
-        +
-      </button>
-    </span>
-  );
-}

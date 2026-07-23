@@ -1,4 +1,5 @@
 import type { DeckCard, StartRequirement } from '../types.js';
+import type { SavedQuery } from '../engine/query.js';
 
 /**
  * Brouillon local automatique (§4B) — écrit en continu dans IndexedDB, indépendamment
@@ -20,6 +21,7 @@ export interface DeckDraft {
   horizonSecond: number;
   importance: number;
   statsView: string;
+  savedQueries: SavedQuery[];
 }
 
 const DB_NAME = 'ygo-proba';

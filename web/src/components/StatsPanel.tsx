@@ -10,7 +10,13 @@ interface StatsView {
   label: string;
 }
 
-export function StatsPanel({ column }: { column: 'first' | 'second' }) {
+export function StatsPanel({
+  column,
+  onShowHands,
+}: {
+  column: 'first' | 'second';
+  onShowHands?: () => void;
+}) {
   const result = useDeck((s) => s.result);
   const categories = useDeck((s) => s.categories);
   const computing = useDeck((s) => s.computing);
@@ -99,7 +105,7 @@ export function StatsPanel({ column }: { column: 'first' | 'second' }) {
 
       <CrossMatrix pass={column === 'first' ? result.first : result.second} column={column} />
 
-      <QueryMode />
+      <QueryMode onShowHands={onShowHands} />
     </div>
   );
 }

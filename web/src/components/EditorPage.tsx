@@ -143,7 +143,7 @@ export function EditorPage({ id }: { id: string }) {
         </main>
 
         <aside className="hidden w-[500px] shrink-0 lg:block">
-          <StatsPanel column={column} />
+          <StatsPanel column={column} onShowHands={() => setTab('hands')} />
         </aside>
       </div>
 
