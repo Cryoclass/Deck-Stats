@@ -11,6 +11,15 @@ export interface Prepared {
   neSecond: boolean[]; // type i pertinent going second (catégorie second|both)
   deadFirst: boolean[]; // type i mort going first → filler pour cette passe (Lot C)
   deadSecond: boolean[]; // type i mort going second
+  horizonFirst: number; // §B.3.5 : plafond activable d'une carte HOPT non-engine (1..3)
+  horizonSecond: number;
+}
+
+/** §B.3.5 : horizon = entier dans [1, 3]. Défauts : first=1 (on pose un board, un seul
+ *  tour adverse), second=2 (la partie s'étend, plusieurs tours servent). */
+function clampHorizon(v: number | undefined, fallback: number): number {
+  if (v === undefined || !Number.isFinite(v)) return fallback;
+  return Math.max(1, Math.min(3, Math.round(v)));
 }
 
 export function prepare(input: EngineInput): Prepared {
@@ -40,7 +49,21 @@ export function prepare(input: EngineInput): Prepared {
   const usedCopies = input.types.reduce((s, t) => s + t.copies, 0);
   const filler = Math.max(0, input.deckSize - usedCopies);
 
-  return { input, n, filler, typeAdj, neFirst, neSecond, deadFirst, deadSecond };
+  const horizonFirst = clampHorizon(input.horizonFirst, 1);
+  const horizonSecond = clampHorizon(input.horizonSecond, 2);
+
+  return {
+    input,
+    n,
+    filler,
+    typeAdj,
+    neFirst,
+    neSecond,
+    deadFirst,
+    deadSecond,
+    horizonFirst,
+    horizonSecond,
+  };
 }
 
 /**
@@ -50,7 +73,7 @@ export function prepare(input: EngineInput): Prepared {
  * non-engine (étape 5) reste inchangé, régi par la pertinence de catégorie.
  */
 export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome {
-  const { input, typeAdj, neFirst, neSecond } = prep;
+  const { input, typeAdj, neFirst, neSecond, horizonFirst, horizonSecond } = prep;
 
   // 1. Sommets : ki sommets, ou 1 seul si HOPT (§2.3). Cartes mortes ignorées.
   const vertices: number[] = [];
@@ -77,15 +100,23 @@ export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome 
   const redundancy = countEdges(vertices, typeAdj);
 
   // 5. Non-engine : compté séparément sur la composition complète, sans retirer
-  //    les sommets consommés (§2.5). Par catégorie, + total (union) par passe.
+  //    les sommets consommés (§2.5). Total (union) par passe, plafonné par l'horizon
+  //    HOPT (§B.3.5, itération 2) : une carte HOPT ne pouvant s'activer qu'un nombre
+  //    borné de fois dans la fenêtre d'interaction, sa contribution au TOTAL est
+  //    `min(copies, horizon)`. Le filtrage par pertinence de catégorie s'applique après
+  //    le plafonnement. La ventilation `catCounts` reste en copies BRUTES (physiques) :
+  //    P(≥1) — seule stat par catégorie affichée — est invariante par plafond, et un
+  //    prédicat « catégorie ≥ N » du mode requête interroge la main tirée, pas
+  //    l'activable (voir DECISIONS.md, itération 2).
   const catCounts = new Array<number>(input.categories.length).fill(0);
   let neFirstTotal = 0;
   let neSecondTotal = 0;
   for (let i = 0; i < k.length; i++) {
     if (k[i] <= 0) continue;
+    const isHopt = input.types[i].isHopt;
     for (const c of input.types[i].categories) catCounts[c] += k[i];
-    if (neFirst[i]) neFirstTotal += k[i]; // union : chaque copie comptée une fois
-    if (neSecond[i]) neSecondTotal += k[i];
+    if (neFirst[i]) neFirstTotal += isHopt ? Math.min(k[i], horizonFirst) : k[i];
+    if (neSecond[i]) neSecondTotal += isHopt ? Math.min(k[i], horizonSecond) : k[i];
   }
 
   return { starts, redundancy, catCounts, neFirst: neFirstTotal, neSecond: neSecondTotal };

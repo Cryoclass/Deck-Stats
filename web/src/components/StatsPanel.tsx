@@ -10,6 +10,9 @@ export function StatsPanel({ column }: { column: 'first' | 'second' }) {
   const computing = useDeck((s) => s.computing);
   const computeMs = useDeck((s) => s.computeMs);
   const deckSize = useDeck((s) => s.main.reduce((a, c) => a + c.copies, 0));
+  const horizonFirst = useDeck((s) => s.horizonFirst);
+  const horizonSecond = useDeck((s) => s.horizonSecond);
+  const setHorizon = useDeck((s) => s.setHorizon);
 
   const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? id;
 
@@ -37,6 +40,15 @@ export function StatsPanel({ column }: { column: 'first' | 'second' }) {
           Deck de {deckSize} cartes — hors bornes 40–60 (§D). Calcul effectué quand même.
         </div>
       )}
+
+      <div
+        className="flex items-center gap-3 border-b border-ink-800 px-3 py-1.5"
+        title="Nombre de tours adverses pendant lesquels une carte HOPT non-engine reste activable (§B.3.5). Plafonne son comptage à min(copies, horizon). Hypothèse de jeu — n'affecte pas les combos."
+      >
+        <span className="text-[10px] uppercase tracking-wide text-ink-500">Horizon d’interaction</span>
+        <HorizonStepper label="1st" value={horizonFirst} onChange={(v) => setHorizon('first', v)} />
+        <HorizonStepper label="2nd" value={horizonSecond} onChange={(v) => setHorizon('second', v)} />
+      </div>
 
       <div className="grid grid-cols-2 gap-px bg-ink-800">
         <PassColumn title="Going first" subtitle="main de 5" pass={result.first} catName={catName} />
@@ -173,6 +185,42 @@ function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first' | 'se
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+/** Stepper compact 1..3 pour l'horizon d'une passe (§B.3.5). */
+function HorizonStepper({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-[11px] text-ink-400">{label}</span>
+      <div className="flex items-center rounded border border-ink-700 bg-ink-850">
+        <button
+          onClick={() => onChange(value - 1)}
+          disabled={value <= 1}
+          className="px-1.5 py-0.5 text-xs text-ink-300 hover:text-ink-100 disabled:opacity-30"
+          title="Diminuer l’horizon"
+        >
+          −
+        </button>
+        <span className="tnum w-3 text-center text-[11px] text-ink-100">{value}</span>
+        <button
+          onClick={() => onChange(value + 1)}
+          disabled={value >= 3}
+          className="px-1.5 py-0.5 text-xs text-ink-300 hover:text-ink-100 disabled:opacity-30"
+          title="Augmenter l’horizon"
+        >
+          +
+        </button>
       </div>
     </div>
   );

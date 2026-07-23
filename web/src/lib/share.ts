@@ -15,6 +15,10 @@ export interface SharedState {
   deadSecond: number[];
   categories: Category[];
   cardCategories: Array<[number, string]>;
+  // §B.3.5 (itération 2) — optionnels : les états partagés antérieurs retombent sur
+  // les défauts (first=1, second=2) à la lecture.
+  horizonFirst?: number;
+  horizonSecond?: number;
 }
 
 export function encodeState(s: SharedState): string {

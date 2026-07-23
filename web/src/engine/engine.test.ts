@@ -214,3 +214,92 @@ describe('Lot C — dead_first / dead_second (traitées comme filler)', () => {
     expect(out.neFirst).toBe(1);
   });
 });
+
+// ─── Lot A (itération 2) — horizon d'interaction : plafond HOPT du non-engine ───
+describe('Lot A — horizon d’interaction (plafond HOPT non-engine, §B.3.5)', () => {
+  // Carte X : HOPT, catégorie de pertinence `both`, seule annotation du deck.
+  // Défauts d'horizon : going first = 1, going second = 2.
+  const xPrep = (over: Partial<EngineType> = {}) =>
+    prepare({
+      deckSize: 40,
+      types: [T({ copies: 3, isHopt: true, categories: [0], ...over })],
+      edges: [],
+      categories: [{ id: 'x', relevance: 'both' }],
+    });
+
+  it('Carte X HOPT, going first (horizon 1) : 1/2/3 copies → toujours 1 non-engine', () => {
+    const prep = xPrep();
+    expect(evaluate(prep, [1], prep.deadFirst).neFirst).toBe(1);
+    expect(evaluate(prep, [2], prep.deadFirst).neFirst).toBe(1);
+    expect(evaluate(prep, [3], prep.deadFirst).neFirst).toBe(1);
+  });
+
+  it('Carte X HOPT, going second (horizon 2) : 2 → 2, 3 → 2', () => {
+    const prep = xPrep();
+    expect(evaluate(prep, [1], prep.deadSecond).neSecond).toBe(1);
+    expect(evaluate(prep, [2], prep.deadSecond).neSecond).toBe(2);
+    expect(evaluate(prep, [3], prep.deadSecond).neSecond).toBe(2);
+  });
+
+  it('Carte Y NON-HOPT : le plafond ne s’applique jamais (3 → 3 aux deux passes)', () => {
+    const prep = prepare({
+      deckSize: 40,
+      types: [T({ copies: 3, isHopt: false, categories: [0] })],
+      edges: [],
+      categories: [{ id: 'y', relevance: 'both' }],
+    });
+    const out = evaluate(prep, [3], prep.deadFirst);
+    expect(out.neFirst).toBe(3);
+    expect(out.neSecond).toBe(3);
+  });
+
+  it('Horizon réglable : first=2 → 3 copies HOPT plafonnées à 2 ; valeurs hors [1,3] bornées', () => {
+    const prep2 = prepare({
+      deckSize: 40,
+      types: [T({ copies: 3, isHopt: true, categories: [0] })],
+      edges: [],
+      categories: [{ id: 'x', relevance: 'both' }],
+      horizonFirst: 2,
+      horizonSecond: 3,
+    });
+    expect(evaluate(prep2, [3], prep2.deadFirst).neFirst).toBe(2);
+    expect(evaluate(prep2, [3], prep2.deadSecond).neSecond).toBe(3);
+
+    // Horizon 5 → borné à 3 ; horizon 0 → borné à 1.
+    const clamped = prepare({
+      deckSize: 40,
+      types: [T({ copies: 3, isHopt: true, categories: [0] })],
+      edges: [],
+      categories: [{ id: 'x', relevance: 'both' }],
+      horizonFirst: 0,
+      horizonSecond: 5,
+    });
+    expect(evaluate(clamped, [3], clamped.deadFirst).neFirst).toBe(1);
+    expect(evaluate(clamped, [3], clamped.deadSecond).neSecond).toBe(3);
+  });
+
+  it('catCounts (ventilation par catégorie) reste en copies brutes, non plafonné', () => {
+    const prep = xPrep();
+    // 3 copies HOPT en main : le total non-engine plafonne à 1 (going first) mais la
+    // ventilation par catégorie compte les 3 copies physiques (P(≥1) reste invariant).
+    const out = evaluate(prep, [3], prep.deadFirst);
+    expect(out.neFirst).toBe(1);
+    expect(out.catCounts[0]).toBe(3);
+  });
+
+  it('Le plafond ne touche AUCUNE distribution de starts', () => {
+    // Carte HOPT à la fois starter (graphe) et non-engine (catégorie) : changer
+    // l'horizon déplace la distribution non-engine mais laisse les starts intacts.
+    const base: EngineInput = {
+      deckSize: 40,
+      types: [T({ copies: 3, isHopt: true, isStarter: true, categories: [0] })],
+      edges: [],
+      categories: [{ id: 'x', relevance: 'both' }],
+    };
+    const h1 = computePass({ ...base, horizonFirst: 1 }, 5);
+    const h3 = computePass({ ...base, horizonFirst: 3 }, 5);
+    expect(h3.startsExact).toEqual(h1.startsExact); // starts strictement inchangés
+    expect(h3.startsBuckets).toEqual(h1.startsBuckets);
+    expect(h3.meanNonEngine).toBeGreaterThan(h1.meanNonEngine); // non-engine, lui, bouge
+  });
+});

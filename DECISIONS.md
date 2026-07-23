@@ -33,8 +33,11 @@ cas de couplage dont le test HOPT décisif) sont reproduites exactement.
 - **Comptage non-engine** = **union** des copies appartenant à ≥1 catégorie pertinente
   (une carte dans deux catégories compte une fois dans le total, mais une fois **par
   catégorie** dans la ventilation). Les copies multiples comptent (2 Ash = 2
-  interruptions) — le flag HOPT ne réduit **que** les sommets du graphe de combo, pas le
-  compte de non-engine.
+  interruptions). ⚠️ **Amendé à l'itération 2** : le total non-engine des cartes **HOPT**
+  est désormais plafonné par un horizon de tours (`min(copies, horizon)`) — voir la
+  section « Itération 2, Lot A » plus bas. La règle « HOPT ne réduit que le graphe de
+  combo » ne vaut plus pour le total ; elle reste vraie pour le graphe et pour la
+  ventilation par catégorie (copies brutes).
 
 - **Contribution marginale (delta)** = `P(≥1 start) − P(≥1 start | −1 copie)`, la copie
   retirée basculant dans le filler (taille de deck constante). Calculée pour les deux
@@ -94,3 +97,40 @@ cas de couplage dont le test HOPT décisif) sont reproduites exactement.
 - **Compteur de copies (A1)** : le segmented 1/2/3 débordait de la vignette (le « 3 »
   était inatteignable). Remplacé par un stepper compact `− N +` à largeur garantie
   (`shrink-0`), sans conteneur `overflow:hidden`. La densité de la grille est préservée.
+
+## Itération 2 — corrections
+
+### Lot A — plafond HOPT du non-engine par horizon de tours (correction §B.3 étape 5)
+
+La spec §B.3 étape 5 (« compter les non-engine sur la composition complète ») court-
+circuitait l'effondrement HOPT : 3 Dominus Spark HOPT going first étaient comptés comme
+3 non-engine alors qu'une seule copie est activable dans la fenêtre d'un tour adverse.
+
+**Correction** : le total non-engine d'une carte **HOPT** est plafonné par un **horizon
+de tours d'interaction**, propre à la passe :
+
+```
+si is_hopt(carte) : contribution = min(copies_en_main, horizon)
+sinon             : contribution = copies_en_main
+```
+
+Le filtrage par pertinence de catégorie (`first`/`second`/`both`) s'applique **après** le
+plafonnement. Horizon **réglable** (plage 1..3), défauts **first = 1**, **second = 2** —
+c'est une hypothèse de jeu, pas une vérité (`horizonFirst`/`horizonSecond` sur
+`EngineInput`, exposés dans « Options de calcul » du panneau de stats, sérialisés dans
+l'URL de partage). Vérif : 3 Spark HOPT 1st → 1 ; 2 Ash HOPT 2nd → 2 ; 3 Ash HOPT 2nd → 2.
+
+**Périmètre.** L'horizon ne touche **que** le total non-engine (`neFirst`/`neSecond`,
+donc `E[non-engine]`, la distribution non-engine et la matrice croisée). Le **graphe de
+combos est inchangé** : une carte HOPT reste 1 sommet (§2.3), starts et redondance ne
+bougent pas (test dédié `engine.test.ts` : `startsExact` identique quand l'horizon
+change).
+
+**Point tranché — `catCounts` (ventilation par catégorie) reste en copies BRUTES**, non
+plafonné. Justification : (1) le brief cible le *total* ; (2) `P(≥1)`, seule stat par
+catégorie affichée dans le panneau, est invariante par plafond (`min(k,h) ≥ 1 ⇔ k ≥ 1`) ;
+(3) un prédicat « catégorie ≥ N » du mode requête interroge la main *tirée* (combien j'ai
+piochée), pas l'*activable*. Plafonner `catCounts` aurait exigé de rendre `evaluate`
+spécifique à la passe (une seule des deux valeurs `neFirst`/`neSecond` est consommée à la
+fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests §C ajoutés
+(carte X HOPT, carte Y non-HOPT, réglage + bornage de l'horizon, invariance des starts).

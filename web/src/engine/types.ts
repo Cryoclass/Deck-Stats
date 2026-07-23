@@ -24,15 +24,22 @@ export interface EngineInput {
   types: EngineType[];
   edges: Array<[number, number]>; // paires actives, index de types, i ≠ j
   categories: EngineCategory[];
+  // §B.3 étape 5 (itération 2) — horizon de tours d'interaction : nombre de tours
+  // adverses pendant lesquels une carte HOPT non-engine reste activable. Plafonne le
+  // comptage non-engine des cartes HOPT à `min(copies, horizon)`, PAR PASSE. Hypothèse
+  // de jeu réglable (plage 1..3) ; défauts posés dans `prepare()` : first=1, second=2.
+  // N'affecte JAMAIS le graphe de combos (une carte HOPT = 1 sommet, cf. §2.3).
+  horizonFirst?: number;
+  horizonSecond?: number;
 }
 
 /** Résultat de l'évaluation d'une composition (une main « type »). */
 export interface Outcome {
   starts: number;
   redundancy: number;
-  catCounts: number[]; // par catégorie (aligné sur input.categories)
-  neFirst: number; // total non-engine pertinent going first (union, §2.5)
-  neSecond: number; // total non-engine pertinent going second
+  catCounts: number[]; // par catégorie (aligné sur input.categories), copies brutes
+  neFirst: number; // total non-engine pertinent going first (union §2.5, plafond HOPT §B.3.5)
+  neSecond: number; // total non-engine pertinent going second (union §2.5, plafond HOPT §B.3.5)
 }
 
 /** Distribution d'une passe (going first = 5, going second = 6). */
