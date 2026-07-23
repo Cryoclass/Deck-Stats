@@ -212,3 +212,21 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
   surlignent (relation **dirigée**). Prérequis sur une **paire** : posé depuis l'onglet
   Combos. Inventaire : section « Starters conditionnels » avec les deux avertissements
   (requise absente ; requise en 1 copie + probabilité 12,5 % 1st / 15 % 2nd sur 40).
+
+## Itération 6 — distributions non-engine parcourables (affichage seul)
+
+- **Purement de l'affichage** : aucune valeur nouvelle, réutilisation des distributions
+  déjà calculées (`startsBuckets`, `nonEngine`, `perCategory[].dist`). Tests §C
+  strictement inchangés (22/22 verts).
+- **Bascule de vue** (◀ / titre / ▶) : Starts jouables → Non-engine (total) → une entrée
+  par catégorie. Les deux colonnes (1st/2nd) suivent la vue choisie.
+- **Colonne cumulée** (« au moins n ») ajoutée à chaque ligne 0/1/2/≥3, y compris pour
+  Starts. Ligne 0 = « — » (P(≥0) trivial).
+- **Pertinence par passe** : une catégorie non pertinente sur une passe (ex. board
+  breaker going first) affiche une mention explicite dans cette colonne, pas des zéros
+  (avec `relevance ∈ {first,second,both}`, le cas « pertinent sur aucune passe » ne peut
+  pas survenir, mais est géré défensivement).
+- **Mémorisation** : `statsView` rejoint les params du deck (sauvegardé, brouillon,
+  restauré au chargement). Le changer marque le deck « non enregistré » — cohérent avec
+  `importance`/horizons (mêmes params save-gated), au prix d'un léger inconfort (une
+  préférence d'affichage marque « dirty »). Assumé pour rester cohérent avec le modèle.
