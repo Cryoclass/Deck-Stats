@@ -75,8 +75,9 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
 
   enumerate(prep, handSize, (k, w) => {
     const out = evaluate(prep, k, dead);
+    const neContrib = handSize <= 5 ? out.neContribFirst : out.neContribSecond;
     const neTotal = handSize <= 5 ? out.neFirst : out.neSecond;
-    const key = `${out.starts}|${out.redundancy}|${neTotal}|${out.catCounts.join(',')}`;
+    const key = `${out.starts}|${out.redundancy}|${neContrib.join(',')}`;
     const existing = map.get(key);
     if (existing) existing.b.p += w;
     else
@@ -84,8 +85,8 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
         b: {
           starts: out.starts,
           redundancy: out.redundancy,
-          catCounts: out.catCounts.slice(),
           neTotal,
+          neContrib: neContrib.slice(),
           p: w,
         },
       });
@@ -132,6 +133,9 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
   });
 
   const crossMatrix = cross.map((row) => norm(row ?? []));
+  const neSignatures = (handSize <= 5 ? prep.neSigFirst : prep.neSigSecond).map((s) => ({
+    cats: s.cats,
+  }));
 
   return {
     handSize,
@@ -147,6 +151,7 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
     meanNonEngine,
     perCategory,
     crossMatrix,
+    neSignatures,
   };
 }
 

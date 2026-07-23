@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { prepare, evaluate } from './evaluate.js';
 import { computePass, computeAll } from './enumerate.js';
 import { binom } from './binomial.js';
+import {
+  queryProbability,
+  subjectValue,
+  bucketContext,
+  type QueryCriterion,
+  type QuerySubject,
+} from './query.js';
 import type { EngineInput, EngineType } from './types.js';
 
 // Helpers ---------------------------------------------------------------
@@ -371,5 +378,90 @@ describe('§F — prérequis en deck', () => {
     const ko = evaluate(prep, [1, 1, 1], prep.deadFirst);
     expect(ko.starts).toBe(0);
     expect(ko.redundancy).toBe(0);
+  });
+});
+
+// ─── §E (itération 7) — mode requête généralisé (sujet + intervalle, groupes) ───
+describe('§E — mode requête : intervalles, agrégats, déduplication', () => {
+  // Catégories A et B (pertinentes sur les deux passes). t0∈A, t1∈B, t2 partagée (A∩B)
+  // si `shared`, sinon dans A seule → A et B disjointes.
+  const mkPass = (shared: boolean) =>
+    computePass(
+      {
+        deckSize: 40,
+        types: [
+          T({ copies: 1, categories: [0] }),
+          T({ copies: 1, categories: [1] }),
+          T({ copies: 1, categories: shared ? [0, 1] : [0] }),
+        ],
+        edges: [],
+        categories: [
+          { id: 'A', relevance: 'both' },
+          { id: 'B', relevance: 'both' },
+        ],
+      },
+      5,
+    );
+  const crit = (subject: QuerySubject, min: number | null, max: number | null): QueryCriterion => ({
+    id: 'c',
+    subject,
+    min,
+    max,
+  });
+  // Espérance d'un sujet sur la distribution exacte (linéarité sur les buckets).
+  const E = (pass: ReturnType<typeof mkPass>, subject: QuerySubject) =>
+    pass.buckets.reduce((s, b) => s + b.p * subjectValue(subject, bucketContext(b, pass.neSignatures)), 0);
+
+  it('aucun critère → 100 %', () => {
+    expect(queryProbability(mkPass(false), [])).toBeCloseTo(1, 10);
+  });
+
+  it('Starts ≥ 0 → 100 %', () => {
+    expect(queryProbability(mkPass(false), [crit({ kind: 'starts' }, 0, null)])).toBeCloseTo(1, 10);
+  });
+
+  it('Starts entre 1 et — = P(≥1 start)', () => {
+    const pass = computePass(
+      { deckSize: 40, types: [T({ copies: 3, isStarter: true })], edges: [], categories: [] },
+      5,
+    );
+    expect(queryProbability(pass, [crit({ kind: 'starts' }, 1, null)])).toBeCloseTo(1 - pass.brick, 12);
+  });
+
+  it('X entre — et 0 = complément exact de X ≥ 1', () => {
+    const pass = mkPass(true);
+    const geq1 = queryProbability(pass, [crit({ kind: 'category', categoryId: 'A' }, 1, null)])!;
+    const leq0 = queryProbability(pass, [crit({ kind: 'category', categoryId: 'A' }, null, 0)])!;
+    expect(leq0).toBeCloseTo(1 - geq1, 12);
+  });
+
+  it('Groupe {une catégorie} = critère de cette catégorie seule', () => {
+    const pass = mkPass(true);
+    for (let n = 1; n <= 3; n++) {
+      const cat = queryProbability(pass, [crit({ kind: 'category', categoryId: 'A' }, n, null)]);
+      const grp = queryProbability(pass, [crit({ kind: 'group', categoryIds: ['A'] }, n, null)]);
+      expect(grp).toBeCloseTo(cat!, 12);
+    }
+  });
+
+  it('Groupe {A,B} disjointes = somme des deux compteurs', () => {
+    const pass = mkPass(false);
+    const eGroup = E(pass, { kind: 'group', categoryIds: ['A', 'B'] });
+    const eSum =
+      E(pass, { kind: 'category', categoryId: 'A' }) + E(pass, { kind: 'category', categoryId: 'B' });
+    expect(eGroup).toBeCloseTo(eSum, 12);
+  });
+
+  it('Groupe {A,B} avec carte partagée < somme (test décisif de déduplication)', () => {
+    const pass = mkPass(true);
+    const eGroup = E(pass, { kind: 'group', categoryIds: ['A', 'B'] });
+    const eSum =
+      E(pass, { kind: 'category', categoryId: 'A' }) + E(pass, { kind: 'category', categoryId: 'B' });
+    expect(eGroup).toBeLessThan(eSum);
+    expect(eGroup).toBeGreaterThan(0);
+  });
+
+  it('min > max bloque l’évaluation (null)', () => {
+    expect(queryProbability(mkPass(false), [crit({ kind: 'starts' }, 2, 1)])).toBeNull();
   });
 });

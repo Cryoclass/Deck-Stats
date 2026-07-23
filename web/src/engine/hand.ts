@@ -12,6 +12,7 @@ export interface SampledHand {
   redundancy: number;
   neTotal: number; // non-engine pertinents pour la passe
   catCounts: number[];
+  neContrib: number[]; // contributions par signature (itération 7) — mêmes que les buckets
   note: number; // 0..10 (§4.4)
 }
 
@@ -95,6 +96,7 @@ export function evaluateHands(params: {
       redundancy: out.redundancy,
       neTotal,
       catCounts: out.catCounts,
+      neContrib: handSize <= 5 ? out.neContribFirst : out.neContribSecond,
       note: scorer(out.starts, neTotal),
     };
   });

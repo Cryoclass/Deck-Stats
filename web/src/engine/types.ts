@@ -57,6 +57,11 @@ export interface Outcome {
   catCounts: number[]; // par catégorie (aligné sur input.categories), copies brutes
   neFirst: number; // total non-engine pertinent going first (union §2.5, plafond HOPT §B.3.5)
   neSecond: number; // total non-engine pertinent going second (union §2.5, plafond HOPT §B.3.5)
+  // Itération 7 : contributions non-engine par SIGNATURE de catégories (union
+  // dédupliquée + plafond HOPT, par passe). Permet d'agréger n'importe quel groupe de
+  // catégories sans double comptage (§C). Aligné sur prep.neSig{First,Second}.
+  neContribFirst: number[];
+  neContribSecond: number[];
 }
 
 /** Distribution d'une passe (going first = 5, going second = 6). */
@@ -74,13 +79,21 @@ export interface PassResult {
   meanNonEngine: number;
   perCategory: CategoryDist[];
   crossMatrix: number[][]; // [min(starts,3)][nonEngineTotal] = P
+  // Itération 7 : signatures de catégories non-engine pour cette passe (chaque
+  // signature = l'ensemble des catégories PERTINENTES partagées par un groupe de
+  // cartes). `bucket.neContrib[s]` donne la contribution dédupliquée de la signature s.
+  neSignatures: NonEngineSignature[];
+}
+
+export interface NonEngineSignature {
+  cats: string[]; // ids des catégories (pertinentes pour la passe) de cette signature
 }
 
 export interface Bucket {
   starts: number;
   redundancy: number;
-  catCounts: number[];
-  neTotal: number; // total non-engine pertinent pour CETTE passe
+  neTotal: number; // total non-engine pertinent pour CETTE passe (= Σ neContrib)
+  neContrib: number[]; // contribution par signature (aligné sur PassResult.neSignatures)
   p: number;
 }
 

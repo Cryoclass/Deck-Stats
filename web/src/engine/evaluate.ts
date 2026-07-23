@@ -17,6 +17,16 @@ export interface Prepared {
   hasPrereqs: boolean; // aucun prérequis → chemin rapide strictement identique à avant
   starterPrereqs: Array<Prereq[] | undefined>; // par type
   edgePrereqs: Array<Prereq[] | undefined>; // aligné sur input.edges
+  // Itération 7 : signatures non-engine (types groupés par ensemble de catégories
+  // PERTINENTES pour la passe) — permet d'agréger tout groupe de catégories sans double
+  // comptage. Une signature porte ses cartes (types) et ses ids de catégories.
+  neSigFirst: NeSignature[];
+  neSigSecond: NeSignature[];
+}
+
+interface NeSignature {
+  cats: string[]; // ids des catégories pertinentes partagées par ces types
+  types: number[]; // index des types de cette signature
 }
 
 /** §B.3.5 : horizon = entier dans [1, 3]. Défauts : first=1 (on pose un board, un seul
@@ -78,6 +88,28 @@ export function prepare(input: EngineInput): Prepared {
   const usedCopies = input.types.reduce((s, t) => s + t.copies, 0);
   const filler = Math.max(0, input.deckSize - usedCopies);
 
+  // Signatures non-engine : on groupe les types par leur ensemble de catégories
+  // PERTINENTES pour la passe. Le filtrage par pertinence se fait donc AVANT l'union.
+  const catRelFirst = input.categories.map((c) => c.relevance === 'first' || c.relevance === 'both');
+  const catRelSecond = input.categories.map((c) => c.relevance === 'second' || c.relevance === 'both');
+  const relCats = (i: number, rel: boolean[]): string[] =>
+    input.types[i].categories
+      .filter((c) => rel[c])
+      .map((c) => input.categories[c].id)
+      .sort();
+  const buildSigs = (rel: boolean[]): NeSignature[] => {
+    const map = new Map<string, NeSignature>();
+    for (let i = 0; i < n; i++) {
+      const cats = relCats(i, rel);
+      if (cats.length === 0) continue;
+      const key = cats.join('|');
+      const sig = map.get(key) ?? { cats, types: [] };
+      sig.types.push(i);
+      map.set(key, sig);
+    }
+    return [...map.values()];
+  };
+
   return {
     input,
     n,
@@ -92,6 +124,8 @@ export function prepare(input: EngineInput): Prepared {
     hasPrereqs,
     starterPrereqs,
     edgePrereqs,
+    neSigFirst: buildSigs(catRelFirst),
+    neSigSecond: buildSigs(catRelSecond),
   };
 }
 
@@ -104,7 +138,7 @@ export function prepare(input: EngineInput): Prepared {
  * la redondance). Le comptage non-engine (étape 5) n'est pas concerné.
  */
 export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome {
-  const { input, typeAdj, neFirst, neSecond, horizonFirst, horizonSecond } = prep;
+  const { input, typeAdj, horizonFirst, horizonSecond } = prep;
 
   // 0. Prérequis (itération 5) — chemin rapide sauté si aucun prérequis.
   let disabled: Set<number> | undefined;
@@ -146,19 +180,38 @@ export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome 
   // 4. Redondance = arêtes présentes (§2.4) APRÈS retrait des arêtes non satisfaites.
   const redundancy = countEdges(vertices, typeAdj, disabled);
 
-  // 5. Non-engine : compté séparément (§2.5), total plafonné par l'horizon HOPT (§B.3.5).
+  // 5. Non-engine : ventilation brute par catégorie (pour le panneau de stats) +
+  //    contributions dédupliquées par SIGNATURE (union par catégories pertinentes, PUIS
+  //    plafond HOPT — l'ordre est impératif, §C). Le total par passe = Σ des signatures.
   const catCounts = new Array<number>(input.categories.length).fill(0);
-  let neFirstTotal = 0;
-  let neSecondTotal = 0;
   for (let i = 0; i < k.length; i++) {
     if (k[i] <= 0) continue;
-    const isHopt = input.types[i].isHopt;
     for (const c of input.types[i].categories) catCounts[c] += k[i];
-    if (neFirst[i]) neFirstTotal += isHopt ? Math.min(k[i], horizonFirst) : k[i];
-    if (neSecond[i]) neSecondTotal += isHopt ? Math.min(k[i], horizonSecond) : k[i];
   }
 
-  return { starts, redundancy, catCounts, neFirst: neFirstTotal, neSecond: neSecondTotal };
+  const contribOf = (sigs: NeSignature[], horizon: number): number[] =>
+    sigs.map((sig) => {
+      let sum = 0;
+      for (const t of sig.types) {
+        if (k[t] <= 0) continue;
+        sum += input.types[t].isHopt ? Math.min(k[t], horizon) : k[t];
+      }
+      return sum;
+    });
+  const neContribFirst = contribOf(prep.neSigFirst, horizonFirst);
+  const neContribSecond = contribOf(prep.neSigSecond, horizonSecond);
+  const neFirstTotal = neContribFirst.reduce((s, v) => s + v, 0);
+  const neSecondTotal = neContribSecond.reduce((s, v) => s + v, 0);
+
+  return {
+    starts,
+    redundancy,
+    catCounts,
+    neFirst: neFirstTotal,
+    neSecond: neSecondTotal,
+    neContribFirst,
+    neContribSecond,
+  };
 }
 
 /**
