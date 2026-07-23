@@ -12,11 +12,18 @@ async function j<T>(url: string, init?: RequestInit): Promise<T> {
   return (text ? JSON.parse(text) : null) as T;
 }
 
+export interface DeckSummaryStats {
+  startRateFirst?: number;
+  brickRate?: number;
+  mainSize?: number;
+}
 export interface DeckSummary {
   id: string;
   name: string;
   main_count: number;
   updated_at: string;
+  summary: DeckSummaryStats | null;
+  sample_cards: Array<number | string> | null;
 }
 export interface DeckDetail {
   id: string;
@@ -24,6 +31,10 @@ export interface DeckDetail {
   cards: Array<{ card_id: number; zone: Zone; copies: number }>;
   starters: number[];
   pair_exclusions: string[];
+  params?: Record<string, unknown> | null;
+  summary?: DeckSummaryStats | null;
+  notes?: string | null;
+  updated_at?: string;
 }
 
 export const api = {
@@ -39,8 +50,19 @@ export const api = {
   getDeck: (id: string) => j<DeckDetail>(`/decks/${id}`),
   createDeck: (name: string, cards: DeckDetail['cards']) =>
     j<{ id: string }>('/decks', { method: 'POST', body: JSON.stringify({ name, cards }) }),
-  updateDeck: (id: string, patch: { name?: string; cards?: DeckDetail['cards'] }) =>
-    j<{ ok: boolean }>(`/decks/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
+  updateDeck: (
+    id: string,
+    patch: {
+      name?: string;
+      cards?: DeckDetail['cards'];
+      params?: unknown;
+      summary?: DeckSummaryStats;
+      notes?: string | null;
+    },
+  ) => j<{ ok: boolean }>(`/decks/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
+  duplicateDeck: (id: string) =>
+    j<{ id: string }>(`/decks/${id}/duplicate`, { method: 'POST' }),
+  deleteDeck: (id: string) => j<{ ok: boolean }>(`/decks/${id}`, { method: 'DELETE' }),
   setStarters: (id: string, cardIds: number[]) =>
     j(`/decks/${id}/starters`, { method: 'PUT', body: JSON.stringify({ cardIds }) }),
   setPairExclusions: (id: string, pairIds: string[]) =>

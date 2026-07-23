@@ -23,6 +23,14 @@ export function ComboList() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-3">
+      {/* Mention permanente : ces données sont globales et auto-enregistrées (§4A). */}
+      <div className="mb-3 rounded-md border border-ink-800 bg-ink-900/60 px-2.5 py-1.5 text-[11px] text-ink-400">
+        Les combos, catégories et flags HOPT/mort sont{' '}
+        <span className="text-ink-200">enregistrés automatiquement</span> — ils sont partagés
+        par tous vos decks. Le bouton <span className="text-ink-200">Enregistrer</span> ne
+        concerne que ce deck (cartes, starters, exclusions, paramètres).
+      </div>
+
       {/* Ajout d'une paire depuis les cartes du main deck. */}
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-ink-800 bg-ink-900 p-2">
         <span className="text-[11px] uppercase tracking-wide text-ink-400">Nouveau combo</span>
