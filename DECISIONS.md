@@ -69,3 +69,28 @@ cas de couplage dont le test HOPT décisif) sont reproduites exactement.
 - **Mode requête** : évalué sur les buckets d'issues (starts, redondance, comptes par
   catégorie) renvoyés par le worker → prédicats arbitraires instantanés, sans
   recalcul.
+
+## Itération 1 — corrections
+
+- **Cartes mortes selon la position (Lot C)** : `deadFirst`/`deadSecond` retirent la
+  carte du graphe de combos ET des starters pour la passe concernée (traitée comme du
+  filler : ses copies occupent toujours la main mais ne produisent ni start ni arête).
+  Le comptage non-engine reste régi par la pertinence de catégorie, inchangé — une carte
+  morte going first mais taggée handtrap compte toujours comme handtrap. Un flag mort sur
+  une carte non annotée par ailleurs n'a aucun effet (elle est déjà filler). Deux tests
+  moteur couvrent le cas ; les valeurs §C sont inchangées (défaut = non-mort).
+
+- **Annotation par modes (Lot B)** : le menu ⋯ par carte n'est plus le canal des actions
+  fréquentes. Une barre de modes bascule la grille entière (Combo/HOPT/Starter/Non-engine)
+  ; on enchaîne les cartes sans rouvrir de menu. Mode combo = flux à pivot (1er clic =
+  pivot coloré, clics suivants (dé)lient, re-clic pivot ou « Nouveau pivot » change de
+  groupe sans sortir). Raccourcis C/H/S/N, Échap sort. Le ⋯ ne garde que le rare :
+  détail, retrait du deck, suppression de paire en bibliothèque, flags morts (Lot C).
+
+- **Radix pour les menus (A2)** : `@radix-ui/react-dropdown-menu` en portal avec
+  `avoidCollisions` + `collisionPadding` → les menus ne sortent jamais du viewport
+  (première/dernière colonne, dernière ligne). Remplace le Popover maison.
+
+- **Compteur de copies (A1)** : le segmented 1/2/3 débordait de la vignette (le « 3 »
+  était inatteignable). Remplacé par un stepper compact `− N +` à largeur garantie
+  (`shrink-0`), sans conteneur `overflow:hidden`. La densité de la grille est préservée.
