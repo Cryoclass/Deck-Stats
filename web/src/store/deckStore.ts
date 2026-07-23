@@ -22,6 +22,8 @@ interface State {
   side: DeckCard[];
 
   hopt: Set<number>;
+  deadFirst: Set<number>; // Lot C
+  deadSecond: Set<number>; // Lot C
   pairs: ComboPair[];
   categories: Category[];
   cardCategories: Map<number, Set<string>>;
@@ -44,6 +46,9 @@ interface State {
   setCopies: (cardId: number, copies: number) => void;
   toggleStarter: (cardId: number) => void;
   toggleHopt: (cardId: number) => void;
+  toggleDeadFirst: (cardId: number) => void;
+  toggleDeadSecond: (cardId: number) => void;
+  removeCard: (cardId: number) => void;
   togglePair: (a: number, b: number) => void;
   setPairExcluded: (pairId: string, excluded: boolean) => void;
   removePairFromLibrary: (pairId: string) => void;
@@ -94,6 +99,8 @@ function buildModel(s: State): EngineModel {
       isHopt: s.hopt.has(id),
       isStarter: s.starters.has(id),
       categories: cats,
+      deadFirst: s.deadFirst.has(id),
+      deadSecond: s.deadSecond.has(id),
     };
   });
 
@@ -139,6 +146,8 @@ function snapshot(s: State): SharedState {
     pairExclusions: [...s.pairExclusions],
     pairs: s.pairs,
     hopt: [...s.hopt],
+    deadFirst: [...s.deadFirst],
+    deadSecond: [...s.deadSecond],
     categories: s.categories,
     cardCategories: [...s.cardCategories].flatMap(([cid, set2]) =>
       [...set2].map((catId): [number, string] => [cid, catId]),
@@ -161,6 +170,8 @@ export const useDeck = create<State>((set, get) => {
     extra: [],
     side: [],
     hopt: new Set(),
+    deadFirst: new Set(),
+    deadSecond: new Set(),
     pairs: [],
     categories: [],
     cardCategories: new Map(),
@@ -179,6 +190,8 @@ export const useDeck = create<State>((set, get) => {
         const lib = await api.getLibrary();
         set({
           hopt: new Set(lib.hoptCardIds),
+          deadFirst: new Set(lib.deadFirstCardIds),
+          deadSecond: new Set(lib.deadSecondCardIds),
           pairs: lib.pairs,
           categories: lib.categories,
           cardCategories: groupCardCategories(lib.cardCategories),
@@ -234,6 +247,8 @@ export const useDeck = create<State>((set, get) => {
         pairs: s.pairs,
         categories: s.categories,
         hopt: new Set(s.hopt),
+        deadFirst: new Set(s.deadFirst ?? []),
+        deadSecond: new Set(s.deadSecond ?? []),
         cardCategories: cc,
         starters: new Set(s.starters),
         pairExclusions: new Set(s.pairExclusions),
@@ -276,7 +291,46 @@ export const useDeck = create<State>((set, get) => {
       else hopt.delete(cardId);
       set({ hopt });
       touch();
-      persist(set, () => api.setHopt(cardId, on));
+      persist(set, () => api.setFlags(cardId, { is_hopt: on }));
+    },
+
+    toggleDeadFirst(cardId) {
+      const deadFirst = new Set(get().deadFirst);
+      const on = !deadFirst.has(cardId);
+      if (on) deadFirst.add(cardId);
+      else deadFirst.delete(cardId);
+      set({ deadFirst });
+      touch();
+      persist(set, () => api.setFlags(cardId, { dead_first: on }));
+    },
+
+    toggleDeadSecond(cardId) {
+      const deadSecond = new Set(get().deadSecond);
+      const on = !deadSecond.has(cardId);
+      if (on) deadSecond.add(cardId);
+      else deadSecond.delete(cardId);
+      set({ deadSecond });
+      touch();
+      persist(set, () => api.setFlags(cardId, { dead_second: on }));
+    },
+
+    removeCard(cardId) {
+      const starters = new Set(get().starters);
+      starters.delete(cardId);
+      set({ main: get().main.filter((m) => m.cardId !== cardId), starters });
+      touch();
+      const { deckId } = get();
+      if (deckId) {
+        persist(set, () =>
+          api.updateDeck(deckId, {
+            cards: get().main.concat(get().extra, get().side).map((m) => ({
+              card_id: m.cardId,
+              zone: m.zone,
+              copies: m.copies,
+            })),
+          }),
+        );
+      }
     },
 
     togglePair(a, b) {

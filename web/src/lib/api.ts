@@ -48,8 +48,10 @@ export const api = {
 
   // Bibliothèque globale
   getLibrary: () => j<Library>('/library'),
-  setHopt: (cardId: number, isHopt: boolean) =>
-    j(`/library/flags/${cardId}`, { method: 'PUT', body: JSON.stringify({ is_hopt: isHopt }) }),
+  setFlags: (
+    cardId: number,
+    flags: { is_hopt?: boolean; dead_first?: boolean; dead_second?: boolean },
+  ) => j(`/library/flags/${cardId}`, { method: 'PUT', body: JSON.stringify(flags) }),
   addPair: (a: number, b: number, note?: string) =>
     j<{ id: string; card_a_id: number; card_b_id: number; note: string | null }>('/library/pairs', {
       method: 'POST',

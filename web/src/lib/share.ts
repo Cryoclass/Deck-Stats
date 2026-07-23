@@ -11,6 +11,8 @@ export interface SharedState {
   pairExclusions: string[];
   pairs: ComboPair[];
   hopt: number[];
+  deadFirst: number[];
+  deadSecond: number[];
   categories: Category[];
   cardCategories: Array<[number, string]>;
 }
