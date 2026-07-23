@@ -230,3 +230,31 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
   restauré au chargement). Le changer marque le deck « non enregistré » — cohérent avec
   `importance`/horizons (mêmes params save-gated), au prix d'un léger inconfort (une
   préférence d'affichage marque « dirty »). Assumé pour rester cohérent avec le modèle.
+
+## Itération 7 — mode requête généralisé (sujet + intervalle, agrégats, groupes)
+
+- **Critère = sujet + [min, max]** (bornes optionnelles, vide = non bornée, jamais
+  confondue avec « ≤ 0 »). ET de tous les critères ; aucun critère → 100 % ; un critère
+  `min > max` bloque l'évaluation (résultat « — »).
+
+- **Agréger ≠ additionner (§C) — signatures.** Le piège : une carte dans deux catégories
+  serait comptée deux fois. Solution : le moteur groupe les types non-engine par
+  **signature = ensemble de catégories PERTINENTES pour la passe**, et chaque bucket
+  porte la contribution (dédupliquée, plafond HOPT) par signature. Un groupe de catégories
+  G = Σ des signatures dont l'ensemble croise G → chaque carte comptée **une fois**. Ordre
+  respecté : filtrage pertinence → union (par signature) → plafond HOPT. Test décisif §E :
+  groupe {A,B} partageant une carte **strictement < ** somme des deux compteurs.
+
+- **Le sujet non-engine est « activable », pas « tiré ».** Les sujets catégorie / groupe
+  / Non-engine(tous) appliquent le plafond HOPT et le filtrage par pertinence (cohérent
+  avec le total `neTotal`). Cela **remplace** la note de l'itération 2 (« le mode requête
+  interroge la main tirée ») : depuis l'itération 7, la requête interroge l'**activable**.
+  La *ventilation par catégorie du panneau de stats* (itération 6) reste, elle, en copies
+  BRUTES tirées — c'est une autre question (combien je pioche vs combien j'active).
+
+- **Un seul système de critères (§D).** Le filtre du mur de mains EST la requête : mêmes
+  critères, même contexte d'évaluation (`neContrib` + `neSignatures`) sur les buckets ET
+  sur les mains tirées. « Voir ces mains » active le filtre et bascule sur l'onglet. Les
+  anciens filtres `starts ≥ / non-engine ≥ / bricks` sont supprimés (exprimables par la
+  requête). Requêtes **nommées** enregistrées dans les params du deck ; la requête en
+  cours est un brouillon transitoire (non « dirty »).
