@@ -178,3 +178,37 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
   **requêtes enregistrées** du mode requête ne sont **pas encore** persistés dans
   `params` (seuls horizons + importance le sont). L'infrastructure `params` est prête ;
   il ne reste qu'à y brancher ces états UI.
+
+## Itération 5 — prérequis en deck
+
+- **Coquille du contrôle chiffré §F.** Le brief annonce **29,49 %** et affirme que
+  l'exact est *en dessous* du produit naïf 33,75 % × 87,50 % = 29,53 %. C'est faux :
+  « ≥1 A en main » et « B en main » portent sur des cartes **disjointes**, donc
+  **négativement corrélées** en tirage sans remise → « ≥1 A » et « B *pas* en main » sont
+  **positivement corrélées** → l'exact est **au-dessus** de 29,53 %. Valeur exacte par
+  énumération : `(C(39,5) − C(36,5))/C(40,5) = 198765/658008 = 30,21 %`. La **table de
+  vérité** (6 lignes) du brief, elle, est correcte et matche le moteur. Test asserte
+  30,21 % ; c'est la 3ᵉ coquille chiffrée du corpus §C (cf. 33,75 % et 3,29 %).
+
+- **Modèle.** Prérequis **locaux au deck** (`deck_start_requirements`), source = starter
+  1-carte OU paire ; plusieurs prérequis sur une source sont **cumulatifs (ET)**. Une
+  source non satisfaite : le starter ne compte pas, l'arête est retirée **avant** le
+  couplage (donc hors redondance). Copies restantes = `total(req) − k(req)`.
+
+- **Piège traité : promotion en type suivi.** Toute carte citée dans un prérequis est
+  ajoutée aux types de `buildModel` même sans autre annotation ; sinon `k(req)` est
+  inconnu (carte fondue dans le filler) et le prérequis est incalculable. Promotion sans
+  effet sur les décks *sans* prérequis → les tests §C restent strictement identiques
+  (chemin rapide `hasPrereqs=false`, 22/22 verts). Carte requise absente du deck →
+  `requiredType=null`, total 0 → source morte en permanence (signalée dans l'Inventaire).
+
+- **Pas de consommation de ressource** (hors périmètre, §C note) : 2 dépendantes HOPT +
+  1 copie requise restante = le flag HOPT réduit déjà à un sommet unique.
+
+- **UI.** Mode `Prérequis` (raccourci P), même mécanique à pivot que `Lier combo`
+  (dépendante → requises). Distinction visuelle **impérative** : marqueur en **contour
+  pointillé** ambre + icône « deck » (▤) au coin bas-droit (les pastilles de combo sont
+  pleines, en haut-droite) ; au survol de la dépendante, ses cartes requises se
+  surlignent (relation **dirigée**). Prérequis sur une **paire** : posé depuis l'onglet
+  Combos. Inventaire : section « Starters conditionnels » avec les deux avertissements
+  (requise absente ; requise en 1 copie + probabilité 12,5 % 1st / 15 % 2nd sur 40).
