@@ -1,0 +1,29 @@
+{
+  "name": "ygo-proba",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Yu-Gi-Oh! — calculateur de probabilités de main d'ouverture & sampler de mains",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f db",
+    "migrate": "npm run migrate -w server",
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "dev": "concurrently -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "build": "npm run build -w server && npm run build -w web",
+    "test": "npm run test -w web",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "concurrently": "^9.1.0",
+    "husky": "^9.1.7"
+  }
+}
