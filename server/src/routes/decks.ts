@@ -32,16 +32,22 @@ export async function decksRoutes(app: FastifyInstance) {
     const { id } = req.params;
     const deck = await query('select * from decks where id = $1', [id]);
     if (deck.rowCount === 0) return reply.code(404).send({ error: 'deck introuvable' });
-    const [cards, starters, exclusions] = await Promise.all([
+    const [cards, starters, exclusions, requirements] = await Promise.all([
       query('select card_id, zone, copies from deck_cards where deck_id = $1', [id]),
       query('select card_id from deck_starters where deck_id = $1', [id]),
       query('select pair_id from deck_pair_exclusions where deck_id = $1', [id]),
+      query(
+        `select id, source_card_id, source_pair_id, required_card_id, min_in_deck
+         from deck_start_requirements where deck_id = $1`,
+        [id],
+      ),
     ]);
     return {
       ...deck.rows[0],
       cards: cards.rows,
       starters: starters.rows.map((r) => r.card_id),
       pair_exclusions: exclusions.rows.map((r) => r.pair_id),
+      start_requirements: requirements.rows,
     };
   });
 
@@ -127,6 +133,13 @@ export async function decksRoutes(app: FastifyInstance) {
          select $1, pair_id from deck_pair_exclusions where deck_id = $2`,
         [nid, id],
       );
+      await c.query(
+        `insert into deck_start_requirements
+           (deck_id, source_card_id, source_pair_id, required_card_id, min_in_deck)
+         select $1, source_card_id, source_pair_id, required_card_id, min_in_deck
+         from deck_start_requirements where deck_id = $2`,
+        [nid, id],
+      );
       return nid;
     });
     return reply.code(201).send({ id: newId });
@@ -178,6 +191,45 @@ export async function decksRoutes(app: FastifyInstance) {
       return { ok: true };
     },
   );
+
+  // Prérequis en deck (itération 5) — locaux au deck, remplacés en bloc à l'enregistrement.
+  app.put<{
+    Params: { id: string };
+    Body: {
+      requirements: Array<{
+        source_card_id?: number | null;
+        source_pair_id?: string | null;
+        required_card_id: number;
+        min_in_deck?: number;
+      }>;
+    };
+  }>('/:id/start-requirements', async (req) => {
+    const { id } = req.params;
+    const reqs = req.body?.requirements ?? [];
+    await tx(async (c) => {
+      await c.query('delete from deck_start_requirements where deck_id = $1', [id]);
+      for (const r of reqs) {
+        const hasCard = r.source_card_id != null;
+        const hasPair = r.source_pair_id != null;
+        if (hasCard === hasPair) continue; // exactement une source (contrainte XOR)
+        if (r.required_card_id == null) continue;
+        await c.query(
+          `insert into deck_start_requirements
+             (deck_id, source_card_id, source_pair_id, required_card_id, min_in_deck)
+           values ($1, $2, $3, $4, $5)`,
+          [
+            id,
+            hasCard ? r.source_card_id : null,
+            hasPair ? r.source_pair_id : null,
+            r.required_card_id,
+            Math.max(1, r.min_in_deck ?? 1),
+          ],
+        );
+      }
+      await c.query('update decks set updated_at = now() where id = $1', [id]);
+    });
+    return { ok: true };
+  });
 }
 
 async function insertCards(

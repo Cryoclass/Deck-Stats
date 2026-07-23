@@ -96,6 +96,19 @@ create table if not exists deck_pair_exclusions (       -- paires globales désa
   primary key (deck_id, pair_id)
 );
 
+-- Prérequis en deck (itération 5) — LOCAUX au deck. Une source de start (starter
+-- 1-carte OU paire de combo) exige ≥ min_in_deck copies d'une carte DANS LE DECK.
+create table if not exists deck_start_requirements (
+  id                uuid primary key default gen_random_uuid(),
+  deck_id           uuid   not null references decks on delete cascade,
+  source_card_id    bigint,                                        -- starter concerné (pas de FK catalogue)
+  source_pair_id    uuid   references combo_pairs on delete cascade, -- ou paire concernée
+  required_card_id  bigint not null,                               -- carte requise en deck
+  min_in_deck       smallint not null default 1,
+  check ((source_card_id is not null) <> (source_pair_id is not null)) -- exactement une source
+);
+create index if not exists dsr_deck on deck_start_requirements (deck_id);
+
 -- ─── Retrait des FK catalogue pour les bases créées avant cette décision ───
 alter table deck_cards      drop constraint if exists deck_cards_card_id_fkey;
 alter table deck_starters   drop constraint if exists deck_starters_card_id_fkey;
