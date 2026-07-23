@@ -21,7 +21,6 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
   const extra = useDeck((s) => s.extra);
   const side = useDeck((s) => s.side);
   const starters = useDeck((s) => s.starters);
-  const hopt = useDeck((s) => s.hopt);
   const deadFirst = useDeck((s) => s.deadFirst);
   const deadSecond = useDeck((s) => s.deadSecond);
   const categories = useDeck((s) => s.categories);
@@ -44,12 +43,13 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
       }
     }
 
-    // Une carte est « annotée » dès qu'un geste l'a touchée (filet de sécurité §6).
+    // Une carte est « annotée » si un RÔLE lui a été donné (starter, pièce de combo,
+    // catégorie non-engine, morte selon la position). HOPT est un simple modificateur,
+    // pas un rôle : une carte n'ayant QUE HOPT reste « Non annotée ».
     const isAnnotated = (id: number) =>
       starters.has(id) ||
       comboMembers.has(id) ||
       (cardCategories.get(id)?.size ?? 0) > 0 ||
-      hopt.has(id) ||
       deadFirst.has(id) ||
       deadSecond.has(id);
 
@@ -68,7 +68,6 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
         relevance: cat.relevance,
         ids: pick((id) => !!cardCategories.get(id)?.has(cat.id)),
       })),
-      { key: 'hopt', title: 'HOPT', ids: pick((id) => hopt.has(id)) },
       {
         key: 'dead1',
         title: 'Mortes going first',
@@ -96,7 +95,7 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
       annotatedCopies,
       nonAnnotatedCopies: deckSize - annotatedCopies,
     };
-  }, [main, starters, hopt, deadFirst, deadSecond, categories, cardCategories, pairs, pairExclusions]);
+  }, [main, starters, deadFirst, deadSecond, categories, cardCategories, pairs, pairExclusions]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (key: string) => setExpanded((e) => ({ ...e, [key]: !e[key] }));
