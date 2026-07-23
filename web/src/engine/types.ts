@@ -1,5 +1,17 @@
 export type Relevance = 'first' | 'second' | 'both';
 
+/**
+ * Prérequis en deck (itération 5) : une source de start (starter ou arête) exige
+ * qu'il reste ≥ `minInDeck` copies de la carte requise DANS LE DECK (hors main).
+ * copies restantes = requiredTotal − k[requiredType]. Si la carte requise est absente
+ * du deck, `requiredType = null` et `requiredTotal = 0` → prérequis jamais satisfait.
+ */
+export interface Prereq {
+  requiredType: number | null; // index dans types[] (ou null si carte absente du deck)
+  requiredTotal: number; // copies totales de la carte requise dans le deck
+  minInDeck: number; // ≥ 1
+}
+
 /** Un type de carte annotée présent dans le main deck. */
 export interface EngineType {
   copies: number; // 1..3 présents dans le deck
@@ -11,6 +23,8 @@ export interface EngineType {
   // par la pertinence de catégorie, inchangé.
   deadFirst?: boolean;
   deadSecond?: boolean;
+  // Itération 5 : prérequis en deck portant sur le RÔLE STARTER de ce type (ET).
+  starterPrereqs?: Prereq[];
 }
 
 export interface EngineCategory {
@@ -23,6 +37,9 @@ export interface EngineInput {
   deckSize: number; // 40..60 (§D). Extra/side jamais inclus.
   types: EngineType[];
   edges: Array<[number, number]>; // paires actives, index de types, i ≠ j
+  // Itération 5 : prérequis en deck portant sur une ARÊTE (paire), aligné sur `edges`.
+  // edgePrereqs[e] = prérequis (ET) de l'arête e ; absent/undefined = aucun.
+  edgePrereqs?: Array<Prereq[] | undefined>;
   categories: EngineCategory[];
   // §B.3 étape 5 (itération 2) — horizon de tours d'interaction : nombre de tours
   // adverses pendant lesquels une carte HOPT non-engine reste activable. Plafonne le

@@ -303,3 +303,73 @@ describe('Lot A — horizon d’interaction (plafond HOPT non-engine, §B.3.5)',
     expect(h3.meanNonEngine).toBeGreaterThan(h1.meanNonEngine); // non-engine, lui, bouge
   });
 });
+
+// ─── §F (itération 5) — prérequis en deck ───
+describe('§F — prérequis en deck', () => {
+  // A = starter HOPT avec prérequis « B ≥ 1 en deck » (requiredType = index de B,
+  // requiredTotal = copies totales de B). B absent → requiredType null, total 0.
+  const withReq = (bTotal: number, bAbsent = false) => {
+    const types: EngineType[] = bAbsent
+      ? [T({ copies: 3, isHopt: true, isStarter: true, starterPrereqs: [{ requiredType: null, requiredTotal: 0, minInDeck: 1 }] })]
+      : [
+          T({ copies: 3, isHopt: true, isStarter: true, starterPrereqs: [{ requiredType: 1, requiredTotal: bTotal, minInDeck: 1 }] }),
+          T({ copies: bTotal }),
+        ];
+    return prepare({ deckSize: 40, types, edges: [], categories: [] });
+  };
+  const startsFor = (bTotal: number, kA: number, kB: number, bAbsent = false) => {
+    const prep = withReq(bTotal, bAbsent);
+    const k = bAbsent ? [kA] : [kA, kB];
+    return evaluate(prep, k, prep.deadFirst).starts;
+  };
+
+  it('table de vérité — A compte comme starter ssi B reste ≥1 en deck', () => {
+    expect(startsFor(1, 1, 0)).toBe(1); // B×1, 0 en main → oui
+    expect(startsFor(1, 1, 1)).toBe(0); // B×1, 1 en main → non
+    expect(startsFor(3, 1, 1)).toBe(1); // B×3, 1 en main → oui
+    expect(startsFor(3, 1, 2)).toBe(1); // B×3, 2 en main → oui
+    expect(startsFor(3, 1, 3)).toBe(0); // B×3, 3 en main → non
+    expect(startsFor(0, 1, 0, true)).toBe(0); // B absente → non (source morte)
+  });
+
+  it('contrôle chiffré — A×3 starter HOPT prérequis B×1, going first', () => {
+    // §F annonce 29,49 % mais c'est une coquille : « ≥1 A » et « B en main » portent sur
+    // des cartes DISJOINTES → négativement corrélées, donc « ≥1 A » et « B PAS en main »
+    // sont POSITIVEMENT corrélées → l'exact est AU-DESSUS du produit naïf 29,53 %, pas
+    // en dessous. Valeur exacte par énumération : (C(39,5)−C(36,5))/C(40,5) = 30,21 %.
+    const input: EngineInput = {
+      deckSize: 40,
+      types: [
+        T({ copies: 3, isHopt: true, isStarter: true, starterPrereqs: [{ requiredType: 1, requiredTotal: 1, minInDeck: 1 }] }),
+        T({ copies: 1 }),
+      ],
+      edges: [],
+      categories: [],
+    };
+    const r = computePass(input, 5);
+    const exact = (binom(39, 5) - binom(36, 5)) / binom(40, 5);
+    expect(1 - r.brick).toBeCloseTo(exact, 12);
+    expect(1 - r.brick).toBeCloseTo(0.3021, 4);
+    // Sans prérequis, ce serait 33,75 % — donc le prérequis est bien pris en compte.
+    expect(1 - r.brick).toBeLessThan(0.3375);
+  });
+
+  it('arête à prérequis non satisfait : retirée AVANT couplage, hors redondance', () => {
+    // C-D combottent, mais l'arête requiert E ≥ 1 en deck (E×1).
+    const prep = prepare({
+      deckSize: 40,
+      types: [T(), T(), T({ copies: 1 })], // C, D, E
+      edges: [[0, 1]],
+      edgePrereqs: [[{ requiredType: 2, requiredTotal: 1, minInDeck: 1 }]],
+      categories: [],
+    });
+    // E pas en main → il en reste en deck → arête active → couplage 1, redondance 1.
+    const ok = evaluate(prep, [1, 1, 0], prep.deadFirst);
+    expect(ok.starts).toBe(1);
+    expect(ok.redundancy).toBe(1);
+    // E en main (dernière copie) → arête retirée → couplage 0, redondance 0.
+    const ko = evaluate(prep, [1, 1, 1], prep.deadFirst);
+    expect(ko.starts).toBe(0);
+    expect(ko.redundancy).toBe(0);
+  });
+});

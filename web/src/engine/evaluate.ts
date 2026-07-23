@@ -1,5 +1,5 @@
-import { maxMatching, countEdges } from './matching.js';
-import type { EngineInput, Outcome } from './types.js';
+import { maxMatching, countEdges, edgeKey } from './matching.js';
+import type { EngineInput, Outcome, Prereq } from './types.js';
 
 /** Vue précompilée de l'entrée : matrice d'adjacence + flags de pertinence. */
 export interface Prepared {
@@ -13,6 +13,10 @@ export interface Prepared {
   deadSecond: boolean[]; // type i mort going second
   horizonFirst: number; // §B.3.5 : plafond activable d'une carte HOPT non-engine (1..3)
   horizonSecond: number;
+  // Itération 5 : prérequis en deck.
+  hasPrereqs: boolean; // aucun prérequis → chemin rapide strictement identique à avant
+  starterPrereqs: Array<Prereq[] | undefined>; // par type
+  edgePrereqs: Array<Prereq[] | undefined>; // aligné sur input.edges
 }
 
 /** §B.3.5 : horizon = entier dans [1, 3]. Défauts : first=1 (on pose un board, un seul
@@ -20,6 +24,15 @@ export interface Prepared {
 function clampHorizon(v: number | undefined, fallback: number): number {
   if (v === undefined || !Number.isFinite(v)) return fallback;
   return Math.max(1, Math.min(3, Math.round(v)));
+}
+
+/** Prérequis (ET) satisfaits ? copies restantes en deck = requiredTotal − k[requiredType]. */
+function prereqsSatisfied(prereqs: Prereq[], k: number[]): boolean {
+  for (const p of prereqs) {
+    const kReq = p.requiredType !== null ? k[p.requiredType] ?? 0 : 0;
+    if (p.requiredTotal - kReq < p.minInDeck) return false;
+  }
+  return true;
 }
 
 export function prepare(input: EngineInput): Prepared {
@@ -36,6 +49,8 @@ export function prepare(input: EngineInput): Prepared {
   const neSecond = new Array<boolean>(n).fill(false);
   const deadFirst = new Array<boolean>(n).fill(false);
   const deadSecond = new Array<boolean>(n).fill(false);
+  const starterPrereqs = new Array<Prereq[] | undefined>(n).fill(undefined);
+  let hasPrereqs = false;
   for (let i = 0; i < n; i++) {
     for (const c of input.types[i].categories) {
       const rel = input.categories[c]?.relevance;
@@ -44,13 +59,24 @@ export function prepare(input: EngineInput): Prepared {
     }
     deadFirst[i] = !!input.types[i].deadFirst;
     deadSecond[i] = !!input.types[i].deadSecond;
+    const sp = input.types[i].starterPrereqs;
+    if (sp && sp.length > 0) {
+      starterPrereqs[i] = sp;
+      hasPrereqs = true;
+    }
   }
+
+  const edgePrereqs = input.edges.map((_, e) => {
+    const ep = input.edgePrereqs?.[e];
+    if (ep && ep.length > 0) {
+      hasPrereqs = true;
+      return ep;
+    }
+    return undefined;
+  });
 
   const usedCopies = input.types.reduce((s, t) => s + t.copies, 0);
   const filler = Math.max(0, input.deckSize - usedCopies);
-
-  const horizonFirst = clampHorizon(input.horizonFirst, 1);
-  const horizonSecond = clampHorizon(input.horizonSecond, 2);
 
   return {
     input,
@@ -61,19 +87,40 @@ export function prepare(input: EngineInput): Prepared {
     neSecond,
     deadFirst,
     deadSecond,
-    horizonFirst,
-    horizonSecond,
+    horizonFirst: clampHorizon(input.horizonFirst, 1),
+    horizonSecond: clampHorizon(input.horizonSecond, 2),
+    hasPrereqs,
+    starterPrereqs,
+    edgePrereqs,
   };
 }
 
 /**
  * evaluer(composition) — §B.3. `k[i]` = nombre de copies du type i dans la main.
  * Ne dépend pas de la taille de main pour starts/redondance ; `dead[i]` retire les
- * cartes mortes de la passe courante du graphe et des starters (Lot C). Le comptage
- * non-engine (étape 5) reste inchangé, régi par la pertinence de catégorie.
+ * cartes mortes de la passe courante (Lot C). Itération 5 : AVANT les étapes 2 et 3,
+ * les sources de start (starter ou arête) dont le prérequis en deck n'est pas satisfait
+ * sont neutralisées — le starter ne compte pas, l'arête est retirée du graphe (donc de
+ * la redondance). Le comptage non-engine (étape 5) n'est pas concerné.
  */
 export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome {
   const { input, typeAdj, neFirst, neSecond, horizonFirst, horizonSecond } = prep;
+
+  // 0. Prérequis (itération 5) — chemin rapide sauté si aucun prérequis.
+  let disabled: Set<number> | undefined;
+  const starterOff = (ti: number): boolean =>
+    prep.hasPrereqs
+      ? !!prep.starterPrereqs[ti] && !prereqsSatisfied(prep.starterPrereqs[ti]!, k)
+      : false;
+  if (prep.hasPrereqs) {
+    for (let e = 0; e < input.edges.length; e++) {
+      const ep = prep.edgePrereqs[e];
+      if (ep && !prereqsSatisfied(ep, k)) {
+        const [a, b] = input.edges[e];
+        (disabled ??= new Set()).add(edgeKey(a, b));
+      }
+    }
+  }
 
   // 1. Sommets : ki sommets, ou 1 seul si HOPT (§2.3). Cartes mortes ignorées.
   const vertices: number[] = [];
@@ -84,30 +131,22 @@ export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome 
     for (let v = 0; v < count; v++) vertices.push(i);
   }
 
-  // 2. Starters 1-carte : retirés d'abord, +1 chacun (optimal, cf. note §B.3).
+  // 2. Starters 1-carte : retirés d'abord, +1 chacun — sauf prérequis non satisfait,
+  //    auquel cas le sommet redevient une pièce ordinaire disponible pour le couplage.
   let starts = 0;
   const nonStarter: number[] = [];
   for (const ti of vertices) {
-    if (input.types[ti].isStarter) starts += 1;
+    if (input.types[ti].isStarter && !starterOff(ti)) starts += 1;
     else nonStarter.push(ti);
   }
 
-  // 3. Couplage maximum sur les sommets restants.
-  starts += maxMatching(nonStarter, typeAdj);
+  // 3. Couplage maximum sur les sommets restants (arêtes non satisfaites retirées).
+  starts += maxMatching(nonStarter, typeAdj, disabled);
 
-  // 4. Redondance = nombre total d'arêtes présentes (combos présents, §2.4),
-  //    sur TOUS les sommets de la main (recouvrements et starters inclus).
-  const redundancy = countEdges(vertices, typeAdj);
+  // 4. Redondance = arêtes présentes (§2.4) APRÈS retrait des arêtes non satisfaites.
+  const redundancy = countEdges(vertices, typeAdj, disabled);
 
-  // 5. Non-engine : compté séparément sur la composition complète, sans retirer
-  //    les sommets consommés (§2.5). Total (union) par passe, plafonné par l'horizon
-  //    HOPT (§B.3.5, itération 2) : une carte HOPT ne pouvant s'activer qu'un nombre
-  //    borné de fois dans la fenêtre d'interaction, sa contribution au TOTAL est
-  //    `min(copies, horizon)`. Le filtrage par pertinence de catégorie s'applique après
-  //    le plafonnement. La ventilation `catCounts` reste en copies BRUTES (physiques) :
-  //    P(≥1) — seule stat par catégorie affichée — est invariante par plafond, et un
-  //    prédicat « catégorie ≥ N » du mode requête interroge la main tirée, pas
-  //    l'activable (voir DECISIONS.md, itération 2).
+  // 5. Non-engine : compté séparément (§2.5), total plafonné par l'horizon HOPT (§B.3.5).
   const catCounts = new Array<number>(input.categories.length).fill(0);
   let neFirstTotal = 0;
   let neSecondTotal = 0;
@@ -123,27 +162,32 @@ export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome 
 }
 
 /**
- * Prédicat rapide « starts ≥ 1 » pour la contribution marginale (§3.2) : évite de
- * construire les sommets, le couplage et les comptes. starts ≥ 1 ssi un starter est
- * présent, OU une arête active a ses deux extrémités présentes et non-starter (une
- * seule arête dans le sous-graphe non-starter suffit à un couplage ≥ 1).
+ * Prédicat rapide « starts ≥ 1 » pour la contribution marginale (§3.2). Sans prérequis,
+ * comportement strictement identique à avant. Avec prérequis : un starter compte s'il est
+ * présent ET son prérequis satisfait ; une arête suffit si ses deux extrémités sont
+ * présentes ET son prérequis satisfait (à ce stade aucun starter « comptant » n'est
+ * présent, sinon la première boucle aurait déjà renvoyé vrai).
  */
 export function startsAtLeastOne(prep: Prepared, k: number[], dead: boolean[]): boolean {
   const { input } = prep;
+  const hp = prep.hasPrereqs;
   for (let i = 0; i < k.length; i++) {
-    if (k[i] > 0 && !dead[i] && input.types[i].isStarter) return true;
+    if (k[i] > 0 && !dead[i] && input.types[i].isStarter) {
+      if (!hp) return true;
+      const pr = prep.starterPrereqs[i];
+      if (!pr || prereqsSatisfied(pr, k)) return true;
+    }
   }
-  for (const [a, b] of input.edges) {
+  for (let e = 0; e < input.edges.length; e++) {
+    const [a, b] = input.edges[e];
     if (a === b) continue;
-    if (
-      k[a] > 0 &&
-      k[b] > 0 &&
-      !dead[a] &&
-      !dead[b] &&
-      !input.types[a].isStarter &&
-      !input.types[b].isStarter
-    ) {
-      return true;
+    if (k[a] > 0 && k[b] > 0 && !dead[a] && !dead[b]) {
+      if (!hp) {
+        if (!input.types[a].isStarter && !input.types[b].isStarter) return true;
+      } else {
+        const pr = prep.edgePrereqs[e];
+        if (!pr || prereqsSatisfied(pr, k)) return true;
+      }
     }
   }
   return false;
