@@ -26,8 +26,15 @@ create table if not exists decks (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
   created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+  updated_at  timestamptz not null default now(),
+  summary     jsonb,                                   -- aperçu mis en cache (itération 4 C)
+  notes       text,
+  params      jsonb not null default '{}'::jsonb       -- paramètres de calcul locaux au deck
 );
+-- Idempotent pour les bases initialisées avant l'itération 4.
+alter table decks add column if not exists summary jsonb;
+alter table decks add column if not exists notes   text;
+alter table decks add column if not exists params  jsonb not null default '{}'::jsonb;
 
 create table if not exists deck_cards (
   deck_id  uuid not null references decks on delete cascade,

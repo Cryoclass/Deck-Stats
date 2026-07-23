@@ -8,11 +8,19 @@ interface DeckCardInput {
 }
 
 export async function decksRoutes(app: FastifyInstance) {
-  // Liste des decks (métadonnées seulement).
+  // Liste des decks pour l'accueil (§4C) : métadonnées + aperçu mis en cache
+  // (summary) + quelques vignettes. On ne recalcule jamais ici.
   app.get('/', async () => {
     const { rows } = await query(
-      `select d.id, d.name, d.created_at, d.updated_at,
-              coalesce(sum(dc.copies) filter (where dc.zone = 'main'), 0)::int as main_count
+      `select d.id, d.name, d.created_at, d.updated_at, d.summary,
+              coalesce(sum(dc.copies) filter (where dc.zone = 'main'), 0)::int as main_count,
+              coalesce(
+                (select array_agg(card_id) from
+                   (select card_id from deck_cards
+                    where deck_id = d.id and zone = 'main'
+                    order by card_id limit 8) t),
+                '{}'
+              ) as sample_cards
        from decks d left join deck_cards dc on dc.deck_id = d.id
        group by d.id order by d.updated_at desc`,
     );
@@ -53,31 +61,80 @@ export async function decksRoutes(app: FastifyInstance) {
     return reply.code(201).send({ id: deckId });
   });
 
-  // Remplacement des cartes / renommage.
-  app.put<{ Params: { id: string }; Body: { name?: string; cards?: DeckCardInput[] } }>(
-    '/:id',
-    async (req, reply) => {
-      const { id } = req.params;
-      const { name, cards } = req.body ?? {};
-      await tx(async (c) => {
-        if (name?.trim()) {
-          await c.query('update decks set name = $1, updated_at = now() where id = $2', [
-            name.trim(),
-            id,
-          ]);
-        } else {
-          await c.query('update decks set updated_at = now() where id = $1', [id]);
-        }
-        if (cards) {
-          await c.query('delete from deck_cards where deck_id = $1', [id]);
-          await insertCards(c, id, cards);
-        }
-      });
-      return { ok: true };
-    },
-  );
+  // Enregistrement d'un deck : cartes + renommage + params + aperçu/notes (§4B).
+  app.put<{
+    Params: { id: string };
+    Body: {
+      name?: string;
+      cards?: DeckCardInput[];
+      params?: unknown;
+      summary?: unknown;
+      notes?: string | null;
+    };
+  }>('/:id', async (req) => {
+    const { id } = req.params;
+    const { name, cards, params, summary, notes } = req.body ?? {};
+    await tx(async (c) => {
+      await c.query(
+        `update decks set
+           name    = coalesce($2, name),
+           params  = coalesce($3::jsonb, params),
+           summary = coalesce($4::jsonb, summary),
+           notes   = coalesce($5, notes),
+           updated_at = now()
+         where id = $1`,
+        [
+          id,
+          name?.trim() ? name.trim() : null,
+          params !== undefined ? JSON.stringify(params) : null,
+          summary !== undefined ? JSON.stringify(summary) : null,
+          notes ?? null,
+        ],
+      );
+      if (cards) {
+        await c.query('delete from deck_cards where deck_id = $1', [id]);
+        await insertCards(c, id, cards);
+      }
+    });
+    return { ok: true };
+  });
+
+  // Duplication : composition + TOUTES les données locales (§4C, prépare la
+  // comparaison de versions §4D). Ne touche jamais la bibliothèque globale.
+  app.post<{ Params: { id: string } }>('/:id/duplicate', async (req, reply) => {
+    const { id } = req.params;
+    const newId = await tx(async (c) => {
+      const ins = await c.query<{ id: string }>(
+        `insert into decks (name, summary, notes, params)
+         select name || ' (copie)', summary, notes, params from decks where id = $1
+         returning id`,
+        [id],
+      );
+      if (ins.rowCount === 0) throw new Error('deck introuvable');
+      const nid = ins.rows[0].id;
+      await c.query(
+        `insert into deck_cards (deck_id, card_id, zone, copies)
+         select $1, card_id, zone, copies from deck_cards where deck_id = $2`,
+        [nid, id],
+      );
+      await c.query(
+        `insert into deck_starters (deck_id, card_id)
+         select $1, card_id from deck_starters where deck_id = $2`,
+        [nid, id],
+      );
+      await c.query(
+        `insert into deck_pair_exclusions (deck_id, pair_id)
+         select $1, pair_id from deck_pair_exclusions where deck_id = $2`,
+        [nid, id],
+      );
+      return nid;
+    });
+    return reply.code(201).send({ id: newId });
+  });
 
   app.delete<{ Params: { id: string } }>('/:id', async (req) => {
+    // Ne supprime que le deck (cascade sur ses tables locales). La bibliothèque
+    // globale (combo_pairs, card_flags, catégories) reste intacte (§4C).
     await query('delete from decks where id = $1', [req.params.id]);
     return { ok: true };
   });
