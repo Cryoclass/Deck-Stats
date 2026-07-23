@@ -3,9 +3,15 @@ import type { Card, Library, Relevance, Zone } from '../types.js';
 const BASE = '/api';
 
 async function j<T>(url: string, init?: RequestInit): Promise<T> {
+  // Ne déclarer le content-type JSON QUE s'il y a un corps : sinon Fastify rejette une
+  // requête sans corps (DELETE, POST duplicate…) avec FST_ERR_CTP_EMPTY_JSON_BODY (400).
+  const hasBody = init?.body != null;
   const res = await fetch(BASE + url, {
     ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      ...(hasBody ? { 'content-type': 'application/json' } : {}),
+      ...(init?.headers ?? {}),
+    },
   });
   if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${url} → ${res.status}`);
   const text = await res.text();
