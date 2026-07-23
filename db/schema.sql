@@ -39,9 +39,14 @@ create table if not exists deck_cards (
 
 -- ─── Bibliothèque globale (connaissance du jeu, transverse aux decks) ───
 create table if not exists card_flags (
-  card_id  bigint primary key references cards,
-  is_hopt  boolean not null default false
+  card_id      bigint primary key references cards,
+  is_hopt      boolean not null default false,
+  dead_first   boolean not null default false,  -- Lot C : morte going first
+  dead_second  boolean not null default false   -- Lot C : morte going second
 );
+-- Idempotent pour les bases déjà initialisées avant le Lot C.
+alter table card_flags add column if not exists dead_first  boolean not null default false;
+alter table card_flags add column if not exists dead_second boolean not null default false;
 
 create table if not exists combo_pairs (
   id          uuid primary key default gen_random_uuid(),

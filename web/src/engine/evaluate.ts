@@ -9,6 +9,8 @@ export interface Prepared {
   typeAdj: boolean[][];
   neFirst: boolean[]; // type i pertinent going first (catégorie first|both)
   neSecond: boolean[]; // type i pertinent going second (catégorie second|both)
+  deadFirst: boolean[]; // type i mort going first → filler pour cette passe (Lot C)
+  deadSecond: boolean[]; // type i mort going second
 }
 
 export function prepare(input: EngineInput): Prepared {
@@ -23,31 +25,37 @@ export function prepare(input: EngineInput): Prepared {
 
   const neFirst = new Array<boolean>(n).fill(false);
   const neSecond = new Array<boolean>(n).fill(false);
+  const deadFirst = new Array<boolean>(n).fill(false);
+  const deadSecond = new Array<boolean>(n).fill(false);
   for (let i = 0; i < n; i++) {
     for (const c of input.types[i].categories) {
       const rel = input.categories[c]?.relevance;
       if (rel === 'first' || rel === 'both') neFirst[i] = true;
       if (rel === 'second' || rel === 'both') neSecond[i] = true;
     }
+    deadFirst[i] = !!input.types[i].deadFirst;
+    deadSecond[i] = !!input.types[i].deadSecond;
   }
 
   const usedCopies = input.types.reduce((s, t) => s + t.copies, 0);
   const filler = Math.max(0, input.deckSize - usedCopies);
 
-  return { input, n, filler, typeAdj, neFirst, neSecond };
+  return { input, n, filler, typeAdj, neFirst, neSecond, deadFirst, deadSecond };
 }
 
 /**
  * evaluer(composition) — §B.3. `k[i]` = nombre de copies du type i dans la main.
- * Ne dépend pas de la taille de main : starts, redondance et comptes non-engine.
+ * Ne dépend pas de la taille de main pour starts/redondance ; `dead[i]` retire les
+ * cartes mortes de la passe courante du graphe et des starters (Lot C). Le comptage
+ * non-engine (étape 5) reste inchangé, régi par la pertinence de catégorie.
  */
-export function evaluate(prep: Prepared, k: number[]): Outcome {
+export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome {
   const { input, typeAdj, neFirst, neSecond } = prep;
 
-  // 1. Sommets : ki sommets, ou 1 seul si HOPT (§2.3).
+  // 1. Sommets : ki sommets, ou 1 seul si HOPT (§2.3). Cartes mortes ignorées.
   const vertices: number[] = [];
   for (let i = 0; i < k.length; i++) {
-    if (k[i] <= 0) continue;
+    if (k[i] <= 0 || dead[i]) continue;
     const t = input.types[i];
     const count = t.isHopt ? 1 : k[i];
     for (let v = 0; v < count; v++) vertices.push(i);
@@ -89,14 +97,21 @@ export function evaluate(prep: Prepared, k: number[]): Outcome {
  * présent, OU une arête active a ses deux extrémités présentes et non-starter (une
  * seule arête dans le sous-graphe non-starter suffit à un couplage ≥ 1).
  */
-export function startsAtLeastOne(prep: Prepared, k: number[]): boolean {
+export function startsAtLeastOne(prep: Prepared, k: number[], dead: boolean[]): boolean {
   const { input } = prep;
   for (let i = 0; i < k.length; i++) {
-    if (k[i] > 0 && input.types[i].isStarter) return true;
+    if (k[i] > 0 && !dead[i] && input.types[i].isStarter) return true;
   }
   for (const [a, b] of input.edges) {
     if (a === b) continue;
-    if (k[a] > 0 && k[b] > 0 && !input.types[a].isStarter && !input.types[b].isStarter) {
+    if (
+      k[a] > 0 &&
+      k[b] > 0 &&
+      !dead[a] &&
+      !dead[b] &&
+      !input.types[a].isStarter &&
+      !input.types[b].isStarter
+    ) {
       return true;
     }
   }

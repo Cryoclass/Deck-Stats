@@ -107,7 +107,7 @@ describe('§C — couplage maximum & redondance', () => {
     k: number[],
   ) => {
     const prep = prepare({ deckSize: 40, types, edges, categories: [] });
-    return evaluate(prep, k);
+    return evaluate(prep, k, prep.deadFirst); // aucune carte morte par défaut
   };
 
   it('Saji, Murakumo, Ritual → 1 start, redondance 2', () => {
@@ -175,8 +175,42 @@ describe('§B.3 — starter solo aussi pièce de paire', () => {
       edges: [[0, 1]],
       categories: [],
     });
-    const out = evaluate(prep, [1, 1]);
+    const out = evaluate(prep, [1, 1], prep.deadFirst);
     expect(out.starts).toBe(1);
     expect(out.redundancy).toBe(1); // le combo A-B est présent
+  });
+});
+
+// ─── Lot C — cartes mortes selon la position ───
+describe('Lot C — dead_first / dead_second (traitées comme filler)', () => {
+  it('une carte dead_first ne compte ni comme starter ni comme sommet going first', () => {
+    // Type 0 : starter solo mais mort going first. Type 1 : combote avec 0.
+    const prep = prepare({
+      deckSize: 40,
+      types: [
+        T({ isStarter: true, deadFirst: true }),
+        T({}),
+      ],
+      edges: [[0, 1]],
+      categories: [],
+    });
+    // Going first : 0 est filler → pas de start, pas d'arête utilisable.
+    expect(evaluate(prep, [1, 1], prep.deadFirst).starts).toBe(0);
+    expect(evaluate(prep, [1, 1], prep.deadFirst).redundancy).toBe(0);
+    // Going second : 0 est vivant → starter compte.
+    expect(evaluate(prep, [1, 1], prep.deadSecond).starts).toBe(1);
+  });
+
+  it('dead_first n’affecte pas le comptage non-engine (régi par la catégorie)', () => {
+    const prep = prepare({
+      deckSize: 40,
+      types: [T({ deadFirst: true, categories: [0] })],
+      edges: [],
+      categories: [{ id: 'ht', relevance: 'both' }],
+    });
+    // Morte pour le graphe, mais toujours comptée comme handtrap going first.
+    const out = evaluate(prep, [1], prep.deadFirst);
+    expect(out.catCounts[0]).toBe(1);
+    expect(out.neFirst).toBe(1);
   });
 });

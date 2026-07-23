@@ -5,33 +5,43 @@ export async function libraryRoutes(app: FastifyInstance) {
   // Snapshot complet de la bibliothèque globale (§5) — chargé au démarrage du front.
   app.get('/', async () => {
     const [flags, pairs, categories, cardCategories] = await Promise.all([
-      query('select card_id, is_hopt from card_flags where is_hopt = true'),
+      query(
+        `select card_id, is_hopt, dead_first, dead_second from card_flags
+         where is_hopt or dead_first or dead_second`,
+      ),
       query('select id, card_a_id, card_b_id, note from combo_pairs'),
       query('select id, name, relevance, is_builtin from nonengine_categories order by is_builtin desc, name'),
       query('select card_id, category_id from card_categories'),
     ]);
     return {
-      hoptCardIds: flags.rows.map((r) => r.card_id),
+      hoptCardIds: flags.rows.filter((r) => r.is_hopt).map((r) => r.card_id),
+      deadFirstCardIds: flags.rows.filter((r) => r.dead_first).map((r) => r.card_id),
+      deadSecondCardIds: flags.rows.filter((r) => r.dead_second).map((r) => r.card_id),
       pairs: pairs.rows,
       categories: categories.rows,
       cardCategories: cardCategories.rows,
     };
   });
 
-  // ─── Flag HOPT ───
-  app.put<{ Params: { cardId: string }; Body: { is_hopt: boolean } }>(
-    '/flags/:cardId',
-    async (req) => {
-      const cardId = Number(req.params.cardId);
-      const isHopt = !!req.body?.is_hopt;
-      await query(
-        `insert into card_flags (card_id, is_hopt) values ($1, $2)
-         on conflict (card_id) do update set is_hopt = excluded.is_hopt`,
-        [cardId, isHopt],
-      );
-      return { ok: true };
-    },
-  );
+  // ─── Flags de carte (HOPT + mortes selon la position, Lot C) ───
+  // Upsert partiel : seuls les champs fournis sont modifiés (coalesce).
+  app.put<{
+    Params: { cardId: string };
+    Body: { is_hopt?: boolean; dead_first?: boolean; dead_second?: boolean };
+  }>('/flags/:cardId', async (req) => {
+    const cardId = Number(req.params.cardId);
+    const { is_hopt, dead_first, dead_second } = req.body ?? {};
+    await query(
+      `insert into card_flags (card_id, is_hopt, dead_first, dead_second)
+       values ($1, coalesce($2, false), coalesce($3, false), coalesce($4, false))
+       on conflict (card_id) do update set
+         is_hopt     = coalesce($2, card_flags.is_hopt),
+         dead_first  = coalesce($3, card_flags.dead_first),
+         dead_second = coalesce($4, card_flags.dead_second)`,
+      [cardId, is_hopt ?? null, dead_first ?? null, dead_second ?? null],
+    );
+    return { ok: true };
+  });
 
   // ─── Paires de combo (graphe global, canonicalisées a<=b) ───
   app.post<{ Body: { card_a_id: number; card_b_id: number; note?: string } }>(

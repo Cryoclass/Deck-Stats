@@ -48,9 +48,10 @@ function enumerate(
 function probStart(prep: Prepared, handSize: number): number {
   const total = binom(prep.input.deckSize, handSize);
   if (total === 0) return 0;
+  const dead = handSize <= 5 ? prep.deadFirst : prep.deadSecond;
   let w1 = 0;
   enumerate(prep, handSize, (k, w) => {
-    if (startsAtLeastOne(prep, k)) w1 += w;
+    if (startsAtLeastOne(prep, k, dead)) w1 += w;
   });
   return w1 / total;
 }
@@ -59,6 +60,7 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
   const prep = prepare(input);
   const total = binom(input.deckSize, handSize);
   const numCat = input.categories.length;
+  const dead = handSize <= 5 ? prep.deadFirst : prep.deadSecond;
 
   const map = new Map<string, { b: Bucket }>();
   const startsExact: number[] = [];
@@ -72,7 +74,7 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
   };
 
   enumerate(prep, handSize, (k, w) => {
-    const out = evaluate(prep, k);
+    const out = evaluate(prep, k, dead);
     const neTotal = handSize <= 5 ? out.neFirst : out.neSecond;
     const key = `${out.starts}|${out.redundancy}|${neTotal}|${out.catCounts.join(',')}`;
     const existing = map.get(key);

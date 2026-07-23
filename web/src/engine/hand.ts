@@ -61,6 +61,7 @@ export function sampleHands(params: {
   if (pool.length === 0) return [];
 
   const nTypes = prep.input.types.length;
+  const dead = handSize <= 5 ? prep.deadFirst : prep.deadSecond;
   const hands: SampledHand[] = [];
   const draw = Math.min(handSize, pool.length);
 
@@ -79,7 +80,7 @@ export function sampleHands(params: {
       const ti = typeIndexByCardId.get(cardId);
       if (ti !== undefined) k[ti] += 1;
     }
-    const out = evaluate(prep, k);
+    const out = evaluate(prep, k, dead);
     const neTotal = handSize <= 5 ? out.neFirst : out.neSecond;
     hands.push({
       cards,

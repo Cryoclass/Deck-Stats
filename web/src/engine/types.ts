@@ -6,6 +6,11 @@ export interface EngineType {
   isHopt: boolean; // §2.3 : copies multiples → 1 seul sommet
   isStarter: boolean; // §2.1 : starter 1-carte
   categories: number[]; // index dans EngineInput.categories (§2.6)
+  // Lot C : carte morte selon la position → traitée comme du filler pour la passe
+  // concernée (ni starter, ni sommet du graphe). Le comptage non-engine reste régi
+  // par la pertinence de catégorie, inchangé.
+  deadFirst?: boolean;
+  deadSecond?: boolean;
 }
 
 export interface EngineCategory {
