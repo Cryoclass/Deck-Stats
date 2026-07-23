@@ -19,6 +19,7 @@ export interface DeckDraft {
   horizonFirst: number;
   horizonSecond: number;
   importance: number;
+  statsView: string;
 }
 
 const DB_NAME = 'ygo-proba';

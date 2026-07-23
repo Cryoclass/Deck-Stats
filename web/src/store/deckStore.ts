@@ -37,6 +37,7 @@ interface State {
   importance: number;
   horizonFirst: number; // §B.3.5
   horizonSecond: number;
+  statsView: string; // itération 6 : vue du panneau de stats ('starts' | 'nonengine' | catId)
 
   online: boolean;
   result: EngineResult | null;
@@ -82,6 +83,7 @@ interface State {
   toggleCardCategory: (cardId: number, categoryId: string) => void;
   setImportance: (v: number) => void;
   setHorizon: (pass: 'first' | 'second', value: number) => void;
+  setStatsView: (view: string) => void;
   setExtraSideHidden: (hidden: boolean) => void;
   renameDeck: (name: string) => void;
 }
@@ -216,6 +218,7 @@ function scheduleDraft(get: () => State): void {
       horizonFirst: s.horizonFirst,
       horizonSecond: s.horizonSecond,
       importance: s.importance,
+      statsView: s.statsView,
     });
   }, 500);
 }
@@ -237,6 +240,7 @@ function localSig(o: {
   horizonFirst: number;
   horizonSecond: number;
   importance: number;
+  statsView: string;
 }): string {
   const norm = (arr: DeckCard[]) =>
     arr.map((c) => `${c.cardId}:${c.zone}:${c.copies}`).sort().join(',');
@@ -253,6 +257,7 @@ function localSig(o: {
     h1: o.horizonFirst,
     h2: o.horizonSecond,
     im: o.importance,
+    sv: o.statsView,
   });
 }
 
@@ -287,6 +292,7 @@ export const useDeck = create<State>((set, get) => {
     importance: 0.5,
     horizonFirst: 1,
     horizonSecond: 2,
+    statsView: 'starts',
     online: true,
     result: null,
     model: null,
@@ -422,6 +428,7 @@ export const useDeck = create<State>((set, get) => {
         horizonFirst: clampHorizon(Number(params.horizonFirst ?? 1)),
         horizonSecond: clampHorizon(Number(params.horizonSecond ?? 2)),
         importance: typeof params.importance === 'number' ? params.importance : 0.5,
+        statsView: typeof params.statsView === 'string' ? params.statsView : 'starts',
         dirty: false,
         lastSavedAt: detail.updated_at ? Date.parse(detail.updated_at) : Date.now(),
         draftAvailable: null,
@@ -444,6 +451,7 @@ export const useDeck = create<State>((set, get) => {
           horizonFirst: s.horizonFirst,
           horizonSecond: s.horizonSecond,
           importance: s.importance,
+          statsView: s.statsView,
         });
         if (localSig(draft) !== savedSig) set({ draftAvailable: draft });
         else void clearDraft(id); // brouillon identique = obsolète
@@ -469,7 +477,12 @@ export const useDeck = create<State>((set, get) => {
               zone: m.zone,
               copies: m.copies,
             })),
-            params: { horizonFirst: s.horizonFirst, horizonSecond: s.horizonSecond, importance: s.importance },
+            params: {
+              horizonFirst: s.horizonFirst,
+              horizonSecond: s.horizonSecond,
+              importance: s.importance,
+              statsView: s.statsView,
+            },
             summary,
           }),
           api.setStarters(s.deckId, [...s.starters]),
@@ -505,6 +518,7 @@ export const useDeck = create<State>((set, get) => {
         horizonFirst: clampHorizon(d.horizonFirst),
         horizonSecond: clampHorizon(d.horizonSecond),
         importance: d.importance,
+        statsView: d.statsView ?? 'starts',
         draftAvailable: null,
         dirty: true,
       });
@@ -588,6 +602,11 @@ export const useDeck = create<State>((set, get) => {
     setImportance(v) {
       set({ importance: v });
       markDirty(); // n'affecte pas le calcul, seulement les notes → pas de recompute
+    },
+
+    setStatsView(view) {
+      set({ statsView: view });
+      markDirty(); // pur affichage, mais mémorisé dans les params du deck (itération 6)
     },
 
     setHorizon(pass, value) {
