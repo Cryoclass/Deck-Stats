@@ -168,6 +168,12 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
 - **Partage par URL (`#s=`) retiré** : remplacé par la persistance base + brouillon. Le
   lien partageable est désormais l'URL du deck (`/decks/:id`). `web/src/lib/share.ts`
   supprimé.
+- **Catalogue = lookup, pas contrainte (divergence assumée vs §A).** Les colonnes
+  `card_id` (deck_cards, deck_starters, card_flags, card_categories, combo_pairs) **ne
+  référencent plus `cards`**. Le catalogue migré est incomplet (des passcodes récents
+  manquent) et l'`id` EST le passcode (images dérivées du CDN, nom = confort). Une FK
+  catalogue faisait échouer tout l'import d'un deck (rollback, 500 `23503`) dès qu'une
+  seule carte manquait. Drop idempotent dans `schema.sql` pour les bases existantes.
 - **Reste à faire (non bloquant, signalé)** : les **filtres du mur de mains** et les
   **requêtes enregistrées** du mode requête ne sont **pas encore** persistés dans
   `params` (seuls horizons + importance le sont). L'infrastructure `params` est prête ;
