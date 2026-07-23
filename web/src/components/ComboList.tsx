@@ -83,23 +83,26 @@ export function ComboList() {
           return (
             <li
               key={p.id}
-              className="flex items-center gap-2 rounded-md border border-ink-800 bg-ink-900 px-2 py-1.5 text-sm"
+              className="flex flex-col gap-1 rounded-md border border-ink-800 bg-ink-900 px-2 py-1.5 text-sm"
             >
-              <button
-                onClick={() => setPairExcluded(p.id, active)}
-                title={active ? 'Désactiver pour ce deck' : 'Réactiver'}
-                className={`h-4 w-4 shrink-0 rounded-sm border ${active ? 'border-emerald-400 bg-emerald-400' : 'border-ink-500'}`}
-              />
-              <span className={active ? 'text-ink-100' : 'text-ink-500 line-through'}>
-                {name(p.card_a_id)} <span className="text-ink-500">+</span> {name(p.card_b_id)}
-              </span>
-              <button
-                onClick={() => removePairFromLibrary(p.id)}
-                title="Supprimer définitivement de la bibliothèque"
-                className="ml-auto rounded px-1.5 text-ink-600 hover:bg-red-500/10 hover:text-red-400"
-              >
-                supprimer
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPairExcluded(p.id, active)}
+                  title={active ? 'Désactiver pour ce deck' : 'Réactiver'}
+                  className={`h-4 w-4 shrink-0 rounded-sm border ${active ? 'border-emerald-400 bg-emerald-400' : 'border-ink-500'}`}
+                />
+                <span className={active ? 'text-ink-100' : 'text-ink-500 line-through'}>
+                  {name(p.card_a_id)} <span className="text-ink-500">+</span> {name(p.card_b_id)}
+                </span>
+                <button
+                  onClick={() => removePairFromLibrary(p.id)}
+                  title="Supprimer définitivement de la bibliothèque"
+                  className="ml-auto rounded px-1.5 text-ink-600 hover:bg-red-500/10 hover:text-red-400"
+                >
+                  supprimer
+                </button>
+              </div>
+              <PairRequirements pairId={p.id} />
             </li>
           );
         })}
@@ -130,6 +133,59 @@ export function ComboList() {
       )}
 
       <CategoryManager />
+    </div>
+  );
+}
+
+/** Prérequis en deck posés sur une PAIRE (itération 5, §D) — depuis l'onglet Combos. */
+function PairRequirements({ pairId }: { pairId: string }) {
+  const startRequirements = useDeck((s) => s.startRequirements);
+  const main = useDeck((s) => s.main);
+  const cards = useDeck((s) => s.cards);
+  const toggleRequirement = useDeck((s) => s.toggleRequirement);
+  const removeRequirement = useDeck((s) => s.removeRequirement);
+  const name = (id: number) => cards[id]?.name ?? `#${id}`;
+
+  const reqs = startRequirements.filter((r) => r.sourcePairId === pairId);
+  const requiredIds = new Set(reqs.map((r) => r.requiredCardId));
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 pl-6 text-[11px]">
+      <span className="text-amber-300/80">requiert en deck :</span>
+      {reqs.length === 0 && <span className="text-ink-600">aucun prérequis</span>}
+      {reqs.map((r) => (
+        <span
+          key={r.id}
+          className="flex items-center gap-1 rounded border border-dashed border-amber-500/50 bg-amber-500/5 px-1.5 py-0.5 text-amber-200"
+        >
+          ▤ {name(r.requiredCardId)}
+          {r.minInDeck > 1 ? ` ≥${r.minInDeck}` : ''}
+          <button
+            onClick={() => removeRequirement(r.id)}
+            className="text-amber-400/70 hover:text-red-400"
+            title="Retirer ce prérequis"
+          >
+            ✕
+          </button>
+        </span>
+      ))}
+      <select
+        value=""
+        onChange={(e) => {
+          const id = Number(e.target.value);
+          if (id) toggleRequirement({ pairId }, id);
+        }}
+        className="rounded border border-ink-700 bg-ink-850 px-1 py-0.5 text-[11px] text-ink-300"
+      >
+        <option value="">＋ ajouter…</option>
+        {main
+          .filter((m) => !requiredIds.has(m.cardId))
+          .map((m) => (
+            <option key={m.cardId} value={m.cardId}>
+              {name(m.cardId)}
+            </option>
+          ))}
+      </select>
     </div>
   );
 }

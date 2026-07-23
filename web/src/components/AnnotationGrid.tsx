@@ -29,12 +29,16 @@ export function AnnotationGrid({
   const toggleHopt = useDeck((s) => s.toggleHopt);
   const toggleStarter = useDeck((s) => s.toggleStarter);
   const toggleCardCategory = useDeck((s) => s.toggleCardCategory);
+  const startRequirements = useDeck((s) => s.startRequirements);
+  const toggleRequirement = useDeck((s) => s.toggleRequirement);
   const extraSideHidden = useDeck((s) => s.extraSideHidden);
   const setExtraSideHidden = useDeck((s) => s.setExtraSideHidden);
 
   const [mode, setMode] = useState<AnnotationMode>('select');
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [comboPivot, setComboPivot] = useState<number | null>(null);
+  const [prereqSource, setPrereqSource] = useState<number | null>(null);
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [modCount, setModCount] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
 
@@ -42,6 +46,7 @@ export function AnnotationGrid({
     (next: AnnotationMode, categoryId?: string) => {
       setMode(next);
       setComboPivot(null);
+      setPrereqSource(null);
       setModCount(0);
       if (next === 'nonengine') {
         setActiveCategoryId(categoryId ?? activeCategoryId ?? categories[0]?.id ?? null);
@@ -53,6 +58,7 @@ export function AnnotationGrid({
   const exitMode = useCallback(() => {
     setMode('select');
     setComboPivot(null);
+    setPrereqSource(null);
   }, []);
 
   // Raccourcis clavier (§ Lot B). Échap sort toujours ; on ignore la saisie texte.
@@ -113,6 +119,28 @@ export function AnnotationGrid({
     return s;
   }, [comboPivot, pairs, excl, main]);
 
+  // Cartes dépendantes (sources de prérequis carte) → marqueur permanent (§D).
+  const dependents = useMemo(
+    () => new Set(startRequirements.filter((r) => r.sourceCardId !== null).map((r) => r.sourceCardId!)),
+    [startRequirements],
+  );
+  // Dépendante « active » : la source en mode Prérequis, sinon la carte survolée si
+  // elle est dépendante. Ses cartes requises sont mises en évidence par rebond (§D).
+  const activeDependent =
+    mode === 'prereq'
+      ? prereqSource
+      : hoveredCard !== null && dependents.has(hoveredCard)
+        ? hoveredCard
+        : null;
+  const requiredByActive = useMemo(() => {
+    const s = new Set<number>();
+    if (activeDependent === null) return s;
+    for (const r of startRequirements) {
+      if (r.sourceCardId === activeDependent) s.add(r.requiredCardId);
+    }
+    return s;
+  }, [activeDependent, startRequirements]);
+
   const dispatch = (cardId: number) => {
     switch (mode) {
       case 'hopt':
@@ -134,6 +162,14 @@ export function AnnotationGrid({
         else if (comboPivot === cardId) setComboPivot(null); // termine le groupe
         else {
           togglePair(comboPivot, cardId);
+          setModCount((c) => c + 1);
+        }
+        break;
+      case 'prereq':
+        if (prereqSource === null) setPrereqSource(cardId); // 1er clic = dépendante
+        else if (prereqSource === cardId) setPrereqSource(null); // change de source
+        else {
+          toggleRequirement({ cardId: prereqSource }, cardId); // (dé)pose un prérequis
           setModCount((c) => c + 1);
         }
         break;
@@ -167,8 +203,11 @@ export function AnnotationGrid({
           modCount={modCount}
           comboPivot={comboPivot}
           pivotName={comboPivot !== null ? cards[comboPivot]?.name ?? `#${comboPivot}` : null}
+          prereqSource={prereqSource}
+          sourceName={prereqSource !== null ? cards[prereqSource]?.name ?? `#${prereqSource}` : null}
           categoryName={categories.find((c) => c.id === activeCategoryId)?.name ?? null}
           onNewPivot={() => setComboPivot(null)}
+          onNewSource={() => setPrereqSource(null)}
           onDone={exitMode}
         />
       )}
@@ -191,6 +230,23 @@ export function AnnotationGrid({
               linkedToPivot={linkedSet.has(c.cardId)}
               onCardClick={dispatch}
               highlighted={highlightCardId === c.cardId}
+              showPrereqMarker={dependents.has(c.cardId)}
+              prereqHighlight={
+                activeDependent === c.cardId
+                  ? 'source'
+                  : requiredByActive.has(c.cardId)
+                    ? 'required'
+                    : null
+              }
+              prereqDim={
+                mode === 'prereq' &&
+                prereqSource !== null &&
+                prereqSource !== c.cardId &&
+                !requiredByActive.has(c.cardId)
+              }
+              onHoverChange={(h) =>
+                setHoveredCard((prev) => (h ? c.cardId : prev === c.cardId ? null : prev))
+              }
             />
           ))}
           {/* Ajout d'une carte en fin de grille (itération 3, A). */}
@@ -243,16 +299,22 @@ function ModeBanner({
   modCount,
   comboPivot,
   pivotName,
+  prereqSource,
+  sourceName,
   categoryName,
   onNewPivot,
+  onNewSource,
   onDone,
 }: {
   mode: AnnotationMode;
   modCount: number;
   comboPivot: number | null;
   pivotName: string | null;
+  prereqSource: number | null;
+  sourceName: string | null;
   categoryName: string | null;
   onNewPivot: () => void;
+  onNewSource: () => void;
   onDone: () => void;
 }) {
   const accent =
@@ -260,7 +322,9 @@ function ModeBanner({
       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
       : mode === 'nonengine'
         ? 'border-sky-500/30 bg-sky-500/10 text-sky-200'
-        : 'border-amber-500/30 bg-amber-500/10 text-amber-200';
+        : mode === 'prereq'
+          ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+          : 'border-amber-500/30 bg-amber-500/10 text-amber-200';
 
   let hint: string;
   if (mode === 'combo') {
@@ -268,6 +332,11 @@ function ModeBanner({
       comboPivot === null
         ? 'Clique une carte pour choisir le pivot.'
         : `Pivot : ${pivotName}. Clique les partenaires ; re-clique le pivot pour en changer.`;
+  } else if (mode === 'prereq') {
+    hint =
+      prereqSource === null
+        ? 'Clique la carte dépendante (ex. son start cherche une carte en deck).'
+        : `Dépendante : ${sourceName}. Clique les cartes requises EN DECK ; re-clique la dépendante pour en changer.`;
   } else if (mode === 'nonengine') {
     hint = `Catégorie « ${categoryName ?? '—'} » : clique les cartes à (dé)marquer.`;
   } else {
@@ -287,6 +356,14 @@ function ModeBanner({
           className="rounded border border-white/20 px-2 py-0.5 text-[11px] hover:bg-black/20"
         >
           Nouveau pivot
+        </button>
+      )}
+      {mode === 'prereq' && prereqSource !== null && (
+        <button
+          onClick={onNewSource}
+          className="rounded border border-white/20 px-2 py-0.5 text-[11px] hover:bg-black/20"
+        >
+          Nouvelle source
         </button>
       )}
       <button

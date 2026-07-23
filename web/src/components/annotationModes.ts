@@ -1,5 +1,5 @@
 /** Modes d'annotation (Lot B) — bascule la grille entière dans un mode répétitif. */
-export type AnnotationMode = 'select' | 'combo' | 'hopt' | 'starter' | 'nonengine';
+export type AnnotationMode = 'select' | 'combo' | 'hopt' | 'starter' | 'nonengine' | 'prereq';
 
 export const MODE_LABEL: Record<AnnotationMode, string> = {
   select: 'Sélection',
@@ -7,6 +7,7 @@ export const MODE_LABEL: Record<AnnotationMode, string> = {
   hopt: 'HOPT',
   starter: 'Starter',
   nonengine: 'Non-engine',
+  prereq: 'Prérequis',
 };
 
 /** Raccourcis clavier (§ Lot B). `Échap` sort toujours. */
@@ -15,6 +16,7 @@ export const KEY_TO_MODE: Record<string, AnnotationMode> = {
   h: 'hopt',
   s: 'starter',
   n: 'nonengine',
+  p: 'prereq',
 };
 
 export const MODE_KEY: Partial<Record<AnnotationMode, string>> = {
@@ -22,4 +24,5 @@ export const MODE_KEY: Partial<Record<AnnotationMode, string>> = {
   hopt: 'H',
   starter: 'S',
   nonengine: 'N',
+  prereq: 'P',
 };

@@ -1,4 +1,4 @@
-import type { DeckCard } from '../types.js';
+import type { DeckCard, StartRequirement } from '../types.js';
 
 /**
  * Brouillon local automatique (§4B) — écrit en continu dans IndexedDB, indépendamment
@@ -15,6 +15,7 @@ export interface DeckDraft {
   side: DeckCard[];
   starters: number[];
   pairExclusions: string[];
+  startRequirements: StartRequirement[];
   horizonFirst: number;
   horizonSecond: number;
   importance: number;

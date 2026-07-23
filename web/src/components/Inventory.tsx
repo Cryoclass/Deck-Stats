@@ -5,6 +5,93 @@ import { pct } from '../lib/fmt.js';
 import { CardImage } from './CardImage.js';
 
 /**
+ * Section « Starters conditionnels » (§E) — chaque source de prérequis avec ses cartes
+ * requises en clair. Deux avertissements en accent : carte requise absente (source morte
+ * en permanence) ; carte requise en 1 copie (source perdue dès qu'elle est piochée, avec
+ * la probabilité correspondante — utile pour le deckbuilding).
+ */
+function ConditionalStarters() {
+  const startRequirements = useDeck((s) => s.startRequirements);
+  const main = useDeck((s) => s.main);
+  const starters = useDeck((s) => s.starters);
+  const pairs = useDeck((s) => s.pairs);
+  const cards = useDeck((s) => s.cards);
+
+  const deckSize = main.reduce((a, c) => a + c.copies, 0);
+  const mainCopies = useMemo(() => new Map(main.map((c) => [c.cardId, c.copies])), [main]);
+  const name = (id: number) => cards[id]?.name ?? `#${id}`;
+
+  if (startRequirements.length === 0) return null;
+
+  // Regroupement par source (carte starter ou paire).
+  const groups = new Map<string, { label: string; note?: string; reqs: typeof startRequirements }>();
+  for (const r of startRequirements) {
+    const key = r.sourceCardId !== null ? `c:${r.sourceCardId}` : `p:${r.sourcePairId}`;
+    if (!groups.has(key)) {
+      let label: string;
+      let note: string | undefined;
+      if (r.sourceCardId !== null) {
+        label = name(r.sourceCardId);
+        if (!mainCopies.has(r.sourceCardId)) note = 'source absente du deck';
+        else if (!starters.has(r.sourceCardId)) note = 'pas un starter — prérequis inerte';
+      } else {
+        const p = pairs.find((pp) => pp.id === r.sourcePairId);
+        label = p ? `${name(p.card_a_id)} + ${name(p.card_b_id)}` : 'paire supprimée';
+      }
+      groups.set(key, { label, note, reqs: [] });
+    }
+    groups.get(key)!.reqs.push(r);
+  }
+
+  return (
+    <div className="border-b border-ink-800 p-3">
+      <div className="mb-2 text-[11px] uppercase tracking-wide text-ink-400">
+        Starters conditionnels (§E)
+      </div>
+      <ul className="flex flex-col gap-2">
+        {[...groups.values()].map((g, i) => (
+          <li key={i} className="rounded-md border border-ink-800 bg-ink-900 p-2 text-xs">
+            <div className="font-medium text-ink-100">
+              {g.label}
+              {g.note && <span className="ml-2 text-[10px] text-ink-500">({g.note})</span>}
+            </div>
+            <ul className="mt-1 flex flex-col gap-1">
+              {g.reqs.map((r) => {
+                const total = mainCopies.get(r.requiredCardId) ?? 0;
+                const absent = total === 0;
+                const single = total === 1 && r.minInDeck === 1;
+                const pFirst = deckSize > 0 ? Math.min(5, deckSize) / deckSize : 0;
+                const pSecond = deckSize > 0 ? Math.min(6, deckSize) / deckSize : 0;
+                return (
+                  <li key={r.id} className="flex flex-wrap items-center gap-2">
+                    <span className="text-ink-300">
+                      requiert <b className="text-amber-200">▤ {name(r.requiredCardId)}</b>
+                      {r.minInDeck > 1 ? ` ≥${r.minInDeck}` : ''} en deck
+                    </span>
+                    {absent ? (
+                      <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-300">
+                        carte absente du deck — source morte en permanence
+                      </span>
+                    ) : single ? (
+                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-300">
+                        1 seule copie — source perdue dès qu'elle est piochée ·{' '}
+                        <span className="tnum">
+                          {pct(pFirst, 1)} 1st / {pct(pSecond, 1)} 2nd
+                        </span>
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
  * Onglet Inventaire (Lot B, itération 2) — vue statique en LECTURE de la composition du
  * deck : combien de quoi, et lesquelles. Aucune édition ici (copies, annotations) : ces
  * gestes vivent dans l'onglet « Annoter ». Le seul geste interactif est le dépliage d'une
@@ -136,6 +223,7 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
+        <ConditionalStarters />
         {sections
           .filter((s) => !(s.hideIfEmpty && s.ids.length === 0))
           .map((s) => (

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { Card, Category, ComboPair, DeckCard, Relevance } from '../types.js';
+import type { Card, Category, ComboPair, DeckCard, Relevance, StartRequirement } from '../types.js';
 import { pairKey } from '../types.js';
-import type { EngineInput, EngineResult } from '../engine/types.js';
+import type { EngineInput, EngineResult, Prereq } from '../engine/types.js';
 import { computeInWorker } from '../worker/client.js';
 import { api } from '../lib/api.js';
 import type { ParsedDeck } from '../lib/ydk.js';
@@ -33,6 +33,7 @@ interface State {
   // ─── Local au deck : relève du bouton Enregistrer (§4A) ───
   starters: Set<number>;
   pairExclusions: Set<string>;
+  startRequirements: StartRequirement[]; // itération 5
   importance: number;
   horizonFirst: number; // §B.3.5
   horizonSecond: number;
@@ -70,6 +71,12 @@ interface State {
   togglePair: (a: number, b: number) => void;
   setPairExcluded: (pairId: string, excluded: boolean) => void;
   removePairFromLibrary: (pairId: string) => void;
+  toggleRequirement: (
+    source: { cardId: number } | { pairId: string },
+    requiredCardId: number,
+  ) => void;
+  setRequirementMin: (id: string, min: number) => void;
+  removeRequirement: (id: string) => void;
   addCategory: (name: string, relevance: Relevance) => void;
   deleteCategory: (id: string) => void;
   toggleCardCategory: (cardId: number, categoryId: string) => void;
@@ -109,16 +116,32 @@ function buildModel(s: State): EngineModel {
   for (const [cardId, cats] of s.cardCategories) {
     if (cats.size > 0 && mainCopies.has(cardId)) annotated.add(cardId);
   }
+  // Itération 5 : toute carte requise par un prérequis est promue en type suivi, sinon
+  // sa présence résiduelle en deck serait structurellement incalculable (§C).
+  for (const r of s.startRequirements) {
+    if (mainCopies.has(r.requiredCardId)) annotated.add(r.requiredCardId);
+  }
 
   const typeCardIds = s.main.map((c) => c.cardId).filter((id) => annotated.has(id));
   const typeIndex = new Map(typeCardIds.map((id, i) => [id, i]));
   const categoryIds = s.categories.map((c) => c.id);
   const catIndex = new Map(categoryIds.map((id, i) => [id, i]));
 
+  // Carte requise absente du deck → requiredType null, total 0 → jamais satisfait.
+  const toPrereq = (requiredCardId: number, minInDeck: number): Prereq => {
+    const rt = typeIndex.get(requiredCardId);
+    return {
+      requiredType: rt !== undefined ? rt : null,
+      requiredTotal: mainCopies.get(requiredCardId) ?? 0,
+      minInDeck: Math.max(1, minInDeck),
+    };
+  };
+
   const types = typeCardIds.map((id) => {
     const cats = [...(s.cardCategories.get(id) ?? [])]
       .map((cid) => catIndex.get(cid))
       .filter((i): i is number => i !== undefined);
+    const cardReqs = s.startRequirements.filter((r) => r.sourceCardId === id);
     return {
       copies: mainCopies.get(id) ?? 0,
       isHopt: s.hopt.has(id),
@@ -126,12 +149,19 @@ function buildModel(s: State): EngineModel {
       categories: cats,
       deadFirst: s.deadFirst.has(id),
       deadSecond: s.deadSecond.has(id),
+      starterPrereqs: cardReqs.length
+        ? cardReqs.map((r) => toPrereq(r.requiredCardId, r.minInDeck))
+        : undefined,
     };
   });
 
-  const edges = activePairs
-    .map((p): [number, number] => [typeIndex.get(p.card_a_id)!, typeIndex.get(p.card_b_id)!])
-    .filter(([a, b]) => a !== undefined && b !== undefined);
+  const edges = activePairs.map(
+    (p): [number, number] => [typeIndex.get(p.card_a_id)!, typeIndex.get(p.card_b_id)!],
+  );
+  const edgePrereqs = activePairs.map((p) => {
+    const reqs = s.startRequirements.filter((r) => r.sourcePairId === p.id);
+    return reqs.length ? reqs.map((r) => toPrereq(r.requiredCardId, r.minInDeck)) : undefined;
+  });
 
   const categories = s.categories.map((c) => ({ id: c.id, relevance: c.relevance }));
 
@@ -140,6 +170,7 @@ function buildModel(s: State): EngineModel {
       deckSize,
       types,
       edges,
+      edgePrereqs,
       categories,
       horizonFirst: s.horizonFirst,
       horizonSecond: s.horizonSecond,
@@ -181,6 +212,7 @@ function scheduleDraft(get: () => State): void {
       side: s.side,
       starters: [...s.starters],
       pairExclusions: [...s.pairExclusions],
+      startRequirements: s.startRequirements,
       horizonFirst: s.horizonFirst,
       horizonSecond: s.horizonSecond,
       importance: s.importance,
@@ -201,6 +233,7 @@ function localSig(o: {
   side: DeckCard[];
   starters: number[];
   pairExclusions: string[];
+  startRequirements: StartRequirement[];
   horizonFirst: number;
   horizonSecond: number;
   importance: number;
@@ -214,6 +247,9 @@ function localSig(o: {
     s: norm(o.side),
     st: [...o.starters].sort((a, b) => a - b),
     px: [...o.pairExclusions].sort(),
+    rq: o.startRequirements
+      .map((r) => `${r.sourceCardId ?? ''}|${r.sourcePairId ?? ''}|${r.requiredCardId}|${r.minInDeck}`)
+      .sort(),
     h1: o.horizonFirst,
     h2: o.horizonSecond,
     im: o.importance,
@@ -247,6 +283,7 @@ export const useDeck = create<State>((set, get) => {
     cardCategories: new Map(),
     starters: new Set(),
     pairExclusions: new Set(),
+    startRequirements: [],
     importance: 0.5,
     horizonFirst: 1,
     horizonSecond: 2,
@@ -375,6 +412,13 @@ export const useDeck = create<State>((set, get) => {
         side: asCards('side'),
         starters: new Set(detail.starters),
         pairExclusions: new Set(detail.pair_exclusions),
+        startRequirements: (detail.start_requirements ?? []).map((r) => ({
+          id: r.id,
+          sourceCardId: r.source_card_id,
+          sourcePairId: r.source_pair_id,
+          requiredCardId: r.required_card_id,
+          minInDeck: r.min_in_deck,
+        })),
         horizonFirst: clampHorizon(Number(params.horizonFirst ?? 1)),
         horizonSecond: clampHorizon(Number(params.horizonSecond ?? 2)),
         importance: typeof params.importance === 'number' ? params.importance : 0.5,
@@ -396,6 +440,7 @@ export const useDeck = create<State>((set, get) => {
           side: s.side,
           starters: [...s.starters],
           pairExclusions: [...s.pairExclusions],
+          startRequirements: s.startRequirements,
           horizonFirst: s.horizonFirst,
           horizonSecond: s.horizonSecond,
           importance: s.importance,
@@ -429,6 +474,15 @@ export const useDeck = create<State>((set, get) => {
           }),
           api.setStarters(s.deckId, [...s.starters]),
           api.setPairExclusions(s.deckId, [...s.pairExclusions]),
+          api.setStartRequirements(
+            s.deckId,
+            s.startRequirements.map((r) => ({
+              source_card_id: r.sourceCardId,
+              source_pair_id: r.sourcePairId,
+              required_card_id: r.requiredCardId,
+              min_in_deck: r.minInDeck,
+            })),
+          ),
         ]);
         set({ dirty: false, lastSavedAt: Date.now(), online: true });
         await clearDraft(s.deckId);
@@ -447,6 +501,7 @@ export const useDeck = create<State>((set, get) => {
         side: d.side,
         starters: new Set(d.starters),
         pairExclusions: new Set(d.pairExclusions),
+        startRequirements: d.startRequirements ?? [],
         horizonFirst: clampHorizon(d.horizonFirst),
         horizonSecond: clampHorizon(d.horizonSecond),
         importance: d.importance,
@@ -546,6 +601,47 @@ export const useDeck = create<State>((set, get) => {
       markDirty();
     },
 
+    // ─── Prérequis en deck (itération 5) — locaux au deck (bouton Enregistrer) ───
+    toggleRequirement(source, requiredCardId) {
+      const isCard = 'cardId' in source;
+      const existing = get().startRequirements.find(
+        (r) =>
+          r.requiredCardId === requiredCardId &&
+          (isCard ? r.sourceCardId === source.cardId : r.sourcePairId === source.pairId),
+      );
+      if (existing) {
+        set({ startRequirements: get().startRequirements.filter((r) => r.id !== existing.id) });
+      } else {
+        set({
+          startRequirements: [
+            ...get().startRequirements,
+            {
+              id: `tmp-req-${Math.random().toString(36).slice(2)}`,
+              sourceCardId: isCard ? source.cardId : null,
+              sourcePairId: isCard ? null : source.pairId,
+              requiredCardId,
+              minInDeck: 1,
+            },
+          ],
+        });
+      }
+      localCalc();
+    },
+
+    setRequirementMin(id, min) {
+      set({
+        startRequirements: get().startRequirements.map((r) =>
+          r.id === id ? { ...r, minInDeck: Math.max(1, min) } : r,
+        ),
+      });
+      localCalc();
+    },
+
+    removeRequirement(id) {
+      set({ startRequirements: get().startRequirements.filter((r) => r.id !== id) });
+      localCalc();
+    },
+
     // ─── Mutations GLOBALES (bibliothèque) : enregistrées immédiatement, jamais « sale » ───
     toggleHopt(cardId) {
       const hopt = new Set(get().hopt);
@@ -598,9 +694,12 @@ export const useDeck = create<State>((set, get) => {
     },
 
     removePairFromLibrary(pairId) {
+      // La suppression de la paire cascade côté serveur sur ses exclusions ET ses
+      // prérequis (source_pair_id) ; on nettoie l'état local en miroir.
       set({
         pairs: get().pairs.filter((p) => p.id !== pairId),
         pairExclusions: new Set([...get().pairExclusions].filter((id) => id !== pairId)),
+        startRequirements: get().startRequirements.filter((r) => r.sourcePairId !== pairId),
       });
       recompute();
       persist(set, () => api.deletePair(pairId));

@@ -31,12 +31,20 @@ export interface DeckSummary {
   summary: DeckSummaryStats | null;
   sample_cards: Array<number | string> | null;
 }
+export interface DeckRequirementRow {
+  id: string;
+  source_card_id: number | null;
+  source_pair_id: string | null;
+  required_card_id: number;
+  min_in_deck: number;
+}
 export interface DeckDetail {
   id: string;
   name: string;
   cards: Array<{ card_id: number; zone: Zone; copies: number }>;
   starters: number[];
   pair_exclusions: string[];
+  start_requirements?: DeckRequirementRow[];
   params?: Record<string, unknown> | null;
   summary?: DeckSummaryStats | null;
   notes?: string | null;
@@ -73,6 +81,19 @@ export const api = {
     j(`/decks/${id}/starters`, { method: 'PUT', body: JSON.stringify({ cardIds }) }),
   setPairExclusions: (id: string, pairIds: string[]) =>
     j(`/decks/${id}/pair-exclusions`, { method: 'PUT', body: JSON.stringify({ pairIds }) }),
+  setStartRequirements: (
+    id: string,
+    requirements: Array<{
+      source_card_id?: number | null;
+      source_pair_id?: string | null;
+      required_card_id: number;
+      min_in_deck?: number;
+    }>,
+  ) =>
+    j(`/decks/${id}/start-requirements`, {
+      method: 'PUT',
+      body: JSON.stringify({ requirements }),
+    }),
 
   // Bibliothèque globale
   getLibrary: () => j<Library>('/library'),

@@ -87,6 +87,19 @@ export function ModeBar({ mode, activeCategoryId, onEnter }: Props) {
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+
+      {/* Prérequis en deck — accent ambre pour se distinguer des combos (émeraude). */}
+      <button
+        onClick={() => onEnter('prereq')}
+        className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+          mode === 'prereq'
+            ? 'bg-amber-500/20 text-amber-200 ring-1 ring-amber-500/40'
+            : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
+        }`}
+      >
+        {MODE_LABEL.prereq}
+        <Kbd>{MODE_KEY.prereq}</Kbd>
+      </button>
     </div>
   );
 }

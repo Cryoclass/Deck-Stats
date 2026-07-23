@@ -36,6 +36,16 @@ export interface Category {
   is_builtin: boolean;
 }
 
+/** Prérequis en deck (itération 5) — local au deck. Exactement une source (carte
+ *  starter OU paire de combo) exige `minInDeck` copies de `requiredCardId` en deck. */
+export interface StartRequirement {
+  id: string;
+  sourceCardId: number | null;
+  sourcePairId: string | null;
+  requiredCardId: number;
+  minInDeck: number;
+}
+
 /** Snapshot de la bibliothèque globale (§5). */
 export interface Library {
   hoptCardIds: number[];

@@ -20,6 +20,11 @@ interface Props {
   onCardClick: (cardId: number) => void;
   /** Mis en évidence après un saut depuis l'Inventaire : ring + scroll-into-view. */
   highlighted?: boolean;
+  // Prérequis en deck (itération 5).
+  showPrereqMarker?: boolean; // carte dépendante (a ≥1 prérequis) → marqueur permanent
+  prereqHighlight?: 'source' | 'required' | null; // relation dirigée dépendante → requise
+  prereqDim?: boolean;
+  onHoverChange?: (hovered: boolean) => void;
 }
 
 export function CardTile({
@@ -33,6 +38,10 @@ export function CardTile({
   linkedToPivot,
   onCardClick,
   highlighted = false,
+  showPrereqMarker = false,
+  prereqHighlight = null,
+  prereqDim = false,
+  onHoverChange,
 }: Props) {
   const card = useDeck((s) => s.cards[cardId]) as Card | undefined;
   const copies = useDeck((s) => s.main.find((m) => m.cardId === cardId)?.copies ?? 1);
@@ -62,20 +71,27 @@ export function CardTile({
 
   const isPivot = mode === 'combo' && comboPivot === cardId;
   const pivotActive = mode === 'combo' && comboPivot !== null;
-  const dimmed = pivotActive && !isPivot && !linkedToPivot;
+  const dimmed = (pivotActive && !isPivot && !linkedToPivot) || prereqDim;
   const highlightCat = mode === 'nonengine' && inActiveCat;
 
+  // Marqueur prérequis en contour POINTILLÉ (jamais une pastille pleine de combo, §D).
   const border = isPivot
     ? 'border-emerald-300 ring-2 ring-emerald-300'
     : pivotActive && linkedToPivot
       ? 'border-emerald-400/70 ring-1 ring-emerald-400/60'
-      : highlightCat
-        ? 'border-sky-400/70 ring-1 ring-sky-400/50'
-        : 'border-ink-800';
+      : prereqHighlight === 'source'
+        ? 'border-amber-300 ring-2 ring-amber-300'
+        : prereqHighlight === 'required'
+          ? 'border-dashed border-amber-400 ring-1 ring-amber-400/60'
+          : highlightCat
+            ? 'border-sky-400/70 ring-1 ring-sky-400/50'
+            : 'border-ink-800';
 
   return (
     <div
       ref={rootRef}
+      onMouseEnter={() => onHoverChange?.(true)}
+      onMouseLeave={() => onHoverChange?.(false)}
       className={`group relative flex flex-col rounded-md border bg-ink-900 transition-opacity ${border} ${
         dimmed ? 'opacity-45' : 'opacity-100'
       } ${highlighted ? 'outline outline-2 outline-offset-1 outline-amber-300' : ''}`}
@@ -131,6 +147,22 @@ export function CardTile({
         )}
         {highlightCat && (
           <span className="pointer-events-none absolute bottom-1 right-1 h-2.5 w-2.5 rounded-full bg-sky-400 ring-1 ring-black/50" />
+        )}
+        {/* Marqueur prérequis permanent — contour pointillé + icône « deck », coin
+            distinct des pastilles de combo (§D). */}
+        {showPrereqMarker && (
+          <span
+            className="pointer-events-none absolute bottom-1 right-1 flex h-4 items-center rounded border border-dashed border-amber-400 bg-black/60 px-1 text-[9px] font-bold text-amber-300"
+            title="Dépend d'une carte présente en deck (prérequis)"
+          >
+            ▤
+          </span>
+        )}
+        {/* Rebond au survol de la dépendante : relation dirigée → la requise. */}
+        {prereqHighlight === 'required' && (
+          <span className="pointer-events-none absolute inset-x-0 top-0 bg-amber-500/25 text-center text-[9px] font-medium text-amber-100">
+            ↑ requise en deck
+          </span>
         )}
       </button>
 
