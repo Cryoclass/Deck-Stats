@@ -134,3 +134,41 @@ piochée), pas l'*activable*. Plafonner `catCounts` aurait exigé de rendre `eva
 spécifique à la passe (une seule des deux valeurs `neFirst`/`neSecond` est consommée à la
 fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests §C ajoutés
 (carte X HOPT, carte Y non-HOPT, réglage + bornage de l'horizon, invariance des starts).
+
+## Itération 3 — ajout / retrait de cartes
+
+- **Retirer une carte n'efface aucune connaissance de jeu (C1).** `removeCard` supprime
+  la seule ligne `deck_cards` ; starters, exclusions, flags HOPT/mort, catégories et
+  paires sont **conservés**, inertes tant que la carte est absente (`buildModel` les
+  ignore), et **restaurés au ré-ajout**. Corrige un bug où le starter était supprimé.
+  Vérifié en base (retrait → `deck_starters` intact → ré-ajout → starter actif).
+- Toute modif de `deck_cards` = **invalidation complète** puis recalcul intégral dans le
+  worker (jamais de MàJ partielle) ; les mains affichées du mur sont **renotées** sans
+  re-tirage (`drawHands` ⊥ `evaluateHands`).
+
+## Itération 4 — persistance des decks
+
+- **Séparation global / local.** La bibliothèque (paires, flags, catégories) est écrite
+  **immédiatement** (connaissance de jeu, transverse). Les données **locales au deck**
+  (`deck_cards`, `deck_starters`, `deck_pair_exclusions`, `params` = horizons +
+  importance) relèvent du bouton **Enregistrer** (état `dirty`, Ctrl/Cmd+S, horodatage).
+- **Brouillon local IndexedDB** écrit en continu (debounce 500 ms), indépendant de la
+  base. Reprise proposée à l'ouverture. Comparaison brouillon/enregistré **par contenu**
+  (`localSig`), pas par horodatage — robuste au décalage d'horloge client/serveur.
+  Effacé à l'enregistrement.
+- **`decks.summary` (jsonb)** met en cache l'aperçu de l'accueil (start≥1 1st, brick 1st,
+  taille), écrit à chaque enregistrement. **Indicatif, jamais source de vérité** :
+  l'éditeur recalcule toujours.
+- **Routeur maison** (aucune dépendance), `/decks` (accueil) et `/decks/:id` (éditeur),
+  via l'API History. Confirmation au retour accueil si `dirty` ; `beforeunload` sur
+  fermeture/rechargement.
+- **§4D déjà satisfait** : le calcul prend l'état de deck **en paramètre**
+  (`computeAll(EngineInput)`, `buildModel(s)` ne lit aucun global) → prêt pour la
+  comparaison de versions. `Dupliquer` copie composition + toutes les données locales.
+- **Partage par URL (`#s=`) retiré** : remplacé par la persistance base + brouillon. Le
+  lien partageable est désormais l'URL du deck (`/decks/:id`). `web/src/lib/share.ts`
+  supprimé.
+- **Reste à faire (non bloquant, signalé)** : les **filtres du mur de mains** et les
+  **requêtes enregistrées** du mode requête ne sont **pas encore** persistés dans
+  `params` (seuls horizons + importance le sont). L'infrastructure `params` est prête ;
+  il ne reste qu'à y brancher ces états UI.
