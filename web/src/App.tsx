@@ -6,10 +6,12 @@ import { Header } from './components/Header.js';
 import { AnnotationGrid } from './components/AnnotationGrid.js';
 import { ComboList } from './components/ComboList.js';
 import { HandWall } from './components/HandWall.js';
+import { Inventory } from './components/Inventory.js';
 import { StatsPanel } from './components/StatsPanel.js';
 import { ImportDialog } from './components/ImportDialog.js';
+import { Toast } from './components/Toast.js';
 
-type Tab = 'annotate' | 'combos' | 'hands';
+type Tab = 'annotate' | 'combos' | 'hands' | 'inventory';
 
 export default function App() {
   const bootstrap = useDeck((s) => s.bootstrap);
@@ -19,6 +21,13 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('annotate');
   const [column, setColumn] = useState<'first' | 'second'>('first');
   const [importOpen, setImportOpen] = useState(false);
+  const [highlightCardId, setHighlightCardId] = useState<number | null>(null);
+
+  // Saut depuis l'Inventaire : bascule sur « Annoter » et met la carte en évidence.
+  const focusCard = (cardId: number) => {
+    setTab('annotate');
+    setHighlightCardId(cardId);
+  };
 
   useEffect(() => {
     (async () => {
@@ -60,11 +69,21 @@ export default function App() {
             <TabButton active={tab === 'hands'} onClick={() => setTab('hands')}>
               Mur de mains
             </TabButton>
+            <TabButton active={tab === 'inventory'} onClick={() => setTab('inventory')}>
+              Inventaire
+            </TabButton>
           </nav>
           <div className="min-h-0 flex-1">
-            {tab === 'annotate' && <AnnotationGrid column={column} />}
+            {tab === 'annotate' && (
+              <AnnotationGrid
+                column={column}
+                highlightCardId={highlightCardId}
+                onHighlightConsumed={() => setHighlightCardId(null)}
+              />
+            )}
             {tab === 'combos' && <ComboList />}
             {tab === 'hands' && <HandWall column={column} />}
+            {tab === 'inventory' && <Inventory onFocusCard={focusCard} />}
           </div>
         </main>
 
@@ -74,6 +93,7 @@ export default function App() {
       </div>
 
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
+      <Toast />
     </div>
   );
 }

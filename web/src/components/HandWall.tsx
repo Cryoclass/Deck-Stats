@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
-import { sampleFromStore } from '../store/selectors.js';
-import type { SampledHand } from '../engine/hand.js';
+import { drawHandsFromStore, noteHandsFromStore } from '../store/selectors.js';
 import { imageSmall } from '../types.js';
 import { Segmented } from './ui.js';
 
 export function HandWall({ column }: { column: 'first' | 'second' }) {
   const result = useDeck((s) => s.result);
+  const model = useDeck((s) => s.model);
   const importance = useDeck((s) => s.importance);
   const setImportance = useDeck((s) => s.setImportance);
   const cards = useDeck((s) => s.cards);
   const mainLen = useDeck((s) => s.main.length);
+  // Signature de composition : change à tout ajout / retrait / modif de copies.
+  const mainSig = useDeck((s) => s.main.map((c) => `${c.cardId}:${c.copies}`).join(','));
 
   const [col, setCol] = useState<'first' | 'second'>(column);
   const [count, setCount] = useState(60);
-  const [batch, setBatch] = useState<SampledHand[]>([]);
+  const [rawHands, setRawHands] = useState<number[][]>([]);
   const [sortByNote, setSortByNote] = useState(true);
   const [minStarts, setMinStarts] = useState(0);
   const [minNe, setMinNe] = useState(0);
@@ -22,20 +24,29 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
 
   const handSize = col === 'first' ? 5 : 6;
 
-  const regenerate = useCallback(() => {
-    setBatch(sampleFromStore(handSize, count));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handSize, count, importance, result]);
+  // On re-tire seulement quand il le faut : bouton, n, taille de main, ou changement
+  // de composition du deck (une main peut contenir une carte retirée). Un changement
+  // d'importance ou d'horizon ne re-tire PAS — il renote les mêmes mains (ci-dessous).
+  const resample = useCallback(() => {
+    setRawHands(drawHandsFromStore(handSize, count));
+  }, [handSize, count]);
 
-  useEffect(() => regenerate(), [regenerate]);
+  useEffect(() => resample(), [resample, mainSig]);
+
+  // Renotation des mains AFFICHÉES : dépend de la distribution (result/model) et de
+  // l'importance → les mains déjà tirées sont renotées, pas seulement les suivantes.
+  const noted = useMemo(
+    () => noteHandsFromStore(rawHands, handSize),
+    [rawHands, handSize, result, model, importance],
+  );
 
   const view = useMemo(() => {
-    let v = batch.filter(
+    let v = noted.filter(
       (h) => h.starts >= minStarts && h.neTotal >= minNe && (!onlyBricks || h.starts === 0),
     );
     if (sortByNote) v = [...v].sort((a, b) => b.note - a.note || b.starts - a.starts);
     return v;
-  }, [batch, minStarts, minNe, onlyBricks, sortByNote]);
+  }, [noted, minStarts, minNe, onlyBricks, sortByNote]);
 
   if (!result || mainLen === 0) {
     return (
@@ -58,7 +69,7 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
           ]}
         />
         <button
-          onClick={regenerate}
+          onClick={resample}
           className="rounded bg-ink-700 px-2.5 py-1 text-ink-100 hover:bg-ink-600"
         >
           ↻ Nouvelles mains
@@ -114,7 +125,7 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         <div className="mb-2 text-[11px] text-ink-500">
           {view.length} mains affichées{' '}
-          {batch.length !== view.length ? `(sur ${batch.length} tirées)` : ''}
+          {noted.length !== view.length ? `(sur ${noted.length} tirées)` : ''}
         </div>
         <div className="flex flex-col gap-1.5">
           {view.map((h, i) => (

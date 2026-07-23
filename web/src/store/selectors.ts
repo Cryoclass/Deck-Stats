@@ -2,7 +2,7 @@ import type { ComboPair } from '../types.js';
 import { pairKey } from '../types.js';
 import { assignGroups, type GroupAssignment } from '../lib/colors.js';
 import { prepare } from '../engine/evaluate.js';
-import { buildScorer, sampleHands, type SampledHand } from '../engine/hand.js';
+import { buildScorer, drawHands, evaluateHands, type SampledHand } from '../engine/hand.js';
 import { useDeck } from './deckStore.js';
 
 /** Paires actives : non exclues et dont les deux cartes sont dans le main deck. */
@@ -40,20 +40,25 @@ export function findPair(a: number, b: number): ComboPair | undefined {
     .pairs.find((p) => pairKey(p.card_a_id, p.card_b_id) === key);
 }
 
-/** Échantillonne des mains réelles depuis le deck courant (§4.3). */
-export function sampleFromStore(handSize: number, count: number): SampledHand[] {
+/** Tire des mains brutes depuis le deck courant (§4.3) — sans les noter. */
+export function drawHandsFromStore(handSize: number, count: number): number[][] {
   const s = useDeck.getState();
-  if (!s.model || !s.result || s.main.length === 0) return [];
+  if (s.main.length === 0) return [];
+  return drawHands(
+    s.main.map((c) => ({ cardId: c.cardId, copies: c.copies })),
+    handSize,
+    count,
+  );
+}
+
+/** (Re)note des mains fixes contre l'état courant (distribution + importance). Sert à
+ *  renoter les mains déjà affichées quand le deck change (§4.4 / itération 3 C2). */
+export function noteHandsFromStore(hands: number[][], handSize: number): SampledHand[] {
+  const s = useDeck.getState();
+  if (!s.model || !s.result || hands.length === 0) return [];
   const prep = prepare(s.model.input);
   const typeIndexByCardId = new Map(s.model.typeCardIds.map((id, i) => [id, i]));
   const pass = handSize <= 5 ? s.result.first : s.result.second;
   const scorer = buildScorer(pass, s.importance);
-  return sampleHands({
-    deck: s.main.map((c) => ({ cardId: c.cardId, copies: c.copies })),
-    typeIndexByCardId,
-    prep,
-    handSize,
-    count,
-    scorer,
-  });
+  return evaluateHands({ hands, typeIndexByCardId, prep, handSize, scorer });
 }

@@ -33,17 +33,26 @@ interface State {
 
   online: boolean;
   importance: number;
+  // §B.3.5 (itération 2) — horizon de tours d'interaction, réglable par passe (1..3).
+  horizonFirst: number;
+  horizonSecond: number;
 
   result: EngineResult | null;
   model: EngineModel | null;
   computeMs: number;
   computing: boolean;
 
+  // Toast d'annulation d'un retrait (itération 3, B). Transitoire, hors snapshot.
+  removalToast: { card: DeckCard; index: number; ts: number } | null;
+
   // actions
   bootstrap: () => Promise<void>;
   importDeck: (name: string, parsed: ParsedDeck, cards: Card[]) => Promise<void>;
   loadShared: (s: SharedState, cards: Card[]) => void;
+  addCard: (card: Card, copies?: number) => void;
   setCopies: (cardId: number, copies: number) => void;
+  undoRemove: () => void;
+  dismissRemovalToast: () => void;
   toggleStarter: (cardId: number) => void;
   toggleHopt: (cardId: number) => void;
   toggleDeadFirst: (cardId: number) => void;
@@ -56,9 +65,15 @@ interface State {
   deleteCategory: (id: string) => void;
   toggleCardCategory: (cardId: number, categoryId: string) => void;
   setImportance: (v: number) => void;
+  setHorizon: (pass: 'first' | 'second', value: number) => void;
   setExtraSideHidden: (hidden: boolean) => void;
   extraSideHidden: boolean;
   renameDeck: (name: string) => void;
+}
+
+/** §B.3.5 : horizon borné à [1, 3] (défauts first=1, second=2). */
+function clampHorizon(v: number): number {
+  return Math.max(1, Math.min(3, Math.round(v)));
 }
 
 // ─── Construction du modèle moteur à partir du deck + annotations (§B.1) ───
@@ -113,7 +128,18 @@ function buildModel(s: State): EngineModel {
 
   const categories = s.categories.map((c) => ({ id: c.id, relevance: c.relevance }));
 
-  return { input: { deckSize, types, edges, categories }, typeCardIds, categoryIds };
+  return {
+    input: {
+      deckSize,
+      types,
+      edges,
+      categories,
+      horizonFirst: s.horizonFirst,
+      horizonSecond: s.horizonSecond,
+    },
+    typeCardIds,
+    categoryIds,
+  };
 }
 
 // Debounce du recalcul temps réel (§3.2) — dernier appel gagne.
@@ -152,6 +178,8 @@ function snapshot(s: State): SharedState {
     cardCategories: [...s.cardCategories].flatMap(([cid, set2]) =>
       [...set2].map((catId): [number, string] => [cid, catId]),
     ),
+    horizonFirst: s.horizonFirst,
+    horizonSecond: s.horizonSecond,
   };
 }
 
@@ -160,6 +188,20 @@ export const useDeck = create<State>((set, get) => {
   const touch = () => {
     scheduleCompute(get, set);
     writeStateToHash(snapshot(get()));
+  };
+
+  // Toute modification de deck_cards (ajout / retrait / copies) est persistée en
+  // remplaçant l'ensemble des cartes du deck côté backend (§5).
+  const syncDeckCards = () => {
+    const { deckId } = get();
+    if (!deckId) return;
+    persist(set, () =>
+      api.updateDeck(deckId, {
+        cards: get()
+          .main.concat(get().extra, get().side)
+          .map((m) => ({ card_id: m.cardId, zone: m.zone, copies: m.copies })),
+      }),
+    );
   };
 
   return {
@@ -179,10 +221,13 @@ export const useDeck = create<State>((set, get) => {
     pairExclusions: new Set(),
     online: true,
     importance: 0.5,
+    horizonFirst: 1,
+    horizonSecond: 2,
     result: null,
     model: null,
     computeMs: 0,
     computing: false,
+    removalToast: null,
     extraSideHidden: false,
 
     async bootstrap() {
@@ -252,26 +297,55 @@ export const useDeck = create<State>((set, get) => {
         cardCategories: cc,
         starters: new Set(s.starters),
         pairExclusions: new Set(s.pairExclusions),
+        horizonFirst: clampHorizon(s.horizonFirst ?? 1),
+        horizonSecond: clampHorizon(s.horizonSecond ?? 2),
       });
       scheduleCompute(get, set);
     },
 
+    // Ajout d'une carte (itération 3, A). Déjà présente → incrément (plafond 3) ;
+    // sinon append au main deck. Ne touche à aucune annotation (elles peuvent déjà
+    // exister en bibliothèque et se réactivent d'elles-mêmes, cf. C1).
+    addCard(card, copies = 1) {
+      const cards = { ...get().cards, [card.id]: card };
+      const existing = get().main.find((m) => m.cardId === card.id);
+      const main = existing
+        ? get().main.map((m) =>
+            m.cardId === card.id ? { ...m, copies: Math.min(3, m.copies + 1) } : m,
+          )
+        : [
+            ...get().main,
+            { cardId: card.id, copies: Math.max(1, Math.min(3, copies)), zone: 'main' as const },
+          ];
+      set({ cards, main });
+      touch();
+      syncDeckCards();
+    },
+
+    // §D : 0 copie = retrait du deck (le stepper descend jusqu'à 0, itération 3, B).
     setCopies(cardId, copies) {
-      const c = Math.max(1, Math.min(3, copies));
+      if (copies <= 0) {
+        get().removeCard(cardId);
+        return;
+      }
+      const c = Math.min(3, copies);
       set({ main: get().main.map((m) => (m.cardId === cardId ? { ...m, copies: c } : m)) });
       touch();
-      const { deckId } = get();
-      if (deckId) {
-        persist(set, () =>
-          api.updateDeck(deckId, {
-            cards: get().main.concat(get().extra, get().side).map((m) => ({
-              card_id: m.cardId,
-              zone: m.zone,
-              copies: m.copies,
-            })),
-          }),
-        );
-      }
+      syncDeckCards();
+    },
+
+    undoRemove() {
+      const t = get().removalToast;
+      if (!t) return;
+      const main = [...get().main];
+      main.splice(Math.min(t.index, main.length), 0, t.card); // ré-insère à sa position
+      set({ main, removalToast: null });
+      touch();
+      syncDeckCards();
+    },
+
+    dismissRemovalToast() {
+      set({ removalToast: null });
     },
 
     toggleStarter(cardId) {
@@ -314,23 +388,20 @@ export const useDeck = create<State>((set, get) => {
       persist(set, () => api.setFlags(cardId, { dead_second: on }));
     },
 
+    // Retrait du deck (itération 3, B/C1). On supprime UNIQUEMENT la ligne deck_cards
+    // — starters, exclusions, flags HOPT/mort, catégories et paires sont CONSERVÉS,
+    // inertes tant que la carte est absente (buildModel les ignore) et restaurés au
+    // ré-ajout. Retirer une carte n'efface aucune connaissance de jeu (§D).
     removeCard(cardId) {
-      const starters = new Set(get().starters);
-      starters.delete(cardId);
-      set({ main: get().main.filter((m) => m.cardId !== cardId), starters });
+      const index = get().main.findIndex((m) => m.cardId === cardId);
+      if (index < 0) return;
+      const card = get().main[index];
+      set({
+        main: get().main.filter((m) => m.cardId !== cardId),
+        removalToast: { card, index, ts: Date.now() },
+      });
       touch();
-      const { deckId } = get();
-      if (deckId) {
-        persist(set, () =>
-          api.updateDeck(deckId, {
-            cards: get().main.concat(get().extra, get().side).map((m) => ({
-              card_id: m.cardId,
-              zone: m.zone,
-              copies: m.copies,
-            })),
-          }),
-        );
-      }
+      syncDeckCards();
     },
 
     togglePair(a, b) {
@@ -421,6 +492,12 @@ export const useDeck = create<State>((set, get) => {
 
     setImportance(v) {
       set({ importance: v });
+    },
+
+    setHorizon(pass, value) {
+      const v = clampHorizon(value);
+      set(pass === 'first' ? { horizonFirst: v } : { horizonSecond: v });
+      touch(); // hypothèse de jeu → recalcul + persistance dans l'URL de partage
     },
 
     setExtraSideHidden(hidden) {

@@ -46,25 +46,15 @@ export function buildScorer(
   };
 }
 
-/** Tirage de `count` mains aléatoires depuis le multiset réel du main deck. */
-export function sampleHands(params: {
-  deck: DeckEntry[];
-  typeIndexByCardId: Map<number, number>;
-  prep: Prepared;
-  handSize: number;
-  count: number;
-  scorer: (starts: number, neTotal: number) => number;
-}): SampledHand[] {
-  const { deck, typeIndexByCardId, prep, handSize, count, scorer } = params;
+/** Tire `count` mains brutes (listes de passcodes) depuis le multiset réel du deck.
+ *  Séparé de l'évaluation : les mêmes mains peuvent être RE-NOTÉES sans re-tirage
+ *  quand le deck change (§4.4 / itération 3 C2). */
+export function drawHands(deck: DeckEntry[], handSize: number, count: number): number[][] {
   const pool: number[] = [];
   for (const e of deck) for (let c = 0; c < e.copies; c++) pool.push(e.cardId);
   if (pool.length === 0) return [];
-
-  const nTypes = prep.input.types.length;
-  const dead = handSize <= 5 ? prep.deadFirst : prep.deadSecond;
-  const hands: SampledHand[] = [];
   const draw = Math.min(handSize, pool.length);
-
+  const hands: number[][] = [];
   for (let h = 0; h < count; h++) {
     // Fisher-Yates partiel : mélange les `draw` premières positions.
     for (let i = 0; i < draw; i++) {
@@ -73,8 +63,25 @@ export function sampleHands(params: {
       pool[i] = pool[j];
       pool[j] = tmp;
     }
-    const cards = pool.slice(0, draw);
+    hands.push(pool.slice(0, draw));
+  }
+  return hands;
+}
 
+/** (Re)évalue et (re)note des mains FIXES contre l'état courant du deck. C'est ce
+ *  qui renote les mains déjà affichées quand la distribution change (C2). */
+export function evaluateHands(params: {
+  hands: number[][];
+  typeIndexByCardId: Map<number, number>;
+  prep: Prepared;
+  handSize: number;
+  scorer: (starts: number, neTotal: number) => number;
+}): SampledHand[] {
+  const { hands, typeIndexByCardId, prep, handSize, scorer } = params;
+  const nTypes = prep.input.types.length;
+  const dead = handSize <= 5 ? prep.deadFirst : prep.deadSecond;
+
+  return hands.map((cards) => {
     const k = new Array<number>(nTypes).fill(0);
     for (const cardId of cards) {
       const ti = typeIndexByCardId.get(cardId);
@@ -82,14 +89,26 @@ export function sampleHands(params: {
     }
     const out = evaluate(prep, k, dead);
     const neTotal = handSize <= 5 ? out.neFirst : out.neSecond;
-    hands.push({
+    return {
       cards,
       starts: out.starts,
       redundancy: out.redundancy,
       neTotal,
       catCounts: out.catCounts,
       note: scorer(out.starts, neTotal),
-    });
-  }
-  return hands;
+    };
+  });
+}
+
+/** Tirage + évaluation en une passe (utilitaire ; conserve l'API d'origine). */
+export function sampleHands(params: {
+  deck: DeckEntry[];
+  typeIndexByCardId: Map<number, number>;
+  prep: Prepared;
+  handSize: number;
+  count: number;
+  scorer: (starts: number, neTotal: number) => number;
+}): SampledHand[] {
+  const hands = drawHands(params.deck, params.handSize, params.count);
+  return evaluateHands({ ...params, hands });
 }

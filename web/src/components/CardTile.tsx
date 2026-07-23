@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
-import { imageSmall, type Card } from '../types.js';
+import type { Card } from '../types.js';
 import { comboColor, comboVeil, type GroupAssignment } from '../lib/colors.js';
 import { signedPct } from '../lib/fmt.js';
+import { CardImage } from './CardImage.js';
 import { CardMenu } from './CardMenu.js';
 import { CardDetailDialog } from './CardDetailDialog.js';
 import type { AnnotationMode } from './annotationModes.js';
@@ -17,6 +18,8 @@ interface Props {
   comboPivot: number | null;
   linkedToPivot: boolean;
   onCardClick: (cardId: number) => void;
+  /** Mis en évidence après un saut depuis l'Inventaire : ring + scroll-into-view. */
+  highlighted?: boolean;
 }
 
 export function CardTile({
@@ -29,6 +32,7 @@ export function CardTile({
   comboPivot,
   linkedToPivot,
   onCardClick,
+  highlighted = false,
 }: Props) {
   const card = useDeck((s) => s.cards[cardId]) as Card | undefined;
   const copies = useDeck((s) => s.main.find((m) => m.cardId === cardId)?.copies ?? 1);
@@ -42,6 +46,16 @@ export function CardTile({
   const setCopies = useDeck((s) => s.setCopies);
 
   const [detailOpen, setDetailOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Saut depuis l'Inventaire : amener la carte visée au centre du viewport.
+  useEffect(() => {
+    if (!highlighted) return;
+    const id = requestAnimationFrame(() =>
+      rootRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
+    );
+    return () => cancelAnimationFrame(id);
+  }, [highlighted]);
 
   const pivotColor = groups.colorOf.get(cardId);
   const pastilles = groups.pastillesOf.get(cardId) ?? [];
@@ -61,9 +75,10 @@ export function CardTile({
 
   return (
     <div
+      ref={rootRef}
       className={`group relative flex flex-col rounded-md border bg-ink-900 transition-opacity ${border} ${
         dimmed ? 'opacity-45' : 'opacity-100'
-      }`}
+      } ${highlighted ? 'outline outline-2 outline-offset-1 outline-amber-300' : ''}`}
     >
       <button
         onClick={() => onCardClick(cardId)}
@@ -72,12 +87,7 @@ export function CardTile({
         }`}
         title={card?.name ?? String(cardId)}
       >
-        <img
-          src={card?.image_url_small ?? imageSmall(cardId)}
-          alt={card?.name ?? String(cardId)}
-          loading="lazy"
-          className="h-full w-full object-cover"
-        />
+        <CardImage cardId={cardId} />
         {pivotColor !== undefined && (
           <span
             className="pointer-events-none absolute inset-0"
@@ -129,9 +139,8 @@ export function CardTile({
         <div className="flex shrink-0 items-center rounded border border-ink-700 bg-ink-850">
           <button
             onClick={() => setCopies(cardId, copies - 1)}
-            disabled={copies <= 1}
-            className="px-1.5 py-0.5 text-xs text-ink-300 hover:text-ink-100 disabled:opacity-30"
-            title="Moins de copies"
+            className="px-1.5 py-0.5 text-xs text-ink-300 hover:text-ink-100"
+            title={copies <= 1 ? 'Retirer du deck (0 copie)' : 'Moins de copies'}
           >
             −
           </button>
