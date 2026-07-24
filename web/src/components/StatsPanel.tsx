@@ -47,7 +47,13 @@ export function StatsPanel({
   let idx = views.findIndex((v) => v.id === statsView);
   if (idx < 0) idx = 0;
   const view = views[idx];
-  const cycle = (dir: number) => setStatsView(views[(idx + dir + views.length) % views.length].id);
+  // Navigation LINÉAIRE (pas de boucle) : « Starts jouables » est le premier / défaut.
+  const atFirst = idx === 0;
+  const atLast = idx === views.length - 1;
+  const go = (dir: number) => {
+    const next = idx + dir;
+    if (next >= 0 && next < views.length) setStatsView(views[next].id);
+  };
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
@@ -73,26 +79,32 @@ export function StatsPanel({
         <HorizonStepper label="2nd" value={horizonSecond} onChange={(v) => setHorizon('second', v)} />
       </div>
 
-      {/* Bascule de vue : flèches ◀ ▶ ou clic sur le titre. */}
+      {/* Bascule de vue : flèches ◀ ▶ ou clic sur le titre. Aux extrémités, la flèche
+          correspondante disparaît (on garde sa place pour ne pas décaler le titre). */}
       <div className="flex items-center justify-center gap-2 border-b border-ink-800 bg-ink-900 px-3 py-1.5">
         <button
-          onClick={() => cycle(-1)}
+          onClick={() => go(-1)}
           title="Distribution précédente"
-          className="rounded px-1.5 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+          className={`rounded px-1.5 text-ink-400 hover:bg-ink-800 hover:text-ink-100 ${
+            atFirst ? 'invisible pointer-events-none' : ''
+          }`}
         >
           ◀
         </button>
         <button
-          onClick={() => cycle(1)}
-          title="Distribution suivante"
-          className="min-w-[150px] text-center text-xs font-semibold text-ink-100 hover:text-emerald-300"
+          onClick={() => go(1)}
+          disabled={atLast}
+          title={atLast ? undefined : 'Distribution suivante'}
+          className="min-w-[150px] text-center text-xs font-semibold text-ink-100 enabled:hover:text-emerald-300 disabled:cursor-default"
         >
           {view.label}
         </button>
         <button
-          onClick={() => cycle(1)}
+          onClick={() => go(1)}
           title="Distribution suivante"
-          className="rounded px-1.5 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+          className={`rounded px-1.5 text-ink-400 hover:bg-ink-800 hover:text-ink-100 ${
+            atLast ? 'invisible pointer-events-none' : ''
+          }`}
         >
           ▶
         </button>
