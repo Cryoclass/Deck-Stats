@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './env.js';
 import pg from 'pg';
 
 const DATABASE_URL =

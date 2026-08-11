@@ -27,9 +27,41 @@ create index if not exists cards_name_trgm on cards using gin (lower(name) gin_t
 -- n'est qu'un confort de recherche. Une FK catalogue bloquerait l'import d'un deck dès
 -- qu'une carte manque au catalogue. Le catalogue est donc un LOOKUP, pas une contrainte.
 
+-- ─── Comptes & sessions (itération 8, Lot A) ───
+create table if not exists users (
+  id             uuid primary key default gen_random_uuid(),
+  email          text not null,
+  display_name   text not null,
+  password_hash  text,                                  -- null = compte OAuth seul (Lot D)
+  created_at     timestamptz not null default now()
+);
+-- Unicité insensible à la casse : l'email est identifiant de connexion.
+create unique index if not exists users_email_unique on users (lower(email));
+
+create table if not exists sessions (
+  token_hash  bytea primary key,   -- SHA-256 du token opaque ; le clair ne touche JAMAIS la base
+  user_id     uuid not null references users on delete cascade,
+  expires_at  timestamptz not null,
+  user_agent  text,
+  created_at  timestamptz not null default now()
+);
+create index if not exists sessions_user on sessions (user_id);
+
+-- Identités OAuth (Lot D — Discord). Jamais de rattachement automatique par email.
+create table if not exists user_identities (
+  provider          text not null,      -- 'discord'
+  provider_user_id  text not null,
+  user_id           uuid not null references users on delete cascade,
+  created_at        timestamptz not null default now(),
+  primary key (provider, provider_user_id)
+);
+
 -- ─── Decks ───
+-- owner_id (itération 8, Lot B) : nullable sur une base legacy jusqu'à
+-- `npm run adopt`, qui attribue l'existant puis pose le NOT NULL.
 create table if not exists decks (
   id          uuid primary key default gen_random_uuid(),
+  owner_id    uuid not null references users on delete cascade,
   name        text not null,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
@@ -41,6 +73,9 @@ create table if not exists decks (
 alter table decks add column if not exists summary jsonb;
 alter table decks add column if not exists notes   text;
 alter table decks add column if not exists params  jsonb not null default '{}'::jsonb;
+-- Idempotent pour les bases initialisées avant l'itération 8 (Lot B).
+alter table decks add column if not exists owner_id uuid references users on delete cascade;
+create index if not exists decks_owner on decks (owner_id);
 
 create table if not exists deck_cards (
   deck_id  uuid not null references decks on delete cascade,
@@ -50,32 +85,61 @@ create table if not exists deck_cards (
   primary key (deck_id, card_id, zone)
 );
 
--- ─── Bibliothèque globale (connaissance du jeu, transverse aux decks) ───
+-- ─── Bibliothèque (connaissance du jeu, transverse aux decks) ───
+-- PAR COMPTE depuis l'itération 8 (Lot B) : chaque utilisateur a la sienne, le
+-- partage passe par l'export/import JSON. Les clés d'unicité incluent owner_id ;
+-- sur une base legacy, `npm run adopt` fait basculer les anciennes clés.
 create table if not exists card_flags (
-  card_id      bigint primary key,   -- passcode (pas de FK catalogue)
+  owner_id     uuid not null references users on delete cascade,
+  card_id      bigint not null,   -- passcode (pas de FK catalogue)
   is_hopt      boolean not null default false,
   dead_first   boolean not null default false,  -- Lot C : morte going first
-  dead_second  boolean not null default false   -- Lot C : morte going second
+  dead_second  boolean not null default false,  -- Lot C : morte going second
+  primary key (owner_id, card_id)
 );
 -- Idempotent pour les bases déjà initialisées avant le Lot C.
 alter table card_flags add column if not exists dead_first  boolean not null default false;
 alter table card_flags add column if not exists dead_second boolean not null default false;
+alter table card_flags add column if not exists owner_id uuid references users on delete cascade;
 
 create table if not exists combo_pairs (
   id          uuid primary key default gen_random_uuid(),
+  owner_id    uuid not null references users on delete cascade,
   card_a_id   bigint not null,   -- passcode (pas de FK catalogue)
   card_b_id   bigint not null,
   note        text,
   check (card_a_id <= card_b_id),      -- canonicalisation
-  unique (card_a_id, card_b_id)
+  constraint combo_pairs_owner_pair unique (owner_id, card_a_id, card_b_id)
 );
+alter table combo_pairs add column if not exists owner_id uuid references users on delete cascade;
 
 create table if not exists nonengine_categories (
   id          uuid primary key default gen_random_uuid(),
-  name        text not null unique,     -- 'Handtrap', 'Board breaker', ...
+  owner_id    uuid not null references users on delete cascade,
+  name        text not null,     -- 'Handtrap', 'Board breaker', ...
   relevance   text not null check (relevance in ('first','second','both')),
-  is_builtin  boolean not null default false
+  is_builtin  boolean not null default false,
+  constraint nonengine_categories_owner_name unique (owner_id, name)
 );
+alter table nonengine_categories add column if not exists owner_id uuid references users on delete cascade;
+
+-- Bascule idempotente des unicités legacy → par compte, jouable AVANT `npm run adopt` :
+-- NULL est distinct dans un index unique, les lignes legacy (owner_id null) ne gênent
+-- pas. Sans cette bascule, un register sur base legacy percuterait l'ancienne
+-- unicité globale (ex. seed de 'Handtrap' vs la ligne legacy). Le PK de card_flags,
+-- lui, exige NOT NULL et ne peut basculer que dans `adopt`.
+alter table combo_pairs drop constraint if exists combo_pairs_card_a_id_card_b_id_key;
+alter table nonengine_categories drop constraint if exists nonengine_categories_name_key;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'combo_pairs_owner_pair') then
+    alter table combo_pairs
+      add constraint combo_pairs_owner_pair unique (owner_id, card_a_id, card_b_id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'nonengine_categories_owner_name') then
+    alter table nonengine_categories
+      add constraint nonengine_categories_owner_name unique (owner_id, name);
+  end if;
+end $$;
 
 create table if not exists card_categories (
   card_id      bigint not null,   -- passcode (pas de FK catalogue)
@@ -118,7 +182,6 @@ alter table combo_pairs     drop constraint if exists combo_pairs_card_a_id_fkey
 alter table combo_pairs     drop constraint if exists combo_pairs_card_b_id_fkey;
 
 -- ─── Catégories fournies de base (§2.6) ───
-insert into nonengine_categories (name, relevance, is_builtin) values
-  ('Handtrap',      'both',   true),
-  ('Board breaker', 'second', true)
-on conflict (name) do nothing;
+-- Depuis l'itération 8 (Lot B), la bibliothèque est par compte : les deux
+-- catégories de base ('Handtrap', 'Board breaker') ne sont plus seedées ici mais
+-- créées pour CHAQUE compte à l'inscription (server/src/auth/account.ts).

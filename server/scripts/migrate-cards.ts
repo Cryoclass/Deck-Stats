@@ -7,7 +7,7 @@
  *
  * Idempotent : ON CONFLICT (id) DO UPDATE. Rejouable sans risque.
  */
-import 'dotenv/config';
+import '../src/env.js';
 import pg from 'pg';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'https://fczujhwaxkmspdgvuyyg.supabase.co';

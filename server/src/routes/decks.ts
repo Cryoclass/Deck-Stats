@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { query, tx } from '../db.js';
+import { requireUser } from '../auth/session.js';
 
 interface DeckCardInput {
   card_id: number;
@@ -7,10 +8,22 @@ interface DeckCardInput {
   copies: number;
 }
 
+// Itération 8 (Lot B) : toutes les requêtes sont filtrées par owner_id. Un deck
+// d'autrui répond 404 — jamais 403, on ne révèle pas son existence.
+
+/** Le deck existe ET appartient à l'utilisateur — sinon null (→ 404). */
+async function ownedDeck(c: import('pg').PoolClient, deckId: string, userId: string) {
+  const { rowCount } = await c.query('select 1 from decks where id = $1 and owner_id = $2', [
+    deckId,
+    userId,
+  ]);
+  return (rowCount ?? 0) > 0;
+}
+
 export async function decksRoutes(app: FastifyInstance) {
   // Liste des decks pour l'accueil (§4C) : métadonnées + aperçu mis en cache
   // (summary) + quelques vignettes. On ne recalcule jamais ici.
-  app.get('/', async () => {
+  app.get('/', async (req) => {
     const { rows } = await query(
       `select d.id, d.name, d.created_at, d.updated_at, d.summary,
               coalesce(sum(dc.copies) filter (where dc.zone = 'main'), 0)::int as main_count,
@@ -22,7 +35,9 @@ export async function decksRoutes(app: FastifyInstance) {
                 '{}'
               ) as sample_cards
        from decks d left join deck_cards dc on dc.deck_id = d.id
+       where d.owner_id = $1
        group by d.id order by d.updated_at desc`,
+      [requireUser(req).id],
     );
     return rows;
   });
@@ -30,7 +45,10 @@ export async function decksRoutes(app: FastifyInstance) {
   // Deck complet : cartes + starters + exclusions de paires.
   app.get<{ Params: { id: string } }>('/:id', async (req, reply) => {
     const { id } = req.params;
-    const deck = await query('select * from decks where id = $1', [id]);
+    const deck = await query('select * from decks where id = $1 and owner_id = $2', [
+      id,
+      requireUser(req).id,
+    ]);
     if (deck.rowCount === 0) return reply.code(404).send({ error: 'deck introuvable' });
     const [cards, starters, exclusions, requirements] = await Promise.all([
       query('select card_id, zone, copies from deck_cards where deck_id = $1', [id]),
@@ -55,10 +73,11 @@ export async function decksRoutes(app: FastifyInstance) {
   app.post<{ Body: { name: string; cards?: DeckCardInput[] } }>('/', async (req, reply) => {
     const { name, cards = [] } = req.body ?? {};
     if (!name?.trim()) return reply.code(400).send({ error: 'nom requis' });
+    const userId = requireUser(req).id;
     const deckId = await tx(async (c) => {
       const ins = await c.query<{ id: string }>(
-        'insert into decks (name) values ($1) returning id',
-        [name.trim()],
+        'insert into decks (owner_id, name) values ($1, $2) returning id',
+        [userId, name.trim()],
       );
       const id = ins.rows[0].id;
       await insertCards(c, id, cards);
@@ -77,46 +96,53 @@ export async function decksRoutes(app: FastifyInstance) {
       summary?: unknown;
       notes?: string | null;
     };
-  }>('/:id', async (req) => {
+  }>('/:id', async (req, reply) => {
     const { id } = req.params;
     const { name, cards, params, summary, notes } = req.body ?? {};
-    await tx(async (c) => {
-      await c.query(
+    const userId = requireUser(req).id;
+    const found = await tx(async (c) => {
+      const upd = await c.query(
         `update decks set
            name    = coalesce($2, name),
            params  = coalesce($3::jsonb, params),
            summary = coalesce($4::jsonb, summary),
            notes   = coalesce($5, notes),
            updated_at = now()
-         where id = $1`,
+         where id = $1 and owner_id = $6`,
         [
           id,
           name?.trim() ? name.trim() : null,
           params !== undefined ? JSON.stringify(params) : null,
           summary !== undefined ? JSON.stringify(summary) : null,
           notes ?? null,
+          userId,
         ],
       );
+      if (upd.rowCount === 0) return false;
       if (cards) {
         await c.query('delete from deck_cards where deck_id = $1', [id]);
         await insertCards(c, id, cards);
       }
+      return true;
     });
+    if (!found) return reply.code(404).send({ error: 'deck introuvable' });
     return { ok: true };
   });
 
   // Duplication : composition + TOUTES les données locales (§4C, prépare la
-  // comparaison de versions §4D). Ne touche jamais la bibliothèque globale.
+  // comparaison de versions §4D). Ne touche jamais la bibliothèque.
   app.post<{ Params: { id: string } }>('/:id/duplicate', async (req, reply) => {
     const { id } = req.params;
+    const userId = requireUser(req).id;
     const newId = await tx(async (c) => {
       const ins = await c.query<{ id: string }>(
-        `insert into decks (name, summary, notes, params)
-         select name || ' (copie)', summary, notes, params from decks where id = $1
+        `insert into decks (owner_id, name, summary, notes, params)
+         select owner_id, name || ' (copie)', summary, notes, params
+         from decks where id = $1 and owner_id = $2
          returning id`,
-        [id],
+        [id, userId],
       );
-      if (ins.rowCount === 0) throw new Error('deck introuvable');
+      if (ins.rowCount === 0) return null;
       const nid = ins.rows[0].id;
       await c.query(
         `insert into deck_cards (deck_id, card_id, zone, copies)
@@ -142,23 +168,29 @@ export async function decksRoutes(app: FastifyInstance) {
       );
       return nid;
     });
+    if (!newId) return reply.code(404).send({ error: 'deck introuvable' });
     return reply.code(201).send({ id: newId });
   });
 
   app.delete<{ Params: { id: string } }>('/:id', async (req) => {
     // Ne supprime que le deck (cascade sur ses tables locales). La bibliothèque
-    // globale (combo_pairs, card_flags, catégories) reste intacte (§4C).
-    await query('delete from decks where id = $1', [req.params.id]);
+    // (combo_pairs, card_flags, catégories) reste intacte (§4C).
+    await query('delete from decks where id = $1 and owner_id = $2', [
+      req.params.id,
+      requireUser(req).id,
+    ]);
     return { ok: true };
   });
 
   // Starters 1-carte (locaux au deck, §5).
   app.put<{ Params: { id: string }; Body: { cardIds: number[] } }>(
     '/:id/starters',
-    async (req) => {
+    async (req, reply) => {
       const { id } = req.params;
       const ids = req.body?.cardIds ?? [];
-      await tx(async (c) => {
+      const userId = requireUser(req).id;
+      const found = await tx(async (c) => {
+        if (!(await ownedDeck(c, id, userId))) return false;
         await c.query('delete from deck_starters where deck_id = $1', [id]);
         for (const cardId of ids) {
           await c.query(
@@ -167,27 +199,36 @@ export async function decksRoutes(app: FastifyInstance) {
           );
         }
         await c.query('update decks set updated_at = now() where id = $1', [id]);
+        return true;
       });
+      if (!found) return reply.code(404).send({ error: 'deck introuvable' });
       return { ok: true };
     },
   );
 
-  // Liste noire des paires globales désactivées pour ce deck (§5, §A).
+  // Liste noire des paires désactivées pour ce deck (§5, §A).
   app.put<{ Params: { id: string }; Body: { pairIds: string[] } }>(
     '/:id/pair-exclusions',
-    async (req) => {
+    async (req, reply) => {
       const { id } = req.params;
       const ids = req.body?.pairIds ?? [];
-      await tx(async (c) => {
+      const userId = requireUser(req).id;
+      const found = await tx(async (c) => {
+        if (!(await ownedDeck(c, id, userId))) return false;
         await c.query('delete from deck_pair_exclusions where deck_id = $1', [id]);
         for (const pairId of ids) {
+          // Seules les paires de l'utilisateur sont référençables.
           await c.query(
-            'insert into deck_pair_exclusions (deck_id, pair_id) values ($1, $2) on conflict do nothing',
-            [id, pairId],
+            `insert into deck_pair_exclusions (deck_id, pair_id)
+             select $1, id from combo_pairs where id = $2 and owner_id = $3
+             on conflict do nothing`,
+            [id, pairId, userId],
           );
         }
         await c.query('update decks set updated_at = now() where id = $1', [id]);
+        return true;
       });
+      if (!found) return reply.code(404).send({ error: 'deck introuvable' });
       return { ok: true };
     },
   );
@@ -203,15 +244,24 @@ export async function decksRoutes(app: FastifyInstance) {
         min_in_deck?: number;
       }>;
     };
-  }>('/:id/start-requirements', async (req) => {
+  }>('/:id/start-requirements', async (req, reply) => {
     const { id } = req.params;
     const reqs = req.body?.requirements ?? [];
-    await tx(async (c) => {
+    const userId = requireUser(req).id;
+    const found = await tx(async (c) => {
+      if (!(await ownedDeck(c, id, userId))) return false;
+      // Une source « paire » doit appartenir à l'utilisateur.
+      const owned = await c.query<{ id: string }>(
+        'select id from combo_pairs where owner_id = $1',
+        [userId],
+      );
+      const ownedPairIds = new Set(owned.rows.map((r) => r.id));
       await c.query('delete from deck_start_requirements where deck_id = $1', [id]);
       for (const r of reqs) {
         const hasCard = r.source_card_id != null;
         const hasPair = r.source_pair_id != null;
         if (hasCard === hasPair) continue; // exactement une source (contrainte XOR)
+        if (hasPair && !ownedPairIds.has(r.source_pair_id!)) continue;
         if (r.required_card_id == null) continue;
         await c.query(
           `insert into deck_start_requirements
@@ -227,7 +277,9 @@ export async function decksRoutes(app: FastifyInstance) {
         );
       }
       await c.query('update decks set updated_at = now() where id = $1', [id]);
+      return true;
     });
+    if (!found) return reply.code(404).send({ error: 'deck introuvable' });
     return { ok: true };
   });
 }
