@@ -1,5 +1,6 @@
 import { useDeck } from '../store/deckStore.js';
 import { Segmented } from './ui.js';
+import { AccountMenu } from './AccountMenu.js';
 
 export function Header({
   column,
@@ -87,6 +88,8 @@ export function Header({
           Enregistrer
           {dirty && <span className="h-1.5 w-1.5 rounded-full bg-black/70" />}
         </button>
+
+        <AccountMenu />
       </div>
     </header>
   );

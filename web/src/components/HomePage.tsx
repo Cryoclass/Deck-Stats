@@ -7,6 +7,7 @@ import { imageSmall } from '../types.js';
 import { buildDeckJson, downloadText, slugify, toYdk } from '../lib/exportDeck.js';
 import { pct } from '../lib/fmt.js';
 import { ImportDialog } from './ImportDialog.js';
+import { AccountMenu } from './AccountMenu.js';
 
 export function HomePage() {
   const { navigate } = useRouter();
@@ -24,6 +25,22 @@ export function HomePage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Erreur d'une LIAISON Discord (Lot D) : l'utilisateur est connecté, la page de
+  // connexion (qui affiche les autres erreurs OAuth) n'est pas rendue ici.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('discord_error');
+    if (!code) return;
+    window.alert(
+      code === 'discord_taken'
+        ? 'Ce compte Discord est déjà lié à un autre compte.'
+        : `Liaison Discord impossible (${code}).`,
+    );
+    params.delete('discord_error');
+    const qs = params.toString();
+    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
+  }, []);
 
   const open = (id: string) => navigate({ name: 'editor', id });
 
@@ -85,6 +102,7 @@ export function HomePage() {
         >
           + Nouveau deck
         </button>
+        <AccountMenu />
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5">

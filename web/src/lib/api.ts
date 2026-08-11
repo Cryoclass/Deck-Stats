@@ -2,6 +2,21 @@ import type { Card, Library, Relevance, Zone } from '../types.js';
 
 const BASE = '/api';
 
+/** Erreur API typée : `status` permet de distinguer un 401 (session) d'un 4xx métier. */
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+// Session absente ou expirée sur une route protégée (itération 8). À distinguer du
+// mode « hors-ligne » (panne réseau, fetch qui REJETTE) : ici le backend répond, il
+// refuse. La couche auth écoute cet événement et renvoie à la page de connexion.
+export const UNAUTHORIZED_EVENT = 'ygo:unauthorized';
+
 async function j<T>(url: string, init?: RequestInit): Promise<T> {
   // Ne déclarer le content-type JSON QUE s'il y a un corps : sinon Fastify rejette une
   // requête sans corps (DELETE, POST duplicate…) avec FST_ERR_CTP_EMPTY_JSON_BODY (400).
@@ -13,9 +28,31 @@ async function j<T>(url: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   });
-  if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${url} → ${res.status}`);
   const text = await res.text();
+  if (!res.ok) {
+    // Message d'erreur du serveur si disponible (ex. « code d'invitation invalide »).
+    let message = `${init?.method ?? 'GET'} ${url} → ${res.status}`;
+    try {
+      const body = JSON.parse(text) as { error?: string };
+      if (body?.error) message = body.error;
+    } catch {
+      /* corps non-JSON : message générique */
+    }
+    // Sur /auth/*, le 401 est une réponse normale (mauvais identifiants, sonde /me).
+    if (res.status === 401 && !url.startsWith('/auth')) {
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    }
+    throw new ApiError(res.status, message);
+  }
   return (text ? JSON.parse(text) : null) as T;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  display_name: string;
+  providers?: string[]; // fournisseurs OAuth liés (Lot D) — ex. ['discord']
+  has_password?: boolean; // false = compte Discord seul (déliaison refusée)
 }
 
 export interface DeckSummaryStats {
@@ -53,6 +90,23 @@ export interface DeckDetail {
 
 export const api = {
   health: () => j<{ ok: boolean; cards: number }>('/health'),
+
+  // Auth (itération 8)
+  me: () => j<{ user: AuthUser }>('/auth/me'),
+  login: (email: string, password: string) =>
+    j<{ user: AuthUser }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  register: (body: {
+    email: string;
+    password: string;
+    display_name?: string;
+    invite_code: string;
+  }) => j<{ user: AuthUser }>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
+  logout: () => j<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+  authProviders: () => j<{ discord: boolean }>('/auth/providers'),
+  unlinkDiscord: () => j<{ ok: boolean }>('/auth/discord', { method: 'DELETE' }),
 
   // Catalogue
   cardsByIds: (ids: number[]) =>

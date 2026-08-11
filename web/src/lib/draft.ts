@@ -80,3 +80,14 @@ export async function clearDraft(deckId: string): Promise<void> {
     /* ignore */
   }
 }
+
+/** Purge TOUS les brouillons — à la déconnexion (itération 8) : ils contiennent des
+ *  decks entiers et ne doivent pas survivre à un changement de compte sur un poste
+ *  partagé. */
+export async function clearAllDrafts(): Promise<void> {
+  try {
+    await withStore('readwrite', (s) => s.clear());
+  } catch {
+    /* ignore */
+  }
+}
