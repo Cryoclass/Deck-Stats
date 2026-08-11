@@ -258,3 +258,162 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
   anciens filtres `starts ≥ / non-engine ≥ / bricks` sont supprimés (exprimables par la
   requête). Requêtes **nommées** enregistrées dans les params du deck ; la requête en
   cours est un brouillon transitoire (non « dirty »).
+
+## Itération 8 — comptes utilisateurs (Lot A : socle d'authentification)
+
+- **Sessions serveur révocables, pas de JWT.** Token opaque de 32 octets aléatoires
+  dans un cookie `httpOnly` + `SameSite=Lax` (+ `Secure` en prod), 30 jours
+  **glissants** (l'expiration n'est réécrite que sous la moitié restante, pour ne pas
+  faire un UPDATE par requête). Seul le **SHA-256** du token touche la base
+  (`sessions.token_hash`) : un dump ne donne aucune session utilisable. Déconnexion =
+  suppression de ligne, effet immédiat — pas de danse de refresh JWT.
+
+- **Hachage scrypt natif** (`node:crypto`, N=2¹⁷ r=8 p=1, OWASP) : zéro dépendance,
+  pas de build natif sous Windows. Les paramètres voyagent dans le hash
+  (`scrypt:N:r:p:salt:key`) → durcissables sans invalider les comptes. Comparaison en
+  temps constant, et **hash factice** calculé quand l'email est inconnu (ou compte
+  OAuth sans mot de passe) pour que le timing de `/login` ne permette pas d'énumérer
+  les comptes — même réponse 401 « identifiants invalides » dans tous les cas.
+
+- **Inscription sur code d'invitation**, via `INVITE_CODES` (liste en `.env`, séparée
+  par des virgules). Zéro table, zéro admin ; liste vide = inscriptions fermées ;
+  révoquer = éditer + redémarrer. Le contrôle est isolé dans une fonction unique :
+  passer à une table de codes traçables restera un petit changement.
+
+- **Garde globale** en `preHandler` déclarée AVANT l'enregistrement des routes (un
+  hook Fastify ne s'applique qu'aux routes enregistrées après lui). Public :
+  `/api/health` et `/api/auth/*` uniquement. Rate-limit opt-in par route
+  (`@fastify/rate-limit`) : login 10/min, register 5/10 min. CORS resserré sur
+  `APP_ORIGIN` avec `credentials: true` — l'ancien `origin: true` est incompatible
+  avec des cookies de session.
+
+- **Email = identifiant**, unicité insensible à la casse (index sur `lower(email)`).
+  `password_hash` nullable : prépare les comptes Discord seuls (Lot D), qui ne
+  pourront jamais se connecter par mot de passe (le login leur répond comme à un
+  email inconnu). `user_identities` créée dès maintenant, unique
+  (provider, provider_user_id), **jamais** de rattachement automatique par email.
+
+- **Correction au passage : le `.env` racine n'était jamais chargé** par le serveur.
+  `npm run dev -w server` exécute avec cwd `server/`, où `import 'dotenv/config'`
+  ne trouve rien — tout tournait sur les valeurs par défaut en dur. Nouveau
+  `server/src/env.ts` (chemin explicite vers le `.env` racine), utilisé par l'index,
+  `db.ts` et le script de migration.
+
+- **Nouvelle commande `npm run db:schema`** : rejoue `db/schema.sql` (idempotent par
+  construction) sur la base en marche. Nécessaire car `docker-entrypoint-initdb.d` ne
+  s'exécute que sur un `pgdata` vierge — les `alter table` des itérations 4–5
+  n'avaient jamais été appliqués autrement qu'à la main.
+
+## Itération 8 — comptes utilisateurs (Lot B : propriété des données)
+
+- **La bibliothèque devient PAR COMPTE** (`card_flags`, `combo_pairs`,
+  `nonengine_categories` + `card_categories` par transitivité). Décision assumée vs
+  « globale partagée » : personne ne peut détruire les annotations d'un autre
+  (`deletePair` est définitif), et le partage existe déjà via l'export/import JSON
+  complet. Clés recomposées : `card_flags` PK `(owner_id, card_id)`, unicité
+  `combo_pairs (owner_id, card_a_id, card_b_id)` et
+  `nonengine_categories (owner_id, name)`.
+
+- **Les deux catégories de base** ('Handtrap', 'Board breaker') ne sont plus seedées
+  par le SQL (le `on conflict (name)` n'aurait d'ailleurs plus de cible) : elles sont
+  créées **pour chaque compte** à sa création, dans la même transaction
+  (`server/src/auth/account.ts`, point d'entrée unique — register aujourd'hui,
+  Discord/adopt aussi).
+
+- **Deck d'autrui → 404, jamais 403** : on ne révèle pas l'existence d'une ressource.
+  Toutes les requêtes decks/library sont bornées à `owner_id` ; les références
+  croisées (`pair_id` d'exclusion, `source_pair_id` de prérequis, `category_id`)
+  sont validées côté SQL (`insert … select … where owner_id = $n`) — un id de paire
+  volé à un autre compte est silencieusement ignoré.
+
+- **Migration legacy en deux commandes** : `npm run db:schema` (ajoute les colonnes
+  `owner_id`, nullables à ce stade) puis `npm run adopt -- <email> <mdp>` — crée ou
+  réutilise le compte, adopte TOUS les orphelins, bascule les anciennes clés
+  (PK/unicités sans owner) vers les nouvelles, verrouille `owner_id NOT NULL`, en
+  UNE transaction, relançable sans risque. Le schéma d'une base VIERGE naît
+  directement dans l'état final ; `adopt` n'est que le chemin legacy.
+
+- **Validé sur base fantôme** (copie `pg_dump` de la base réelle, adoptée puis
+  éprouvée en deux comptes) : 8 decks/102 paires/73 flags/4 catégories adoptés,
+  re-run no-op, 404 croisés sur GET/PUT/duplicate/starters, flags et paires isolés
+  (deux comptes peuvent flagger la même carte), deck source intact.
+
+## Itération 8 — comptes utilisateurs (Lot C : front)
+
+- **La page de connexion est rendue À LA PLACE de la route demandée** (garde dans
+  `App.tsx`), l'URL n'est jamais touchée : un lien profond `/decks/:id` aboutit
+  exactement là où on voulait aller après connexion — zéro machinerie de
+  « destination mémorisée », pas de route `/login`.
+
+- **401 ≠ hors-ligne.** Le mode hors-ligne existant (backend injoignable, l'app reste
+  utilisable sans persistance) avalait toutes les erreurs backend. Désormais :
+  un `fetch` qui REJETTE = panne réseau → `offline` (l'app se rend, sans login
+  impossible) ; un **401 du serveur** sur une route protégée = session absente/expirée
+  → événement `ygo:unauthorized` → retour à la page de connexion. Sur `/auth/*`, le
+  401 reste une réponse normale (sonde `/me`, mauvais identifiants). `ApiError`
+  transporte le statut ET le message serveur (« code d'invitation invalide »…)
+  jusqu'aux formulaires.
+
+- **Déconnexion = purge des brouillons IndexedDB + rechargement complet.** Les
+  brouillons contiennent des decks entiers (poste partagé) ; le
+  `window.location.assign` garantit zéro résidu d'état en mémoire (store Zustand
+  compris) d'un compte à l'autre.
+
+- **`bootstrap()` (bibliothèque du compte) ne part plus qu'après authentification** :
+  `Routed` ne monte que derrière la garde — l'ancien chargement à vide au démarrage
+  disparaît.
+
+- **Validé au navigateur** (Playwright + Edge headless, base fantôme) : login page,
+  mauvais mot de passe (message serveur affiché), connexion (8 decks adoptés,
+  annotations, stats moteur calculées), menu de compte, deep link + reload avec
+  session persistante, déconnexion avec session révoquée côté serveur, formulaire
+  d'inscription avec code d'invitation.
+
+- **Amendement (bug trouvé au premier register réel)** : les bascules d'unicité
+  (`combo_pairs`, `nonengine_categories`) sont déplacées de `adopt` vers
+  `db/schema.sql` (bloc DO idempotent) — elles sont jouables AVANT l'adoption car
+  NULL est distinct dans un index unique. Sans cela, un register sur base legacy
+  percutait l'ancienne unicité globale `unique(name)` (seed de 'Handtrap' vs ligne
+  legacy) et le 23505 était traduit à tort en « compte existe déjà » (409). Le catch
+  du register est désormais scopé à la contrainte `users_email_unique`, et le seed
+  utilise `where not exists` (indépendant des contraintes). Seul le PK de
+  `card_flags` (qui exige NOT NULL) reste basculé par `adopt`.
+
+## Itération 8 — comptes utilisateurs (Lot D : OAuth Discord)
+
+- **Deux intentions, un cookie d'état court** (`ygo_oauth`, 10 min, httpOnly,
+  SameSite=Lax — le Lax laisse passer le cookie sur la redirection top-level de
+  retour) portant l'aléa anti-CSRF + le code d'invitation + le drapeau « liaison ».
+  Le `state` du retour est comparé à l'aléa du cookie ; mismatch ou cookie absent →
+  refus.
+
+- **La porte reste fermée** : créer un compte via Discord exige un code d'invitation
+  valide, embarqué dans le cookie d'état AVANT le départ chez Discord et REvalidé au
+  retour (l'env a pu changer). Un code fourni mais invalide échoue avant même la
+  redirection. Une identité déjà connue se connecte sans code.
+
+- **JAMAIS de rattachement automatique par email.** Un email Discord identique à un
+  compte existant → erreur explicite `email_taken` (l'email Discord ne prouve pas la
+  propriété du compte : ce serait un vol de compte). La liaison est un geste
+  explicite, en session (`?link=1`), depuis le menu de compte. Déliaison refusée si
+  le compte n'a pas de mot de passe (il perdrait tout moyen de connexion) — comptes
+  Discord seuls : `password_hash` null, traités en inconnu par le login mot de passe.
+
+- **URLs Discord surchargeables par env** (`DISCORD_AUTHORIZE_URL` / `TOKEN_URL` /
+  `USER_URL`) : le flux complet est testé contre un mock local, sans app Discord ni
+  réseau. Bouton masqué côté front si non configuré (`GET /api/auth/providers`).
+  Redirection via le proxy Vite (`:5173/api/...`) : tout reste même origine.
+
+- **Vite paramétrable** (`WEB_PORT`, `API_PROXY`, `strictPort`) : permet une deuxième
+  pile (tests, base fantôme) à côté de la pile de dev sans se marcher dessus.
+
+- **Validé au navigateur** (mock Discord, base fantôme) : création avec invitation,
+  refus sans invitation (client ET serveur), re-connexion par identité connue,
+  liaison à un compte mot de passe puis login Discord → bon compte, email déjà pris →
+  refus explicite, déliaison (identité redevient inconnue), state falsifié/absent →
+  `state_mismatch`, annulation Discord → `cancelled`.
+
+- **Amendement (revue sécurité)** : `/discord/start` est désormais rate-limité
+  (10/min) — sa réponse (erreur immédiate vs redirection Discord) révèle si un code
+  d'invitation est valide, ce qui en faisait un oracle de brute-force non throttlé
+  sur des codes à faible entropie.
