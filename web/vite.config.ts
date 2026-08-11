@@ -5,10 +5,12 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    // Surchargables par env : permet une 2e pile (tests) à côté de la pile de dev.
+    port: Number(process.env.WEB_PORT ?? 5173),
+    strictPort: true,
     proxy: {
       // Le front tape /api → backend Fastify (§6.2).
-      '/api': 'http://localhost:8787',
+      '/api': process.env.API_PROXY ?? 'http://localhost:8787',
     },
   },
   worker: { format: 'es' },

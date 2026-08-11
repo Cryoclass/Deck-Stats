@@ -1,0 +1,63 @@
+# Production sur le VPS OVH — db + app UNIQUEMENT. Le TLS et l'exposition sont
+# assurés par le Caddy de la stack goldfish, joint via le réseau externe `edge`.
+# AUCUN `ports:` ici : Docker écrit ses propres règles iptables et contourne ufw —
+# un port publié serait joignable depuis Internet malgré le pare-feu.
+#
+# Toutes les commandes depuis ce dossier, avec les deux drapeaux :
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml <cmd>
+name: ygo-proba
+
+services:
+  db:
+    image: postgres:17-alpine # majeure seule : correctifs mineurs au prochain pull
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ygo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definir POSTGRES_PASSWORD dans .env.prod}
+      POSTGRES_DB: ygo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ygo -d ygo']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: ygo-app # nom stable : cible du reverse_proxy dans le Caddyfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ygo:${POSTGRES_PASSWORD}@db:5432/ygo
+      NODE_ENV: production
+      TRUST_PROXY: '1' # rate-limit par IP réelle (X-Forwarded-For posé par Caddy)
+      INVITE_CODES: ${INVITE_CODES:?definir INVITE_CODES dans .env.prod}
+      APP_ORIGIN: ${APP_ORIGIN:-https://analysis.scratchrecode.com}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI:-https://analysis.scratchrecode.com/api/auth/discord/callback}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:8787/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - default
+      - edge
+
+networks:
+  edge:
+    external: true # créé une fois : docker network create edge — partagé avec le Caddy goldfish
+
+volumes:
+  pgdata:

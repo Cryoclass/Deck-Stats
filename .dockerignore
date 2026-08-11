@@ -1,0 +1,14 @@
+# Docker ne lit ce fichier qu'à la racine du contexte de build.
+node_modules
+**/node_modules
+**/dist
+pgdata
+.git
+.husky
+.env
+.env.*
+!.env.example
+deploy/.env.prod
+*.log
+coverage
+.vite
