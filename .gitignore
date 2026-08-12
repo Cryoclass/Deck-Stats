@@ -4,6 +4,7 @@ build/
 .env
 .env.local
 .env.prod
+/dump.sql
 *.log
 .DS_Store
 coverage/
