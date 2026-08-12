@@ -417,3 +417,60 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
   (10/min) — sa réponse (erreur immédiate vs redirection Discord) révèle si un code
   d'invitation est valide, ce qui en faisait un oracle de brute-force non throttlé
   sur des codes à faible entropie.
+
+## Itération 9 — comparateur de decks (matrice starts × non-engine)
+
+- **Le prérequis §3 de la spec (classification par scénario) était déjà satisfait** :
+  le moteur porte `deadFirst`/`deadSecond` par carte et la pertinence de catégorie
+  `first | second | both` — aucune migration du modèle de carte n'a été nécessaire.
+  La spec supposait un moteur hypergéométrique naïf à trois catégories ; le site
+  calcule en réalité des **starts jouables** (couplage maximum, prérequis, HOPT,
+  horizon). Le comparateur est donc une couche PURE au-dessus des `PassResult`
+  existants (`engine/compare.ts`) : il ne recalcule rien, il normalise `crossMatrix`
+  en 4 × 6 à seaux fixes (`≥3`, `5+` = Σ ne ≥ 5) et compare. Libellés « starts »,
+  pas « starters », pour coller à la sémantique réelle.
+
+- **§7.4 adapté au moteur réel.** « Les marges lignes ne dépendent que de (S, D, h) »
+  n'est vrai que du modèle naïf ; avec combos/prérequis/dead, un même S peut donner
+  des profils de starts différents. Le garde-fou compare donc les marges OBSERVÉES :
+  égales → note « seule la répartition non-engine bouge » ; différentes à S égal →
+  note explicative (combos/prérequis/dead), pas « bug de classification ».
+
+- **Incohérence interne du §11 de la spec, signalée** : le paragraphe « ce que la
+  fixture doit démontrer » affirme des marges lignes identiques entre A et B
+  (8.3/33.8/39.5/18.3 GF) — contredit par sa propre table d'agrégats (brick 9.2 vs
+  8.3, Δ −0.9) : ces marges sont celles de B seul. Les tests reproduisent la table
+  d'agrégats (cohérente avec les matrices), à ±0,3 pt après normalisation des
+  matrices relevées (leurs sommes font 99,8–100,1 %).
+
+- **Moyennes « plancher » (≥3 = 3, 5+ = 5), pas moyennes exactes** — la spec
+  laissait le choix. Motif : l'onglet Synthèse de l'export est entièrement en
+  FORMULES pointant sur les matrices (modifier une cellule bleue recalcule tout) ;
+  une moyenne exacte serait une constante morte incohérente avec ce modèle. Le
+  libellé dit « plancher » partout, écran comme Excel.
+
+- **ExcelJS 4.4.0 confirmé** (styles, formats numériques, mise en forme
+  conditionnelle — SheetJS Community n'a pas de styles, heatmap impossible).
+  Génération CÔTÉ CLIENT en import dynamique → chunk séparé (~940 kB) chargé au
+  premier export seulement. Le classeur réplique `docs/comparatif_mitsurugi.xlsx`
+  (géométrie, formules, conventions bleu/noir/vert) ; `fullCalcOnLoad` car aucun
+  résultat de formule n'est écrit. Δ de Synthèse colorés par règles `cellIs` PAR
+  LIGNE (mérite selon le sens souhaité), pas par échelle de signe.
+
+- **`buildModel` extrait du store → `lib/engineModel.ts`** (le commentaire « prêt
+  pour la comparaison §4D » disait vrai) : l'éditeur passe son état Zustand, le
+  comparateur assemble la même source depuis `DeckDetail` + bibliothèque API. Le
+  worker gagne un mode `passes` (2 passes sans les contributions marginales, qui
+  coûtent n+1 énumérations et ne servent qu'à l'éditeur).
+
+- **Garde-fou ajouté hors spec** : horizons d'interaction différents entre les deux
+  decks → avertissement (une partie de l'écart non-engine viendrait du réglage, pas
+  des cartes). Idem deck < 6 cartes → erreur avant calcul (main de 6 intirable).
+
+- **Validé au navigateur** (Playwright + Edge headless, API mockée, sans base) :
+  accueil → dialogue A/B → page (matrices à échelle commune, delta ±2 pts avec
+  légende, S/N par scénario, bandeau §7, synthèse mérite — hausse de « 0
+  non-engine » peinte en rouge), export .xlsx téléchargé puis relu (openpyxl :
+  onglets, formules, somme bloc = 1, valeurs moteur exactes), inversion A/B. La
+  fixture E2E reproduit l'asymétrie §3 : handtraps → cartes going-second only fait
+  bouger la matrice GF (N passe à 0) en laissant la GS strictement identique.

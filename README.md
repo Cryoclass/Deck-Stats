@@ -68,11 +68,20 @@ server/                Fastify + pg
   src/routes/          auth, cards, decks, library
 web/src/
   engine/              moteur exact + tests §C  (binomial, matching, enumerate, evaluate, hand)
+    compare.ts         comparateur de decks (matrices starts × non-engine, deltas, agrégats)
   worker/              wrapper Web Worker
   store/               Zustand + sélecteurs (modèle moteur, couleurs, échantillonnage)
   lib/auth.tsx         AuthProvider (session, login/logout, mode hors-ligne)
+  lib/engineModel.ts   deck + annotations → entrée moteur (partagé éditeur / comparateur)
+  lib/exportComparison.ts  export Excel du comparatif (ExcelJS, 3 onglets, formules vivantes)
   components/          login, import, grille d'annotation, combos, stats, mode requête, mur de mains
 ```
+
+**Comparateur de decks (itération 9)** : depuis l'accueil, « ⇄ Comparer » met deux
+decks côte à côte sur la matrice starts × non-engine — 4 matrices (A/B × going
+first/second), delta cellule à cellule, synthèse d'agrégats orientée « sens
+souhaité », et export Excel recalculable (les cellules bleues sont des valeurs
+exactes, tout le reste est formule).
 
 Voir [`DECISIONS.md`](DECISIONS.md) pour les points tranchés en cours de route
 (dont deux coquilles du tableau §C).
