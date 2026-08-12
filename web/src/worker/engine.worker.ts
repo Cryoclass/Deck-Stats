@@ -1,9 +1,12 @@
-import { computeAll } from '../engine/index.js';
+import { computeAll, computePass } from '../engine/index.js';
 import type { EngineInput, EngineResult } from '../engine/types.js';
 
 export interface ComputeRequest {
   id: number;
   input: EngineInput;
+  // 'passes' (comparateur, itération 9) : les deux passes SANS les contributions
+  // marginales (§3.2), qui coûtent n+1 énumérations et ne servent qu'à l'éditeur.
+  mode?: 'full' | 'passes';
 }
 export interface ComputeResponse {
   id: number;
@@ -20,8 +23,11 @@ const ctx = self as unknown as {
 };
 
 ctx.onmessage = (e) => {
-  const { id, input } = e.data;
+  const { id, input, mode } = e.data;
   const t0 = performance.now();
-  const result = computeAll(input);
+  const result: EngineResult =
+    mode === 'passes'
+      ? { first: computePass(input, 5), second: computePass(input, 6), deltas: [] }
+      : computeAll(input);
   ctx.postMessage({ id, result, ms: performance.now() - t0 });
 };

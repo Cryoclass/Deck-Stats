@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './lib/auth.js';
 import { HomePage } from './components/HomePage.js';
 import { EditorPage } from './components/EditorPage.js';
 import { LoginPage } from './components/LoginPage.js';
+import { ComparePage } from './components/ComparePage.js';
 
 function Routed() {
   const { route } = useRouter();
@@ -17,7 +18,9 @@ function Routed() {
     void bootstrap();
   }, [bootstrap]);
 
-  return route.name === 'editor' ? <EditorPage id={route.id} /> : <HomePage />;
+  if (route.name === 'editor') return <EditorPage id={route.id} />;
+  if (route.name === 'compare') return <ComparePage a={route.a} b={route.b} />;
+  return <HomePage />;
 }
 
 /** Garde d'authentification (itération 8, Lot C). La page de connexion est rendue À LA

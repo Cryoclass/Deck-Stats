@@ -1,19 +1,14 @@
 import { create } from 'zustand';
 import type { Card, Category, ComboPair, DeckCard, Relevance, StartRequirement } from '../types.js';
 import { pairKey } from '../types.js';
-import type { EngineInput, EngineResult, Prereq } from '../engine/types.js';
+import type { EngineResult } from '../engine/types.js';
 import type { QueryCriterion, SavedQuery } from '../engine/query.js';
 import { computeInWorker } from '../worker/client.js';
 import { api } from '../lib/api.js';
 import type { ParsedDeck } from '../lib/ydk.js';
 import { saveDraft, loadDraft, clearDraft, type DeckDraft } from '../lib/draft.js';
 import type { DeckJson } from '../lib/exportDeck.js';
-
-interface EngineModel {
-  input: EngineInput;
-  typeCardIds: number[]; // typeIndex → cardId (aligné sur result.deltas)
-  categoryIds: string[]; // categoryIndex → categoryId
-}
+import { buildEngineModel, type EngineModel } from '../lib/engineModel.js';
 
 interface State {
   cards: Record<number, Card>;
@@ -112,101 +107,16 @@ const defaultQuery = (): QueryCriterion[] => [
   { id: uid(), subject: { kind: 'starts' }, min: 1, max: null },
 ];
 
-// ─── Construction du modèle moteur à partir du deck + annotations (§B.1) ───
-// Prend l'état en PARAMÈTRE, ne lit aucun global : prêt pour la comparaison de decks (§4D).
-function buildModel(s: State): EngineModel {
-  const mainCopies = new Map(s.main.map((c) => [c.cardId, c.copies]));
-  const deckSize = s.main.reduce((sum, c) => sum + c.copies, 0);
-
-  const activePairs = s.pairs.filter(
-    (p) =>
-      !s.pairExclusions.has(p.id) &&
-      mainCopies.has(p.card_a_id) &&
-      mainCopies.has(p.card_b_id),
-  );
-
-  const annotated = new Set<number>();
-  for (const id of s.starters) if (mainCopies.has(id)) annotated.add(id);
-  for (const p of activePairs) {
-    annotated.add(p.card_a_id);
-    annotated.add(p.card_b_id);
-  }
-  for (const [cardId, cats] of s.cardCategories) {
-    if (cats.size > 0 && mainCopies.has(cardId)) annotated.add(cardId);
-  }
-  // Itération 5 : toute carte requise par un prérequis est promue en type suivi, sinon
-  // sa présence résiduelle en deck serait structurellement incalculable (§C).
-  for (const r of s.startRequirements) {
-    if (mainCopies.has(r.requiredCardId)) annotated.add(r.requiredCardId);
-  }
-
-  const typeCardIds = s.main.map((c) => c.cardId).filter((id) => annotated.has(id));
-  const typeIndex = new Map(typeCardIds.map((id, i) => [id, i]));
-  const categoryIds = s.categories.map((c) => c.id);
-  const catIndex = new Map(categoryIds.map((id, i) => [id, i]));
-
-  // Carte requise absente du deck → requiredType null, total 0 → jamais satisfait.
-  const toPrereq = (requiredCardId: number, minInDeck: number): Prereq => {
-    const rt = typeIndex.get(requiredCardId);
-    return {
-      requiredType: rt !== undefined ? rt : null,
-      requiredTotal: mainCopies.get(requiredCardId) ?? 0,
-      minInDeck: Math.max(1, minInDeck),
-    };
-  };
-
-  const types = typeCardIds.map((id) => {
-    const cats = [...(s.cardCategories.get(id) ?? [])]
-      .map((cid) => catIndex.get(cid))
-      .filter((i): i is number => i !== undefined);
-    const cardReqs = s.startRequirements.filter((r) => r.sourceCardId === id);
-    return {
-      copies: mainCopies.get(id) ?? 0,
-      isHopt: s.hopt.has(id),
-      isStarter: s.starters.has(id),
-      categories: cats,
-      deadFirst: s.deadFirst.has(id),
-      deadSecond: s.deadSecond.has(id),
-      starterPrereqs: cardReqs.length
-        ? cardReqs.map((r) => toPrereq(r.requiredCardId, r.minInDeck))
-        : undefined,
-    };
-  });
-
-  const edges = activePairs.map(
-    (p): [number, number] => [typeIndex.get(p.card_a_id)!, typeIndex.get(p.card_b_id)!],
-  );
-  const edgePrereqs = activePairs.map((p) => {
-    const reqs = s.startRequirements.filter((r) => r.sourcePairId === p.id);
-    return reqs.length ? reqs.map((r) => toPrereq(r.requiredCardId, r.minInDeck)) : undefined;
-  });
-
-  const categories = s.categories.map((c) => ({ id: c.id, relevance: c.relevance }));
-
-  return {
-    input: {
-      deckSize,
-      types,
-      edges,
-      edgePrereqs,
-      categories,
-      horizonFirst: s.horizonFirst,
-      horizonSecond: s.horizonSecond,
-    },
-    typeCardIds,
-    categoryIds,
-  };
-}
-
 // Toute modification (locale ou globale) invalide entièrement l'état calculé puis
 // déclenche un recalcul intégral dans le worker (§4C.2) — jamais de MàJ partielle.
+// La construction du modèle vit dans lib/engineModel.ts (partagée avec le comparateur).
 let computeTimer: ReturnType<typeof setTimeout> | null = null;
 let computeSeq = 0;
 function scheduleCompute(get: () => State, set: (p: Partial<State>) => void): void {
   if (computeTimer) clearTimeout(computeTimer);
   set({ computing: true });
   computeTimer = setTimeout(async () => {
-    const model = buildModel(get());
+    const model = buildEngineModel(get());
     const mySeq = ++computeSeq;
     const { result, ms } = await computeInWorker(model.input);
     if (mySeq !== computeSeq) return; // périmé

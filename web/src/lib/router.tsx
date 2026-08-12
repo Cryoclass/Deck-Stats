@@ -1,16 +1,24 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
-/** Routeur minimal (§4C) : accueil `/decks`, éditeur `/decks/:id`. Pas de dépendance
- *  externe — on contrôle toute la navigation via l'API History. */
-export type Route = { name: 'home' } | { name: 'editor'; id: string };
+/** Routeur minimal (§4C) : accueil `/decks`, éditeur `/decks/:id`, comparateur
+ *  `/compare/:a/:b` (itération 9). Pas de dépendance externe — on contrôle toute la
+ *  navigation via l'API History. */
+export type Route =
+  | { name: 'home' }
+  | { name: 'editor'; id: string }
+  | { name: 'compare'; a: string; b: string };
 
 function parse(pathname: string): Route {
+  const c = pathname.match(/^\/compare\/([^/?#]+)\/([^/?#]+)/);
+  if (c) return { name: 'compare', a: decodeURIComponent(c[1]), b: decodeURIComponent(c[2]) };
   const m = pathname.match(/^\/decks\/([^/?#]+)/);
   return m ? { name: 'editor', id: decodeURIComponent(m[1]) } : { name: 'home' };
 }
 
 function toPath(route: Route): string {
-  return route.name === 'editor' ? `/decks/${route.id}` : '/decks';
+  if (route.name === 'editor') return `/decks/${route.id}`;
+  if (route.name === 'compare') return `/compare/${route.a}/${route.b}`;
+  return '/decks';
 }
 
 interface RouterCtx {

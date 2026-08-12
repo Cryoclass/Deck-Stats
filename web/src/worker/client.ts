@@ -32,3 +32,15 @@ export function computeInWorker(
     w.postMessage({ id, input } satisfies ComputeRequest);
   });
 }
+
+/** Les deux passes SANS contributions marginales (comparateur) : `deltas` vide. */
+export function computePassesInWorker(
+  input: EngineInput,
+): Promise<{ result: EngineResult; ms: number }> {
+  const w = ensure();
+  const id = ++seq;
+  return new Promise((resolve) => {
+    pending.set(id, resolve);
+    w.postMessage({ id, input, mode: 'passes' } satisfies ComputeRequest);
+  });
+}

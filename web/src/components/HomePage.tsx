@@ -8,11 +8,13 @@ import { buildDeckJson, downloadText, slugify, toYdk } from '../lib/exportDeck.j
 import { pct } from '../lib/fmt.js';
 import { ImportDialog } from './ImportDialog.js';
 import { AccountMenu } from './AccountMenu.js';
+import { CompareDialog } from './ComparePage.js';
 
 export function HomePage() {
   const { navigate } = useRouter();
   const [decks, setDecks] = useState<DeckSummary[] | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -97,8 +99,20 @@ export function HomePage() {
         <span className="text-[11px] text-ink-500">probabilités &amp; mains</span>
         <h1 className="ml-2 text-sm text-ink-300">Mes decks</h1>
         <button
+          onClick={() => setCompareOpen(true)}
+          disabled={(decks?.length ?? 0) < 2}
+          title={
+            (decks?.length ?? 0) < 2
+              ? 'Il faut au moins deux decks pour comparer.'
+              : 'Comparer deux decks (matrice starts × non-engine)'
+          }
+          className="ml-auto rounded border border-ink-700 px-3 py-1.5 text-xs font-medium text-ink-200 hover:bg-ink-800 disabled:opacity-40"
+        >
+          ⇄ Comparer
+        </button>
+        <button
           onClick={() => setNewOpen(true)}
-          className="ml-auto rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-black hover:bg-emerald-500"
+          className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-black hover:bg-emerald-500"
         >
           + Nouveau deck
         </button>
@@ -146,6 +160,10 @@ export function HomePage() {
             navigate({ name: 'editor', id });
           }}
         />
+      )}
+
+      {compareOpen && decks && decks.length >= 2 && (
+        <CompareDialog decks={decks} onClose={() => setCompareOpen(false)} />
       )}
     </div>
   );
