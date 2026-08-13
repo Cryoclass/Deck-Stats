@@ -9,7 +9,7 @@ import { Inventory } from './Inventory.js';
 import { StatsPanel } from './StatsPanel.js';
 import { Toast } from './Toast.js';
 
-type Tab = 'annotate' | 'combos' | 'hands' | 'inventory';
+type Tab = 'annotate' | 'combos' | 'hands' | 'inventory' | 'stats';
 
 export function EditorPage({ id }: { id: string }) {
   const { navigate } = useRouter();
@@ -58,6 +58,18 @@ export function EditorPage({ id }: { id: string }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [saveDeck]);
 
+  // Le panneau latéral de stats n'existe qu'à partir de lg : si la fenêtre repasse
+  // en large alors que l'onglet mobile « Stats » est actif, on revient sur « Annoter ».
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = () => {
+      if (mq.matches) setTab((t) => (t === 'stats' ? 'annotate' : t));
+    };
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   const goHome = () => {
     if (dirty && !window.confirm('Modifications non enregistrées. Retourner à l’accueil sans enregistrer ?'))
       return;
@@ -95,7 +107,7 @@ export function EditorPage({ id }: { id: string }) {
       <Header column={column} setColumn={setColumn} onSave={() => void saveDeck()} onHome={goHome} />
 
       {draftAvailable && (
-        <div className="flex items-center gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-200">
+        <div className="flex flex-wrap items-center gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-200">
           <span>Modifications non enregistrées retrouvées pour ce deck.</span>
           <button
             onClick={resumeDraft}
@@ -114,7 +126,7 @@ export function EditorPage({ id }: { id: string }) {
 
       <div className="flex min-h-0 flex-1">
         <main className="flex min-w-0 flex-1 flex-col border-r border-ink-800">
-          <nav className="flex shrink-0 items-center gap-1 border-b border-ink-800 bg-ink-900 px-2 py-1.5">
+          <nav className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-ink-800 bg-ink-900 px-2 py-1.5">
             <TabButton active={tab === 'annotate'} onClick={() => setTab('annotate')}>
               Annoter
             </TabButton>
@@ -126,6 +138,9 @@ export function EditorPage({ id }: { id: string }) {
             </TabButton>
             <TabButton active={tab === 'inventory'} onClick={() => setTab('inventory')}>
               Inventaire
+            </TabButton>
+            <TabButton active={tab === 'stats'} onClick={() => setTab('stats')} className="lg:hidden">
+              Stats
             </TabButton>
           </nav>
           <div className="min-h-0 flex-1">
@@ -139,6 +154,7 @@ export function EditorPage({ id }: { id: string }) {
             {tab === 'combos' && <ComboList />}
             {tab === 'hands' && <HandWall column={column} />}
             {tab === 'inventory' && <Inventory onFocusCard={focusCard} />}
+            {tab === 'stats' && <StatsPanel column={column} onShowHands={() => setTab('hands')} />}
           </div>
         </main>
 
@@ -152,13 +168,23 @@ export function EditorPage({ id }: { id: string }) {
   );
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+function TabButton({
+  active,
+  onClick,
+  children,
+  className = '',
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <button
       onClick={onClick}
-      className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+      className={`shrink-0 whitespace-nowrap rounded px-3 py-1 text-xs font-medium transition-colors ${
         active ? 'bg-ink-700 text-ink-100' : 'text-ink-400 hover:bg-ink-800 hover:text-ink-200'
-      }`}
+      } ${className}`}
     >
       {children}
     </button>

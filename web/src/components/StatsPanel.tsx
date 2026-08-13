@@ -71,7 +71,7 @@ export function StatsPanel({
       )}
 
       <div
-        className="flex items-center gap-3 border-b border-ink-800 px-3 py-1.5"
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-ink-800 px-3 py-1.5"
         title="Nombre de tours adverses pendant lesquels une carte HOPT non-engine reste activable (§B.3.5). Plafonne son comptage à min(copies, horizon). Hypothèse de jeu — n'affecte pas les combos."
       >
         <span className="text-[10px] uppercase tracking-wide text-ink-500">Horizon d’interaction</span>
@@ -110,7 +110,7 @@ export function StatsPanel({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-px bg-ink-800">
+      <div className="grid grid-cols-1 gap-px bg-ink-800 sm:grid-cols-2">
         <PassColumn title="Going first" subtitle="main de 5" pass={result.first} view={view} />
         <PassColumn title="Going second" subtitle="main de 6" pass={result.second} view={view} />
       </div>

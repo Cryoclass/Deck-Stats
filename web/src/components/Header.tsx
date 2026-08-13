@@ -26,7 +26,7 @@ export function Header({
     : null;
 
   return (
-    <header className="flex shrink-0 items-center gap-3 border-b border-ink-800 bg-ink-950 px-4 py-2">
+    <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-800 bg-ink-950 px-4 py-2">
       <button
         onClick={onHome}
         className="rounded px-2 py-1 text-xs text-ink-400 hover:bg-ink-800 hover:text-ink-100"
@@ -40,7 +40,7 @@ export function Header({
       <input
         value={deckName}
         onChange={(e) => renameDeck(e.target.value)}
-        className="w-52 rounded bg-transparent px-1 py-0.5 text-sm text-ink-100 outline-none hover:bg-ink-900 focus:bg-ink-900"
+        className="w-32 min-w-0 rounded bg-transparent px-1 py-0.5 text-sm text-ink-100 outline-none hover:bg-ink-900 focus:bg-ink-900 sm:w-52"
       />
 
       <span
@@ -52,7 +52,7 @@ export function Header({
         {deckSize} cartes
       </span>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
         <div className="flex items-center gap-1.5 text-[11px] text-ink-500" title="Persistance backend">
           <span className={`h-2 w-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-ink-600'}`} />
           {online ? 'en ligne' : 'hors-ligne'}
