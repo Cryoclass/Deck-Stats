@@ -13,6 +13,7 @@
     "db:logs": "docker compose logs -f db",
     "db:schema": "docker compose exec -T db psql -U ygo -d ygo -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/00-schema.sql",
     "migrate": "npm run migrate -w server",
+    "prune-cards": "npm run prune-cards -w server --",
     "adopt": "npm run adopt -w server --",
     "dev:server": "npm run dev -w server",
     "dev:web": "npm run dev -w web",

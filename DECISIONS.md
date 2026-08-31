@@ -474,3 +474,51 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
   onglets, formules, somme bloc = 1, valeurs moteur exactes), inversion A/B. La
   fixture E2E reproduit l'asymétrie §3 : handtraps → cartes going-second only fait
   bouger la matrice GF (N passe à 0) en laissant la GS strictement identique.
+
+## Maintenance du catalogue — purge des passcodes périmés
+
+- **Le problème.** `migrate-cards.ts` fait `on conflict (id) do update` : il ajoute
+  et met à jour, **il ne supprime jamais**. Or la source retire des lignes. YGOPRODeck
+  attribue aux cartes OCG un passcode **provisoire** (`1004xxxxx` / `1014xxxxx`) puis
+  le remplace par le vrai passcode à la sortie TCG ; l'entrée provisoire disparaît de
+  la source mais **survit en local**. Constat au 2026-08-31 : 14 590 lignes locales
+  pour 14 529 côté source, soit **61 résidus** — dont 39 doublons de cartes bien
+  présentes sous leur passcode courant (deux « Witchcrafter Seed » dans la recherche).
+
+- **Purge = report, pas suppression sèche.** Le catalogue est un LOOKUP sans FK (cf.
+  §A) : rien ne fait le report à notre place, et supprimer une ligne référencée
+  changerait **silencieusement** les probabilités d'un deck. `prune-stale-cards.ts`
+  reporte donc les 8 emplacements de passcode (`deck_cards`, `deck_starters`,
+  `card_flags`, `card_categories`, `combo_pairs` ×2, `deck_start_requirements` ×2)
+  vers le passcode courant **avant** de supprimer.
+
+- **Cible = même nom, toujours dans la source.** Un seul candidat sinon on ne devine
+  pas. Les homonymes légitimes (alt arts : `Blue-Eyes White Dragon` 89631139/89631143)
+  sont présents des deux côtés et ne sont donc jamais des orphelins.
+
+- **Règle de sûreté : référencé + sans cible sûre = CONSERVÉ.** Perdre la ligne
+  vaudrait pire que le doublon. Le script le signale au lieu de trancher.
+
+- **Conflits de clés composites, traités un par un** — c'est là qu'est le travail :
+  `deck_cards` cumule les copies (plafond 3 du check) quand deck+zone contient déjà la
+  cible ; `card_flags` fusionne par OU ; `deck_starters` / `card_categories`
+  dédupliquent. `combo_pairs` est le cas épineux : unicité `(owner, a, b)` **et** check
+  `a <= b`. Le remap et la recanonicalisation se font en **un seul `update`** (deux
+  updates violeraient le check entre les deux) ; les paires qui collisionnent après
+  report élisent une survivante — celle **non** concernée par le remap, qui porte la
+  note écrite par l'utilisateur — et lui cèdent `deck_pair_exclusions` et
+  `deck_start_requirements.source_pair_id`. Une paire devenue `(X, X)` est supprimée :
+  hors périmètre §D, le moteur l'ignore (`if (a === b) continue`), la ligne serait morte.
+
+- **Simulation = exécution réelle + rollback.** Le mode par défaut joue *toutes* les
+  opérations puis annule : les contraintes sont donc réellement éprouvées, pas
+  seulement prédites. `--apply` rejoue et valide. Une transaction unique, un contrôle
+  final qui refuse le commit s'il reste une référence pendante.
+
+- **Garde-fou sur la source** : moins de 10 000 ids lus = abandon. Sans lui, une
+  Supabase en panne (réponse vide) ferait de **tout** le catalogue un « orphelin ».
+
+- **Validé sur scénario fabriqué**, compte jetable couvrant les 8 emplacements et
+  chaque branche de conflit — les 16 compteurs attendus, état final vérifié ligne à
+  ligne, puis même vérification via le SQL de `--emit-sql` rejoué par `psql` sur une
+  base restaurée : états identiques. Relance après purge : 0 orphelin (idempotent).

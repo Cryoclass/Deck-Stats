@@ -25,6 +25,7 @@ cp .env.example .env        # puis choisir INVITE_CODES (codes d'invitation)
 
 npm run db:up               # Postgres en Docker (port hôte 5433) + schéma (db/schema.sql)
 npm run migrate             # copie la table `cards` de Supabase → Postgres local (~14 k cartes)
+npm run prune-cards         # (facultatif) retire les passcodes périmés, cf. plus bas
 
 npm run dev                 # backend :8787 + front :5173 en parallèle
 # ou séparément :
@@ -51,6 +52,31 @@ Sans backend/DB, l'app reste utilisable : les annotations vivent en mémoire + d
 l'URL (`#s=…`, état compressé partageable), et les images sont dérivées de l'`id` via le
 CDN YGOPRODeck. La persistance (bibliothèque, decks) nécessite le backend + un compte.
 
+## Mettre le catalogue à jour
+
+```bash
+npm run migrate                       # récupère les nouvelles cartes et les màj (upsert)
+npm run prune-cards                   # simulation : montre ce qui serait retiré
+npm run prune-cards -- --apply        # exécute
+```
+
+`migrate` n'efface jamais rien. Or la source **retire** des lignes : YGOPRODeck donne
+aux cartes OCG un passcode provisoire (`1004xxxxx` / `1014xxxxx`) qu'elle remplace par
+le vrai à la sortie TCG. L'entrée provisoire survit alors en local et **ressort en
+double dans la recherche** — d'où `prune-cards`, à enchaîner après `migrate`.
+
+Il ne s'agit pas d'un `delete` sec : le catalogue est un lookup **sans FK**, donc le
+script **reporte d'abord** les références (decks, starters, drapeaux, catégories,
+paires de combo, prérequis) vers le passcode courant, en gérant les collisions de clés
+(copies cumulées, drapeaux fusionnés par OU, paires de combo recanonicalisées). Une
+carte **référencée sans cible sûre n'est jamais supprimée** : elle est signalée.
+
+Sans `--apply`, le script joue *réellement* toutes les opérations puis annule la
+transaction — les contraintes sont donc éprouvées, pas devinées. Options :
+`--only-remappable` (ne toucher qu'aux doublons ayant une cible),
+`--emit-sql <fichier>` (produire le SQL équivalent, à relire puis jouer avec `psql` —
+cf. [`deploy/README.md`](deploy/README.md)).
+
 ## Tests
 
 ```bash
@@ -62,8 +88,9 @@ npm test                    # Vitest : reproduit les valeurs de contrôle §C (m
 ```
 db/schema.sql          schéma normatif (§A) + comptes/sessions (itération 8)
 server/                Fastify + pg
-  scripts/migrate-cards.ts   Supabase → Postgres local (§6.1)
-  scripts/adopt-legacy.ts    migration base pré-comptes → un compte propriétaire
+  scripts/migrate-cards.ts       Supabase → Postgres local (§6.1)
+  scripts/prune-stale-cards.ts   retire les passcodes périmés, références reportées
+  scripts/adopt-legacy.ts        migration base pré-comptes → un compte propriétaire
   src/auth/            scrypt, sessions (cookie httpOnly, token haché), comptes
   src/routes/          auth, cards, decks, library
 web/src/

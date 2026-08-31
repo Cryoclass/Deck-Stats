@@ -125,6 +125,47 @@ crontab -e
 
 Dumps dans `/var/backups/ygo-proba`, `umask 077`, rétention 14 jours.
 
+## 8. Mettre le catalogue à jour (cartes récentes)
+
+Les scripts de maintenance sont **déjà dans l'image** (`tsc` compile `scripts/` en
+même temps que `src/`) : rien à installer sur le VPS, on les lance dans le conteneur
+`app`, qui a `DATABASE_URL` et les dépendances de production.
+
+```bash
+cd ~/apps/ygo-proba/deploy
+dc() { docker compose --env-file .env.prod -f docker-compose.prod.yml "$@"; }
+
+bash backup.sh                                            # 1. sauvegarder AVANT
+dc exec app node server/dist/scripts/migrate-cards.js      # 2. nouvelles cartes (upsert)
+dc exec app node server/dist/scripts/prune-stale-cards.js  # 3. SIMULATION de la purge
+```
+
+L'étape 3 n'écrit rien : elle joue toutes les opérations puis annule la transaction,
+et affiche le plan (cartes reportées, cartes supprimées, cartes conservées faute de
+cible sûre). **Lire ce plan**, puis seulement :
+
+```bash
+dc exec app node server/dist/scripts/prune-stale-cards.js --apply
+curl -s https://analysis.scratchrecode.com/api/health       # "cards" ≈ 14 500
+```
+
+Pas besoin des clés Supabase dans `.env.prod` : les valeurs publiques (URL + clé anon)
+sont les valeurs par défaut du script.
+
+> Ne **pas** reprendre le `pg_dump` local de la §5 pour cela : `--clean --if-exists`
+> écraserait les comptes et les decks créés en ligne depuis. La §5 est la procédure de
+> *premier* remplissage.
+
+**Répétition à blanc** (facultatif, recommandé avant une grosse purge) — rejouer un
+dump de prod en local et y produire le SQL, à relire avant de le jouer en ligne :
+
+```bash
+scp ubuntu@137.74.172.32:/var/backups/ygo-proba/ygo-<stamp>.sql.gz .
+# en local : restaurer dans une base jetable, puis
+DATABASE_URL=postgres://ygo:ygo@localhost:5433/ygo_repet \
+  npm run prune-cards -- --emit-sql purge.sql
+```
+
 ## Exploitation courante
 
 ```bash
