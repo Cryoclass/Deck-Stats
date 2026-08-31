@@ -552,3 +552,31 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
 - **`catalog` vaut `null` si la table manque** (base antérieure au suivi) : `health`
   est la sonde du conteneur en production, la casser sur une base pas encore migrée
   transformerait un défaut de traçabilité en indisponibilité.
+
+## Piège de déploiement : le schéma monté est figé à la création du conteneur
+
+- **Constaté le 2026-08-31.** `deploy.sh` rejouait le schéma via le fichier monté
+  (`-f /docker-entrypoint-initdb.d/00-schema.sql`). Or `git pull` ne modifie pas le
+  fichier en place : il en écrit un nouveau et le renomme, donc **l'inode change**. Le
+  bind-mount du conteneur `db` reste attaché à l'ancien inode tant que le conteneur
+  n'est pas recréé — et il tourne des semaines (`Up 2 weeks`). Résultat : le
+  déploiement passait au vert en rejouant le schéma **du jour du dernier `up`**.
+  `catalog_version` n'est jamais arrivée en base, sans un seul message d'erreur.
+
+- **Pourquoi ça n'était jamais sorti** : jusqu'ici le schéma n'avait pas bougé depuis
+  le premier déploiement. Le premier changement l'a révélé — et l'aurait révélé bien
+  plus tard sans le contrôle `\d catalog_version` fait juste après.
+
+- **Invisible en local** : Docker Desktop (Windows) monte via un système de fichiers
+  virtualisé qui relit le fichier hôte à chaque accès, là où un bind-mount Linux natif
+  fige l'inode. Un rejeu de schéma correct en développement ne prouve donc rien sur le
+  serveur.
+
+- **Correctif : passer le fichier par STDIN** (`-f - < ../db/schema.sql`) dans
+  `deploy.sh` comme dans `npm run db:schema`. Le contenu est alors lu par le shell au
+  moment de l'exécution ; le montage ne sert plus qu'à l'initialisation du volume au
+  tout premier démarrage, son seul rôle légitime.
+
+- **À retenir** : un bind-mount de **fichier** (et non de dossier) ne suit pas les
+  remplacements par renommage — ce que font `git`, `sed -i`, et la plupart des
+  éditeurs. Ne jamais compter dessus pour du contenu qui évolue.
