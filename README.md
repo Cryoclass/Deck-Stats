@@ -77,6 +77,26 @@ transaction — les contraintes sont donc éprouvées, pas devinées. Options :
 `--emit-sql <fichier>` (produire le SQL équivalent, à relire puis jouer avec `psql` —
 cf. [`deploy/README.md`](deploy/README.md)).
 
+### Version du référentiel
+
+La Supabase tient une table `dataset_versions` (version, empreinte, compteurs).
+`migrate` la lit **avant et après** la copie et consigne le résultat dans
+`catalog_version` ; `/api/health` l'expose :
+
+```bash
+curl -s http://localhost:8787/api/health
+# {"ok":true,"cards":14529,"catalog":{"version":"2026-08-31","migratedAt":"…","cards":14529}}
+```
+
+Comparer deux déploiements revient donc à comparer deux réponses de `health`, sans
+diffusion de 14 k lignes. L'estampille n'est **pas** posée si la source change de
+version pendant la copie (elle serait à cheval sur deux) ou si le nombre de cartes
+copiées ne correspond pas à celui annoncé — le script le dit et laisse l'ancienne
+estampille en place plutôt que d'en écrire une fausse.
+
+L'empreinte est *enregistrée mais jamais revérifiée* : `dataset_fingerprint()` est
+fermée à la clé anon. Elle sert de repère, pas de preuve.
+
 ## Tests
 
 ```bash

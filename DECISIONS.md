@@ -522,3 +522,33 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
   chaque branche de conflit — les 16 compteurs attendus, état final vérifié ligne à
   ligne, puis même vérification via le SQL de `--emit-sql` rejoué par `psql` sur une
   base restaurée : états identiques. Relance après purge : 0 orphelin (idempotent).
+
+## Suivi de version du référentiel (source Supabase)
+
+- **Ce que la clé anon peut faire.** La source expose `public.dataset_versions`
+  (version, `recorded_at`, `fingerprint`, compteurs) en **lecture** ; les fonctions
+  `dataset_version_status()`, `dataset_fingerprint()` et `record_dataset_version()`
+  lui sont **fermées** (`42501`). L'empreinte est donc *consignée mais jamais
+  revérifiée* de notre côté : un repère, pas une preuve. Recalculer côté client
+  supposerait de rapatrier printings et traductions, qu'on ne migre pas.
+
+- **Miroir local `catalog_version`**, une seule ligne (check sur la PK). Elle
+  distingue trois compteurs qu'il serait tentant de confondre : `source_cards_count`
+  (annoncé), `copied_cards_count` (réellement lu) et `local_cards_count` (lignes en
+  base). Les deux premiers valident la copie ; le troisième diverge légitimement
+  après une purge — d'où son réalignement par `prune-stale-cards`, sans quoi deux
+  bases identiques paraîtraient divergentes.
+
+- **Version lue avant ET après la copie.** Si elle bouge entre les deux, la copie est
+  à cheval sur deux versions : **aucune estampille n'est posée**. Idem si le nombre
+  copié ne correspond pas à l'annonce. Mieux vaut garder l'ancienne estampille,
+  visiblement périmée, qu'en écrire une fausse — une estampille n'a de valeur que si
+  on peut s'y fier sans la rejouer.
+
+- **Exposé par `/api/health`**, qui est public : comparer deux déploiements devient
+  `curl` ici, `curl` là-bas. Volontairement réduit à version + date + compte — un
+  point de contrôle, pas un inventaire, et pas d'empreinte diffusée.
+
+- **`catalog` vaut `null` si la table manque** (base antérieure au suivi) : `health`
+  est la sonde du conteneur en production, la casser sur une base pas encore migrée
+  transformerait un défaut de traçabilité en indisponibilité.

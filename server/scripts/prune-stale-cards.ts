@@ -421,6 +421,17 @@ try {
     }
   }
 
+  // La purge change le nombre de lignes locales : réaligner l'estampille, sinon
+  // `/api/health` annoncerait le compte d'avant purge et deux bases identiques
+  // paraîtraient divergentes.
+  if (toDelete.length) {
+    await run(
+      client,
+      'catalog_version (compte local réaligné)',
+      `update catalog_version set local_cards_count = (select count(*) from cards)`,
+    );
+  }
+
   if (counts.size === 0) {
     console.log('Rien à faire : le catalogue local est aligné sur la source.\n');
   } else {

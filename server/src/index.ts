@@ -47,11 +47,30 @@ app.addHook('preHandler', async (req, reply) => {
   req.user = user;
 });
 
+// Public : sert aussi à comparer deux déploiements (`catalog` renvoie la version
+// du référentiel copiée ici). Volontairement sans détail de source ni empreinte —
+// c'est un point de contrôle, pas un inventaire.
 app.get('/api/health', async () => {
   const { rows } = await pool.query<{ count: string }>(
     'select count(*)::text as count from cards',
   );
-  return { ok: true, cards: Number(rows[0].count) };
+  // La table peut manquer sur une base antérieure au suivi de version : health
+  // doit rester vert (c'est la sonde du conteneur), catalog vaut alors null.
+  const catalog = await pool
+    .query<{ version: string; migrated_at: Date; local_cards_count: number }>(
+      'select version, migrated_at, local_cards_count from catalog_version',
+    )
+    .then((r) => r.rows[0] ?? null)
+    .catch(() => null);
+  return {
+    ok: true,
+    cards: Number(rows[0].count),
+    catalog: catalog && {
+      version: catalog.version,
+      migratedAt: catalog.migrated_at,
+      cards: catalog.local_cards_count,
+    },
+  };
 });
 
 await app.register(authRoutes, { prefix: '/api/auth' });

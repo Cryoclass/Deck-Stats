@@ -21,6 +21,23 @@ create table if not exists cards (
 );
 create index if not exists cards_name_trgm on cards using gin (lower(name) gin_trgm_ops);
 
+-- Version du référentiel source effectivement copiée ici, décalquée de la table
+-- `dataset_versions` de la Supabase. Sert à répondre « local et prod portent-ils
+-- le même catalogue ? » sans comparer 14 k lignes : `/api/health` l'expose.
+-- Une seule ligne, garantie par le check sur la clé primaire.
+create table if not exists catalog_version (
+  only_row             boolean primary key default true check (only_row),
+  version              text        not null,  -- `version` annoncée par la source
+  source_recorded_at   timestamptz,           -- `recorded_at` de la source
+  fingerprint          text,                  -- empreinte ANNONCÉE : la clé anon ne peut
+                                              -- pas appeler dataset_fingerprint() pour la
+                                              -- recalculer, donc jamais revérifiée ici
+  source_cards_count   int,                   -- `cards_count` annoncé par la source
+  copied_cards_count   int         not null,  -- lignes réellement lues et copiées
+  local_cards_count    int         not null,  -- lignes locales après copie (et purge)
+  migrated_at          timestamptz not null default now()
+);
+
 -- NOTE (divergence assumée vs §A) : les colonnes `card_id` NE référencent PAS `cards`.
 -- Le catalogue migré depuis Supabase est incomplet (certains passcodes récents manquent)
 -- et, par conception, l'`id` EST le passcode : les images dérivent du CDN via l'id, le nom
