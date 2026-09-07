@@ -164,3 +164,12 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Inventaire : problème présumé non confirmé à 360 / 390 / 768 → inchangé (correction uniquement de ce qui est cassé à l'écran).
 - Largeurs validées 360 / 390 / 768 + bureau inscrites au contrat §6 et à la charte §6.3 ; comparateur et mur de mains → étape 7.
 - Validation par `playwright-core` dans le scratchpad, worker ralenti / forcé en échec par réécriture du script servi (moteur intact), scripts et captures non versionnés → aucune non-régression UI automatique dans le dépôt (limite consignée).
+
+## Étape 7, partie A (8 septembre 2026)
+- « · » = zéro exact partout (cellules de matrice, deltas de cellule, deltas de synthèse), formateurs partagés `matrixCell` / `deltaPoints` / `deltaCount` alignés sur les formats Excel → une faible valeur s'affiche « 0.0 » / « +0.0 », jamais comme un zéro ; infobulle à la valeur fine (Q1, Q2).
+- Couleur du delta de synthèse = signe du delta EXACT selon la direction de l'indicateur, neutre seulement pour le zéro exact → aucun seuil ne peut faire passer un delta pour nul (D1).
+- `engine/compare.ts` = moteur, intouché ; assemblage du comparateur (`comparisonDeckOf`, `unprofiledWarning`) et seaux du panneau (`statsViews.ts`) extraits en pur dans `web/src/lib/` → le test d'identité suit le code de l'écran, sans réécrire les formules (Q6).
+- Identité des données prouvée sur un deck de 40 cartes (plafond partagé, carte sans profil) : `===` entre matrice du panneau (mode `full`), du comparateur (mode `passes`) et cellules Excel ; agrégats et Synthèse à 1e-12 ; formules Excel recalculées par un évaluateur dans le test → une erreur de plage ou de signe dans une formule est détectée.
+- Gardes visuelles versionnées dans `web/e2e/` (`playwright-core` en devDependency de `web`, Chrome installé, pile jetable montée et démontée par `run.mjs`, `--keep` / `--attach` / `--down`) → hors `npm test` et hors `test-quiet.mjs` ; M1–M6 de 6B et la fixture Deck A / Deck B portés, captures « conforme » non transformées en gardes (Q5).
+- Export Excel vérifié au navigateur (téléchargement réel relu par ExcelJS, comparé aux infobulles) → l'écran et le classeur portent les mêmes nombres.
+- Point 3 (responsive du comparateur et du mur), Q3 (cellules compactes sous 640 px), Q4 (cibles 32 px du comparateur) et contrat §5 / §6, charte §6.3 → session 7B.

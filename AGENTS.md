@@ -8,6 +8,7 @@
 - Vérifier : `npm run typecheck` · `npm run build` · `npm test` (web Vitest puis server node:test).
 - Tests silencieux : `node scripts/test-quiet.mjs` (suite complète) · `node scripts/test-quiet.mjs web/src/engine/engine.test.ts` (un ou plusieurs fichiers). Après une modification ciblée, lance uniquement le fichier de test concerné ; la suite complète seulement avant de conclure une étape.
 - Intégration PostgreSQL (base jetable sur 127.0.0.1:55433, procédure dans deploy/configuration-v2.md) : `TEST_DATABASE_URL=… npm run test:integration -w server`.
+- Gardes visuelles (étape 7, hors `npm test` et hors test-quiet.mjs) : `npm run e2e -w web` monte une pile jetable complète (conteneur PostgreSQL `testhand-e2e-db` sur 127.0.0.1:55434, schéma et migrations par stdin, cartes synthétiques, serveur 8790, Vite 5174, compte `e2e@example.test`), joue les scénarios `web/e2e/scenarios/` (`setup` = fixture Deck A / Deck B, `guards` = M1–M6 de 6B, `compare`) sur le Chrome installé via `playwright-core`, puis démonte tout. Prérequis : Docker en marche (image postgres:17-alpine), Google Chrome (ou `E2E_BROWSER` = chemin d'un Chromium), ports 55434 / 8790 / 5174 libres. Options : `-- --only guards,compare`, `-- --keep` (pile conservée pour itérer avec `-- --attach --only …`), `-- --down` (démontage d'une pile conservée). Captures et journaux dans `web/e2e/out/` (ignoré par git). Lance-la avant de conclure une étape qui touche l'interface ; jamais contre la base de dev.
 - Prod : `bash deploy/deploy.sh` s'exécute sur le VPS uniquement (deploy/README.md). Jamais depuis le poste.
 
 ## Architecture
@@ -41,5 +42,7 @@ Monorepo npm workspaces. `db/` : schéma normatif idempotent + migrations additi
 - Sous PowerShell, `npm` est `npm.cmd` (`npm.cmd run …`) ; les exemples des docs suivent cette forme.
 - En sandbox, esbuild (Vitest) peut être bloqué sur la lecture de `../../../..` et Docker sur son canal : relancer la commande hors sandbox, ne pas modifier la configuration pour contourner.
 - Aucun lint ni formatter : `npm run typecheck` et les tests sont les seules gardes ; une suite verte ne dit rien du style, imite le fichier touché.
+- Sous Git Bash (MSYS), `docker run --tmpfs /var/lib/postgresql/data` voit son chemin réécrit en chemin Windows (« mount path must be absolute ») : lance les commandes Docker des bases jetables depuis PowerShell, ou avec `MSYS_NO_PATHCONV=1`. `web/e2e/run.mjs` appelle Docker sans shell et n'est pas concerné.
+- « · » dans une matrice ou un delta signifie zéro exact, jamais une faible valeur (étape 7, formateurs de `web/src/lib/fmt.ts`, mêmes règles que les formats Excel) ; l'arrondi n'a lieu qu'au rendu, la valeur fine reste dans l'infobulle.
 
 Plan courant : docs/PLAN.md — lis-le au début de chaque session, ainsi que le dernier compte rendu d'étape.

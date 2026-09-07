@@ -1,17 +1,11 @@
 import { useDeck } from '../store/deckStore.js';
 import type { AnalysisContext, PassResult } from '../engine/types.js';
-import { pct, num } from '../lib/fmt.js';
+import { pct, num, matrixCell } from '../lib/fmt.js';
 import { Bar } from './ui.js';
 import { QueryMode } from './QueryMode.js';
 import { toComparisonMatrix } from '../engine/compare.js';
 import { CONTEXT_LABEL } from './Header.js';
-
-/** Une vue = une distribution parcourable dans le panneau (itération 6). */
-interface StatsView {
-  id: string;
-  label: string;
-  hint?: string;
-}
+import { cumulativeOf, resolveView, type Resolved, type StatsView } from '../lib/statsViews.js';
 
 /** « Départs théoriques » (contrat §4) : sources de start disponibles dans la main
  *  observée, sans preuve qu'une ligne soit successivement réalisable. */
@@ -177,56 +171,7 @@ export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
   );
 }
 
-/** Réduit une distribution exacte (P(count=i)) aux 4 seaux d'affichage 0/1/2/≥3. */
-function toBuckets(dist: number[]): [number, number, number, number] {
-  const b0 = dist[0] ?? 0;
-  const b1 = dist[1] ?? 0;
-  const b2 = dist[2] ?? 0;
-  let b3 = 0;
-  for (let i = 3; i < dist.length; i++) b3 += dist[i] ?? 0;
-  return [b0, b1, b2, b3];
-}
-
-interface Resolved {
-  buckets: [number, number, number, number];
-  color: string;
-  mean: number;
-  meanLabel: string;
-  extra?: string;
-}
-
-function resolveView(pass: PassResult, viewId: string): Resolved {
-  if (viewId === 'starts') {
-    return {
-      buckets: [
-        pass.startsBuckets[0] ?? 0,
-        pass.startsBuckets[1] ?? 0,
-        pass.startsBuckets[2] ?? 0,
-        pass.startsBuckets[3] ?? 0,
-      ],
-      color: '#4fae7a',
-      mean: pass.meanStarts,
-      meanLabel: 'E[S]',
-      extra: `brick ${pct(pass.brick)} · E[red.] ${num(meanFromDist(pass.redundancy))}`,
-    };
-  }
-  if (viewId === 'nonengine') {
-    return {
-      buckets: toBuckets(pass.nonEngine),
-      color: '#5b8def',
-      mean: pass.meanNonEngine,
-      meanLabel: 'E[U]',
-    };
-  }
-  const cat = pass.perCategory.find((c) => c.id === viewId);
-  if (!cat) return { buckets: [0, 0, 0, 0], color: '#5b8def', mean: 0, meanLabel: '' };
-  return {
-    buckets: toBuckets(cat.dist),
-    color: '#5b8def',
-    mean: cat.mean,
-    meanLabel: 'E[copies]',
-  };
-}
+// Seaux, cumulés et moyennes : lib/statsViews.ts (pur, partagé avec le test d'identité).
 
 function PassColumn({
   context,
@@ -265,10 +210,9 @@ function PassColumn({
 
 /** Table 0/1/2/≥3 avec colonnes « exact » et « cumulé » (au moins n) — §6. */
 function DistTable({ buckets, color, mean, meanLabel, extra }: Resolved) {
-  const [, b1, b2, b3] = buckets;
   const labels = ['0', '1', '2', '≥3'];
   // Cumulé = P(≥ n). Ligne 0 = trivialement 100 % → affiché « — ».
-  const cum: Array<number | null> = [null, b1 + b2 + b3, b2 + b3, b3];
+  const cum = cumulativeOf(buckets);
 
   return (
     <>
@@ -344,7 +288,7 @@ export function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first
                       className="tnum rounded p-1 text-right text-ink-100"
                       style={{ background: `oklch(0.7 0.13 155 / ${(v / maxCell) * 0.85})` }}
                     >
-                      {v > 0.0005 ? (v * 100).toFixed(1) : '·'}
+                      {matrixCell(v)}
                     </td>
                   );
                 })}
@@ -355,10 +299,6 @@ export function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first
       </div>
     </div>
   );
-}
-
-function meanFromDist(dist: number[]): number {
-  return dist.reduce((s, p, i) => s + (p ?? 0) * i, 0);
 }
 
 /** Erreur de calcul (charte §7.12) avec relance. L'ancien résultat, s'il existe, reste

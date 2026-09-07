@@ -10,3 +10,4 @@ build/
 coverage/
 .vite/
 pgdata/
+web/e2e/out/

@@ -6,8 +6,6 @@ import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled } from '../worker/computeClient.js';
 import {
   compareDecks,
-  scenarioCounts,
-  toComparisonMatrix,
   SCENARIOS,
   type ComparisonMatrix,
   type ComparisonWarning,
@@ -15,9 +13,10 @@ import {
   type AggregateRow,
   type Scenario,
 } from '../engine/compare.js';
+import { comparisonDeckOf, unprofiledWarning } from '../lib/comparison.js';
 import { downloadComparisonXlsx } from '../lib/exportComparison.js';
 import { slugify } from '../lib/exportDeck.js';
-import { pct, num } from '../lib/fmt.js';
+import { pct, num, matrixCell, deltaPoints, deltaCount } from '../lib/fmt.js';
 import { sourceFromDetail } from '../lib/deckConfiguration.js';
 import { STARTS_HINT } from './StatsPanel.js';
 
@@ -60,35 +59,19 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
           );
         }
       }
-      const unprofiled: string[] = [];
+      const unprofiled: ComparisonWarning[] = [];
       const results = await Promise.all(
         decks.map(async ({ detail, source }) => {
           const { input, unprofiledCardIds } = buildEngineModel(source);
-          if (unprofiledCardIds.length > 0) {
-            unprofiled.push(`« ${detail.name} » : ${unprofiledCardIds.length} carte${unprofiledCardIds.length > 1 ? 's' : ''} non-engine sans profil, non comptée${unprofiledCardIds.length > 1 ? 's' : ''} dans le potentiel.`);
-          }
+          const warning = unprofiledWarning(detail.name, unprofiledCardIds);
+          if (warning) unprofiled.push(warning);
           const { result } = await client.compute(input, 'passes').promise;
-          return {
-            name: detail.name,
-            matrices: {
-              going_first: toComparisonMatrix(
-                result.first,
-                'going_first',
-                scenarioCounts(input, 'going_first'),
-              ),
-              going_second: toComparisonMatrix(
-                result.second,
-                'going_second',
-                scenarioCounts(input, 'going_second'),
-              ),
-            },
-          };
+          return comparisonDeckOf(detail.name, input, result);
         }),
       );
       const cmp = compareDecks(results[0], results[1]);
-      // Q5 : une carte étiquetée sans profil compte zéro dans le potentiel — à dire en
-      // clair, sinon un écart non-engine pourrait venir de l'annotation, pas des cartes.
-      for (const message of unprofiled) cmp.warnings.push({ severity: 'warning', code: 'unprofiled', message });
+      // Q5 : signalé par deck (lib/comparison.ts), après les garde-fous du comparateur.
+      cmp.warnings.push(...unprofiled);
       return { cmp };
     })().then(
       (loaded) => !cancelled && setState({ status: 'ready', ...loaded }),
@@ -239,7 +222,7 @@ function MatrixCard({ title, m, maxCell }: { title: string; m: ComparisonMatrix;
         colLabels={m.colLabels}
         cells={m.cells}
         cellStyle={(v) => ({ background: `oklch(0.7 0.13 155 / ${(v / maxCell) * 0.85})` })}
-        format={(v) => (v > 0.0005 ? (v * 100).toFixed(1) : '·')}
+        format={matrixCell}
         cellTitle={(v) => pct(v, 2)}
       />
       {/* S / N retenus par scénario (§7.6) : rend visible l'effet de la classification. */}
@@ -262,9 +245,6 @@ function DeltaCard({ cmp, scenario }: { cmp: DeckComparison; scenario: Scenario 
         d > 0 ? `oklch(0.7 0.13 155 / ${alpha})` : d < 0 ? `oklch(0.58 0.17 25 / ${alpha})` : undefined,
     };
   };
-  const fmt = (d: number): string =>
-    d === 0 ? '·' : `${d > 0 ? '+' : '−'}${(Math.abs(d) * 100).toFixed(1)}`;
-
   return (
     <div className="rounded-lg border border-ink-800 bg-ink-900 p-3">
       <div className="mb-2 text-xs font-semibold text-ink-100">Δ (B − A), en points de %</div>
@@ -273,7 +253,7 @@ function DeltaCard({ cmp, scenario }: { cmp: DeckComparison; scenario: Scenario 
         colLabels={A.colLabels}
         cells={delta}
         cellStyle={style}
-        format={fmt}
+        format={deltaPoints}
         cellTitle={(v) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)} pt`}
       />
       {/* Légende OBLIGATOIRE (§5) : le signe n'est pas un jugement de valeur. */}
@@ -389,14 +369,12 @@ function SynthTable({ cmp }: { cmp: DeckComparison }) {
 function DeltaCell({ row }: { row: AggregateRow }) {
   const d = row.delta;
   // Favorable selon la DIRECTION de l'indicateur (§6.2), pas selon le signe brut.
+  // Étape 7 (Q1) : décision par le signe du delta EXACT, comme la mise en forme
+  // conditionnelle de l'Excel (`lessThan 0` / `greaterThan 0`) ; « · » et neutre
+  // seulement pour le zéro exact — jamais de seuil qui ferait passer un delta pour nul.
   const favorable = row.direction === 'lower_is_better' ? d < 0 : d > 0;
-  const negligible = Math.abs(d) < (row.unit === 'percent' ? 0.0005 : 0.005);
-  const cls = negligible ? 'text-ink-500' : favorable ? 'text-emerald-300' : 'text-red-400';
-  const text = negligible
-    ? '·'
-    : row.unit === 'percent'
-      ? `${d > 0 ? '+' : '−'}${(Math.abs(d) * 100).toFixed(1)}`
-      : `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(2)}`;
+  const cls = d === 0 ? 'text-ink-500' : favorable ? 'text-emerald-300' : 'text-red-400';
+  const text = row.unit === 'percent' ? deltaPoints(d) : deltaCount(d);
   return (
     <td className={`tnum p-2 text-right ${cls}`} title={row.unit === 'percent' ? `${(d * 100).toFixed(2)} pt` : d.toFixed(3)}>
       {text}

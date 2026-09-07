@@ -1,5 +1,65 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 7, partie A, 8 septembre 2026
+
+Le [compte rendu 7A](docs/etape-7.md) contient le plan validé, l'inventaire des deltas
+(D1–D7), les réponses Q1–Q6 et la passation vers 7B.
+
+- **« · » signifie zéro exact, jamais une faible valeur.** L'écran affichait « · » pour une
+  cellule de matrice sous 0,05 % et pour un delta de synthèse sous 0,05 pt (ou 0,005
+  carte), alors que l'Excel réserve « · » au zéro exact (`0.0%;-0.0%;"·"`,
+  `+0.0%;-0.0%;"·"`) et que le contrat §5 dit qu'un symbole pour une faible probabilité ne
+  doit pas signifier zéro. Décision : un seul jeu de formateurs (`matrixCell`,
+  `deltaPoints`, `deltaCount` dans `lib/fmt.ts`) aligné sur les formats Excel, utilisé par
+  la matrice du panneau, les matrices A / B, la matrice Δ et la synthèse ; « 0.0 » et
+  « +0.0 » sont acceptés ; l'infobulle garde la valeur fine. L'arrondi n'a lieu qu'au
+  rendu (Q1, Q2 confirmées par l'utilisateur).
+- **La couleur du delta de synthèse suit le signe du delta exact**, favorable ou non selon
+  la direction de l'indicateur, neutre seulement pour le zéro exact — comme les règles
+  `lessThan 0` / `greaterThan 0` de la mise en forme conditionnelle de l'Excel. Le seuil
+  `negligible` masquait la direction d'un petit écart réel (D1).
+- **`engine/compare.ts` est traité comme le moteur** (Q6) : intouché. L'assemblage du
+  comparateur (`comparisonDeckOf`, `unprofiledWarning`) et les seaux du panneau
+  (`toBuckets`, `cumulativeOf`, `resolveView`) sont extraits sans changement dans
+  `web/src/lib/` pour que le test d'identité suive exactement le code de l'écran au lieu
+  de réécrire ses formules — un test qui reformule les formules prouverait la formule,
+  pas l'écran.
+- **Identité prouvée nombre pour nombre.** Matrice du panneau (mode `full`), matrice du
+  comparateur (mode `passes`) et cellules Excel sont comparées en égalité stricte : le
+  même moteur sur la même entrée produit les mêmes flottants, une tolérance aurait laissé
+  passer un arrondi à quatre décimales. Les agrégats sont comparés à 1e-12 (ordre de
+  sommation différent), et les formules Excel sont recalculées par un évaluateur écrit
+  dans le test pour la grammaire réellement émise (références, `'Feuille'!$H$6`,
+  `SUM(plage)`, `+ − *`) : sans lui, une plage ou un signe faux dans une formule resterait
+  invisible, ExcelJS n'évaluant rien. Le deck de test contient un plafond partagé et une
+  carte étiquetée sans profil, dont la contribution nulle est prouvée par différence
+  (retirer l'étiquette ne change ni U ni la matrice, mais change les copies brutes).
+- **Gardes visuelles dans le dépôt** (option A, Q5) : `web/e2e/` avec `playwright-core` en
+  devDependency de `web` (aucun téléchargement de navigateur ; Chrome installé ou
+  `E2E_BROWSER`), `npm run e2e -w web` hors `npm test` et hors `test-quiet.mjs` parce
+  qu'elle exige Docker et Chrome. `run.mjs` monte et démonte lui-même une pile jetable
+  (55434 / 8790 / 5174, compte `e2e@example.test`) : aucune commande manuelle, aucun
+  risque de pointer la base de dev. Les processus serveur et Vite sont **détachés** et
+  journalisés sur descripteur de fichier : avec des tubes, ils mouraient à la fin du
+  script (`--keep`) sur EPIPE. `--keep` / `--attach` / `--down` servent à itérer en 7B.
+- **Portage fidèle de 6B** : M1–M6 et la préparation des decks reprennent les mêmes
+  sélecteurs et mesures que les scripts du scratchpad (stepper 32 px, en-tête et bandeau
+  sans débordement, zone de fichier lisible, delta sur une ligne, delta atténué pendant un
+  recalcul ralenti par réécriture du script du worker) ; les captures « conforme » ne
+  deviennent pas des gardes. Seule adaptation : sous 1024 px la durée de calcul est
+  attendue dans le DOM (`state: 'attached'`), le panneau étant un onglet masqué.
+- **Le scénario `compare` vérifie l'export réel** : téléchargement navigateur, relecture
+  par ExcelJS, comparaison des 24 cellules de A, B et Δ des deux onglets aux infobulles de
+  l'écran. C'est la seule garde de 7A qui traverse le navigateur pour l'identité des
+  données ; les verdicts responsives sont laissés à 7B (« ne pas commencer le point 3
+  hormis ce qui prouve que web/e2e fonctionne de bout en bout »).
+- **Docker sous Git Bash** : `--tmpfs /var/lib/postgresql/data` est réécrit en chemin
+  Windows par MSYS (« mount path must be absolute »). Consigné dans AGENTS.md ; la suite
+  PostgreSQL se lance depuis PowerShell, `run.mjs` appelle Docker sans shell.
+- **Reports vers 7B** : point 3, Q3 (cellules compactes sous 640 px, lisibilité sur
+  capture), Q4 (32 px sur Exporter Excel, Comparer, ✕, ⇄ Inverser), contrat §5 / §6 et
+  charte §6.3.
+
 ## Première mission — étape 6, partie B, 7 septembre 2026
 
 Le [compte rendu 6B](docs/etape-6.md) décrit l'infrastructure jetable, les verdicts par
