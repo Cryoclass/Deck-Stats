@@ -104,10 +104,21 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Enregistrement = une transaction, verrou du deck, `expectedRevision` (409) → un id de paire ne change jamais de cartes.
 - Paires (`deck_combo_pairs`), conditions ET (`deck_requirements`, FK composite), disponibilités (`deck_flags`) par deck → anciennes tables conservées jusqu'à l'étape 8, non copiées.
 - HOPT, catégories et affectations restent au compte.
-- JSON v1 refusé sans convertisseur ; JSON v2 complet ; import = une transaction, fusion avec la bibliothèque, conflit de pertinence ou HOPT contradictoire = échec total.
+- JSON v1 refusé sans convertisseur (approuvé le 7 sept. 2026) → réimporter la composition et redéfinir les paires ; toute conversion future est explicite. JSON v2 complet.
+- Import JSON = une transaction, fusion avec la bibliothèque ; conflit de pertinence ou HOPT contradictoire = échec total (approuvé le 7 sept. 2026) → jamais de fusion partielle.
 - Duplication remappe paires et conditions → aucune paire héritée par simple présence des cartes.
 - Passe impossible = `unavailableReason`, `total = 0` → toujours tester la disponibilité avant usage.
 - Buckets avec poids entiers ; percentile par rapport entier → 7,5 donne 8.
 - Pourcentages au centième, matrices au dixième, agrégation sur non-arrondi.
 - Résumés persistés non affichés ; brouillons v2 effacés seulement si identiques au sauvegardé ; anciens brouillons non repris.
 - Tests PostgreSQL uniquement sur conteneur jetable 127.0.0.1:55433.
+
+## Étape 4 (7 septembre 2026)
+- Réponse adoptée seulement si sa version demandée = `modelVersion` courant ; `modelVersion` avance à la mutation, avant le debounce → jamais d'adoption d'une réponse périmée, même sans annulation (testé en mode naïf).
+- Annuler = terminer le worker et reposer les tâches suivantes sur un worker neuf → un client par propriétaire : le store en possède un (une tâche à la fois), le comparateur un par montage, disposé au démontage.
+- Toute promesse du client se termine (`ComputeCancelled` / `ComputeFailed`) ; exception moteur = réponse `error` avec id → jamais de promesse bloquée.
+- Résultat périmé affiché atténué (`opacity-45`) avec son `resultContext` et « Recalcul… », contrôles vivants ; ouverture d'un deck = résultat vidé → jamais d'anciennes statistiques sous de nouveaux labels ou pour un autre deck.
+- Erreur = ancien résultat conservé et dit obsolète + Relancer (`recompute()`) ; annulation ≠ erreur.
+- `opening` numérote chaque `loadDeck` ; réponses d'ouvertures antérieures ignorées → une sauvegarde d'une ouverture précédente n'adopte pas sa révision (409 honnête possible ensuite), brouillon effacé par contenu.
+- Annotations globales n'invalident qu'après acquittement serveur.
+- `worker/fakeWorker.ts` réservé aux tests, répond avec le moteur réel → assertions sur des valeurs exactes.

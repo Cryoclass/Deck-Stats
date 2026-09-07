@@ -138,7 +138,7 @@ pas des défauts mathématiques.
 | 1. Règles et exemples | Contrat traçable ; fractions de contrôle ; oracle distinct ; vérifications existantes maintenues | Livré par ces documents et les 26 nouveaux tests |
 | 2. Calculs confirmés défectueux | Tests de régression reliés au moteur et à l’affichage ; masses, arrondis et conditions corrects | Livrée, 6 nouveaux tests de régression |
 | 3. Modèle et persistance | Paires manuelles propres au deck, non-engine commun au compte, enregistrement cohérent, import/export et duplication testés | Livrée, tests web/serveur/PostgreSQL ; migration seulement en base jetable |
-| 4. Recalcul | État périmé visible, actions possibles, invalidation immédiate, annulation et absence de réponse ancienne adoptée | Non commencée |
+| 4. Recalcul | État périmé visible, actions possibles, invalidation immédiate, annulation et absence de réponse ancienne adoptée | Livrée, tests `store/recompute.test.ts` et `worker/computeClient.test.ts` (faux worker, horloge simulée) |
 | 5. Chronologie et conditions | Comparaison exacte à l'oracle sur 5+pioche ; mêmes règles dans tous les consommateurs ; ET/OU testés | Non commencée |
 | 6. Configuration, création et mobile | Même deck métier depuis création/import ; erreurs explicites ; principales actions et sélections utilisables aux largeurs retenues | Non commencée |
 | 7. Comparateur et exports | Matrices côte à côte sur mobile, deltas non arrondis, données identiques entre analyse/Excel/comparateur | Non commencée |

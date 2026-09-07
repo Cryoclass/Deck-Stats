@@ -19,10 +19,14 @@ export function StatsPanel({
   onShowHands?: () => void;
 }) {
   const result = useDeck((s) => s.result);
-  const categories = useDeck((s) => s.categories);
+  const liveCategories = useDeck((s) => s.categories);
   const computing = useDeck((s) => s.computing);
+  const stale = useDeck((s) => s.stale);
+  const computeError = useDeck((s) => s.computeError);
+  const resultContext = useDeck((s) => s.resultContext);
+  const recompute = useDeck((s) => s.recompute);
   const computeMs = useDeck((s) => s.computeMs);
-  const deckSize = useDeck((s) => s.main.reduce((a, c) => a + c.copies, 0));
+  const liveDeckSize = useDeck((s) => s.main.reduce((a, c) => a + c.copies, 0));
   const horizonFirst = useDeck((s) => s.horizonFirst);
   const horizonSecond = useDeck((s) => s.horizonSecond);
   const setHorizon = useDeck((s) => s.setHorizon);
@@ -30,13 +34,25 @@ export function StatsPanel({
   const setStatsView = useDeck((s) => s.setStatsView);
 
   if (!result) {
+    // Sans résultat précédent : état initial de calcul, ou erreur avec relance (§6).
     return (
       <div className="p-4 text-sm text-ink-400">
-        Les statistiques apparaîtront ici dès qu'un deck est chargé.
+        {computeError ? (
+          <ComputeErrorNotice message={computeError} onRetry={recompute} standalone />
+        ) : computing ? (
+          <span role="status">Calcul initial des statistiques…</span>
+        ) : (
+          'Les statistiques apparaîtront ici dès qu’un deck est chargé.'
+        )}
       </div>
     );
   }
 
+  // Étape 4 : le résultat s'affiche avec SON contexte (catégories et taille de deck du
+  // calcul), jamais avec les libellés de l'état courant — pas de mélange d'anciennes
+  // statistiques avec de nouveaux labels. Les contrôles (horizons) restent vivants.
+  const categories = resultContext?.categories ?? liveCategories;
+  const deckSize = resultContext?.deckSize ?? liveDeckSize;
   const outOfBounds = deckSize < 40 || deckSize > 60;
 
   // Cycle : Starts jouables → Non-engine (total) → une entrée par catégorie (§6).
@@ -61,9 +77,31 @@ export function StatsPanel({
       <div className="flex items-center justify-between border-b border-ink-800 px-3 py-2">
         <h2 className="text-sm font-semibold text-ink-100">Probabilités</h2>
         <span className="tnum text-[10px] text-ink-500">
-          {computing ? 'calcul…' : `${computeMs.toFixed(0)} ms`}
+          {computing ? (
+            <span role="status" className="rounded bg-ink-800 px-1.5 py-0.5 text-ink-300">
+              Recalcul…
+            </span>
+          ) : computeError ? (
+            <span className="text-red-300">calcul en échec</span>
+          ) : (
+            `${computeMs.toFixed(0)} ms`
+          )}
         </span>
       </div>
+
+      {/* Résultat périmé : dit explicitement, avec son contexte, et atténué plus bas. */}
+      {stale &&
+        (computeError ? (
+          <ComputeErrorNotice message={computeError} onRetry={recompute} />
+        ) : (
+          <div
+            role="status"
+            className="border-b border-sky-500/20 bg-sky-500/5 px-3 py-1.5 text-[11px] text-sky-300/90"
+          >
+            Recalcul… Statistiques de la version précédente (deck de {deckSize} cartes) affichées
+            en attendant.
+          </div>
+        ))}
 
       {outOfBounds && (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-300">
@@ -111,12 +149,15 @@ export function StatsPanel({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-px bg-ink-800 sm:grid-cols-2">
-        <PassColumn title="Going first" subtitle="main de 5" pass={result.first} view={view} />
-        <PassColumn title="Going second" subtitle="main de 6" pass={result.second} view={view} />
-      </div>
+      {/* Périmé = estompé par opacité (charte §7.15), jamais masqué ni flouté. */}
+      <div className={`transition-opacity ${stale ? 'opacity-45' : ''}`}>
+        <div className="grid grid-cols-1 gap-px bg-ink-800 sm:grid-cols-2">
+          <PassColumn title="Going first" subtitle="main de 5" pass={result.first} view={view} />
+          <PassColumn title="Going second" subtitle="main de 6" pass={result.second} view={view} />
+        </div>
 
-      <CrossMatrix pass={column === 'first' ? result.first : result.second} column={column} />
+        <CrossMatrix pass={column === 'first' ? result.first : result.second} column={column} />
+      </div>
 
       <QueryMode onShowHands={onShowHands} />
     </div>
@@ -340,4 +381,31 @@ function HorizonStepper({
 
 function meanFromDist(dist: number[]): number {
   return dist.reduce((s, p, i) => s + (p ?? 0) * i, 0);
+}
+
+/** Erreur de calcul (charte §7.12) avec relance. L'ancien résultat, s'il existe, reste
+ *  affiché et est explicitement dit obsolète ; sans résultat, le bandeau est seul. */
+function ComputeErrorNotice({
+  message,
+  onRetry,
+  standalone = false,
+}: {
+  message: string;
+  onRetry: () => void;
+  standalone?: boolean;
+}) {
+  return (
+    <div
+      role="alert"
+      className={`${standalone ? 'rounded-lg border' : 'border-b'} border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-300`}
+    >
+      {standalone ? 'Le calcul a échoué' : 'Statistiques obsolètes : le recalcul a échoué'} — {message}
+      <button
+        onClick={onRetry}
+        className="ml-2 rounded bg-red-500/20 px-1.5 py-0.5 text-red-200 hover:bg-red-500/30"
+      >
+        Relancer
+      </button>
+    </div>
+  );
 }

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, type DeckSummary } from '../lib/api.js';
 import { useRouter } from '../lib/router.js';
 import { buildEngineModel } from '../lib/engineModel.js';
-import { computePassesInWorker } from '../worker/client.js';
+import { createEngineClient } from '../worker/client.js';
+import { ComputeCancelled } from '../worker/computeClient.js';
 import {
   compareDecks,
   scenarioCounts,
@@ -43,6 +44,10 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    // Le comparateur POSSÈDE son client de calcul (étape 4) : un worker par montage,
+    // deux tâches. Démontage ou changement de decks → `dispose()` : worker terminé,
+    // promesses rejetées (`ComputeCancelled`), jamais bloquées ni adoptées.
+    const client = createEngineClient();
     setState({ status: 'loading' });
     (async () => {
       const [da, db, lib] = await Promise.all([api.getDeck(a), api.getDeck(b), api.getLibrary()]);
@@ -58,7 +63,7 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
       const results = await Promise.all(
         decks.map(async ({ detail, source }) => {
           const { input } = buildEngineModel(source);
-          const { result } = await computePassesInWorker(input);
+          const { result } = await client.compute(input, 'passes').promise;
           return {
             name: detail.name,
             matrices: {
@@ -96,15 +101,17 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
       };
     })().then(
       (loaded) => !cancelled && setState({ status: 'ready', ...loaded }),
-      (err: unknown) =>
-        !cancelled &&
+      (err: unknown) => {
+        if (cancelled || err instanceof ComputeCancelled) return;
         setState({
           status: 'error',
           message: err instanceof Error ? err.message : 'Chargement impossible.',
-        }),
+        });
+      },
     );
     return () => {
       cancelled = true;
+      client.dispose();
     };
   }, [a, b]);
 

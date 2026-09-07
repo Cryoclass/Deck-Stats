@@ -1,5 +1,45 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 4, 7 septembre 2026
+
+Le [compte rendu](docs/etape-4.md) détaille le recalcul versionné et annulable.
+
+- **Deux gardes indépendantes contre une réponse périmée.** Versionnement
+  (`modelVersion` avancé à la mutation, avant le délai de regroupement ; `resultVersion`
+  porté par le résultat ; adoption seulement si égalité) ET annulation de la tâche en
+  cours à toute invalidation. Le contre-exemple de la passation (A lancé, modification
+  vers B, A résolu pendant le délai de B) est testé en mode « naïf », sans annulation,
+  pour prouver que le versionnement suffit seul ; l'annulation, elle, libère les
+  ressources.
+- **Annuler = terminer le worker.** Un calcul synchrone dans un worker ne s'interrompt
+  pas autrement. Le client repose les tâches encore attendues sur un worker neuf.
+  Coût assumé : un nouveau worker par invalidation survenue pendant un calcul.
+- **Propriété des tâches : un client = un worker = un propriétaire.** Le store en
+  possède un pour sa durée de vie (au plus une tâche) ; le comparateur en crée un par
+  montage et le dispose au démontage — terminer le worker de l'éditeur ne peut plus
+  abandonner les promesses du comparateur. Toute promesse se termine
+  (`ComputeCancelled`, `ComputeFailed`) ; une exception du moteur revient comme réponse
+  d'erreur portant l'id, jamais par `onerror` sans id.
+- **Le résultat périmé reste affiché avec SON contexte** (`resultContext` : taille,
+  catégories, horizons capturés au lancement), atténué par `opacity-45` (charte §7.15)
+  sous un état « Recalcul… » ; les contrôles restent vivants. Une nouvelle catégorie
+  n'apparaît qu'avec le résultat qui la connaît ; l'ouverture d'un deck vide le
+  résultat (état initial), jamais les statistiques du deck précédent.
+- **Erreur** : ancien résultat conservé et dit obsolète (bandeau §7.12), bouton
+  Relancer (`recompute()`) ; une annulation n'est jamais présentée comme une erreur.
+- **Ouvertures numérotées** (`opening`, incrémenté à chaque `loadDeck`) : toute réponse
+  d'une ouverture antérieure — chargement, brouillon, sauvegarde — est ignorée.
+  Conséquence assumée : une sauvegarde partie d'une ouverture précédente n'adopte plus
+  sa révision sur le deck rouvert ; si le rechargement a lu la base avant le commit, le
+  prochain Enregistrer reçoit un 409 honnête au lieu d'écraser silencieusement le
+  contenu sauvegardé par un état antérieur. Le brouillon, comparé par contenu, est
+  effacé dans tous les cas.
+- **Annotations globales** (HOPT, catégories) n'invalident qu'après acquittement
+  serveur : le modèle ne change pas avant.
+- **Limites** : aucun test React ni navigateur (Vitest en environnement `node`) ; la
+  limite de coût des très grands decks n'est toujours pas bornée (réserve §2 du
+  contrat), un tel calcul reste seulement annulable.
+
 ## Première mission — étapes 2 et 3, 7 septembre 2026
 
 Les [corrections et décisions livrées](docs/etapes-2-3.md) remplacent les conventions
@@ -10,6 +50,11 @@ Les résumés statistiques historiques sont invalidés et ne sont plus affichés
 Le JSON v1 et les anciens brouillons sont refusés ; le JSON v2 conserve conditions,
 notes et requêtes. La migration a été testée uniquement dans une base jetable.
 La purge VPS et les recalculs annulables ne sont pas réalisés à ces étapes.
+
+Arbitrages d'implémentation approuvés explicitement par l'utilisateur le 7 septembre 2026 :
+
+- JSON version 1 refusé avec message explicite, sans convertisseur automatique → une ancienne sauvegarde se réimporte par sa composition et ses paires se redéfinissent ; toute conversion future sera un traitement explicitement contrôlé, jamais implicite.
+- L'import JSON échoue entièrement sur conflit de bibliothèque (catégorie de même nom avec une autre pertinence, HOPT explicitement contradictoire) → aucune fusion partielle : la bibliothèque du compte et ses autres decks restent intacts tant que le conflit n'est pas résolu.
 
 ## Première mission — étape 1, 7 septembre 2026
 

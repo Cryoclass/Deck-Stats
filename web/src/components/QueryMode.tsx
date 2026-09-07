@@ -24,6 +24,7 @@ function subjectKey(s: QuerySubject): string {
 
 export function QueryMode({ onShowHands }: { onShowHands?: () => void }) {
   const result = useDeck((s) => s.result);
+  const stale = useDeck((s) => s.stale);
   const categories = useDeck((s) => s.categories);
   const criteria = useDeck((s) => s.queryCriteria);
   const setCriteria = useDeck((s) => s.setQueryCriteria);
@@ -106,7 +107,8 @@ export function QueryMode({ onShowHands }: { onShowHands?: () => void }) {
         + critère
       </button>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      {/* Étape 4 : probabilités d'un résultat périmé atténuées, critères toujours éditables. */}
+      <div className={`mt-3 grid grid-cols-2 gap-2 transition-opacity ${stale ? 'opacity-45' : ''}`}>
         <QueryResult label="Going first" value={pFirst} />
         <QueryResult label="Going second" value={pSecond} />
       </div>

@@ -5,7 +5,8 @@ import { useDeck } from './deckStore.js';
 import { emptyConfiguration } from '../../../server/src/domain/deckConfiguration.js';
 import { stateFromConfiguration } from '../lib/deckConfiguration.js';
 
-vi.mock('../worker/client.js',() => ({ computeInWorker: vi.fn(() => new Promise(() => {})) }));
+// Client de calcul muet : aucune promesse ne se règle, aucun recalcul n'aboutit ici (étape 4 : recompute.test.ts).
+vi.mock('../worker/client.js',() => ({ createEngineClient: () => ({ compute: () => ({ id: 0,promise: new Promise(() => {}),cancel() {} }),cancelAll() {},dispose() {},pendingCount: 0 }) }));
 vi.mock('../lib/draft.js',() => ({ saveDraft: vi.fn(async () => {}),clearDraft: vi.fn(async () => {}),loadDraft: vi.fn(async () => null) }));
 vi.mock('../lib/api.js',async (original) => {
   const actual=await original<typeof import('../lib/api.js')>();

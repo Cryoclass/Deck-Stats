@@ -36,5 +36,10 @@ Monorepo npm workspaces. `db/` : schéma normatif idempotent + migrations additi
 - `migrate`, `prune-cards --apply`, `adopt` écrivent en base : sauvegarde avant, simulation d'abord.
 - Anciennes écritures partielles → HTTP 410 ; `PUT /api/decks/:id` exige `expectedRevision` (409 sinon) ; deck d'autrui → 404, jamais 403.
 - ExcelJS : import dynamique uniquement (chunk séparé chargé au premier export).
+- PowerShell altère les accents d'un script passé à Node par un pipe (encodage par défaut) et ses apostrophes typographiques sont des délimiteurs : pour tout texte français, passe par un fichier explicitement UTF-8 ou un patch ; ne « corrige » jamais du code après une telle corruption.
+- Postgres jetable des tests d'intégration : `docker run --rm --tmpfs … -p 127.0.0.1:55433:5432 postgres:17-alpine` (procédure dans deploy/configuration-v2.md) ; le port 55433 doit être libre, ce n'est jamais le 5433 de la base de dev.
+- Sous PowerShell, `npm` est `npm.cmd` (`npm.cmd run …`) ; les exemples des docs suivent cette forme.
+- En sandbox, esbuild (Vitest) peut être bloqué sur la lecture de `../../../..` et Docker sur son canal : relancer la commande hors sandbox, ne pas modifier la configuration pour contourner.
+- Aucun lint ni formatter : `npm run typecheck` et les tests sont les seules gardes ; une suite verte ne dit rien du style, imite le fichier touché.
 
 Plan courant : docs/PLAN.md — lis-le au début de chaque session, ainsi que le dernier compte rendu d'étape.

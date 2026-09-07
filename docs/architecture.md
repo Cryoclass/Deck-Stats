@@ -4,7 +4,7 @@ Complète AGENTS.md (commandes, règles, pièges). Sémantique métier : regles-
 
 ## Flux principaux
 
-1. **Calcul** : composant React → `web/src/store/deckStore.ts` (état éditeur) → `web/src/lib/engineModel.ts` (deck + annotations → `EngineInput`) → `web/src/worker/client.ts` → Web Worker → `engine/computeAll` → `EngineResult` (deux `PassResult`, deltas) → sélecteurs, panneau de stats, mode requête et mur de mains (ces deux derniers lisent les `buckets`, sans recalcul).
+1. **Calcul** : composant React → `web/src/store/deckStore.ts` (état éditeur) → `web/src/lib/engineModel.ts` (deck + annotations → `EngineInput`) → `web/src/worker/computeClient.ts` (client possédé par le store : une tâche à la fois, annulée à toute invalidation, réponse adoptée seulement si sa version est encore demandée) → Web Worker → `engine/computeAll` → `EngineResult` (deux `PassResult`, deltas) → sélecteurs, panneau de stats, mode requête et mur de mains (ces deux derniers lisent les `buckets`, sans recalcul).
 2. **Enregistrement d'un deck** : bouton Enregistrer → `lib/deckConfiguration.ts` (`configurationFromState`) → `PUT /api/decks/:id { configuration, expectedRevision }` → route (garde auth, transaction, verrou de la ligne, `parseConfiguration`) → `server/src/domain/deckRepository.ts` (écriture complète) → `revision + 1`. Brouillon IndexedDB (`lib/draft.ts`) écrit en continu, indépendant.
 3. **Bibliothèque du compte** (HOPT, catégories, affectations) : écriture immédiate via `/api/library/*`, sans passer par Enregistrer.
 4. **Comparateur** : deux `DeckDetail` + bibliothèque → même `engineModel` → worker mode `passes` → `engine/compare.ts` (pur) → page + export Excel (`lib/exportComparison.ts`, ExcelJS en import dynamique).
@@ -25,8 +25,8 @@ Complète AGENTS.md (commandes, règles, pièges). Sémantique métier : regles-
 | `server/scripts/` | `migrate-cards`, `prune-stale-cards`, `adopt-legacy` (compilés dans l'image) |
 | `server/tests/` | `*.test.ts` unitaires (node:test), `persistence.integration.ts` (PostgreSQL jetable) |
 | `web/src/engine/` | Moteur exact pur : `binomial` (bigint), `matching` (couplage maximum), `evaluate` (prepare/evaluate, prérequis, HOPT, cartes mortes, signatures), `enumerate` (computePass/computeAll, buckets, deltas), `hand` (tirage et note), `query` (critères), `compare` (comparateur), `reference/` (oracle + tests P/N/S/C/M) |
-| `web/src/worker/` | `engine.worker.ts` (calcule, c'est tout) et `client.ts` (promesses par id) |
-| `web/src/store/` | `deckStore.ts` (état éditeur, dirty, révision, debounce du recalcul), `selectors.ts` |
+| `web/src/worker/` | `engine.worker.ts` (calcule, c'est tout ; erreur relayée avec l'id), `computeClient.ts` (client pur : propriété des tâches, annulation par `terminate`, promesses toujours réglées), `fakeWorker.ts` (faux worker contrôlable, tests), `client.ts` (seul import du worker Vite) |
+| `web/src/store/` | `deckStore.ts` (état éditeur, dirty, révision, ouvertures numérotées, recalcul versionné `modelVersion`/`resultVersion`, `stale`, `resultContext`, debounce, annulation), `selectors.ts` |
 | `web/src/lib/` | `api.ts`, `auth.tsx`, `router.tsx` (`/decks`, `/decks/:id`, `/compare/:a/:b`), `deckConfiguration.ts`, `draft.ts`, `engineModel.ts`, `exportDeck.ts`, `exportComparison.ts`, `ydk.ts`, `fmt.ts`, `colors.ts` |
 | `web/src/components/` | Pages (Home, Editor, Compare, Login), grille d'annotation et modes, combos, inventaire, stats, requête, mur de mains, dialogues |
 | `deploy/` | `Dockerfile` (multi-étages, Node 22), `docker-compose.prod.yml` (db + app, aucun port publié, réseau `edge`), `deploy.sh`, `backup.sh`, `configuration-v2.md` |

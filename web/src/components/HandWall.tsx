@@ -8,6 +8,8 @@ import { Segmented } from './ui.js';
 export function HandWall({ column }: { column: 'first' | 'second' }) {
   const result = useDeck((s) => s.result);
   const model = useDeck((s) => s.model);
+  const stale = useDeck((s) => s.stale);
+  const computing = useDeck((s) => s.computing);
   const importance = useDeck((s) => s.importance);
   const setImportance = useDeck((s) => s.setImportance);
   const cards = useDeck((s) => s.cards);
@@ -61,7 +63,9 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
   if (!result || mainLen === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-ink-400">
-        Charge un deck pour générer des mains de test.
+        {!result && computing && mainLen > 0
+          ? 'Calcul initial des statistiques…'
+          : 'Charge un deck pour générer des mains de test.'}
       </div>
     );
   }
@@ -137,11 +141,19 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        <div className="mb-2 text-[11px] text-ink-500">
-          {view.length} mains affichées{' '}
-          {noted.length !== view.length ? `(sur ${noted.length} tirées)` : ''}
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-ink-500">
+          <span>
+            {view.length} mains affichées{' '}
+            {noted.length !== view.length ? `(sur ${noted.length} tirées)` : ''}
+          </span>
+          {/* Étape 4 : les notes viennent du dernier résultat ; s'il est périmé, on le dit et on atténue. */}
+          {stale && (
+            <span role="status" className="rounded bg-ink-800 px-1.5 py-0.5 text-ink-300">
+              Recalcul… notes de la version précédente
+            </span>
+          )}
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className={`flex flex-col gap-1.5 transition-opacity ${stale ? 'opacity-45' : ''}`}>
           {view.map((h, i) => (
             <div
               key={i}

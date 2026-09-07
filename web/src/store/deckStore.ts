@@ -3,7 +3,8 @@ import type { Card, Category, ComboPair, DeckCard, Relevance, StartRequirement }
 import { pairKey } from '../types.js';
 import type { EngineResult } from '../engine/types.js';
 import type { QueryCriterion, SavedQuery } from '../engine/query.js';
-import { computeInWorker } from '../worker/client.js';
+import { createEngineClient } from '../worker/client.js';
+import { ComputeCancelled, type ComputeClient, type ComputeTask } from '../worker/computeClient.js';
 import { ApiError, api } from '../lib/api.js';
 import type { ParsedDeck } from '../lib/ydk.js';
 import { saveDraft, loadDraft, clearDraft, type DeckDraft } from '../lib/draft.js';
@@ -51,7 +52,21 @@ interface State {
   result: EngineResult | null;
   model: EngineModel | null;
   computeMs: number;
-  computing: boolean;
+  computing: boolean; // une version est demandée et pas encore calculée (dès l'invalidation)
+  // ─── Recalcul (étape 4, contrat §6) ───
+  // `modelVersion` avance à CHAQUE invalidation, dès la mutation et avant le délai de
+  // regroupement ; `resultVersion` est la version pour laquelle `result` a été calculé ;
+  // `stale` = résultat présent mais d'une version antérieure (affiché atténué) ;
+  // `resultContext` = contexte (taille, catégories, horizons) de CE résultat, pour le
+  // présenter avec ses propres libellés et non ceux de l'état courant.
+  modelVersion: number;
+  resultVersion: number;
+  stale: boolean;
+  computeError: string | null;
+  resultContext: ResultContext | null;
+  // Numéro d'ouverture (loadDeck). L'identité du deck seule ne distingue pas deux
+  // ouvertures du même deck : toute réponse d'une ouverture antérieure est ignorée.
+  opening: number;
   removalToast: { card: DeckCard; index: number; ts: number } | null;
   extraSideHidden: boolean;
 
@@ -66,6 +81,7 @@ interface State {
   importDeckJson: (json: DeckJson) => Promise<string | null>;
   loadDeck: (id: string) => Promise<void>;
   saveDeck: () => Promise<void>;
+  recompute: () => void; // relance explicite (après une erreur de calcul)
   resumeDraft: () => void;
   discardDraft: () => Promise<void>;
   addCard: (card: Card, copies?: number) => void;
@@ -101,6 +117,15 @@ interface State {
   renameDeck: (name: string) => void;
 }
 
+/** Contexte d'un résultat : ce qu'il faut pour l'afficher avec ses propres libellés. */
+export interface ResultContext {
+  deckId: string | null;
+  deckSize: number;
+  categories: Category[];
+  horizonFirst: number;
+  horizonSecond: number;
+}
+
 /** §B.3.5 : horizon borné à [1, 3] (défauts first=1, second=2). */
 function clampHorizon(v: number): number {
   return Math.max(1, Math.min(3, Math.round(v)));
@@ -117,18 +142,61 @@ const defaultQuery = (): QueryCriterion[] => [
 // Toute modification (locale ou globale) invalide entièrement l'état calculé puis
 // déclenche un recalcul intégral dans le worker (§4C.2) — jamais de MàJ partielle.
 // La construction du modèle vit dans lib/engineModel.ts (partagée avec le comparateur).
+//
+// Étape 4 (contrat §6) :
+//   1. l'invalidation est IMMÉDIATE : `modelVersion` avance à la mutation, avant le
+//      délai de regroupement ; l'ancien résultat reste affiché, marqué `stale` ;
+//   2. un calcul en cours pour une version antérieure est ANNULÉ (worker terminé,
+//      ressources libérées) — le store possède un seul client et au plus une tâche ;
+//   3. une réponse n'est adoptée que si sa version est encore celle demandée ;
+//   4. une erreur conserve l'ancien résultat (obsolète, explicite) et `recompute()`
+//      permet la relance ; une annulation n'est pas une erreur.
+export const COMPUTE_DEBOUNCE_MS = 50;
 let computeTimer: ReturnType<typeof setTimeout> | null = null;
-let computeSeq = 0;
+let computeClient: ComputeClient | null = null;
+let inflight: ComputeTask | null = null;
+const engineClient = (): ComputeClient => (computeClient ??= createEngineClient());
+
 function scheduleCompute(get: () => State, set: (p: Partial<State>) => void): void {
   if (computeTimer) clearTimeout(computeTimer);
-  set({ computing: true });
-  computeTimer = setTimeout(async () => {
-    const model = buildEngineModel(get());
-    const mySeq = ++computeSeq;
-    const { result, ms } = await computeInWorker(model.input);
-    if (mySeq !== computeSeq) return; // périmé
-    set({ result, model, computeMs: ms, computing: false });
-  }, 50);
+  if (inflight) {
+    inflight.cancel();
+    inflight = null;
+  }
+  const version = get().modelVersion + 1;
+  set({ modelVersion: version, stale: get().result !== null, computing: true, computeError: null });
+  computeTimer = setTimeout(() => {
+    computeTimer = null;
+    launchCompute(version, get, set);
+  }, COMPUTE_DEBOUNCE_MS);
+}
+
+function launchCompute(version: number, get: () => State, set: (p: Partial<State>) => void): void {
+  if (get().modelVersion !== version) return; // une invalidation plus récente a repris la main
+  const s = get();
+  const model = buildEngineModel(s);
+  const resultContext: ResultContext = {
+    deckId: s.deckId,
+    deckSize: s.main.reduce((sum, c) => sum + c.copies, 0),
+    categories: s.categories,
+    horizonFirst: s.horizonFirst,
+    horizonSecond: s.horizonSecond,
+  };
+  const task = engineClient().compute(model.input);
+  inflight = task;
+  task.promise.then(
+    ({ result, ms }) => {
+      if (inflight === task) inflight = null;
+      if (get().modelVersion !== version) return; // réponse d'une version périmée : jamais adoptée
+      set({ result, model, resultContext, resultVersion: version, stale: false, computing: false, computeMs: ms, computeError: null });
+    },
+    (e: unknown) => {
+      if (inflight === task) inflight = null;
+      if (e instanceof ComputeCancelled) return; // annulée par une invalidation plus récente
+      if (get().modelVersion !== version) return;
+      set({ computing: false, computeError: e instanceof Error ? e.message : 'Calcul impossible.' });
+    },
+  );
 }
 
 // Each draft captures the edited deck immediately, even if navigation follows.
@@ -189,6 +257,12 @@ export const useDeck = create<State>((set, get) => {
     model: null,
     computeMs: 0,
     computing: false,
+    modelVersion: 0,
+    resultVersion: 0,
+    stale: false,
+    computeError: null,
+    resultContext: null,
+    opening: 0,
     removalToast: null,
     extraSideHidden: false,
     dirty: false,
@@ -244,26 +318,39 @@ export const useDeck = create<State>((set, get) => {
     },
 
     // Charge un deck depuis la base dans l'éditeur, puis propose un brouillon si présent.
+    // Chaque appel ouvre une NOUVELLE ouverture (étape 4) : après chaque attente, une
+    // ouverture plus récente rend celle-ci muette. Deux chargements résolus à l'envers
+    // laissent donc l'état du dernier demandé ; un brouillon ou une sauvegarde d'une
+    // ouverture antérieure ne touchent jamais l'état.
     async loadDeck(id) {
+      const opening = get().opening + 1;
+      set({ opening });
+      const current = () => get().opening === opening;
       try {
         // Library must be ready before building the model for this deck.
         await libraryQueue;
         await get().bootstrap();
+        if (!current()) return;
         if (!get().online) throw new Error('Bibliothèque indisponible : impossible de charger une configuration fiable.');
         const detail = await api.getDeck(id);
+        if (!current()) return;
         const configuration = configurationFromDetail(detail);
         const cardMap = { ...get().cards };
         const ids = new Set([...configuration.cards.map((c) => c.card_id),...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),...configuration.requirements.map((r) => r.required_card_id)]);
         try { for (const c of await api.cardsByIds([...ids])) cardMap[c.id] = c; } catch { /* Catalogue lookup is optional. */ }
+        if (!current()) return;
+        // Aucune ancienne statistique ne survit à l'ouverture d'un deck : état initial de
+        // calcul, jamais un mélange avec le résultat du deck précédent (§6).
         set({ ...stateFromConfiguration(configuration),cards: cardMap,deckId: id,revision: detail.revision,
           dirty: false,editRevision: 0,lastSavedAt: Date.parse(detail.updated_at ?? ''),draftAvailable: null,
-          persistenceError: null,removalToast: null,queryCriteria: defaultQuery(),handFilterByQuery: false });
+          persistenceError: null,removalToast: null,queryCriteria: defaultQuery(),handFilterByQuery: false,
+          result: null,model: null,resultContext: null,stale: false,computeError: null });
         recompute();
         const draft = await loadDraft(id);
-        if (get().deckId !== id) return;
+        if (!current()) return;
         if (draft && JSON.stringify(draft.configuration) !== JSON.stringify(configuration)) set({ draftAvailable: draft });
       } catch (e) {
-        set({ persistenceError: e instanceof Error ? e.message : 'Chargement impossible.' });
+        if (current()) set({ persistenceError: e instanceof Error ? e.message : 'Chargement impossible.' });
       }
     },
 
@@ -272,20 +359,30 @@ export const useDeck = create<State>((set, get) => {
       set({ saving: true,persistenceError: null });
       const s = get();
       if (!s.deckId) { set({ saving: false }); return; }
+      // La réponse n'est adoptée que par l'OUVERTURE qui l'a demandée (étape 4) : quitter
+      // puis rouvrir le même deck avant la réponse ne doit ni effacer le statut modifié
+      // d'une édition plus récente, ni poser une révision sur un état rechargé (dont on ne
+      // sait pas s'il précède ou suit le commit). Le brouillon, comparé par contenu,
+      // est effacé dans tous les cas s'il correspond au sauvegardé.
+      const sameOpening = () => get().opening === s.opening && get().deckId === s.deckId;
       try {
         const configuration = configurationFromState(s);
         const saved = await api.saveConfiguration(s.deckId,configuration,s.revision);
-        if (get().deckId === s.deckId) {
+        if (sameOpening()) {
           const unchanged = get().editRevision === s.editRevision;
           set({ revision: saved.revision,dirty: !unchanged,lastSavedAt: Date.now(),online: true });
           if (!unchanged) scheduleDraft(get);
         }
         await clearDraft(s.deckId,configuration);
       } catch (e) {
-        if (get().deckId === s.deckId) set({ dirty: true,persistenceError: e instanceof Error ? e.message : 'Enregistrement impossible.' });
+        if (sameOpening()) set({ dirty: true,persistenceError: e instanceof Error ? e.message : 'Enregistrement impossible.' });
       } finally {
         set({ saving: false });
       }
+    },
+
+    recompute() {
+      recompute();
     },
 
     resumeDraft() {

@@ -160,10 +160,10 @@ de sauvegarde/restauration VPS et leur validation restent à l'étape 8.
 
 ## Passation
 
-- Les politiques de compatibilité JSON et de conflit de bibliothèque décrites
-  plus haut sont mes arbitrages d'implémentation ; elles n'ont pas reçu de
-  validation utilisateur distincte, point par point. Ne pas les présenter
-  comme des demandes explicites du brief.
+- Les politiques de compatibilité JSON (version 1 refusée sans convertisseur) et
+  de conflit de bibliothèque (échec de tout l'import) étaient des arbitrages
+  d'implémentation ; elles ont été approuvées par l'utilisateur le 7 septembre
+  2026 et consignées dans DECISIONS.md.
 - J'ai volontairement évité de refondre le cycle de vie asynchrone du store
   pendant la séparation des données : cela aurait engagé la stratégie
   d'annulation de l'étape 4 sans ses tests de concurrence.

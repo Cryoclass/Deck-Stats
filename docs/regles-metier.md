@@ -8,7 +8,8 @@ historiques pour la cible de cette mission ; les anciens documents restent utile
 pour comprendre le fonctionnement actuel.
 
 Avancement : [étapes 2 et 3 livrées](etapes-2-3.md), avec migration additive testée
-en base jetable. La purge reste à l’étape 8. Les profils chronologiques et ET/OU
+en base jetable ; [étape 4 livrée](etape-4.md) : recalcul versionné, invalidation
+immédiate, annulation, état périmé visible. La purge reste à l’étape 8. Les profils chronologiques et ET/OU
 ci-dessous restent la cible de l’étape 5.
 
 La stack est conservée. Les notations des tests sont indépendantes du futur
