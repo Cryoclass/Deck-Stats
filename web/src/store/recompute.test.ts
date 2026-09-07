@@ -101,7 +101,7 @@ function detail(id: string, name: string, revision = 1): DeckDetail {
     starters: [1],
     pairs: [],
     pair_exclusions: [],
-    start_requirements: [],
+    conditions: [],
     deadFirst: [],
     deadSecond: [],
     params: {},
@@ -109,7 +109,7 @@ function detail(id: string, name: string, revision = 1): DeckDetail {
     updated_at: '2026-09-07T00:00:00Z',
   };
 }
-const library: Library = { hoptCardIds: [], categories: [], cardCategories: [] };
+const library: Library = { hoptCardIds: [], categories: [], cardCategories: [], profiles: [], groups: [] };
 /** Lance le calcul courant : expire le délai et renvoie l'id de la requête postée. */
 function launch(): number {
   vi.advanceTimersByTime(COMPUTE_DEBOUNCE_MS);
@@ -151,7 +151,7 @@ describe('Étape 4 — recalcul', () => {
     await flush();
     expect(state()).toMatchObject({ computing: false, stale: false, resultVersion: 1, modelVersion: 1, computeMs: 12 });
     expect(state().result?.first.total).toBe(6); // C(6, 5)
-    expect(state().resultContext).toMatchObject({ deckId, deckSize: 6, horizonFirst: 1, horizonSecond: 2 });
+    expect(state().resultContext).toMatchObject({ deckId, deckSize: 6, unprofiledCardIds: [] });
   });
 
   it("contre-exemple : lancer A, modifier vers B, résoudre A avant le délai de B → A n'est jamais adopté", async () => {
@@ -191,7 +191,7 @@ describe('Étape 4 — recalcul', () => {
     const r1 = state().result;
     expect(r1).not.toBeNull();
     // Nouvelle carte ET nouvelle catégorie : ni la taille ni les libellés du résultat affiché ne bougent.
-    useDeck.setState({ categories: [{ id: 'cat-1', name: 'Handtrap', relevance: 'both', is_builtin: false }] });
+    useDeck.setState({ categories: [{ id: 'cat-1', name: 'Handtrap', is_builtin: false }], cardCategories: new Map([[3, new Set(['cat-1'])]]) });
     state().addCard({ id: 3, name: 'C' } as Card, 3);
     expect(state()).toMatchObject({ stale: true, computing: true, modelVersion: 2, resultVersion: 1, computeError: null });
     expect(state().result).toBe(r1);
@@ -200,7 +200,10 @@ describe('Étape 4 — recalcul', () => {
     await settle();
     expect(state()).toMatchObject({ stale: false, computing: false, resultVersion: 2 });
     expect(state().result).not.toBe(r1);
-    expect(state().resultContext).toMatchObject({ deckSize: 9, categories: [{ id: 'cat-1', name: 'Handtrap' }] });
+    // La carte 3 est étiquetée sans profil : signalée avec le résultat qui la connaît (Q5).
+    expect(state().resultContext).toMatchObject({ deckSize: 9, categories: [{ id: 'cat-1', name: 'Handtrap' }], unprofiledCardIds: [3] });
+    expect(state().result?.second.perCategory[0].mean).toBeGreaterThan(0); // copies brutes comptées
+    expect(state().result?.second.meanNonEngine).toBe(0); // potentiel nul sans profil
   });
 
   it('un calcul en cours pour une version antérieure est annulé : worker terminé, tâche B sur un worker neuf', async () => {
@@ -298,12 +301,12 @@ describe('Étape 4 — recalcul', () => {
     seed();
     state().toggleStarter(1); // la carte doit être annotée pour être un type du modèle
     await settle();
-    const request = deferred<unknown>();
+    const request = deferred<{ ok: boolean; is_hopt: boolean; availability: null; group_id: null }>();
     vi.mocked(api.setFlags).mockReturnValue(request.promise);
     state().toggleHopt(1);
     await flush();
     expect(state()).toMatchObject({ stale: false, computing: false, modelVersion: 1 });
-    request.resolve({ ok: true });
+    request.resolve({ ok: true, is_hopt: true, availability: null, group_id: null });
     await flush();
     await flush();
     expect(state()).toMatchObject({ stale: true, computing: true, modelVersion: 2 });

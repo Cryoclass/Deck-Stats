@@ -24,6 +24,8 @@ dc stop app # éviter des écritures de l'ancienne API pendant la transition
 dc exec -T db psql -q -U ygo -d ygo -v ON_ERROR_STOP=1 -f - < ../db/schema.sql
 echo '==> Migration additive des configurations (aucune purge des anciens combos)...'
 dc exec -T db psql -q -U ygo -d ygo -v ON_ERROR_STOP=1 -f - < ../db/migrations/001-deck-configuration.sql
+echo '==> Migration additive des profils, plafonds et conditions ET/OU (etape 5B, aucune purge)...'
+dc exec -T db psql -q -U ygo -d ygo -v ON_ERROR_STOP=1 -f - < ../db/migrations/002-profiles-and-conditions.sql
 dc up -d
 dc ps
 echo '==> Déployé. Santé : curl -s https://analysis.scratchrecode.com/api/health'

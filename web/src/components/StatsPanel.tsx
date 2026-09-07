@@ -1,23 +1,25 @@
 import { useDeck } from '../store/deckStore.js';
-import type { PassResult } from '../engine/types.js';
+import type { AnalysisContext, PassResult } from '../engine/types.js';
 import { pct, num } from '../lib/fmt.js';
 import { Bar } from './ui.js';
 import { QueryMode } from './QueryMode.js';
 import { toComparisonMatrix } from '../engine/compare.js';
+import { CONTEXT_LABEL } from './Header.js';
 
 /** Une vue = une distribution parcourable dans le panneau (itération 6). */
 interface StatsView {
   id: string;
   label: string;
+  hint?: string;
 }
 
-export function StatsPanel({
-  column,
-  onShowHands,
-}: {
-  column: 'first' | 'second';
-  onShowHands?: () => void;
-}) {
+/** « Départs théoriques » (contrat §4) : sources de start disponibles dans la main
+ *  observée, sans preuve qu'une ligne soit successivement réalisable. */
+export const STARTS_LABEL = 'Départs théoriques';
+export const STARTS_HINT =
+  'Nombre S de sources de start disponibles dans la main observée (starter ou paire, conditions et disponibilités appliquées). Théorique : aucune ligne de jeu n’est prouvée réalisable.';
+
+export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
   const result = useDeck((s) => s.result);
   const liveCategories = useDeck((s) => s.categories);
   const computing = useDeck((s) => s.computing);
@@ -27,11 +29,11 @@ export function StatsPanel({
   const recompute = useDeck((s) => s.recompute);
   const computeMs = useDeck((s) => s.computeMs);
   const liveDeckSize = useDeck((s) => s.main.reduce((a, c) => a + c.copies, 0));
-  const horizonFirst = useDeck((s) => s.horizonFirst);
-  const horizonSecond = useDeck((s) => s.horizonSecond);
-  const setHorizon = useDeck((s) => s.setHorizon);
+  const context = useDeck((s) => s.context);
+  const setContext = useDeck((s) => s.setContext);
   const statsView = useDeck((s) => s.statsView);
   const setStatsView = useDeck((s) => s.setStatsView);
+  const cards = useDeck((s) => s.cards);
 
   if (!result) {
     // Sans résultat précédent : état initial de calcul, ou erreur avec relance (§6).
@@ -48,23 +50,24 @@ export function StatsPanel({
     );
   }
 
-  // Étape 4 : le résultat s'affiche avec SON contexte (catégories et taille de deck du
-  // calcul), jamais avec les libellés de l'état courant — pas de mélange d'anciennes
-  // statistiques avec de nouveaux labels. Les contrôles (horizons) restent vivants.
+  // Étape 4 : le résultat s'affiche avec SON contexte (catégories, taille de deck et
+  // cartes sans profil du calcul), jamais avec les libellés de l'état courant — pas de
+  // mélange d'anciennes statistiques avec de nouveaux labels.
   const categories = resultContext?.categories ?? liveCategories;
   const deckSize = resultContext?.deckSize ?? liveDeckSize;
+  const unprofiled = resultContext?.unprofiledCardIds ?? [];
   const outOfBounds = deckSize < 40 || deckSize > 60;
 
-  // Cycle : Starts jouables → Non-engine (total) → une entrée par catégorie (§6).
+  // Cycle : Départs théoriques → Non-engine (total) → une entrée par étiquette (§6).
   const views: StatsView[] = [
-    { id: 'starts', label: 'Starts jouables' },
-    { id: 'nonengine', label: 'Non-engine (total)' },
-    ...categories.map((c) => ({ id: c.id, label: c.name })),
+    { id: 'starts', label: STARTS_LABEL, hint: STARTS_HINT },
+    { id: 'nonengine', label: 'Non-engine (potentiel)', hint: 'Potentiel U : copies distinctes affectables aux fenêtres retenues, plafonds et HOPT appliqués.' },
+    ...categories.map((c) => ({ id: c.id, label: c.name, hint: 'Copies brutes piochées portant cette étiquette, sans fenêtre ni plafond.' })),
   ];
   let idx = views.findIndex((v) => v.id === statsView);
   if (idx < 0) idx = 0;
   const view = views[idx];
-  // Navigation LINÉAIRE (pas de boucle) : « Starts jouables » est le premier / défaut.
+  // Navigation LINÉAIRE (pas de boucle) : « Départs théoriques » est le premier / défaut.
   const atFirst = idx === 0;
   const atLast = idx === views.length - 1;
   const go = (dir: number) => {
@@ -109,14 +112,18 @@ export function StatsPanel({
         </div>
       )}
 
-      <div
-        className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-ink-800 px-3 py-1.5"
-        title="Nombre de tours adverses pendant lesquels une carte HOPT non-engine reste activable (§B.3.5). Plafonne son comptage à min(copies, horizon). Hypothèse de jeu — n'affecte pas les combos."
-      >
-        <span className="text-[10px] uppercase tracking-wide text-ink-500">Horizon d’interaction</span>
-        <HorizonStepper label="1st" value={horizonFirst} onChange={(v) => setHorizon('first', v)} />
-        <HorizonStepper label="2nd" value={horizonSecond} onChange={(v) => setHorizon('second', v)} />
-      </div>
+      {/* Q5 : cartes étiquetées sans profil, comptées zéro dans le potentiel — listées. */}
+      {unprofiled.length > 0 && (
+        <div
+          role="status"
+          className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-300"
+          title="Le profil de disponibilité (mode Profil) détermine les fenêtres retenues ; sans profil, la carte reste comptée dans les copies brutes de son étiquette mais pas dans le potentiel."
+        >
+          {unprofiled.length} carte{unprofiled.length > 1 ? 's' : ''} non-engine sans profil, non comptée
+          {unprofiled.length > 1 ? 's' : ''} dans le potentiel :{' '}
+          {unprofiled.map((id) => cards[id]?.name ?? `#${id}`).join(', ')}.
+        </div>
+      )}
 
       {/* Bascule de vue : flèches ◀ ▶ ou clic sur le titre. Aux extrémités, la flèche
           correspondante disparaît (on garde sa place pour ne pas décaler le titre). */}
@@ -133,7 +140,7 @@ export function StatsPanel({
         <button
           onClick={() => go(1)}
           disabled={atLast}
-          title={atLast ? undefined : 'Distribution suivante'}
+          title={view.hint ?? (atLast ? undefined : 'Distribution suivante')}
           className="min-w-[150px] text-center text-xs font-semibold text-ink-100 enabled:hover:text-emerald-300 disabled:cursor-default"
         >
           {view.label}
@@ -148,15 +155,21 @@ export function StatsPanel({
           ▶
         </button>
       </div>
+      {view.id === 'starts' && (
+        <div className="border-b border-ink-800 px-3 py-1 text-[10px] leading-snug text-ink-500">
+          Sources de start disponibles dans la main observée (starter ou paire), conditions et
+          disponibilités appliquées — sans preuve qu’une ligne soit réalisable.
+        </div>
+      )}
 
       {/* Périmé = estompé par opacité (charte §7.15), jamais masqué ni flouté. */}
       <div className={`transition-opacity ${stale ? 'opacity-45' : ''}`}>
         <div className="grid grid-cols-1 gap-px bg-ink-800 sm:grid-cols-2">
-          <PassColumn title="Going first" subtitle="main de 5" pass={result.first} view={view} />
-          <PassColumn title="Going second" subtitle="main de 6" pass={result.second} view={view} />
+          <PassColumn context="first" active={context === 'first'} onSelect={() => setContext('first')} pass={result.first} view={view} />
+          <PassColumn context="second" active={context === 'second'} onSelect={() => setContext('second')} pass={result.second} view={view} />
         </div>
 
-        <CrossMatrix pass={column === 'first' ? result.first : result.second} column={column} />
+        <CrossMatrix pass={context === 'first' ? result.first : result.second} column={context} />
       </div>
 
       <QueryMode onShowHands={onShowHands} />
@@ -175,7 +188,6 @@ function toBuckets(dist: number[]): [number, number, number, number] {
 }
 
 interface Resolved {
-  relevant: boolean;
   buckets: [number, number, number, number];
   color: string;
   mean: number;
@@ -186,7 +198,6 @@ interface Resolved {
 function resolveView(pass: PassResult, viewId: string): Resolved {
   if (viewId === 'starts') {
     return {
-      relevant: true,
       buckets: [
         pass.startsBuckets[0] ?? 0,
         pass.startsBuckets[1] ?? 0,
@@ -195,23 +206,21 @@ function resolveView(pass: PassResult, viewId: string): Resolved {
       ],
       color: '#4fae7a',
       mean: pass.meanStarts,
-      meanLabel: 'E[starts]',
+      meanLabel: 'E[S]',
       extra: `brick ${pct(pass.brick)} · E[red.] ${num(meanFromDist(pass.redundancy))}`,
     };
   }
   if (viewId === 'nonengine') {
     return {
-      relevant: true,
       buckets: toBuckets(pass.nonEngine),
       color: '#5b8def',
       mean: pass.meanNonEngine,
-      meanLabel: 'E[non-engine]',
+      meanLabel: 'E[U]',
     };
   }
   const cat = pass.perCategory.find((c) => c.id === viewId);
-  if (!cat) return { relevant: false, buckets: [0, 0, 0, 0], color: '#5b8def', mean: 0, meanLabel: '' };
+  if (!cat) return { buckets: [0, 0, 0, 0], color: '#5b8def', mean: 0, meanLabel: '' };
   return {
-    relevant: cat.relevant,
     buckets: toBuckets(cat.dist),
     color: '#5b8def',
     mean: cat.mean,
@@ -220,31 +229,36 @@ function resolveView(pass: PassResult, viewId: string): Resolved {
 }
 
 function PassColumn({
-  title,
-  subtitle,
+  context,
+  active,
+  onSelect,
   pass,
   view,
 }: {
-  title: string;
-  subtitle: string;
+  context: AnalysisContext;
+  active: boolean;
+  onSelect: () => void;
   pass: PassResult;
   view: StatsView;
 }) {
+  const title = CONTEXT_LABEL[context];
   if (pass.total === 0) return <div className="bg-ink-900 p-3 text-xs text-amber-300">{title} : analyse indisponible. {pass.unavailableReason}</div>;
   const r = resolveView(pass, view.id);
   return (
-    <div className="bg-ink-900 p-3">
+    <div className={`bg-ink-900 p-3 ${active ? '' : 'opacity-80'}`}>
       <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-xs font-semibold text-ink-100">{title}</span>
-        <span className="text-[10px] text-ink-500">{subtitle}</span>
+        <button
+          onClick={onSelect}
+          title="Choisir ce contexte d’analyse (deltas, matrice, mur de mains)"
+          className={`rounded px-1 text-xs font-semibold ${active ? 'bg-ink-700 text-ink-100' : 'text-ink-300 hover:text-ink-100'}`}
+        >
+          {title}
+        </button>
+        <span className="text-[10px] text-ink-500">
+          {context === 'first' ? 'C(D,5) mains' : 'sixième pioche identifiée'}
+        </span>
       </div>
-      {!r.relevant ? (
-        <div className="rounded border border-ink-800 bg-ink-850 px-2 py-3 text-center text-[11px] text-ink-500">
-          « {view.label} » n'est pas pertinent {title.toLowerCase()} (§2.6).
-        </div>
-      ) : (
-        <DistTable {...r} />
-      )}
+      <DistTable {...r} />
     </div>
   );
 }
@@ -302,14 +316,14 @@ export function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first
 
   return (
     <div className="border-t border-ink-800 p-3">
-      <div className="mb-2 text-[10px] uppercase tracking-wide text-ink-500">
-        Matrice starts × non-engine — {column === 'first' ? 'going first' : 'going second'}
+      <div className="mb-2 text-[10px] uppercase tracking-wide text-ink-500" title={STARTS_HINT}>
+        Matrice départs théoriques × non-engine — {CONTEXT_LABEL[column]}
       </div>
       <div className="overflow-x-auto">
         <table className="border-separate border-spacing-0.5 text-[10px]">
           <thead>
             <tr>
-              <th className="p-1 text-ink-600">↓s \ ne→</th>
+              <th className="p-1 text-ink-600" title="lignes : départs théoriques S ; colonnes : potentiel non-engine U">↓S \ U→</th>
               {cols.map((c) => (
                 <th key={c} className="tnum p-1 text-right text-ink-500">
                   {matrix.colLabels[c]}
@@ -338,42 +352,6 @@ export function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
-  );
-}
-
-/** Stepper compact 1..3 pour l'horizon d'une passe (§B.3.5). */
-function HorizonStepper({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <span className="text-[11px] text-ink-400">{label}</span>
-      <div className="flex items-center rounded border border-ink-700 bg-ink-850">
-        <button
-          onClick={() => onChange(value - 1)}
-          disabled={value <= 1}
-          className="px-1.5 py-0.5 text-xs text-ink-300 hover:text-ink-100 disabled:opacity-30"
-          title="Diminuer l’horizon"
-        >
-          −
-        </button>
-        <span className="tnum w-3 text-center text-[11px] text-ink-100">{value}</span>
-        <button
-          onClick={() => onChange(value + 1)}
-          disabled={value >= 3}
-          className="px-1.5 py-0.5 text-xs text-ink-300 hover:text-ink-100 disabled:opacity-30"
-          title="Augmenter l’horizon"
-        >
-          +
-        </button>
       </div>
     </div>
   );

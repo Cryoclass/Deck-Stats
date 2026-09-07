@@ -68,6 +68,49 @@ Un client resté sur une ancienne version doit recharger l'application (HTTP 410
 pour les anciennes écritures). Une édition concurrente reçoit HTTP 409 et conserve
 son brouillon. Les anciens brouillons navigateur et JSON v1 ne sont plus repris.
 
+## Migration 002 — profils, plafonds partagés et conditions ET/OU (étape 5B)
+
+Après `001-deck-configuration.sql`, appliquer
+`db/migrations/002-profiles-and-conditions.sql` (même mécanisme : transaction, verrou
+consultatif, journal `app_migrations`, additive) :
+
+- ajoute `nonengine_groups`, `card_flags.availability`, `card_flags.group_id` (avec la
+  contrainte « un plafond exige un profil ») et `deck_conditions` ;
+- convertit chaque source de `deck_requirements` en **un groupe ET** de feuilles, dans
+  l'ordre des identifiants (le premier nomme la condition) ;
+- retire `horizonFirst` / `horizonSecond` de `decks.params` ;
+- met à NULL `decks.summary` pour tous les decks ;
+- ne crée **aucun** profil ni plafond (redéfinition manuelle des cartes) ;
+- conserve `deck_requirements`, plus jamais lue ni écrite par l'API.
+
+Elle exige que 001 soit journalisée, s'arrête sur une ligne `deck_requirements`
+invalide (aucune création de table ni de colonne ne survit), et se rejoue sans effet.
+
+```bash
+docker compose exec -T db psql -U ygo -d ygo -v ON_ERROR_STOP=1 -f - < db/migrations/002-profiles-and-conditions.sql
+```
+
+Contrôles après migration :
+
+```sql
+select * from app_migrations where id = '002-profiles-and-conditions';
+select count(*) from deck_conditions;              -- = nombre de sources distinctes de deck_requirements
+select count(distinct (deck_id, coalesce(source_card_id::text, source_pair_id::text))) from deck_requirements;
+select count(*) from decks where params ? 'horizonFirst' or params ? 'horizonSecond'; -- 0
+select count(*) from decks where summary is not null; -- 0
+select count(*) from nonengine_groups;              -- 0 juste après la migration
+select count(*) from card_flags where availability is not null; -- 0 juste après la migration
+select count(*) from deck_requirements;             -- inchangé, conservée
+```
+
+Après déploiement : un client resté sur l'ancienne version reçoit HTTP 400 à
+l'enregistrement (« format antérieur ») et doit recharger ; son brouillon est converti
+à la réouverture. Les exports JSON antérieurs restent importables : leurs prérequis ET
+sont convertis à l'import par la même règle, leurs catégories perdent leur pertinence,
+et aucun profil n'est deviné. Poser ensuite, manuellement, les profils des cartes
+étiquetées (mode Profil) : tant qu'une carte étiquetée n'a pas de profil, elle est
+listée comme « non comptée » dans le potentiel non-engine.
+
 ## Reproduire les tests PostgreSQL sans données existantes
 
 Les identifiants ci-dessous concernent uniquement une base de test jetable. Le test

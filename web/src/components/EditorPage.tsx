@@ -23,7 +23,6 @@ export function EditorPage({ id }: { id: string }) {
   const persistenceError = useDeck((s) => s.persistenceError);
 
   const [tab, setTab] = useState<Tab>('annotate');
-  const [column, setColumn] = useState<'first' | 'second'>('first');
   const [highlightCardId, setHighlightCardId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -105,7 +104,7 @@ export function EditorPage({ id }: { id: string }) {
 
   return (
     <div className="flex h-screen flex-col bg-ink-950 text-ink-200">
-      <Header column={column} setColumn={setColumn} onSave={() => void saveDeck()} onHome={goHome} />
+      <Header onSave={() => void saveDeck()} onHome={goHome} />
 
       {draftAvailable && (
         <div className="flex flex-wrap items-center gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-200">
@@ -147,20 +146,19 @@ export function EditorPage({ id }: { id: string }) {
           <div className="min-h-0 flex-1">
             {tab === 'annotate' && (
               <AnnotationGrid
-                column={column}
                 highlightCardId={highlightCardId}
                 onHighlightConsumed={() => setHighlightCardId(null)}
               />
             )}
             {tab === 'combos' && <ComboList />}
-            {tab === 'hands' && <HandWall column={column} />}
+            {tab === 'hands' && <HandWall />}
             {tab === 'inventory' && <Inventory onFocusCard={focusCard} />}
-            {tab === 'stats' && <StatsPanel column={column} onShowHands={() => setTab('hands')} />}
+            {tab === 'stats' && <StatsPanel onShowHands={() => setTab('hands')} />}
           </div>
         </main>
 
         <aside className="hidden w-[500px] shrink-0 lg:block">
-          <StatsPanel column={column} onShowHands={() => setTab('hands')} />
+          <StatsPanel onShowHands={() => setTab('hands')} />
         </aside>
       </div>
 

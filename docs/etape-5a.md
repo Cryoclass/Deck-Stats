@@ -22,10 +22,10 @@ matrices A/B partagent exactement les hypothèses.
 
 ### Espace des issues
 
-| Contexte | Cartes observées | Issues Z (`outcomes`) | Mains distinctes (`total`) |
-| --- | --- | --- | --- |
-| Premier | 5 initiales | C(D,5) | C(D,5) |
-| Second | 5 initiales + sixième identifiée | C(D,5)·(D−5) = 6·C(D,6) | C(D,6) |
+| Contexte | Cartes observées                 | Issues Z (`outcomes`)   | Mains distinctes (`total`) |
+| -------- | -------------------------------- | ----------------------- | -------------------------- |
+| Premier  | 5 initiales                      | C(D,5)                  | C(D,5)                     |
+| Second   | 5 initiales + sixième identifiée | C(D,5)·(D−5) = 6·C(D,6) | C(D,6)                     |
 
 Le moteur énumère les compositions de six cartes et distingue, pour chacune, le type
 de la sixième : `w(k6, j) = W(k6) · k6ⱼ`, identité `C(n,k+1)(k+1) = C(n,k)(n−k)` du
@@ -158,6 +158,44 @@ pendant la partie B.
 7. **`total` vs `outcomes`** : deux dénominateurs coexistent sur `PassResult` pour
    préserver B01. Si l'on préfère un seul champ, le test de référence B01 devra être
    réécrit explicitement (jamais « pour faire passer le code »).
+
+## Réponses
+
+1. **Q1 — Confirmé : contribution nulle.** Un profil décrit _quand_ une
+   contribution est disponible, l'étiquette décrit _ce qui_ est compté ; un
+   profil sans étiquette ne mesure rien. La partie B empêche dans l'interface
+   d'enregistrer un profil sur une carte sans catégorie non-engine. La garde
+   moteur reste.
+
+2. **Q2 — Confirmé : refus.** Un groupe de plafond partagé n'est proposé que
+   pour une carte déjà profilée. La migration ne crée aucun groupe : les
+   groupes sont une annotation nouvelle, saisie manuellement. La garde moteur
+   reste, comme filet.
+
+3. **Q3 — Une seule représentation : la nouvelle.** La migration convertit
+   chaque ancien prérequis en un groupe ET de la nouvelle structure de
+   conditions. Après migration, le moteur ne reçoit plus d'anciens prérequis ;
+   le chemin de combinaison ET ne doit plus être un cas normal (le garder
+   comme garde qui signale, pas comme fonctionnalité).
+
+4. **Q4 : PAS de conversion de `relevance`** (le titre était erroné)
+   Redéfinition manuelle des profils ; `buildEngineModel` ignore `relevance`, la colonne est conservée jusqu'à la purge de l'étape 8. Conséquence assumée : après migration, les cartes non-engine tombent dans le cas Q5 jusqu'à ressaisie.
+
+5. **Q5 — Passe disponible, contribution nulle, avertissement explicite.**
+   Une carte étiquetée sans profil compte zéro dans les
+   contributions retenues, reste comptée dans les exemplaires tirés, et les
+   statistiques affichent la liste des cartes concernées (« 2 cartes
+   non-engine sans profil, non comptées »). Aucun profil n'est deviné.
+   L'enregistrement n'est pas bloqué : les catégories étant communes au
+   compte, une passe indisponible bloquerait tous les decks à la fois.
+
+6. **Q6 — Confirmé.** Flexible tirée sixième = tour propre uniquement,
+   conformément au tableau du contrat. Le moteur conserve la séparation.
+
+7. **Q7 — Garder les deux champs.** `total` = mains distinctes (dénominateur
+   des probabilités de main), `outcomes` = issues pondérées avec sixième
+   identifiée (dénominateur des contributions en second). Sémantique
+   documentée sur `PassResult` ; B01 n'est pas réécrit.
 
 ## Passation
 

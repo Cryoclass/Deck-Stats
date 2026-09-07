@@ -16,7 +16,7 @@ export interface ComparisonMatrix {
   handSize: number; // 5 | 6
   deckSize: number;
   starterCount: number; // S affiché sous la matrice (§9) — copies starter vivantes du scénario
-  nonEngineCount: number; // N affiché — copies portant ≥1 catégorie pertinente du scénario
+  nonEngineCount: number; // N affiché — copies portant ≥1 étiquette non-engine (composition, pas activations)
   rowLabels: string[]; // ['0','1','2','≥3']
   colLabels: string[]; // ['0'..'5'] (GF) | ['0'..'4','5+'] (GS)
   cells: number[][]; // 4 × 6, probabilités exactes en [0,1], somme = 1
@@ -66,25 +66,21 @@ const colLabelsFor = (scenario: Scenario): string[] =>
   scenario === 'going_first' ? ['0', '1', '2', '3', '4', '5'] : ['0', '1', '2', '3', '4', '5+'];
 
 /** S et N par scénario, depuis l'entrée moteur (§9). S = copies starter non mortes
- *  pour la passe ; N = copies portant au moins une catégorie pertinente (les cartes
- *  mortes restent comptées côté non-engine : « dead » ne régit que les starts). */
+ *  pour la passe ; N = copies portant au moins une étiquette non-engine — composition
+ *  du deck, pas activations promises (contrat §5) : une carte étiquetée sans profil y
+ *  figure bien qu'elle ne contribue pas (Q5), et les cartes mortes restent comptées
+ *  côté non-engine (« dead » ne régit que les starts). */
 export function scenarioCounts(
   input: EngineInput,
   scenario: Scenario,
 ): { starterCount: number; nonEngineCount: number } {
   const first = scenario === 'going_first';
-  const relevant = input.categories.map(
-    (c) => c.relevance === 'both' || c.relevance === (first ? 'first' : 'second'),
-  );
   let s = 0;
   let n = 0;
   for (const t of input.types) {
     const dead = first ? t.deadFirst : t.deadSecond;
     if (t.isStarter && !dead) s += t.copies;
-    // Étape 5 : une carte profilée est non-engine par ses étiquettes (composition du
-    // deck, pas activations promises) ; sans profil, la pertinence historique décide.
-    const labelled = t.availability !== undefined ? t.categories.length > 0 : t.categories.some((c) => relevant[c]);
-    if (labelled) n += t.copies;
+    if (t.categories.length > 0) n += t.copies;
   }
   return { starterCount: s, nonEngineCount: n };
 }
@@ -166,28 +162,28 @@ interface AggregateDef {
 export const AGGREGATE_DEFS: AggregateDef[] = [
   {
     key: 'brick_starters',
-    label: 'Brick starters (0 start)',
+    label: 'Brick : 0 départ théorique',
     direction: 'lower_is_better',
     unit: 'percent',
     compute: (m) => rowMargins(m)[0],
   },
   {
     key: 'starters_ge1',
-    label: '≥1 start',
+    label: '≥1 départ théorique',
     direction: 'higher_is_better',
     unit: 'percent',
     compute: (m) => tailSum(m, 1, 0),
   },
   {
     key: 'starters_ge2',
-    label: '≥2 starts',
+    label: '≥2 départs théoriques',
     direction: 'higher_is_better',
     unit: 'percent',
     compute: (m) => tailSum(m, 2, 0),
   },
   {
     key: 'starters_ge3',
-    label: '≥3 starts',
+    label: '≥3 départs théoriques',
     direction: 'higher_is_better',
     unit: 'percent',
     compute: (m) => tailSum(m, 3, 0),
@@ -222,21 +218,21 @@ export const AGGREGATE_DEFS: AggregateDef[] = [
   },
   {
     key: 'playable',
-    label: 'Zone jouable : ≥1 start ET ≥1 non-engine',
+    label: 'Zone jouable : ≥1 départ théorique ET ≥1 non-engine',
     direction: 'higher_is_better',
     unit: 'percent',
     compute: (m) => tailSum(m, 1, 1),
   },
   {
     key: 'strong_hand',
-    label: 'Main forte : ≥2 starts ET ≥2 non-engine',
+    label: 'Main forte : ≥2 départs théoriques ET ≥2 non-engine',
     direction: 'higher_is_better',
     unit: 'percent',
     compute: (m) => tailSum(m, 2, 2),
   },
   {
     key: 'mean_starters',
-    label: 'Moyenne starts (plancher, ≥3 compté = 3)',
+    label: 'Moyenne départs théoriques (plancher, ≥3 compté = 3)',
     direction: 'higher_is_better',
     unit: 'count',
     compute: (m) => rowMargins(m).reduce((s, r, i) => s + r * ROW_WEIGHTS[i], 0),
@@ -252,7 +248,7 @@ export const AGGREGATE_DEFS: AggregateDef[] = [
 
 const SUM_TOL = 1e-9; // §7.1 : au-delà, c'est un bug de calcul, pas du bruit flottant
 const EQ_TOL = 1e-9; // égalité de marges / de cellules sur valeurs exactes
-const scenarioFr = (s: Scenario): string => (s === 'going_first' ? 'going first' : 'going second');
+const scenarioFr = (s: Scenario): string => (s === 'going_first' ? 'premier · 5 cartes' : 'second · 5 cartes + pioche');
 
 /**
  * Assemble la comparaison complète : deltas cellule à cellule (B − A), agrégats
@@ -319,7 +315,7 @@ export function compareDecks(deckA: ComparisonDeck, deckB: ComparisonDeck): Deck
         severity: 'info',
         code: 'margins_equal',
         scenario: sc,
-        message: `${scenarioFr(sc)} : le profil de starts est identique entre les deux decks — seule la répartition non-engine bouge.`,
+        message: `${scenarioFr(sc)} : la distribution des départs théoriques est identique entre les deux decks — seule la répartition non-engine bouge.`,
       });
     } else if (
       A.starterCount === B.starterCount &&
@@ -330,7 +326,7 @@ export function compareDecks(deckA: ComparisonDeck, deckB: ComparisonDeck): Deck
         severity: 'info',
         code: 'margins_differ_same_s',
         scenario: sc,
-        message: `${scenarioFr(sc)} : même nombre de copies starter (S = ${A.starterCount}) mais profil de starts différent — l'écart vient des combos, prérequis ou cartes mortes, pas du compte de starters.`,
+        message: `${scenarioFr(sc)} : même nombre de copies starter (S = ${A.starterCount}) mais distribution des départs théoriques différente — l'écart vient des paires, conditions ou cartes mortes, pas du compte de starters.`,
       });
     }
   }

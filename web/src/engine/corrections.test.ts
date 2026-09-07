@@ -67,8 +67,8 @@ describe('Étape 2 — régressions reliées au moteur', () => {
   });
 
   it('M02: six non-engine rejoignent la cellule 5+ sans perte de masse', () => {
-    const model = input(Array.from({ length: 6 }, () => type({ categories: [0] })), 6);
-    model.categories = [{ id: 'ne', relevance: 'both' }];
+    const model = input(Array.from({ length: 6 }, () => type({ categories: [0], availability: 'flexible' })), 6);
+    model.categories = [{ id: 'ne' }];
     const pass = computePass(model, 6);
     const matrix = toComparisonMatrix(pass, 'going_second', { starterCount: 0, nonEngineCount: 6 });
     expect(matrix.cells[0]).toEqual([0, 0, 0, 0, 0, 1]);

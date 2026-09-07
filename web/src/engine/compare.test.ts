@@ -240,18 +240,18 @@ describe('compareDecks — garde-fous (§7)', () => {
 });
 
 describe('toComparisonMatrix — seaux et normalisation de forme', () => {
-  // 7 copies non-engine (3+3+1, catégorie pertinente des deux côtés), aucun starter :
+  // 7 copies non-engine (3+3+1, étiquetées et profilées flexibles), aucun starter :
   // going second (main de 6), le total non-engine atteint 6 → la colonne « 5+ »
   // doit agréger P(ne = 5) + P(ne = 6).
   const input: EngineInput = {
     deckSize: 40,
     types: [
-      T({ copies: 3, categories: [0] }),
-      T({ copies: 3, categories: [0] }),
-      T({ copies: 1, categories: [0] }),
+      T({ copies: 3, categories: [0], availability: 'flexible' }),
+      T({ copies: 3, categories: [0], availability: 'flexible' }),
+      T({ copies: 1, categories: [0], availability: 'flexible' }),
     ],
     edges: [],
-    categories: [{ id: 'ht', relevance: 'both' }],
+    categories: [{ id: 'ht' }],
   };
 
   it('going second : colonne 5+ = Σ P(ne ≥ 5), lignes complétées à zéro', () => {
@@ -281,15 +281,16 @@ describe('toComparisonMatrix — seaux et normalisation de forme', () => {
     const inp: EngineInput = {
       deckSize: 40,
       types: [
-        // Fuwalos-like : mort going first, non-engine going second.
-        T({ copies: 3, deadFirst: true, categories: [0] }),
+        // Fuwalos-like : mort going first, non-engine précoce (étiquetée).
+        T({ copies: 3, deadFirst: true, categories: [0], availability: 'early' }),
         T({ copies: 2, isStarter: true }),
         T({ copies: 1, isStarter: true, deadSecond: true }),
       ],
       edges: [],
-      categories: [{ id: 'ht', relevance: 'second' }],
+      categories: [{ id: 'ht' }],
     };
-    expect(scenarioCounts(inp, 'going_first')).toEqual({ starterCount: 3, nonEngineCount: 0 });
+    // N décrit la composition (copies étiquetées), pas les activations : identique par scénario.
+    expect(scenarioCounts(inp, 'going_first')).toEqual({ starterCount: 3, nonEngineCount: 3 });
     expect(scenarioCounts(inp, 'going_second')).toEqual({ starterCount: 2, nonEngineCount: 3 });
   });
 });

@@ -19,20 +19,20 @@ import { downloadComparisonXlsx } from '../lib/exportComparison.js';
 import { slugify } from '../lib/exportDeck.js';
 import { pct, num } from '../lib/fmt.js';
 import { sourceFromDetail } from '../lib/deckConfiguration.js';
+import { STARTS_HINT } from './StatsPanel.js';
 
-// ─── Comparateur de decks (itération 9) — matrice starts × non-engine, A vs B ───
+// ─── Comparateur de decks (itération 9) — matrice départs théoriques × non-engine, A vs B ───
 // Même structure que l'export Excel (§9) : matrices A et B (échelle de couleur
 // PARTAGÉE par scénario, sinon la comparaison visuelle ment), matrice de delta avec
 // légende obligatoire, puis table de synthèse orientée mérite. Warnings en bandeau.
 
 const scenarioTitle: Record<Scenario, string> = {
-  going_first: 'Going first — main de 5',
-  going_second: 'Going second — main de 6',
+  going_first: 'Premier · 5 cartes',
+  going_second: 'Second · 5 cartes + pioche',
 };
 
 interface Loaded {
   cmp: DeckComparison;
-  horizons: { a: [number, number]; b: [number, number] };
 }
 
 export function ComparePage({ a, b }: { a: string; b: string }) {
@@ -60,9 +60,13 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
           );
         }
       }
+      const unprofiled: string[] = [];
       const results = await Promise.all(
         decks.map(async ({ detail, source }) => {
-          const { input } = buildEngineModel(source);
+          const { input, unprofiledCardIds } = buildEngineModel(source);
+          if (unprofiledCardIds.length > 0) {
+            unprofiled.push(`« ${detail.name} » : ${unprofiledCardIds.length} carte${unprofiledCardIds.length > 1 ? 's' : ''} non-engine sans profil, non comptée${unprofiledCardIds.length > 1 ? 's' : ''} dans le potentiel.`);
+          }
           const { result } = await client.compute(input, 'passes').promise;
           return {
             name: detail.name,
@@ -82,23 +86,10 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
         }),
       );
       const cmp = compareDecks(results[0], results[1]);
-      const [sa, sb] = decks.map((d) => d.source);
-      // Hypothèse de jeu différente entre les decks → une partie de l'écart non-engine
-      // vient du réglage, pas des cartes. À dire en clair (§B.3.5).
-      if (sa.horizonFirst !== sb.horizonFirst || sa.horizonSecond !== sb.horizonSecond) {
-        cmp.warnings.push({
-          severity: 'warning',
-          code: 'horizon_differs',
-          message: `Horizons d'interaction différents (A : 1st=${sa.horizonFirst}/2nd=${sa.horizonSecond}, B : 1st=${sb.horizonFirst}/2nd=${sb.horizonSecond}) — le comptage non-engine des HOPT n'est pas réglé pareil.`,
-        });
-      }
-      return {
-        cmp,
-        horizons: {
-          a: [sa.horizonFirst, sa.horizonSecond] as [number, number],
-          b: [sb.horizonFirst, sb.horizonSecond] as [number, number],
-        },
-      };
+      // Q5 : une carte étiquetée sans profil compte zéro dans le potentiel — à dire en
+      // clair, sinon un écart non-engine pourrait venir de l'annotation, pas des cartes.
+      for (const message of unprofiled) cmp.warnings.push({ severity: 'warning', code: 'unprofiled', message });
+      return { cmp };
     })().then(
       (loaded) => !cancelled && setState({ status: 'ready', ...loaded }),
       (err: unknown) => {
@@ -254,7 +245,7 @@ function MatrixCard({ title, m, maxCell }: { title: string; m: ComparisonMatrix;
       {/* S / N retenus par scénario (§7.6) : rend visible l'effet de la classification. */}
       <div className="tnum mt-2 text-[10px] text-ink-500">
         deck {m.deckSize} cartes · S = {m.starterCount} starters · N = {m.nonEngineCount}{' '}
-        non-engine
+        non-engine étiquetées
       </div>
     </div>
   );
@@ -288,7 +279,8 @@ function DeltaCard({ cmp, scenario }: { cmp: DeckComparison; scenario: Scenario 
       {/* Légende OBLIGATOIRE (§5) : le signe n'est pas un jugement de valeur. */}
       <div className="mt-2 max-w-[240px] text-[10px] leading-snug text-ink-500">
         vert = probabilité plus élevée dans B — <em>pas nécessairement meilleur</em> (ex. colonne
-        ne = 0). La synthèse ci-dessous donne le sens de lecture.
+        U = 0). Lignes = départs théoriques S, colonnes = potentiel non-engine U. La synthèse
+        ci-dessous donne le sens de lecture.
       </div>
     </div>
   );
@@ -314,7 +306,7 @@ function MatrixGrid({
       <table className="border-separate border-spacing-0.5 text-[10px]">
         <thead>
           <tr>
-            <th className="p-1 text-ink-600">↓s \ ne→</th>
+            <th className="p-1 text-ink-600" title={STARTS_HINT}>↓S \ U→</th>
             {colLabels.map((c) => (
               <th key={c} className="tnum w-8 p-1 text-right text-ink-500">
                 {c}
@@ -363,12 +355,12 @@ function SynthTable({ cmp }: { cmp: DeckComparison }) {
           <thead>
             <tr className="border-b border-ink-800 text-[10px] uppercase tracking-wide text-ink-500">
               <th className="p-2 text-left font-medium">Indicateur</th>
-              <th className="p-2 text-right font-medium">A GF</th>
-              <th className="p-2 text-right font-medium">B GF</th>
-              <th className="p-2 text-right font-medium">Δ GF</th>
-              <th className="p-2 text-right font-medium">A GS</th>
-              <th className="p-2 text-right font-medium">B GS</th>
-              <th className="p-2 text-right font-medium">Δ GS</th>
+              <th className="p-2 text-right font-medium" title={scenarioTitle.going_first}>A · 1er</th>
+              <th className="p-2 text-right font-medium" title={scenarioTitle.going_first}>B · 1er</th>
+              <th className="p-2 text-right font-medium" title={scenarioTitle.going_first}>Δ · 1er</th>
+              <th className="p-2 text-right font-medium" title={scenarioTitle.going_second}>A · 2nd</th>
+              <th className="p-2 text-right font-medium" title={scenarioTitle.going_second}>B · 2nd</th>
+              <th className="p-2 text-right font-medium" title={scenarioTitle.going_second}>Δ · 2nd</th>
               <th className="p-2 text-left font-medium">Sens</th>
             </tr>
           </thead>

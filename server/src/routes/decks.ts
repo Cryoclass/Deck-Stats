@@ -6,6 +6,7 @@ import { requireUser } from '../auth/session.js';
 import { ConfigurationError, parseConfiguration, uuidPattern, type Configuration } from '../domain/deckConfiguration.js';
 import { parseArchive, remapCategoryReferences, type DeckArchive } from '../domain/deckArchive.js';
 import { readConfiguration, writeConfiguration } from '../domain/deckRepository.js';
+import { invalidateOwnerSummaries } from './library.js';
 
 function error(statusCode: number, message: string): never {
   throw Object.assign(new Error(message), { statusCode });
@@ -26,16 +27,27 @@ async function insertDeck(c: PoolClient, owner: string, data: Configuration) {
   return row.id as string;
 }
 
+/** Fusion d'une archive avec la bibliothèque du compte : tout conflit explicite (HOPT
+ *  contradictoire, profil ou plafond différent) fait échouer l'import entier. */
 async function mergeLibrary(c: PoolClient, uid: string, archive: DeckArchive): Promise<void> {
   await c.query('select id from users where id=$1 for update', [uid]);
   const mapping = new Map<string,string>();
   for (const cat of archive.library.categories) {
-    const { rows: [existing] } = await c.query('select id,relevance from nonengine_categories where owner_id=$1 and name=$2', [uid,cat.name]);
-    if (existing && existing.relevance !== cat.relevance) error(409, `Catégorie « ${cat.name} » : pertinence différente dans votre bibliothèque. Aucun import effectué.`);
+    const { rows: [existing] } = await c.query('select id from nonengine_categories where owner_id=$1 and name=$2', [uid,cat.name]);
     if (existing) mapping.set(cat.id,existing.id);
     else {
-      const { rows: [created] } = await c.query('insert into nonengine_categories (owner_id,name,relevance) values ($1,$2,$3) returning id', [uid,cat.name,cat.relevance]);
+      const { rows: [created] } = await c.query('insert into nonengine_categories (owner_id,name,relevance) values ($1,$2,$3) returning id', [uid,cat.name,'both']);
       mapping.set(cat.id,created.id);
+    }
+  }
+  const groupMapping = new Map<string,string>();
+  for (const group of archive.library.groups) {
+    const { rows: [existing] } = await c.query('select id,cap_per_turn from nonengine_groups where owner_id=$1 and name=$2', [uid,group.name]);
+    if (existing && existing.cap_per_turn !== group.cap_per_turn) error(409, `Plafond partagé « ${group.name} » : limite différente dans votre bibliothèque (${existing.cap_per_turn} contre ${group.cap_per_turn}). Aucun import effectué.`);
+    if (existing) groupMapping.set(group.id,existing.id);
+    else {
+      const { rows: [created] } = await c.query('insert into nonengine_groups (owner_id,name,cap_per_turn) values ($1,$2,$3) returning id', [uid,group.name,group.cap_per_turn]);
+      groupMapping.set(group.id,created.id);
     }
   }
   for (const id of archive.library.hoptCardIds) {
@@ -44,7 +56,18 @@ async function mergeLibrary(c: PoolClient, uid: string, archive: DeckArchive): P
     await c.query('insert into card_flags (owner_id,card_id,is_hopt) values ($1,$2,true) on conflict (owner_id,card_id) do nothing', [uid,id]);
   }
   for (const cc of archive.library.cardCategories) await c.query('insert into card_categories (card_id,category_id) values ($1,$2) on conflict do nothing', [cc.card_id,mapping.get(cc.category_id)]);
+  for (const p of archive.library.profiles) {
+    const groupId = p.group_id ? groupMapping.get(p.group_id)! : null;
+    const { rows: [existing] } = await c.query('select availability,group_id from card_flags where owner_id=$1 and card_id=$2', [uid,p.card_id]);
+    if (existing?.availability && existing.availability !== p.availability) error(409, `Profil contradictoire pour la carte ${p.card_id} (${existing.availability} contre ${p.availability}). Aucun import effectué.`);
+    if (existing?.group_id && groupId && existing.group_id !== groupId) error(409, `Plafond partagé contradictoire pour la carte ${p.card_id}. Aucun import effectué.`);
+    await c.query(
+      `insert into card_flags (owner_id,card_id,availability,group_id) values ($1,$2,$3,$4)
+       on conflict (owner_id,card_id) do update set availability=excluded.availability,group_id=coalesce(card_flags.group_id,excluded.group_id)`,
+      [uid,p.card_id,p.availability,groupId]);
+  }
   archive.configuration.params = remapCategoryReferences(archive.configuration.params,mapping);
+  await invalidateOwnerSummaries(c,uid);
 }
 
 export async function decksRoutes(app: FastifyInstance) {
@@ -61,7 +84,7 @@ export async function decksRoutes(app: FastifyInstance) {
     const data = await readConfiguration(c,deck.id);
     return { ...deck, summary: null, configuration_version: 2, cards: data.cards, starters: data.starters,
       pairs: data.pairs, pair_exclusions: data.pairs.filter((p) => p.disabled).map((p) => p.id),
-      start_requirements: data.requirements, deadFirst: data.deadFirst, deadSecond: data.deadSecond };
+      conditions: data.conditions, deadFirst: data.deadFirst, deadSecond: data.deadSecond };
   }));
   app.post('/', async (req,reply) => {
     const data = parseConfiguration(req.body);
@@ -110,7 +133,7 @@ export async function decksRoutes(app: FastifyInstance) {
       const mapping = new Map(data.pairs.map((p) => [p.id,randomUUID()]));
       data.name = `${data.name.slice(0,192)} (copie)`;
       data.pairs = data.pairs.map((p) => ({ ...p,id: mapping.get(p.id)! }));
-      data.requirements = data.requirements.map((r) => ({ ...r,id: randomUUID(),source_pair_id: r.source_pair_id ? mapping.get(r.source_pair_id)! : null }));
+      data.conditions = data.conditions.map((r) => ({ ...r,id: randomUUID(),source_pair_id: r.source_pair_id ? mapping.get(r.source_pair_id)! : null }));
       return insertDeck(c,requireUser(req).id,data);
     });
     return reply.code(201).send({ id, revision: 1 });

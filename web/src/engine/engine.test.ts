@@ -208,12 +208,12 @@ describe('Lot C — dead_first / dead_second (traitées comme filler)', () => {
     expect(evaluate(prep, 'second', [1, 1], -1).starts).toBe(1);
   });
 
-  it('dead_first n’affecte pas le comptage non-engine (régi par la catégorie)', () => {
+  it('dead_first n’affecte pas le comptage non-engine (régi par l’étiquette et le profil)', () => {
     const prep = prepare({
       deckSize: 40,
-      types: [T({ deadFirst: true, categories: [0] })],
+      types: [T({ deadFirst: true, categories: [0], availability: 'flexible' })],
       edges: [],
-      categories: [{ id: 'ht', relevance: 'both' }],
+      categories: [{ id: 'ht' }],
     });
     // Morte pour le graphe, mais toujours comptée comme handtrap going first.
     const out = evaluate(prep, 'first', [1]);
@@ -222,91 +222,87 @@ describe('Lot C — dead_first / dead_second (traitées comme filler)', () => {
   });
 });
 
-// ─── Lot A (itération 2) — horizon d'interaction : plafond HOPT du non-engine ───
-describe('Lot A — horizon d’interaction (plafond HOPT non-engine, §B.3.5)', () => {
-  // Carte X : HOPT, catégorie de pertinence `both`, seule annotation du deck.
-  // Défauts d'horizon : going first = 1, going second = 2.
+// ─── Étape 5B — contributions retenues : étiquette ET profil (contrat §3, Q1/Q5) ───
+// Les anciens horizons réglables 1..3 (Lot A, itération 2) ne sont plus des entrées du
+// moteur : les fenêtres viennent du profil de disponibilité. Les valeurs ci-dessous
+// sont celles de l'ancien réglage par défaut (1 tour adverse en premier, deux tours en
+// second), désormais dérivées d'un profil flexible.
+describe('Étape 5B — étiquette et profil (anciens horizons retirés)', () => {
   const xPrep = (over: Partial<EngineType> = {}) =>
     prepare({
       deckSize: 40,
-      types: [T({ copies: 3, isHopt: true, categories: [0], ...over })],
+      types: [T({ copies: 3, isHopt: true, categories: [0], availability: 'flexible', ...over })],
       edges: [],
-      categories: [{ id: 'x', relevance: 'both' }],
+      categories: [{ id: 'x' }],
     });
 
-  it('Carte X HOPT, going first (horizon 1) : 1/2/3 copies → toujours 1 non-engine', () => {
+  it('Carte X HOPT flexible, premier : 1/2/3 copies → toujours 1 non-engine', () => {
     const prep = xPrep();
     expect(evaluate(prep, 'first', [1]).ne).toBe(1);
     expect(evaluate(prep, 'first', [2]).ne).toBe(1);
     expect(evaluate(prep, 'first', [3]).ne).toBe(1);
   });
 
-  it('Carte X HOPT, going second (horizon 2) : 2 → 2, 3 → 2', () => {
+  it('Carte X HOPT flexible, second (deux tours) : 2 → 2, 3 → 2', () => {
     const prep = xPrep();
     expect(evaluate(prep, 'second', [1], -1).ne).toBe(1);
     expect(evaluate(prep, 'second', [2], -1).ne).toBe(2);
     expect(evaluate(prep, 'second', [3], -1).ne).toBe(2);
   });
 
-  it('Carte Y NON-HOPT : le plafond ne s’applique jamais (3 → 3 aux deux passes)', () => {
-    const prep = prepare({
-      deckSize: 40,
-      types: [T({ copies: 3, isHopt: false, categories: [0] })],
-      edges: [],
-      categories: [{ id: 'y', relevance: 'both' }],
-    });
+  it('Carte Y NON-HOPT flexible : chaque copie contribue (3 → 3 aux deux contextes)', () => {
+    const prep = xPrep({ isHopt: false });
     expect(evaluate(prep, 'first', [3]).ne).toBe(3);
     expect(evaluate(prep, 'second', [3], -1).ne).toBe(3);
   });
 
-  it('Horizon réglable : first=2 → 3 copies HOPT plafonnées à 2 ; valeurs hors [1,3] bornées', () => {
-    const prep2 = prepare({
+  it('Étiquette sans profil (Q5) : zéro contribution retenue, copies brutes intactes', () => {
+    const input: EngineInput = {
       deckSize: 40,
-      types: [T({ copies: 3, isHopt: true, categories: [0] })],
+      types: [T({ copies: 3, categories: [0] })],
       edges: [],
-      categories: [{ id: 'x', relevance: 'both' }],
-      horizonFirst: 2,
-      horizonSecond: 3,
-    });
-    expect(evaluate(prep2, 'first', [3]).ne).toBe(2);
-    expect(evaluate(prep2, 'second', [3], -1).ne).toBe(3);
-
-    // Horizon 5 → borné à 3 ; horizon 0 → borné à 1.
-    const clamped = prepare({
-      deckSize: 40,
-      types: [T({ copies: 3, isHopt: true, categories: [0] })],
-      edges: [],
-      categories: [{ id: 'x', relevance: 'both' }],
-      horizonFirst: 0,
-      horizonSecond: 5,
-    });
-    expect(evaluate(clamped, 'first', [3]).ne).toBe(1);
-    expect(evaluate(clamped, 'second', [3], -1).ne).toBe(3);
+      categories: [{ id: 'x' }],
+    };
+    const prep = prepare(input);
+    expect(evaluate(prep, 'first', [3]).ne).toBe(0);
+    expect(evaluate(prep, 'second', [3], -1).ne).toBe(0);
+    expect(evaluate(prep, 'first', [3]).catCounts[0]).toBe(3);
+    const pass = computePass(input, 'second');
+    expect(pass.nonEngine).toEqual([1]);
+    expect(pass.perCategory[0].mean).toBeCloseTo(18 / 40, 12); // 3 copies × 6/40
+    expect(pass.neSignatures).toEqual([]);
+    // Aucun réglage d'horizon n'existe plus : un ancien champ est sans effet.
+    const legacy = computePass({ ...input, horizonFirst: 3, horizonSecond: 3 } as EngineInput, 'second');
+    expect(legacy.nonEngine).toEqual([1]);
   });
 
   it('catCounts (ventilation par catégorie) reste en copies brutes, non plafonné', () => {
     const prep = xPrep();
-    // 3 copies HOPT en main : le total non-engine plafonne à 1 (going first) mais la
+    // 3 copies HOPT en main : le total non-engine plafonne à 1 (premier) mais la
     // ventilation par catégorie compte les 3 copies physiques (P(≥1) reste invariant).
     const out = evaluate(prep, 'first', [3]);
     expect(out.ne).toBe(1);
     expect(out.catCounts[0]).toBe(3);
   });
 
-  it('Le plafond ne touche AUCUNE distribution de starts', () => {
-    // Carte HOPT à la fois starter (graphe) et non-engine (catégorie) : changer
-    // l'horizon déplace la distribution non-engine mais laisse les starts intacts.
+  it('Le HOPT non-engine ne touche AUCUNE distribution de starts', () => {
+    // Carte à la fois starter (graphe) et non-engine (étiquette + profil) : le HOPT
+    // déplace la distribution non-engine (1 par tour) mais laisse les starts intacts
+    // par rapport à trois sommets HOPT identiques.
     const base: EngineInput = {
       deckSize: 40,
-      types: [T({ copies: 3, isHopt: true, isStarter: true, categories: [0] })],
+      types: [T({ copies: 3, isHopt: true, isStarter: true, categories: [0], availability: 'flexible' })],
       edges: [],
-      categories: [{ id: 'x', relevance: 'both' }],
+      categories: [{ id: 'x' }],
     };
-    const h1 = computePass({ ...base, horizonFirst: 1 }, 5);
-    const h3 = computePass({ ...base, horizonFirst: 3 }, 5);
-    expect(h3.startsExact).toEqual(h1.startsExact); // starts strictement inchangés
-    expect(h3.startsBuckets).toEqual(h1.startsBuckets);
-    expect(h3.meanNonEngine).toBeGreaterThan(h1.meanNonEngine); // non-engine, lui, bouge
+    const hopt = computePass(base, 5);
+    const prepared = computePass({ ...base, types: [{ ...base.types[0], availability: 'prepared' }] }, 5);
+    expect(prepared.startsExact).toEqual(hopt.startsExact); // starts strictement inchangés
+    expect(prepared.startsBuckets).toEqual(hopt.startsBuckets);
+    expect(prepared.meanNonEngine).toBeCloseTo(hopt.meanNonEngine, 12); // même fenêtre en premier
+    const breaker = computePass({ ...base, types: [{ ...base.types[0], availability: 'breaker' }] }, 5);
+    expect(breaker.startsExact).toEqual(hopt.startsExact);
+    expect(breaker.meanNonEngine).toBe(0); // aucune fenêtre en premier, starts intacts
   });
 });
 
@@ -389,14 +385,14 @@ describe('§E — mode requête : intervalles, agrégats, déduplication', () =>
       {
         deckSize: 40,
         types: [
-          T({ copies: 1, categories: [0] }),
-          T({ copies: 1, categories: [1] }),
-          T({ copies: 1, categories: shared ? [0, 1] : [0] }),
+          T({ copies: 1, categories: [0], availability: 'flexible' }),
+          T({ copies: 1, categories: [1], availability: 'flexible' }),
+          T({ copies: 1, categories: shared ? [0, 1] : [0], availability: 'flexible' }),
         ],
         edges: [],
         categories: [
-          { id: 'A', relevance: 'both' },
-          { id: 'B', relevance: 'both' },
+          { id: 'A' },
+          { id: 'B' },
         ],
       },
       5,

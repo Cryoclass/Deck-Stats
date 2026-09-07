@@ -2,17 +2,19 @@ import { useDeck } from '../store/deckStore.js';
 import { Segmented } from './ui.js';
 import { AccountMenu } from './AccountMenu.js';
 
-export function Header({
-  column,
-  setColumn,
-  onSave,
-  onHome,
-}: {
-  column: 'first' | 'second';
-  setColumn: (c: 'first' | 'second') => void;
-  onSave: () => void;
-  onHome: () => void;
-}) {
+/** Libellés du contexte d'analyse (contrat §3), communs à toute l'interface. */
+export const CONTEXT_LABEL = {
+  first: 'Premier · 5 cartes',
+  second: 'Second · 5 cartes + pioche',
+} as const;
+export const CONTEXT_SHORT = {
+  first: 'Premier · 5',
+  second: 'Second · 5 + pioche',
+} as const;
+export const CONTEXT_TITLE =
+  'Contexte d’analyse unique : premier = les 5 cartes initiales ; second = les 5 initiales et une sixième pioche identifiée. Il s’applique aux deltas de la grille, à la matrice, aux requêtes et au mur de mains.';
+
+export function Header({ onSave, onHome }: { onSave: () => void; onHome: () => void }) {
   const deckName = useDeck((s) => s.deckName);
   const renameDeck = useDeck((s) => s.renameDeck);
   const online = useDeck((s) => s.online);
@@ -22,6 +24,8 @@ export function Header({
   const persistenceError = useDeck((s) => s.persistenceError);
   const libraryPending = useDeck((s) => s.libraryPending);
   const lastSavedAt = useDeck((s) => s.lastSavedAt);
+  const context = useDeck((s) => s.context);
+  const setContext = useDeck((s) => s.setContext);
 
   const outOfBounds = deckSize < 40 || deckSize > 60;
   const savedLabel = lastSavedAt
@@ -63,15 +67,16 @@ export function Header({
           {online ? 'en ligne' : 'hors-ligne'}
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-ink-400">
-          <span>delta</span>
+        {/* Réglage UNIQUE premier/second (étape 5B) : remplace l'ancien bouton « delta ». */}
+        <div className="flex items-center gap-1.5 text-[11px] text-ink-400" title={CONTEXT_TITLE}>
+          <span>contexte</span>
           <Segmented
             size="sm"
-            value={column}
-            onChange={setColumn}
+            value={context}
+            onChange={setContext}
             options={[
-              { value: 'first', label: '1st' },
-              { value: 'second', label: '2nd' },
+              { value: 'first', label: CONTEXT_SHORT.first, title: CONTEXT_LABEL.first },
+              { value: 'second', label: CONTEXT_SHORT.second, title: CONTEXT_LABEL.second },
             ]}
           />
         </div>

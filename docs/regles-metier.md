@@ -14,7 +14,9 @@ immédiate, annulation, état périmé visible. La purge reste à l’étape 8.
 premier/second avec sixième identifiée, les profils, les plafonds partagés et les
 conditions ET/OU, vérifiés par oracle d’énumération et oracle Monte Carlo ; la
 persistance, l’interface et la migration des annotations historiques relèvent de la
-partie B.
+partie B. [Partie B livrée](etape-5b.md) : profils, plafonds et conditions ET/OU en
+base et dans l’interface (migration additive 002), contexte d’analyse unique, cartes
+étiquetées sans profil signalées et non comptées, « départs théoriques » partout.
 
 La stack est conservée. Les notations des tests sont indépendantes du futur
 schéma SQL et des interfaces du moteur. Aucun moteur de résolution de cartes ou

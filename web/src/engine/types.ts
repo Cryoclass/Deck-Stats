@@ -1,5 +1,3 @@
-export type Relevance = 'first' | 'second' | 'both';
-
 /**
  * Contexte d'analyse (contrat §3) — PARAMÈTRE UNIQUE du moteur, étape 5.
  *   • `first`  : les 5 cartes initiales ; starts sur ces 5 ; fenêtre non-engine = le
@@ -25,11 +23,13 @@ export type AnalysisContext = 'first' | 'second';
 export type AvailabilityProfile = 'early' | 'flexible' | 'prepared' | 'breaker';
 
 /**
- * Prérequis en deck (itération 5, conservé) : une source de start (starter ou arête)
- * exige qu'il reste ≥ `minInDeck` copies de la carte requise DANS LE DECK après le
- * tirage observé. `requiredTotal` est reconstruit par `prepare` depuis la composition
- * courante ; si la carte requise est absente du deck, `requiredType = null` → jamais
- * satisfait. Une liste = conjonction (ET). Étape 5 : traduit en `Condition`.
+ * Prérequis en deck (itération 5, REPRÉSENTATION ANCIENNE) : une source de start
+ * (starter ou arête) exige qu'il reste ≥ `minInDeck` copies de la carte requise DANS LE
+ * DECK après le tirage observé. `requiredTotal` est reconstruit par `prepare` depuis la
+ * composition courante ; si la carte requise est absente du deck, `requiredType = null`
+ * → jamais satisfait. Une liste = conjonction (ET). Depuis l'étape 5B, l'application ne
+ * produit plus que des `Condition` ; ce type reste accepté seul (tests historiques) et
+ * `prepare` REFUSE une source portant les deux représentations (Q3 : une seule).
  */
 export interface Prereq {
   requiredType: number | null; // index dans types[] (ou null si carte absente du deck)
@@ -68,21 +68,23 @@ export interface EngineType {
   // contexte concerné (ni starter, ni sommet du graphe). Distinct des profils non-engine.
   deadFirst?: boolean;
   deadSecond?: boolean;
-  // Itération 5 : prérequis en deck (ET) sur le RÔLE STARTER de ce type. Conservé ;
-  // combiné par ET avec `starterCondition` si les deux sont présents.
+  // Représentation ancienne des prérequis (ET) sur le RÔLE STARTER de ce type.
+  // Acceptée seule ; refusée si `starterCondition` est aussi présent (Q3).
   starterPrereqs?: Prereq[];
   // Étape 5 : condition ET/OU sur le rôle starter de ce type.
   starterCondition?: Condition;
-  // Étape 5 : profil de disponibilité non-engine. ABSENT = modèle historique
-  // transitoire (pertinence de catégorie + horizon), en attendant la migration.
+  // Étape 5 : profil de disponibilité non-engine. Une carte étiquetée SANS profil
+  // apporte zéro contribution retenue (Q5) tout en restant comptée dans les copies
+  // brutes (`catCounts`) ; l'application la signale, le moteur ne devine rien.
   availability?: AvailabilityProfile;
   // Étape 5 : index dans EngineInput.groups (plafond partagé). Exige `availability`.
   group?: number;
 }
 
+/** Catégorie non-engine = étiquette manuelle (contrat §3) ; aucune pertinence par
+ *  contexte : les fenêtres viennent du profil de la carte. */
 export interface EngineCategory {
   id: string;
-  relevance: Relevance;
 }
 
 /** Entrée du moteur : deck + annotations, indépendant de l'UI. */
@@ -90,22 +92,14 @@ export interface EngineInput {
   deckSize: number; // 40..60 (§D). Extra/side jamais inclus.
   types: EngineType[];
   edges: Array<[number, number]>; // paires actives, index de types, i ≠ j
-  // Itération 5 : prérequis en deck portant sur une ARÊTE (paire), aligné sur `edges`.
-  // edgePrereqs[e] = prérequis (ET) de l'arête e ; absent/undefined = aucun.
+  // Représentation ancienne des prérequis (ET) portant sur une ARÊTE, alignée sur
+  // `edges`. Acceptée seule ; refusée si `edgeConditions[e]` est aussi présent (Q3).
   edgePrereqs?: Array<Prereq[] | undefined>;
-  // Étape 5 : condition ET/OU par arête, alignée sur `edges` ; combinée par ET avec
-  // `edgePrereqs[e]` si les deux sont présents.
+  // Étape 5 : condition ET/OU par arête, alignée sur `edges`.
   edgeConditions?: Array<Condition | undefined>;
   categories: EngineCategory[];
   // Étape 5 : groupes à plafond partagé, référencés par `EngineType.group`.
   groups?: EngineGroup[];
-  // Modèle HISTORIQUE transitoire (itération 2) pour les types SANS profil : nombre de
-  // tours adverses pendant lesquels une carte HOPT non-engine reste activable →
-  // plafond `min(copies, horizon)`. Plage 1..3 ; défauts dans `prepare()` : first=1,
-  // second=2. Ne touche jamais le graphe de combos. Remplacé par les profils après
-  // migration (étape 5, partie B).
-  horizonFirst?: number;
-  horizonSecond?: number;
 }
 
 /** Membre d'une unité couplée : [signature, capacité tour adverse, capacité tour
@@ -181,7 +175,6 @@ export interface Bucket {
 
 export interface CategoryDist {
   id: string;
-  relevant: boolean; // pertinent pour le contexte (pertinence historique)
   dist: number[]; // P(count = i) — copies brutes, sans plafond ni perte de la sixième
   mean: number;
 }

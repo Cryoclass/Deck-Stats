@@ -1,6 +1,7 @@
 import type { Library, Zone } from '../types.js';
 import type { Configuration } from '../../../server/src/domain/deckConfiguration.js';
 import { parseArchive, type DeckArchive } from '../../../server/src/domain/deckArchive.js';
+import { requiredCardIds } from './conditions.js';
 
 export interface DeckCardRow {
   cardId: number;
@@ -25,11 +26,11 @@ export function toYdk(cards: DeckCardRow[]): string {
 
 export type DeckJson = DeckArchive;
 
-/** Portable snapshot including dormant local annotations and query references. */
+/** Portable snapshot including dormant local annotations, query references, profiles and caps. */
 export function buildDeckJson(configuration: Configuration, library: Library): DeckArchive {
   const cardIds = new Set([...configuration.cards.map((c) => c.card_id),...configuration.starters,
     ...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),
-    ...configuration.requirements.flatMap((r) => [r.required_card_id,...(r.source_card_id ? [r.source_card_id] : [])]),
+    ...configuration.conditions.flatMap((r) => [...requiredCardIds(r.condition),...(r.source_card_id ? [r.source_card_id] : [])]),
     ...configuration.deadFirst,...configuration.deadSecond]);
   const cardCategories = library.cardCategories.filter((cc) => cardIds.has(cc.card_id));
   const categoryIds = new Set(cardCategories.map((cc) => cc.category_id));
@@ -41,10 +42,14 @@ export function buildDeckJson(configuration: Configuration, library: Library): D
       if (subject.kind === 'group') subject.categoryIds!.forEach((id) => categoryIds.add(id));
     }
   }
+  const profiles = (library.profiles ?? []).filter((p) => cardIds.has(p.card_id)).map((p) => ({ card_id: p.card_id,availability: p.availability,group_id: p.group_id ?? null }));
+  const groupIds = new Set(profiles.map((p) => p.group_id).filter((id): id is string => id !== null));
   return parseArchive({ format: 'ygo-proba-deck',version: 2,configuration,
     library: { hoptCardIds: library.hoptCardIds.filter((id) => cardIds.has(id)),
-      categories: library.categories.filter((c) => categoryIds.has(c.id)).map(({ id,name,relevance }) => ({ id,name,relevance })),
-      cardCategories } });
+      categories: library.categories.filter((c) => categoryIds.has(c.id)).map(({ id,name }) => ({ id,name })),
+      cardCategories,
+      profiles,
+      groups: (library.groups ?? []).filter((g) => groupIds.has(g.id)).map(({ id,name,cap_per_turn }) => ({ id,name,cap_per_turn })) } });
 }
 
 export function parseDeckJson(text: string): DeckArchive | null {

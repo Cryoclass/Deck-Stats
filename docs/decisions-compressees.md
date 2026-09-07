@@ -132,3 +132,18 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Conditions ET/OU validées dans `prepare` (groupe vide, opérateur inconnu, quantité < 1, type hors modèle = exception) → rien ne devient vrai par défaut ; anciens prérequis + condition = ET.
 - Types sans profil = modèle historique (pertinence + horizon) jusqu'à la migration → aucune correspondance implicite labels → profils ; profilée sans étiquette = 0 ; groupe sans profil refusé ; pertinence non appliquée aux profilées (questions Q1–Q7 de docs/etape-5a.md).
 - Oracles réservés aux tests : `deckOracle.ts` (énumération physique de decks entiers) et `monteCarlo.ts` (10⁶ mains, graine fixe, tolérance `5·√(p(1−p)/n)+5/n` jamais ajustée) → toute divergence = échec ; nouveaux cas dans `chronology.test.ts`, `oracle.ts` et `rules.test.ts` intacts.
+
+
+## Étape 5, partie B (7 septembre 2026)
+- Profil (`card_flags.availability`) et plafond (`nonengine_groups`, `card_flags.group_id`) = annotations du compte ; condition ET/OU (`deck_conditions`, jsonb, une par source) = locale au deck → rien n'est déduit des anciens labels, aucun groupe créé par migration (Q2, Q4).
+- Migration 002 : chaque source de `deck_requirements` → un groupe ET de feuilles (ordre des ids, nommé par le premier), horizons retirés de `params`, `summary` invalidé partout ; `deck_requirements` conservée, plus lue ni écrite → une seule représentation (Q3), purge à l'étape 8.
+- API : `requirements` refusé (400 « format antérieur »), archives JSON et brouillons convertis par `upgradeConfiguration` (règle exacte de la migration) → jamais de conversion silencieuse côté API.
+- Moteur : plus d'horizon ni de pertinence ; contribue = étiquetée ET profilée ; étiquette sans profil = 0 mais copies brutes comptées (Q5) ; prérequis anciens + condition sur une source = exception → l'application ne produit que des `Condition`.
+- `buildEngineModel` liste `unprofiledCardIds` ; panneau (« N cartes non-engine sans profil, non comptées »), `resultContext` et comparateur les nomment → enregistrement jamais bloqué.
+- Toute écriture de bibliothèque met `decks.summary` à NULL (decks contenant la carte ; tous les decks du compte pour catégorie/plafond ; jamais un autre compte) → le cache ne certifie rien.
+- Réglage unique `context` dans le store (transitoire) → deltas, matrice, requête active, mur de mains suivent ; plus de bouton delta ni de scénario local du mur.
+- « Départs théoriques » = libellé de S partout (panneau, requête, matrice, mur, comparateur, Excel) avec explication courte ; clés d'agrégats et géométrie Excel inchangées.
+- Éditeur ET/OU : mode Condition = clause ET / retrait ; inventaire et combos = « ou… », « ＋ ou… », « ＋ et… », ≥ n ; groupe vidé retiré, racine vidée = inconditionnelle → le groupe vide n'est jamais produit, toujours refusé par le serveur.
+- Gardes Q1/Q2 : interface (Profil ignore les cartes sans étiquette, plafond seulement si profilée), serveur (400 + contrainte SQL), moteur (5A) → trois niveaux.
+- Catégories sans pertinence : colonne `relevance` conservée (`'both'`), jamais renvoyée ni comparée à l'import → étiquette pure.
+- Tests du modèle historique réécrits vers la règle décidée (bloc horizon d'`engine.test.ts`, Q3 de `chronology.test.ts`) ; `oracle.ts`, `rules.test.ts`, ponts B02–B04 intacts → jamais « pour faire passer le code ».

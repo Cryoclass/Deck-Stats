@@ -10,7 +10,7 @@ vi.mock('../worker/client.js',() => ({ createEngineClient: () => ({ compute: () 
 vi.mock('../lib/draft.js',() => ({ saveDraft: vi.fn(async () => {}),clearDraft: vi.fn(async () => {}),loadDraft: vi.fn(async () => null) }));
 vi.mock('../lib/api.js',async (original) => {
   const actual=await original<typeof import('../lib/api.js')>();
-  return { ...actual,api:{ ...actual.api,saveConfiguration:vi.fn(),getLibrary:vi.fn(),getDeck:vi.fn(),cardsByIds:vi.fn(async () => []),setFlags:vi.fn(),addCategory:vi.fn(),addCardCategory:vi.fn(),removeCardCategory:vi.fn() } };
+  return { ...actual,api:{ ...actual.api,saveConfiguration:vi.fn(),getLibrary:vi.fn(),getDeck:vi.fn(),cardsByIds:vi.fn(async () => []),setFlags:vi.fn(),addCategory:vi.fn(),addCardCategory:vi.fn(),removeCardCategory:vi.fn(),addGroup:vi.fn(),updateGroup:vi.fn(),deleteGroup:vi.fn() } };
 });
 const deckId='00000000-0000-4000-8000-000000000001';
 function deferred<T>() { let resolve!: (value:T) => void;const promise=new Promise<T>((r) => { resolve=r; });return { promise,resolve }; }
@@ -35,7 +35,8 @@ describe('Étape 3 — persistance du store',() => {
     expect(api.saveConfiguration).toHaveBeenCalledTimes(1);
     const [id,snapshot,revision]=vi.mocked(api.saveConfiguration).mock.calls[0];
     expect([id,revision]).toEqual([deckId,1]);expect(snapshot.pairs[0]).toMatchObject({ id:pair.id,disabled:true });
-    expect(snapshot.requirements[0].source_pair_id).toBe(pair.id);
+    expect(snapshot.conditions[0].source_pair_id).toBe(pair.id);
+    expect(snapshot.conditions[0].condition).toEqual({ kind:'and',all:[{ kind:'remaining',card_id:3,at_least:1 }] });
     expect(useDeck.getState().dirty).toBe(false);expect(useDeck.getState().revision).toBe(2);
     expect(snapshot).not.toHaveProperty('summary');
   });
@@ -71,15 +72,46 @@ describe('Étape 3 — persistance du store',() => {
     useDeck.getState().togglePair(1,2);const id=useDeck.getState().pairs[0].id;
     useDeck.getState().toggleRequirement({ pairId:id },3);useDeck.getState().toggleRequirement({ cardId:1 },4);
     useDeck.getState().removePairFromDeck(id);
-    expect(useDeck.getState().pairs).toEqual([]);expect(useDeck.getState().startRequirements).toHaveLength(1);
-    expect(useDeck.getState().startRequirements[0].sourceCardId).toBe(1);expect(api.saveConfiguration).not.toHaveBeenCalled();
+    expect(useDeck.getState().pairs).toEqual([]);expect(useDeck.getState().startConditions).toHaveLength(1);
+    expect(useDeck.getState().startConditions[0].sourceCardId).toBe(1);expect(api.saveConfiguration).not.toHaveBeenCalled();
+  });
+
+  it('une source porte un seul arbre ET/OU : clics = clauses ET, retrait de la dernière feuille = source inconditionnelle',() => {
+    const s=useDeck.getState();
+    s.toggleRequirement({ cardId:1 },3);s.toggleRequirement({ cardId:1 },4);
+    expect(useDeck.getState().startConditions).toHaveLength(1);
+    expect(useDeck.getState().startConditions[0].condition).toEqual({ kind:'and',all:[{ kind:'remaining',card_id:3,at_least:1 },{ kind:'remaining',card_id:4,at_least:1 }] });
+    useDeck.getState().setCondition({ cardId:1 },{ kind:'and',all:[{ kind:'or',any:[{ kind:'remaining',card_id:3,at_least:1 },{ kind:'remaining',card_id:4,at_least:2 }] }] });
+    useDeck.getState().toggleRequirement({ cardId:1 },3); // retire la feuille 3 : le OU singleton devient la feuille 4
+    expect(useDeck.getState().startConditions[0].condition).toEqual({ kind:'and',all:[{ kind:'remaining',card_id:4,at_least:2 }] });
+    useDeck.getState().toggleRequirement({ cardId:1 },4);
+    expect(useDeck.getState().startConditions).toEqual([]);
+    expect(useDeck.getState().dirty).toBe(true);
+  });
+
+  it('profil et plafond sont globaux : refus local sans étiquette (Q1) ou sans profil (Q2), sinon acquittement serveur',async () => {
+    useDeck.getState().setProfile(1,'flexible');
+    expect(api.setFlags).not.toHaveBeenCalled();expect(useDeck.getState().persistenceError).toMatch(/catégorie/);
+    useDeck.setState({ cardCategories:new Map([[1,new Set(['cat'])]]),persistenceError:null });
+    vi.mocked(api.setFlags).mockResolvedValue({ ok:true,is_hopt:false,availability:'flexible',group_id:null });
+    useDeck.getState().setProfile(1,'flexible');
+    await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
+    expect(api.setFlags).toHaveBeenLastCalledWith(1,{ availability:'flexible' });
+    expect(useDeck.getState().profiles.get(1)).toEqual({ availability:'flexible',groupId:null });
+    expect(useDeck.getState().dirty).toBe(false); // annotation du compte : rien à enregistrer dans le deck
+    useDeck.getState().setCardGroup(2,'g');
+    expect(useDeck.getState().persistenceError).toMatch(/profil/);
+    vi.mocked(api.setFlags).mockResolvedValue({ ok:true,is_hopt:false,availability:'flexible',group_id:'g' });
+    useDeck.getState().setCardGroup(1,'g');
+    await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
+    expect(useDeck.getState().profiles.get(1)).toEqual({ availability:'flexible',groupId:'g' });
   });
 
   it('les disponibilités des starts sont locales ; HOPT est global et attend son acquittement',async () => {
     useDeck.getState().toggleDeadFirst(1);expect(useDeck.getState().dirty).toBe(true);expect(api.setFlags).not.toHaveBeenCalled();
-    const request=deferred<unknown>();vi.mocked(api.setFlags).mockReturnValue(request.promise);
+    const request=deferred<{ ok:boolean;is_hopt:boolean;availability:null;group_id:null }>();vi.mocked(api.setFlags).mockReturnValue(request.promise);
     useDeck.getState().toggleHopt(1);await Promise.resolve();expect(useDeck.getState().hopt.has(1)).toBe(false);
-    request.resolve({ ok:true });await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
+    request.resolve({ ok:true,is_hopt:true,availability:null,group_id:null });await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
     expect(useDeck.getState().hopt.has(1)).toBe(true);
   });
 

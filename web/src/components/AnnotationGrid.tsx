@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
 import { assignGroups } from '../lib/colors.js';
-import { imageSmall } from '../types.js';
+import { leavesOf } from '../lib/conditions.js';
+import { AVAILABILITY_LABEL, imageSmall, type Availability } from '../types.js';
 import { CardTile } from './CardTile.js';
 import { ModeBar } from './ModeBar.js';
 import { AddCardDialog } from './AddCardDialog.js';
 import { KEY_TO_MODE, MODE_LABEL, type AnnotationMode } from './annotationModes.js';
 
 export function AnnotationGrid({
-  column,
   highlightCardId = null,
   onHighlightConsumed,
 }: {
-  column: 'first' | 'second';
   highlightCardId?: number | null;
   onHighlightConsumed?: () => void;
 }) {
@@ -25,32 +24,38 @@ export function AnnotationGrid({
   const model = useDeck((s) => s.model);
   const cards = useDeck((s) => s.cards);
   const categories = useDeck((s) => s.categories);
+  const cardCategories = useDeck((s) => s.cardCategories);
   const togglePair = useDeck((s) => s.togglePair);
   const toggleHopt = useDeck((s) => s.toggleHopt);
   const toggleStarter = useDeck((s) => s.toggleStarter);
   const toggleCardCategory = useDeck((s) => s.toggleCardCategory);
-  const startRequirements = useDeck((s) => s.startRequirements);
+  const setProfile = useDeck((s) => s.setProfile);
+  const startConditions = useDeck((s) => s.startConditions);
   const toggleRequirement = useDeck((s) => s.toggleRequirement);
   const extraSideHidden = useDeck((s) => s.extraSideHidden);
   const setExtraSideHidden = useDeck((s) => s.setExtraSideHidden);
 
   const [mode, setMode] = useState<AnnotationMode>('select');
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [activeProfile, setActiveProfile] = useState<Availability | null>('flexible');
   const [comboPivot, setComboPivot] = useState<number | null>(null);
   const [prereqSource, setPrereqSource] = useState<number | null>(null);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [modCount, setModCount] = useState(0);
+  const [skipped, setSkipped] = useState(0); // mode Profil : cartes sans étiquette ignorées (Q1)
   const [addOpen, setAddOpen] = useState(false);
 
   const enterMode = useCallback(
-    (next: AnnotationMode, categoryId?: string) => {
+    (next: AnnotationMode, option?: { categoryId?: string; profile?: Availability | null }) => {
       setMode(next);
       setComboPivot(null);
       setPrereqSource(null);
       setModCount(0);
+      setSkipped(0);
       if (next === 'nonengine') {
-        setActiveCategoryId(categoryId ?? activeCategoryId ?? categories[0]?.id ?? null);
+        setActiveCategoryId(option?.categoryId ?? activeCategoryId ?? categories[0]?.id ?? null);
       }
+      if (next === 'profile' && option && 'profile' in option) setActiveProfile(option.profile ?? null);
     },
     [activeCategoryId, categories],
   );
@@ -119,12 +124,12 @@ export function AnnotationGrid({
     return s;
   }, [comboPivot, pairs, excl, main]);
 
-  // Cartes dépendantes (sources de prérequis carte) → marqueur permanent (§D).
+  // Cartes dépendantes (sources de condition carte) → marqueur permanent (§D).
   const dependents = useMemo(
-    () => new Set(startRequirements.filter((r) => r.sourceCardId !== null).map((r) => r.sourceCardId!)),
-    [startRequirements],
+    () => new Set(startConditions.filter((r) => r.sourceCardId !== null).map((r) => r.sourceCardId!)),
+    [startConditions],
   );
-  // Dépendante « active » : la source en mode Prérequis, sinon la carte survolée si
+  // Dépendante « active » : la source en mode Condition, sinon la carte survolée si
   // elle est dépendante. Ses cartes requises sont mises en évidence par rebond (§D).
   const activeDependent =
     mode === 'prereq'
@@ -135,11 +140,10 @@ export function AnnotationGrid({
   const requiredByActive = useMemo(() => {
     const s = new Set<number>();
     if (activeDependent === null) return s;
-    for (const r of startRequirements) {
-      if (r.sourceCardId === activeDependent) s.add(r.requiredCardId);
-    }
+    const r = startConditions.find((c) => c.sourceCardId === activeDependent);
+    if (r) for (const l of leavesOf(r.condition)) s.add(l.leaf.card_id);
     return s;
-  }, [activeDependent, startRequirements]);
+  }, [activeDependent, startConditions]);
 
   const dispatch = (cardId: number) => {
     switch (mode) {
@@ -157,6 +161,15 @@ export function AnnotationGrid({
           setModCount((c) => c + 1);
         }
         break;
+      case 'profile':
+        // Q1 : un profil sans étiquette ne mesure rien — la carte est ignorée, et dite ignorée.
+        if (activeProfile !== null && (cardCategories.get(cardId)?.size ?? 0) === 0) {
+          setSkipped((c) => c + 1);
+          break;
+        }
+        setProfile(cardId, activeProfile);
+        setModCount((c) => c + 1);
+        break;
       case 'combo':
         if (comboPivot === null) setComboPivot(cardId);
         else if (comboPivot === cardId) setComboPivot(null); // termine le groupe
@@ -169,7 +182,7 @@ export function AnnotationGrid({
         if (prereqSource === null) setPrereqSource(cardId); // 1er clic = dépendante
         else if (prereqSource === cardId) setPrereqSource(null); // change de source
         else {
-          toggleRequirement({ cardId: prereqSource }, cardId); // (dé)pose un prérequis
+          toggleRequirement({ cardId: prereqSource }, cardId); // (dé)pose une clause ET
           setModCount((c) => c + 1);
         }
         break;
@@ -195,17 +208,19 @@ export function AnnotationGrid({
 
   return (
     <div className="flex h-full flex-col">
-      <ModeBar mode={mode} activeCategoryId={activeCategoryId} onEnter={enterMode} />
+      <ModeBar mode={mode} activeCategoryId={activeCategoryId} activeProfile={activeProfile} onEnter={enterMode} />
 
       {mode !== 'select' && (
         <ModeBanner
           mode={mode}
           modCount={modCount}
+          skipped={skipped}
           comboPivot={comboPivot}
           pivotName={comboPivot !== null ? cards[comboPivot]?.name ?? `#${comboPivot}` : null}
           prereqSource={prereqSource}
           sourceName={prereqSource !== null ? cards[prereqSource]?.name ?? `#${prereqSource}` : null}
           categoryName={categories.find((c) => c.id === activeCategoryId)?.name ?? null}
+          profileName={activeProfile ? AVAILABILITY_LABEL[activeProfile] : null}
           onNewPivot={() => setComboPivot(null)}
           onNewSource={() => setPrereqSource(null)}
           onDone={exitMode}
@@ -221,7 +236,6 @@ export function AnnotationGrid({
             <CardTile
               key={c.cardId}
               cardId={c.cardId}
-              column={column}
               groups={groups}
               delta={deltas.get(c.cardId)}
               mode={mode}
@@ -297,22 +311,26 @@ export function AnnotationGrid({
 function ModeBanner({
   mode,
   modCount,
+  skipped,
   comboPivot,
   pivotName,
   prereqSource,
   sourceName,
   categoryName,
+  profileName,
   onNewPivot,
   onNewSource,
   onDone,
 }: {
   mode: AnnotationMode;
   modCount: number;
+  skipped: number;
   comboPivot: number | null;
   pivotName: string | null;
   prereqSource: number | null;
   sourceName: string | null;
   categoryName: string | null;
+  profileName: string | null;
   onNewPivot: () => void;
   onNewSource: () => void;
   onDone: () => void;
@@ -320,11 +338,9 @@ function ModeBanner({
   const accent =
     mode === 'combo'
       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-      : mode === 'nonengine'
+      : mode === 'nonengine' || mode === 'profile'
         ? 'border-sky-500/30 bg-sky-500/10 text-sky-200'
-        : mode === 'prereq'
-          ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
-          : 'border-amber-500/30 bg-amber-500/10 text-amber-200';
+        : 'border-amber-500/30 bg-amber-500/10 text-amber-200';
 
   let hint: string;
   if (mode === 'combo') {
@@ -335,10 +351,14 @@ function ModeBanner({
   } else if (mode === 'prereq') {
     hint =
       prereqSource === null
-        ? 'Clique la carte dépendante (ex. son start cherche une carte en deck).'
-        : `Dépendante : ${sourceName}. Clique les cartes requises EN DECK ; re-clique la dépendante pour en changer.`;
+        ? 'Clique la carte dépendante (son start exige qu’il reste une carte en deck).'
+        : `Dépendante : ${sourceName}. Clique les cartes requises EN DECK (clauses ET) ; les alternatives OU se composent dans l’inventaire. Re-clique la dépendante pour en changer.`;
   } else if (mode === 'nonengine') {
-    hint = `Catégorie « ${categoryName ?? '—'} » : clique les cartes à (dé)marquer.`;
+    hint = `Étiquette « ${categoryName ?? '—'} » : clique les cartes à (dé)marquer.`;
+  } else if (mode === 'profile') {
+    hint = profileName
+      ? `Profil « ${profileName} » : clique les cartes étiquetées non-engine (annotation du compte).`
+      : 'Retirer le profil : clique les cartes concernées (elles ne seront plus comptées).';
   } else {
     hint = `Clique les cartes à basculer en ${MODE_LABEL[mode]}.`;
   }
@@ -349,6 +369,7 @@ function ModeBanner({
       <span className="opacity-90">{hint}</span>
       <span className="tnum ml-auto rounded bg-black/20 px-1.5 py-0.5 text-[11px]">
         {modCount} modif.
+        {skipped > 0 ? ` · ${skipped} sans étiquette, ignorée${skipped > 1 ? 's' : ''}` : ''}
       </span>
       {mode === 'combo' && comboPivot !== null && (
         <button

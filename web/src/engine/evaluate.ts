@@ -16,22 +16,22 @@ export interface Prepared {
   n: number;
   filler: number; // §B.1 : taille_deck − Σ copies annotées
   typeAdj: boolean[][];
-  neFirst: boolean[]; // type i non-engine en premier (label + profil, ou pertinence historique)
-  neSecond: boolean[]; // type i non-engine en second
+  // Type i non-engine = étiqueté ET profilé (contrat §3 ; Q1 et Q5). Une carte
+  // étiquetée sans profil n'apporte aucune contribution retenue, dans les deux
+  // contextes ; ses copies brutes restent comptées.
+  nonEngine: boolean[];
   deadFirst: boolean[]; // starts du type i désactivés en premier → filler pour ce contexte (Lot C)
   deadSecond: boolean[]; // idem en second
-  horizonFirst: number; // modèle historique (types sans profil) : plafond HOPT 1..3
-  horizonSecond: number;
   // Étape 5 : conditions ET/OU sur le deck restant, validées ; `undefined` = source
-  // inconditionnelle. Anciens prérequis (ET) traduits et combinés par ET.
+  // inconditionnelle. Anciens prérequis (ET) traduits en feuilles quand ils sont seuls.
   hasConditions: boolean; // aucune condition → chemin rapide
   starterConditions: Array<Condition | undefined>; // par type
   edgeConditions: Array<Condition | undefined>; // aligné sur input.edges
   // Itération 7 : signatures non-engine (types groupés par ensemble de catégories) —
   // permet d'agréger tout groupe de catégories sans double comptage. Une signature
-  // porte ses cartes (types) et ses ids de catégories.
-  neSigFirst: NeSignature[];
-  neSigSecond: NeSignature[];
+  // porte ses cartes (types) et ses ids de catégories. Identiques dans les deux
+  // contextes depuis l'étape 5B (les fenêtres viennent du profil, pas de l'étiquette).
+  neSigs: NeSignature[];
   // Étape 5 : plafonds partagés (aligné sur input.groups) et types dont l'issue dépend
   // de leur présence en sixième carte (profils early et flexible).
   groupCaps: number[];
@@ -42,12 +42,6 @@ export interface Prepared {
 interface NeSignature {
   cats: string[]; // ids des catégories partagées par ces types
   types: number[]; // index des types de cette signature
-}
-
-/** Modèle historique : horizon = entier dans [1, 3]. Défauts : first=1, second=2. */
-function clampHorizon(v: number | undefined, fallback: number): number {
-  if (v === undefined || !Number.isFinite(v)) return fallback;
-  return Math.max(1, Math.min(3, Math.round(v)));
 }
 
 const PROFILES: ReadonlySet<string> = new Set<AvailabilityProfile>(['early', 'flexible', 'prepared', 'breaker']);
@@ -99,10 +93,17 @@ function prereqsToCondition(prereqs: Prereq[], typeCount: number): Condition {
   );
 }
 
-function combineConditions(a: Condition | undefined, b: Condition | undefined): Condition | undefined {
-  if (!a) return b;
-  if (!b) return a;
-  return { kind: 'and', all: [a, b] };
+/** Q3 (étape 5B) : une seule représentation par source. Les deux présentes = incohérence
+ *  signalée, jamais combinée silencieusement. */
+function singleRepresentation(
+  legacy: Condition | undefined,
+  modern: Condition | undefined,
+  where: string,
+): Condition | undefined {
+  if (legacy && modern) {
+    throw invalidCondition(`${where} porte à la fois d'anciens prérequis et une condition ET/OU (une seule représentation attendue).`);
+  }
+  return modern ?? legacy;
 }
 
 /**
@@ -146,8 +147,7 @@ export function prepare(input: EngineInput): Prepared {
     return g.capPerTurn;
   });
 
-  const neFirst = new Array<boolean>(n).fill(false);
-  const neSecond = new Array<boolean>(n).fill(false);
+  const nonEngine = new Array<boolean>(n).fill(false);
   const deadFirst = new Array<boolean>(n).fill(false);
   const deadSecond = new Array<boolean>(n).fill(false);
   const sixthSensitive = new Array<boolean>(n).fill(false);
@@ -164,33 +164,27 @@ export function prepare(input: EngineInput): Prepared {
         throw new Error('Plafond de groupe : référence hors du modèle.');
       }
       if (profile === undefined) {
-        // Interprétation conservatrice (étape 5A, question ouverte) : un plafond partagé
-        // n'a pas de sens sans fenêtres définies ; on refuse plutôt que d'ignorer.
+        // Q2 : un plafond partagé n'a pas de sens sans fenêtres définies ; refusé,
+        // jamais ignoré. L'interface ne propose un groupe qu'à une carte profilée.
         throw new Error('Plafond de groupe sans profil de disponibilité : configuration incomplète.');
       }
     }
-    const labelled = t.categories.length > 0;
-    if (profile !== undefined) {
-      // Cible (contrat §3) : le profil détermine les fenêtres ; les catégories sont des
-      // étiquettes (la pertinence historique ne s'applique pas). Sans étiquette, la
-      // carte n'est pas non-engine : aucune contribution (conservateur).
-      neFirst[i] = labelled;
-      neSecond[i] = labelled;
-      sixthSensitive[i] = profile === 'early' || profile === 'flexible';
-    } else {
-      for (const c of t.categories) {
-        const rel = input.categories[c]?.relevance;
-        if (rel === 'first' || rel === 'both') neFirst[i] = true;
-        if (rel === 'second' || rel === 'both') neSecond[i] = true;
+    for (const c of t.categories) {
+      if (!Number.isInteger(c) || c < 0 || c >= input.categories.length) {
+        throw new Error('Catégorie non-engine : référence hors du modèle.');
       }
     }
+    // Contrat §3 : le profil détermine les fenêtres, l'étiquette dit ce qui est compté.
+    // Profil sans étiquette (Q1) ou étiquette sans profil (Q5) : aucune contribution.
+    nonEngine[i] = profile !== undefined && t.categories.length > 0;
+    sixthSensitive[i] = nonEngine[i] && (profile === 'early' || profile === 'flexible');
     deadFirst[i] = !!t.deadFirst;
     deadSecond[i] = !!t.deadSecond;
     const legacy = t.starterPrereqs && t.starterPrereqs.length > 0 ? prereqsToCondition(t.starterPrereqs, n) : undefined;
     const modern = t.starterCondition !== undefined ? normalizeCondition(t.starterCondition, n) : undefined;
-    const combined = combineConditions(legacy, modern);
-    if (combined) {
-      starterConditions[i] = combined;
+    const condition = singleRepresentation(legacy, modern, `le starter n° ${i}`);
+    if (condition) {
+      starterConditions[i] = condition;
       hasConditions = true;
     }
   }
@@ -200,54 +194,37 @@ export function prepare(input: EngineInput): Prepared {
     const legacy = ep && ep.length > 0 ? prereqsToCondition(ep, n) : undefined;
     const ec = input.edgeConditions?.[e];
     const modern = ec !== undefined ? normalizeCondition(ec, n) : undefined;
-    const combined = combineConditions(legacy, modern);
-    if (combined) hasConditions = true;
-    return combined;
+    const condition = singleRepresentation(legacy, modern, `la paire n° ${e}`);
+    if (condition) hasConditions = true;
+    return condition;
   });
 
   const usedCopies = input.types.reduce((s, t) => s + t.copies, 0);
   const filler = Math.max(0, input.deckSize - usedCopies);
 
-  // Signatures non-engine : types groupés par ensemble de catégories retenues pour le
-  // contexte — toutes les étiquettes pour un type profilé, les seules catégories
-  // pertinentes pour un type du modèle historique.
-  const catRelFirst = input.categories.map((c) => c.relevance === 'first' || c.relevance === 'both');
-  const catRelSecond = input.categories.map((c) => c.relevance === 'second' || c.relevance === 'both');
-  const labelsOf = (i: number, rel: boolean[]): string[] =>
-    input.types[i].categories
-      .filter((c) => input.types[i].availability !== undefined || rel[c])
-      .map((c) => input.categories[c].id)
-      .sort();
-  const buildSigs = (rel: boolean[], ne: boolean[]): NeSignature[] => {
-    const map = new Map<string, NeSignature>();
-    for (let i = 0; i < n; i++) {
-      if (!ne[i]) continue;
-      const cats = labelsOf(i, rel);
-      if (cats.length === 0) continue;
-      const key = cats.join('|');
-      const sig = map.get(key) ?? { cats, types: [] };
-      sig.types.push(i);
-      map.set(key, sig);
-    }
-    return [...map.values()];
-  };
+  // Signatures non-engine : types profilés groupés par ensemble d'étiquettes.
+  const sigMap = new Map<string, NeSignature>();
+  for (let i = 0; i < n; i++) {
+    if (!nonEngine[i]) continue;
+    const cats = input.types[i].categories.map((c) => input.categories[c].id).sort();
+    const key = cats.join('|');
+    const sig = sigMap.get(key) ?? { cats, types: [] };
+    sig.types.push(i);
+    sigMap.set(key, sig);
+  }
 
   return {
     input,
     n,
     filler,
     typeAdj,
-    neFirst,
-    neSecond,
+    nonEngine,
     deadFirst,
     deadSecond,
-    horizonFirst: clampHorizon(input.horizonFirst, 1),
-    horizonSecond: clampHorizon(input.horizonSecond, 2),
     hasConditions,
     starterConditions,
     edgeConditions,
-    neSigFirst: buildSigs(catRelFirst, neFirst),
-    neSigSecond: buildSigs(catRelSecond, neSecond),
+    neSigs: [...sigMap.values()],
     groupCaps,
     sixthSensitive,
     anySixthSensitive: sixthSensitive.some(Boolean),
@@ -394,23 +371,19 @@ export function evaluate(prep: Prepared, context: AnalysisContext, k: number[], 
   }
 
   // 6. Potentiel non-engine U : par signature (union dédupliquée), fenêtres du profil
-  //    et plafonds appliqués ; les types sans profil suivent le modèle historique
-  //    (pertinence + horizon) jusqu'à la migration. Les groupes à plafond partagé sont
-  //    des unités couplées, évaluées ensemble et conservées pour les requêtes.
-  const sigs = context === 'first' ? prep.neSigFirst : prep.neSigSecond;
-  const horizon = context === 'first' ? prep.horizonFirst : prep.horizonSecond;
+  //    et plafonds appliqués. Seuls les types profilés et étiquetés y figurent (Q5 : une
+  //    étiquette sans profil vaut zéro contribution, copies brutes intactes). Les
+  //    groupes à plafond partagé sont des unités couplées, évaluées ensemble et
+  //    conservées pour les requêtes.
+  const sigs = prep.neSigs;
   const neContrib = new Array<number>(sigs.length).fill(0);
   let units: Map<number, CappedUnit> | undefined;
   for (let s = 0; s < sigs.length; s++) {
     for (const t of sigs[s].types) {
       if (k[t] <= 0) continue;
       const type = input.types[t];
-      if (type.availability === undefined) {
-        neContrib[s] += type.isHopt ? Math.min(k[t], horizon) : k[t];
-        continue;
-      }
       const isSixth = sixthType === t ? 1 : 0;
-      const member = capacities(type.availability, type.isHopt, context, k[t] - isSixth, isSixth);
+      const member = capacities(type.availability!, type.isHopt, context, k[t] - isSixth, isSixth);
       member[0] = s;
       if (type.group === undefined) {
         neContrib[s] += Math.min(member[3], member[1] + member[2]);

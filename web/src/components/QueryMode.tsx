@@ -3,6 +3,7 @@ import { useDeck } from '../store/deckStore.js';
 import { queryProbability, criterionInvalid } from '../engine/query.js';
 import type { QueryCriterion, QuerySubject } from '../engine/query.js';
 import { pct } from '../lib/fmt.js';
+import { CONTEXT_LABEL } from './Header.js';
 
 const rid = (): string => Math.random().toString(36).slice(2);
 
@@ -25,6 +26,7 @@ function subjectKey(s: QuerySubject): string {
 export function QueryMode({ onShowHands }: { onShowHands?: () => void }) {
   const result = useDeck((s) => s.result);
   const stale = useDeck((s) => s.stale);
+  const context = useDeck((s) => s.context);
   const categories = useDeck((s) => s.categories);
   const criteria = useDeck((s) => s.queryCriteria);
   const setCriteria = useDeck((s) => s.setQueryCriteria);
@@ -109,8 +111,8 @@ export function QueryMode({ onShowHands }: { onShowHands?: () => void }) {
 
       {/* Étape 4 : probabilités d'un résultat périmé atténuées, critères toujours éditables. */}
       <div className={`mt-3 grid grid-cols-2 gap-2 transition-opacity ${stale ? 'opacity-45' : ''}`}>
-        <QueryResult label="Going first" value={pFirst} />
-        <QueryResult label="Going second" value={pSecond} />
+        <QueryResult label={CONTEXT_LABEL.first} value={pFirst} active={context === 'first'} />
+        <QueryResult label={CONTEXT_LABEL.second} value={pSecond} active={context === 'second'} />
       </div>
       {anyInvalid && (
         <div className="mt-1 text-[11px] text-red-400">
@@ -202,7 +204,7 @@ function CriterionRow({
           onChange={(e) => onSubject(e.target.value)}
           className="min-w-0 flex-1 rounded border border-ink-700 bg-ink-850 px-1 py-0.5 text-ink-100"
         >
-          <option value="starts">Starts jouables</option>
+          <option value="starts">Départs théoriques</option>
           <option value="redundancy">Redondance</option>
           <option value="nonengine">Non-engine (tous)</option>
           {categories.map((cat) => (
@@ -280,9 +282,9 @@ function Bound({ value, onChange }: { value: number | null; onChange: (v: number
   );
 }
 
-function QueryResult({ label, value }: { label: string; value: number | null }) {
+function QueryResult({ label, value, active }: { label: string; value: number | null; active: boolean }) {
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-2 text-center">
+    <div className={`rounded-lg border bg-ink-900 p-2 text-center ${active ? 'border-ink-600' : 'border-ink-800'}`}>
       <div className="text-[10px] text-ink-500">{label}</div>
       <div className="tnum text-xl font-semibold text-emerald-300">
         {value === null ? '—' : pct(value, 1)}

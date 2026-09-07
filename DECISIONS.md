@@ -1,5 +1,63 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 5, partie B, 7 septembre 2026
+
+Le [compte rendu](docs/etape-5b.md) détaille la migration, l'interface et les exports.
+Les réponses Q1–Q7 de docs/etape-5a.md (section « Réponses ») sont appliquées telles
+quelles.
+
+- **Portée des annotations selon le contrat §1.** Profil de disponibilité et plafond
+  partagé sont des annotations du compte, posées sur `card_flags` (`availability`,
+  `group_id`) et `nonengine_groups` ; la condition ET/OU est locale au deck
+  (`deck_conditions`, une par source, FK composite vers la paire). Rien n'est déduit
+  des anciens labels (Q4) ; aucun groupe n'est créé par migration (Q2).
+- **Une seule représentation des conditions (Q3).** La migration 002 convertit chaque
+  source de `deck_requirements` en un groupe ET de feuilles, dans l'ordre des
+  identifiants, nommé par le premier ; `deck_requirements` est conservée mais plus lue
+  ni écrite. L'API refuse un document portant `requirements` (400 explicite) ; archives
+  JSON et brouillons antérieurs sont convertis par `upgradeConfiguration`, la règle
+  exacte de la migration, jamais silencieusement côté API. Le moteur refuse une source
+  portant les deux représentations (`prepare` jette) au lieu de les combiner ; chaque
+  représentation seule reste acceptée, l'ancienne pour les tests historiques.
+- **Étiquette sans profil = zéro contribution, signalée (Q5).** Le moteur ne connaît
+  plus d'horizon ni de pertinence : un type contribue s'il est étiqueté et profilé.
+  `buildEngineModel` transmet ces cartes sans profil et les liste
+  (`unprofiledCardIds`) ; le panneau, le contexte du résultat et le comparateur les
+  nomment. L'enregistrement n'est pas bloqué (annotations communes au compte).
+- **Anciens tests du modèle historique réécrits, pas contournés.** Le bloc « horizon »
+  d'`engine.test.ts` (Lot A) testait une règle retirée par décision ; il devient
+  « étiquette et profil » avec les mêmes valeurs dérivées d'un profil flexible. Le test
+  Q3 de `chronology.test.ts` passe de « combinés par ET » à « refusés » ; les autres
+  tests Q1, Q2, Q4 conservent leurs valeurs. `oracle.ts` et `rules.test.ts` sont
+  intacts ; `deckOracle.ts` perd seulement le champ `relevance` de son adaptateur.
+- **Catégories sans pertinence (Q4).** `nonengine_categories.relevance` reste en base
+  (`'both'` pour toute nouvelle catégorie), n'est plus renvoyée par l'API ni exportée,
+  et les anciens exports qui la portent sont acceptés en l'ignorant ; l'import ne
+  compare plus les pertinences.
+- **Invalidation des decks concernés à toute modification globale.** Chaque route
+  d'écriture de la bibliothèque met `decks.summary` à NULL : decks du compte contenant
+  la carte pour un changement lié à une carte, tous les decks du compte pour une
+  catégorie ou un plafond, jamais un autre compte. Le résumé reste un cache non
+  affiché ; l'éditeur recalcule après acquittement (étape 4).
+- **Réglage unique premier/second dans le store** (`context`, transitoire, non
+  enregistré) : les deux passes restent calculées ; le réglage ne change que ce qui est
+  présenté (deltas de la grille, matrice, mur de mains, colonne active). Le mur de
+  mains n'a plus de scénario local.
+- **Libellé « départs théoriques »** pour S dans le panneau, les requêtes, la matrice,
+  le mur, le comparateur et l'Excel, avec une explication courte (« sources de start
+  disponibles dans la main observée, sans preuve de ligne ») ; les clés d'agrégats
+  (`brick_starters`, `starters_ge1`…) et la géométrie de l'Excel ne changent pas.
+- **Éditeur d'arbre ET/OU à deux gestes** : le mode « Condition » de la grille ajoute
+  une clause ET ou retire la carte ; l'inventaire et les combos éditent l'arbre
+  (« ou… » sur une feuille, « ＋ ou… » sur un groupe, « ＋ et… » à la racine, ≥ n). La
+  normalisation retire tout groupe vidé et rend la source inconditionnelle quand la
+  racine se vide : le groupe vide reste une configuration incomplète refusée par le
+  serveur, jamais produite par l'interface.
+- **Guardes Q1/Q2 à trois niveaux** : interface (mode Profil ignore et compte les cartes
+  sans étiquette ; plafond proposé seulement à une carte profilée), serveur (400
+  explicites, contrainte SQL `group_id is null or availability is not null`), moteur
+  (garde inchangée de l'étape 5A).
+
 ## Première mission — étape 5, partie A, 7 septembre 2026
 
 Le [compte rendu](docs/etape-5a.md) détaille le moteur chronologique et ses oracles.

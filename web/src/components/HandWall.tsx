@@ -4,8 +4,9 @@ import { drawHandsFromStore, noteHandsFromStore } from '../store/selectors.js';
 import { queryMatches, handContext, criterionInvalid } from '../engine/query.js';
 import { imageSmall } from '../types.js';
 import { Segmented } from './ui.js';
+import { CONTEXT_LABEL, CONTEXT_SHORT, CONTEXT_TITLE } from './Header.js';
 
-export function HandWall({ column }: { column: 'first' | 'second' }) {
+export function HandWall() {
   const result = useDeck((s) => s.result);
   const model = useDeck((s) => s.model);
   const stale = useDeck((s) => s.stale);
@@ -14,6 +15,10 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
   const setImportance = useDeck((s) => s.setImportance);
   const cards = useDeck((s) => s.cards);
   const mainLen = useDeck((s) => s.main.length);
+  // Contexte d'analyse UNIQUE (étape 5B) : le même réglage que l'en-tête, la matrice et
+  // les deltas — le mur ne porte plus de scénario local (contrat §3).
+  const context = useDeck((s) => s.context);
+  const setContext = useDeck((s) => s.setContext);
   // Filtre unifié avec le mode requête (§D) : mêmes critères que le panneau de requête.
   const queryCriteria = useDeck((s) => s.queryCriteria);
   const handFilterByQuery = useDeck((s) => s.handFilterByQuery);
@@ -21,16 +26,15 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
   // Signature de composition : change à tout ajout / retrait / modif de copies.
   const mainSig = useDeck((s) => s.main.map((c) => `${c.cardId}:${c.copies}`).join(','));
 
-  const [col, setCol] = useState<'first' | 'second'>(column);
   const [count, setCount] = useState(60);
   const [rawHands, setRawHands] = useState<number[][]>([]);
   const [sortByNote, setSortByNote] = useState(true);
 
-  const handSize = col === 'first' ? 5 : 6;
+  const handSize = context === 'first' ? 5 : 6;
 
-  // On re-tire seulement quand il le faut : bouton, n, taille de main, ou changement
-  // de composition du deck (une main peut contenir une carte retirée). Un changement
-  // d'importance ou d'horizon ne re-tire PAS — il renote les mêmes mains (ci-dessous).
+  // On re-tire seulement quand il le faut : bouton, n, contexte, ou changement de
+  // composition du deck (une main peut contenir une carte retirée). Un changement
+  // d'importance ne re-tire PAS — il renote les mêmes mains (ci-dessous).
   const resample = useCallback(() => {
     setRawHands(drawHandsFromStore(handSize, count));
   }, [handSize, count]);
@@ -47,7 +51,7 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
   // Le filtre du mur de mains EST la requête (§D) : une main est retenue ssi elle
   // satisfait la requête, évaluée avec le même contexte que les buckets (mêmes
   // signatures non-engine). Requête invalide (min > max) → pas de filtre.
-  const neSignatures = handSize <= 5 ? result?.first.neSignatures : result?.second.neSignatures;
+  const neSignatures = context === 'first' ? result?.first.neSignatures : result?.second.neSignatures;
   const filterActive =
     handFilterByQuery && !!neSignatures && !queryCriteria.some(criterionInvalid);
 
@@ -70,20 +74,22 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
     );
   }
 
-  const pass = col === 'first' ? result.first : result.second;
+  const pass = context === 'first' ? result.first : result.second;
 
   return (
     <div className="flex h-full flex-col">
       {/* Barre de contrôle. */}
       <div className="flex flex-wrap items-center gap-3 border-b border-ink-800 px-3 py-2 text-xs">
-        <Segmented
-          value={col}
-          onChange={setCol}
-          options={[
-            { value: 'first', label: 'Going 1st · 5' },
-            { value: 'second', label: 'Going 2nd · 6' },
-          ]}
-        />
+        <span title={CONTEXT_TITLE}>
+          <Segmented
+            value={context}
+            onChange={setContext}
+            options={[
+              { value: 'first', label: CONTEXT_SHORT.first, title: CONTEXT_LABEL.first },
+              { value: 'second', label: CONTEXT_SHORT.second, title: CONTEXT_LABEL.second },
+            ]}
+          />
+        </span>
         <button
           onClick={resample}
           className="rounded bg-ink-700 px-2.5 py-1 text-ink-100 hover:bg-ink-600"
@@ -146,6 +152,11 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
             {view.length} mains affichées{' '}
             {noted.length !== view.length ? `(sur ${noted.length} tirées)` : ''}
           </span>
+          {context === 'second' && (
+            <span className="flex items-center gap-1" title="En second, la dernière carte de chaque main est la sixième pioche : identifiée, elle n'a pas les mêmes fenêtres qu'une carte initiale (contrat §3).">
+              <span className="inline-block h-3 w-2 rounded-sm ring-2 ring-sky-400" /> sixième carte = pioche
+            </span>
+          )}
           {/* Étape 4 : les notes viennent du dernier résultat ; s'il est périmé, on le dit et on atténue. */}
           {stale && (
             <span role="status" className="rounded bg-ink-800 px-1.5 py-0.5 text-ink-300">
@@ -159,25 +170,30 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
               key={i}
               className="flex items-center gap-2 rounded-md border border-ink-800 bg-ink-900 p-1.5"
             >
-              <div className="flex gap-1">
-                {h.cards.map((id, ci) => (
-                  <img
-                    key={ci}
-                    src={cards[id]?.image_url_small ?? imageSmall(id)}
-                    alt={cards[id]?.name ?? String(id)}
-                    title={cards[id]?.name ?? String(id)}
-                    loading="lazy"
-                    className={`h-[68px] rounded ${
-                      col === 'second' && ci === h.cards.length - 1
-                        ? 'ring-2 ring-sky-400'
-                        : ''
-                    }`}
-                  />
-                ))}
+              <div className="flex items-end gap-1">
+                {h.cards.map((id, ci) => {
+                  const sixth = context === 'second' && ci === h.cards.length - 1;
+                  return (
+                    <span key={ci} className={`relative flex flex-col items-center ${sixth ? 'ml-1.5' : ''}`}>
+                      <img
+                        src={cards[id]?.image_url_small ?? imageSmall(id)}
+                        alt={cards[id]?.name ?? String(id)}
+                        title={`${cards[id]?.name ?? String(id)}${sixth ? ' — sixième carte (pioche)' : ''}`}
+                        loading="lazy"
+                        className={`h-[68px] rounded ${sixth ? 'ring-2 ring-sky-400' : ''}`}
+                      />
+                      {sixth && (
+                        <span className="pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded bg-sky-400 px-1 text-[9px] font-bold leading-4 text-black">
+                          6ᵉ
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
               </div>
               <div className="ml-auto flex items-center gap-3 pr-1">
-                <Recap label="starts" value={h.starts} tone={h.starts === 0 ? 'bad' : 'good'} />
-                <Recap label="non-eng" value={h.neTotal} tone="neutral" />
+                <Recap label="départs" value={h.starts} tone={h.starts === 0 ? 'bad' : 'good'} title="Départs théoriques S" />
+                <Recap label="non-eng" value={h.neTotal} tone="neutral" title="Potentiel non-engine U (fenêtres et plafonds appliqués)" />
                 <NoteBadge note={h.note} />
               </div>
             </div>
@@ -197,15 +213,17 @@ function Recap({
   label,
   value,
   tone,
+  title,
 }: {
   label: string;
   value: number;
   tone: 'good' | 'bad' | 'neutral';
+  title?: string;
 }) {
   const color =
     tone === 'bad' ? 'text-red-400' : tone === 'good' ? 'text-emerald-300' : 'text-ink-200';
   return (
-    <div className="text-center">
+    <div className="text-center" title={title}>
       <div className={`tnum text-sm font-semibold ${color}`}>{value}</div>
       <div className="text-[9px] uppercase tracking-wide text-ink-600">{label}</div>
     </div>

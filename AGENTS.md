@@ -2,7 +2,7 @@
 
 ## Commandes
 - Installer : `npm install` (workspaces `server` + `web` ; Node ≥ 20, Docker, npm).
-- Base locale : `npm run db:up` (Postgres 17, port hôte **5433**) · `npm run db:schema` (rejoue db/schema.sql, idempotent) · migration v2 sur base existante : `docker compose exec -T db psql -U ygo -d ygo -v ON_ERROR_STOP=1 -f - < db/migrations/001-deck-configuration.sql`.
+- Base locale : `npm run db:up` (Postgres 17, port hôte **5433**) · `npm run db:schema` (rejoue db/schema.sql, idempotent) · migrations sur base existante, dans l'ordre : `docker compose exec -T db psql -U ygo -d ygo -v ON_ERROR_STOP=1 -f - < db/migrations/001-deck-configuration.sql` puis la même commande avec `db/migrations/002-profiles-and-conditions.sql`.
 - Catalogue : `npm run migrate` (Supabase → local, upsert) · `npm run prune-cards` (simulation) · `npm run prune-cards -- --apply` · legacy : `npm run adopt -- <email> <mdp>`.
 - Dev : `npm run dev` (API :8787 + Vite :5173) ou `npm run dev:server` / `npm run dev:web` ; `./start.ps1` = db + dev.
 - Vérifier : `npm run typecheck` · `npm run build` · `npm test` (web Vitest puis server node:test).

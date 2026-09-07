@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
-import type { Relevance } from '../types.js';
+import { AVAILABILITY_LABEL, type Availability } from '../types.js';
+import { AVAILABILITY_PROFILES } from '../../../server/src/domain/deckConfiguration.js';
+import { leavesOf } from '../lib/conditions.js';
 import { pct } from '../lib/fmt.js';
 import { CardImage } from './CardImage.js';
+import { ConditionEditor } from './ConditionEditor.js';
 
 /**
- * Section « Starters conditionnels » (§E) — chaque source de prérequis avec ses cartes
- * requises en clair. Deux avertissements en accent : carte requise absente (source morte
- * en permanence) ; carte requise en 1 copie (source perdue dès qu'elle est piochée, avec
- * la probabilité correspondante — utile pour le deckbuilding).
+ * Section « Starters conditionnels » (§E, contrat §4) — chaque source de condition avec
+ * son arbre ET/OU éditable. Deux avertissements en accent : carte requise absente
+ * (feuille jamais satisfaite) ; carte requise en 1 copie (perdue dès qu'elle est
+ * piochée, avec la probabilité correspondante — utile pour le deckbuilding).
  */
 function ConditionalStarters() {
-  const startRequirements = useDeck((s) => s.startRequirements);
+  const startConditions = useDeck((s) => s.startConditions);
   const main = useDeck((s) => s.main);
   const starters = useDeck((s) => s.starters);
   const pairs = useDeck((s) => s.pairs);
@@ -21,71 +24,64 @@ function ConditionalStarters() {
   const mainCopies = useMemo(() => new Map(main.map((c) => [c.cardId, c.copies])), [main]);
   const name = (id: number) => cards[id]?.name ?? `#${id}`;
 
-  if (startRequirements.length === 0) return null;
-
-  // Regroupement par source (carte starter ou paire).
-  const groups = new Map<string, { label: string; note?: string; reqs: typeof startRequirements }>();
-  for (const r of startRequirements) {
-    const key = r.sourceCardId !== null ? `c:${r.sourceCardId}` : `p:${r.sourcePairId}`;
-    if (!groups.has(key)) {
-      let label: string;
-      let note: string | undefined;
-      if (r.sourceCardId !== null) {
-        label = name(r.sourceCardId);
-        if (!mainCopies.has(r.sourceCardId)) note = 'source absente du deck';
-        else if (!starters.has(r.sourceCardId)) note = 'pas un starter — prérequis inerte';
-      } else {
-        const p = pairs.find((pp) => pp.id === r.sourcePairId);
-        label = p ? `${name(p.card_a_id)} + ${name(p.card_b_id)}` : 'paire supprimée';
-      }
-      groups.set(key, { label, note, reqs: [] });
-    }
-    groups.get(key)!.reqs.push(r);
-  }
+  if (startConditions.length === 0) return null;
 
   return (
     <div className="border-b border-ink-800 p-3">
       <div className="mb-2 text-[11px] uppercase tracking-wide text-ink-400">
-        Starters conditionnels (§E)
+        Starters conditionnels (§E) — conditions ET/OU sur le deck restant
       </div>
       <ul className="flex flex-col gap-2">
-        {[...groups.values()].map((g, i) => (
-          <li key={i} className="rounded-md border border-ink-800 bg-ink-900 p-2 text-xs">
-            <div className="font-medium text-ink-100">
-              {g.label}
-              {g.note && <span className="ml-2 text-[10px] text-ink-500">({g.note})</span>}
-            </div>
-            <ul className="mt-1 flex flex-col gap-1">
-              {g.reqs.map((r) => {
-                const total = mainCopies.get(r.requiredCardId) ?? 0;
-                const absent = total === 0;
-                const single = total === 1 && r.minInDeck === 1;
-                const pFirst = deckSize > 0 ? Math.min(5, deckSize) / deckSize : 0;
-                const pSecond = deckSize > 0 ? Math.min(6, deckSize) / deckSize : 0;
-                return (
-                  <li key={r.id} className="flex flex-wrap items-center gap-2">
-                    <span className="text-ink-300">
-                      requiert <b className="text-amber-200">▤ {name(r.requiredCardId)}</b>
-                      {r.minInDeck > 1 ? ` ≥${r.minInDeck}` : ''} en deck
-                    </span>
-                    {absent ? (
-                      <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-300">
-                        carte absente du deck — source morte en permanence
-                      </span>
-                    ) : single ? (
-                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-300">
-                        1 seule copie — source perdue dès qu'elle est piochée ·{' '}
-                        <span className="tnum">
-                          {pct(pFirst, 1)} 1st / {pct(pSecond, 1)} 2nd
-                        </span>
-                      </span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </li>
-        ))}
+        {startConditions.map((r) => {
+          let label: string;
+          let note: string | undefined;
+          if (r.sourceCardId !== null) {
+            label = name(r.sourceCardId);
+            if (!mainCopies.has(r.sourceCardId)) note = 'source absente du deck';
+            else if (!starters.has(r.sourceCardId)) note = 'pas un starter — condition inerte';
+          } else {
+            const p = pairs.find((pp) => pp.id === r.sourcePairId);
+            label = p ? `${name(p.card_a_id)} + ${name(p.card_b_id)}` : 'paire supprimée';
+          }
+          const warnings: Array<{ key: string; tone: 'red' | 'amber'; text: string }> = [];
+          for (const { leaf } of leavesOf(r.condition)) {
+            const total = mainCopies.get(leaf.card_id) ?? 0;
+            if (total === 0) warnings.push({ key: `a${leaf.card_id}`, tone: 'red', text: `${name(leaf.card_id)} absente du deck — cette feuille n’est jamais satisfaite` });
+            else if (total === 1 && leaf.at_least === 1) {
+              const pFirst = deckSize > 0 ? Math.min(5, deckSize) / deckSize : 0;
+              const pSecond = deckSize > 0 ? Math.min(6, deckSize) / deckSize : 0;
+              warnings.push({ key: `s${leaf.card_id}`, tone: 'amber', text: `${name(leaf.card_id)} en 1 seule copie — perdue dès qu’elle est piochée · ${pct(pFirst, 1)} premier / ${pct(pSecond, 1)} second` });
+            }
+          }
+          return (
+            <li key={r.id} className="rounded-md border border-ink-800 bg-ink-900 p-2 text-xs">
+              <div className="font-medium text-ink-100">
+                {label}
+                {note && <span className="ml-2 text-[10px] text-ink-500">({note})</span>}
+              </div>
+              <div className="mt-1">
+                <ConditionEditor
+                  source={r.sourceCardId !== null ? { cardId: r.sourceCardId } : { pairId: r.sourcePairId! }}
+                  condition={r.condition}
+                />
+              </div>
+              {warnings.length > 0 && (
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {warnings.map((w) => (
+                    <li
+                      key={w.key}
+                      className={`rounded px-1.5 py-0.5 text-[10px] ${
+                        w.tone === 'red' ? 'bg-red-500/15 font-medium text-red-300' : 'bg-amber-500/15 text-amber-300'
+                      }`}
+                    >
+                      {w.text}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -102,6 +98,7 @@ function ConditionalStarters() {
  *  - les sections se recoupent (une carte peut être handtrap ET pièce de combo), donc la
  *    somme des sections dépasse la taille du deck. Le pied de vue donne un total
  *    dédupliqué pour lever toute ambiguïté.
+ * Étape 5B : sections par profil, et filet « Étiquetées sans profil » (non comptées, Q5).
  */
 export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => void }) {
   const main = useDeck((s) => s.main);
@@ -112,6 +109,8 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
   const deadSecond = useDeck((s) => s.deadSecond);
   const categories = useDeck((s) => s.categories);
   const cardCategories = useDeck((s) => s.cardCategories);
+  const profiles = useDeck((s) => s.profiles);
+  const groups = useDeck((s) => s.groups);
   const pairs = useDeck((s) => s.pairs);
   const pairExclusions = useDeck((s) => s.pairExclusions);
 
@@ -130,13 +129,14 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
       }
     }
 
+    const labelled = (id: number) => (cardCategories.get(id)?.size ?? 0) > 0;
     // Une carte est « annotée » si un RÔLE lui a été donné (starter, pièce de combo,
-    // catégorie non-engine, morte selon la position). HOPT est un simple modificateur,
+    // étiquette non-engine, morte selon la position). HOPT est un simple modificateur,
     // pas un rôle : une carte n'ayant QUE HOPT reste « Non annotée ».
     const isAnnotated = (id: number) =>
       starters.has(id) ||
       comboMembers.has(id) ||
-      (cardCategories.get(id)?.size ?? 0) > 0 ||
+      labelled(id) ||
       deadFirst.has(id) ||
       deadSecond.has(id);
 
@@ -152,18 +152,39 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
       ...categories.map((cat) => ({
         key: `cat-${cat.id}`,
         title: cat.name,
-        relevance: cat.relevance,
+        badge: 'étiquette',
         ids: pick((id) => !!cardCategories.get(id)?.has(cat.id)),
       })),
+      ...AVAILABILITY_PROFILES.map((profile: Availability) => ({
+        key: `profile-${profile}`,
+        title: `Profil ${AVAILABILITY_LABEL[profile].toLowerCase()}`,
+        badge: 'profil',
+        ids: pick((id) => profiles.get(id)?.availability === profile),
+        hideIfEmpty: true,
+      })),
+      ...groups.map((g) => ({
+        key: `group-${g.id}`,
+        title: `Plafond « ${g.name} »`,
+        badge: `${g.cap_per_turn}/tour`,
+        ids: pick((id) => profiles.get(id)?.groupId === g.id),
+        hideIfEmpty: true,
+      })),
+      {
+        key: 'unprofiled',
+        title: 'Étiquetées sans profil — non comptées dans le potentiel',
+        ids: pick((id) => labelled(id) && !profiles.has(id)),
+        hideIfEmpty: true,
+        safetyNet: true,
+      },
       {
         key: 'dead1',
-        title: 'Mortes going first',
+        title: 'Mortes en premier',
         ids: pick((id) => deadFirst.has(id)),
         hideIfEmpty: true,
       },
       {
         key: 'dead2',
-        title: 'Mortes going second',
+        title: 'Mortes en second',
         ids: pick((id) => deadSecond.has(id)),
         hideIfEmpty: true,
       },
@@ -182,7 +203,7 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
       annotatedCopies,
       nonAnnotatedCopies: deckSize - annotatedCopies,
     };
-  }, [main, starters, deadFirst, deadSecond, categories, cardCategories, pairs, pairExclusions]);
+  }, [main, starters, deadFirst, deadSecond, categories, cardCategories, profiles, groups, pairs, pairExclusions]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (key: string) => setExpanded((e) => ({ ...e, [key]: !e[key] }));
@@ -257,7 +278,7 @@ interface Section {
   key: string;
   title: string;
   ids: number[];
-  relevance?: Relevance;
+  badge?: string;
   hideIfEmpty?: boolean;
   safetyNet?: boolean;
 }
@@ -296,10 +317,8 @@ function SectionRow({
         <span className={`font-medium ${accent ? 'text-amber-300' : empty ? '' : 'text-ink-100'}`}>
           {section.title}
         </span>
-        {section.relevance && (
-          <span className="rounded bg-ink-800 px-1 text-[10px] text-ink-500">
-            {section.relevance === 'both' ? '1st+2nd' : section.relevance === 'first' ? '1st' : '2nd'}
-          </span>
+        {section.badge && (
+          <span className="rounded bg-ink-800 px-1 text-[10px] text-ink-500">{section.badge}</span>
         )}
         <span
           className={`tnum ml-auto ${accent ? 'font-medium text-amber-300' : 'text-ink-400'}`}

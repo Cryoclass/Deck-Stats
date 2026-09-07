@@ -1,5 +1,5 @@
-import type { Card, Library, Relevance, Zone, ComboPair } from '../types.js';
-import { emptyConfiguration, type Configuration } from '../../../server/src/domain/deckConfiguration.js';
+import type { Availability, Card, Library, Zone, ComboPair, NonEngineGroup } from '../types.js';
+import { emptyConfiguration, type Configuration, type StartCondition } from '../../../server/src/domain/deckConfiguration.js';
 import type { DeckArchive } from '../../../server/src/domain/deckArchive.js';
 
 const BASE = '/api';
@@ -71,13 +71,6 @@ export interface DeckSummary {
   summary: DeckSummaryStats | null;
   sample_cards: Array<number | string> | null;
 }
-export interface DeckRequirementRow {
-  id: string;
-  source_card_id: number | null;
-  source_pair_id: string | null;
-  required_card_id: number;
-  min_in_deck: number;
-}
 export interface DeckDetail {
   revision: number;
   configuration_version: 2;
@@ -89,11 +82,18 @@ export interface DeckDetail {
   cards: Array<{ card_id: number; zone: Zone; copies: number }>;
   starters: number[];
   pair_exclusions: string[];
-  start_requirements?: DeckRequirementRow[];
+  conditions?: StartCondition[];
   params?: Record<string, unknown> | null;
   summary?: DeckSummaryStats | null;
   notes?: string | null;
   updated_at?: string;
+}
+
+/** Drapeaux d'une carte pour le compte : chaque champ absent est laissé tel quel. */
+export interface CardFlagsPatch {
+  is_hopt?: boolean;
+  availability?: Availability | null;
+  group_id?: string | null;
 }
 
 export const api = {
@@ -135,14 +135,12 @@ export const api = {
   deleteDeck: (id: string) => j<{ ok: boolean }>(`/decks/${id}`, { method: 'DELETE' }),
   // Bibliothèque globale
   getLibrary: () => j<Library>('/library'),
-  setFlags: (
-    cardId: number,
-    flags: { is_hopt: boolean },
-  ) => j(`/library/flags/${cardId}`, { method: 'PUT', body: JSON.stringify(flags) }),
-  addCategory: (name: string, relevance: Relevance, id?: string) =>
-    j<{ id: string; name: string; relevance: Relevance; is_builtin: boolean }>(
+  setFlags: (cardId: number, flags: CardFlagsPatch) =>
+    j<{ ok: boolean; is_hopt: boolean; availability: Availability | null; group_id: string | null }>(`/library/flags/${cardId}`, { method: 'PUT', body: JSON.stringify(flags) }),
+  addCategory: (name: string, id?: string) =>
+    j<{ id: string; name: string; is_builtin: boolean }>(
       '/library/categories',
-      { method: 'POST', body: JSON.stringify({ name, relevance, id }) },
+      { method: 'POST', body: JSON.stringify({ name, id }) },
     ),
   deleteCategory: (id: string) => j(`/library/categories/${id}`, { method: 'DELETE' }),
   addCardCategory: (cardId: number, categoryId: string) =>
@@ -152,4 +150,10 @@ export const api = {
     }),
   removeCardCategory: (cardId: number, categoryId: string) =>
     j(`/library/card-categories/${cardId}/${categoryId}`, { method: 'DELETE' }),
+  // Plafonds partagés (étape 5B)
+  addGroup: (name: string, capPerTurn: number, id?: string) =>
+    j<NonEngineGroup>('/library/groups', { method: 'POST', body: JSON.stringify({ id, name, cap_per_turn: capPerTurn }) }),
+  updateGroup: (id: string, patch: { name?: string; cap_per_turn?: number }) =>
+    j<NonEngineGroup>(`/library/groups/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteGroup: (id: string) => j<{ ok: boolean }>(`/library/groups/${id}`, { method: 'DELETE' }),
 };

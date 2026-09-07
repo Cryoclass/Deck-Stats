@@ -223,8 +223,8 @@ function DeckCard({
       </div>
 
       <div className="flex items-center gap-4 px-3 py-2 text-xs">
-        <Stat label="start ≥1 (1st)" value={startRate} good />
-        <Stat label="brick (1st)" value={brick} />
+        <Stat label="départs ≥1 (premier)" value={startRate} good />
+        <Stat label="brick (premier)" value={brick} />
         <span className="ml-auto text-[10px] text-ink-600">{updated}</span>
       </div>
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { Card, Category, ComboPair, DeckCard, Relevance, StartRequirement } from '../types.js';
+import type { Availability, Card, CardProfile, Category, ComboPair, ConditionNode, DeckCard, NonEngineGroup, StartCondition } from '../types.js';
 import { pairKey } from '../types.js';
-import type { EngineResult } from '../engine/types.js';
+import type { AnalysisContext, EngineResult } from '../engine/types.js';
 import type { QueryCriterion, SavedQuery } from '../engine/query.js';
 import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled, type ComputeClient, type ComputeTask } from '../worker/computeClient.js';
@@ -11,6 +11,7 @@ import { saveDraft, loadDraft, clearDraft, type DeckDraft } from '../lib/draft.j
 import type { DeckJson } from '../lib/exportDeck.js';
 import { buildEngineModel, type EngineModel } from '../lib/engineModel.js';
 import { configurationFromState, configurationFromDetail, stateFromConfiguration, libraryState } from '../lib/deckConfiguration.js';
+import { addClause, leaf, leavesOf, removeLeavesOfCard } from '../lib/conditions.js';
 
 interface State {
   revision: number;
@@ -26,8 +27,10 @@ interface State {
   extra: DeckCard[];
   side: DeckCard[];
 
-  // Account-wide HOPT/categories; pairs and start availability are deck-local.
+  // Account-wide HOPT/categories/profiles/caps; pairs and start availability are deck-local.
   hopt: Set<number>;
+  profiles: Map<number, CardProfile>;
+  groups: NonEngineGroup[];
   deadFirst: Set<number>;
   deadSecond: Set<number>;
   pairs: ComboPair[];
@@ -37,10 +40,13 @@ interface State {
   // ─── Local au deck : relève du bouton Enregistrer (§4A) ───
   starters: Set<number>;
   pairExclusions: Set<string>;
-  startRequirements: StartRequirement[]; // itération 5
+  startConditions: StartCondition[]; // étape 5 : conditions ET/OU par source de start
   importance: number;
-  horizonFirst: number; // §B.3.5
-  horizonSecond: number;
+  // Contexte d'analyse unique (contrat §3) : premier · 5 cartes / second · 5 + pioche.
+  // Réglage d'affichage transitoire, commun à la grille (deltas), à la matrice, aux
+  // requêtes et au mur de mains ; il ne modifie pas le modèle (les deux passes sont
+  // toujours calculées) et n'est pas enregistré.
+  context: AnalysisContext;
   statsView: string; // itération 6 : vue du panneau de stats ('starts' | 'nonengine' | catId)
   savedQueries: SavedQuery[]; // itération 7 : requêtes nommées (param du deck)
   // Requête en cours (brouillon de travail, non enregistrée) + filtre du mur de mains
@@ -57,7 +63,7 @@ interface State {
   // `modelVersion` avance à CHAQUE invalidation, dès la mutation et avant le délai de
   // regroupement ; `resultVersion` est la version pour laquelle `result` a été calculé ;
   // `stale` = résultat présent mais d'une version antérieure (affiché atténué) ;
-  // `resultContext` = contexte (taille, catégories, horizons) de CE résultat, pour le
+  // `resultContext` = contexte (taille, catégories, cartes sans profil) de CE résultat, pour le
   // présenter avec ses propres libellés et non ceux de l'état courant.
   modelVersion: number;
   resultVersion: number;
@@ -100,13 +106,19 @@ interface State {
     source: { cardId: number } | { pairId: string },
     requiredCardId: number,
   ) => void;
-  setRequirementMin: (id: string, min: number) => void;
-  removeRequirement: (id: string) => void;
-  addCategory: (name: string, relevance: Relevance) => void;
+  /** Remplace l'arbre d'une source (`null` = source inconditionnelle). */
+  setCondition: (source: { cardId: number } | { pairId: string }, condition: ConditionNode | null) => void;
+  removeCondition: (id: string) => void;
+  addCategory: (name: string) => void;
   deleteCategory: (id: string) => void;
   toggleCardCategory: (cardId: number, categoryId: string) => void;
+  setProfile: (cardId: number, availability: Availability | null) => void;
+  setCardGroup: (cardId: number, groupId: string | null) => void;
+  addGroup: (name: string, capPerTurn: number) => void;
+  updateGroup: (id: string, patch: { name?: string; cap_per_turn?: number }) => void;
+  deleteGroup: (id: string) => void;
   setImportance: (v: number) => void;
-  setHorizon: (pass: 'first' | 'second', value: number) => void;
+  setContext: (context: AnalysisContext) => void;
   setStatsView: (view: string) => void;
   setQueryCriteria: (criteria: QueryCriterion[]) => void;
   saveQuery: (name: string) => void;
@@ -122,13 +134,8 @@ export interface ResultContext {
   deckId: string | null;
   deckSize: number;
   categories: Category[];
-  horizonFirst: number;
-  horizonSecond: number;
-}
-
-/** §B.3.5 : horizon borné à [1, 3] (défauts first=1, second=2). */
-function clampHorizon(v: number): number {
-  return Math.max(1, Math.min(3, Math.round(v)));
+  /** Cartes étiquetées sans profil au moment du calcul : non comptées (Q5), signalées. */
+  unprofiledCardIds: number[];
 }
 
 const toDeck = (m: Map<number, number>, zone: DeckCard['zone']): DeckCard[] =>
@@ -179,8 +186,7 @@ function launchCompute(version: number, get: () => State, set: (p: Partial<State
     deckId: s.deckId,
     deckSize: s.main.reduce((sum, c) => sum + c.copies, 0),
     categories: s.categories,
-    horizonFirst: s.horizonFirst,
-    horizonSecond: s.horizonSecond,
+    unprofiledCardIds: model.unprofiledCardIds,
   };
   const task = engineClient().compute(model.input);
   inflight = task;
@@ -237,6 +243,8 @@ export const useDeck = create<State>((set, get) => {
     extra: [],
     side: [],
     hopt: new Set(),
+    profiles: new Map(),
+    groups: [],
     deadFirst: new Set(),
     deadSecond: new Set(),
     pairs: [],
@@ -244,10 +252,9 @@ export const useDeck = create<State>((set, get) => {
     cardCategories: new Map(),
     starters: new Set(),
     pairExclusions: new Set(),
-    startRequirements: [],
+    startConditions: [],
     importance: 0.5,
-    horizonFirst: 1,
-    horizonSecond: 2,
+    context: 'first',
     statsView: 'starts',
     savedQueries: [],
     queryCriteria: defaultQuery(),
@@ -336,7 +343,7 @@ export const useDeck = create<State>((set, get) => {
         if (!current()) return;
         const configuration = configurationFromDetail(detail);
         const cardMap = { ...get().cards };
-        const ids = new Set([...configuration.cards.map((c) => c.card_id),...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),...configuration.requirements.map((r) => r.required_card_id)]);
+        const ids = new Set([...configuration.cards.map((c) => c.card_id),...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),...configuration.conditions.flatMap((r) => leavesOf(r.condition).map((l) => l.leaf.card_id))]);
         try { for (const c of await api.cardsByIds([...ids])) cardMap[c.id] = c; } catch { /* Catalogue lookup is optional. */ }
         if (!current()) return;
         // Aucune ancienne statistique ne survit à l'ouverture d'un deck : état initial de
@@ -507,10 +514,8 @@ export const useDeck = create<State>((set, get) => {
       set({ handFilterByQuery: on });
     },
 
-    setHorizon(pass, value) {
-      const v = clampHorizon(value);
-      set(pass === 'first' ? { horizonFirst: v } : { horizonSecond: v });
-      localCalc();
+    setContext(context) {
+      set({ context }); // affichage seul : les deux passes sont déjà calculées
     },
 
     renameDeck(name) {
@@ -518,44 +523,32 @@ export const useDeck = create<State>((set, get) => {
       markDirty();
     },
 
-    // ─── Prérequis en deck (itération 5) — locaux au deck (bouton Enregistrer) ───
+    // ─── Conditions ET/OU (étape 5) — locales au deck (bouton Enregistrer) ───
+    // Une source (carte starter ou paire) porte au plus un arbre. Le clic en mode
+    // Prérequis ajoute une clause ET « il reste ≥1 copie » ou retire toutes les feuilles
+    // de la carte ; l'éditeur d'arbre (inventaire, combos) passe par `setCondition`.
     toggleRequirement(source, requiredCardId) {
       const isCard = 'cardId' in source;
-      const existing = get().startRequirements.find(
-        (r) =>
-          r.requiredCardId === requiredCardId &&
-          (isCard ? r.sourceCardId === source.cardId : r.sourcePairId === source.pairId),
-      );
-      if (existing) {
-        set({ startRequirements: get().startRequirements.filter((r) => r.id !== existing.id) });
-      } else {
-        set({
-          startRequirements: [
-            ...get().startRequirements,
-            {
-              id: uid(),
-              sourceCardId: isCard ? source.cardId : null,
-              sourcePairId: isCard ? null : source.pairId,
-              requiredCardId,
-              minInDeck: 1,
-            },
-          ],
-        });
-      }
+      const existing = get().startConditions.find((r) => (isCard ? r.sourceCardId === source.cardId : r.sourcePairId === source.pairId));
+      const present = existing ? leavesOf(existing.condition).some((l) => l.leaf.card_id === requiredCardId) : false;
+      const next = present ? removeLeavesOfCard(existing!.condition, requiredCardId) : addClause(existing?.condition ?? null, leaf(requiredCardId));
+      get().setCondition(source, next);
+    },
+
+    setCondition(source, condition) {
+      const isCard = 'cardId' in source;
+      const matches = (r: StartCondition) => (isCard ? r.sourceCardId === source.cardId : r.sourcePairId === source.pairId);
+      const existing = get().startConditions.find(matches);
+      let startConditions: StartCondition[];
+      if (condition === null) startConditions = get().startConditions.filter((r) => !matches(r));
+      else if (existing) startConditions = get().startConditions.map((r) => (matches(r) ? { ...r, condition } : r));
+      else startConditions = [...get().startConditions, { id: uid(), sourceCardId: isCard ? source.cardId : null, sourcePairId: isCard ? null : source.pairId, condition }];
+      set({ startConditions });
       localCalc();
     },
 
-    setRequirementMin(id, min) {
-      set({
-        startRequirements: get().startRequirements.map((r) =>
-          r.id === id ? { ...r, minInDeck: Math.max(1, min) } : r,
-        ),
-      });
-      localCalc();
-    },
-
-    removeRequirement(id) {
-      set({ startRequirements: get().startRequirements.filter((r) => r.id !== id) });
+    removeCondition(id) {
+      set({ startConditions: get().startConditions.filter((r) => r.id !== id) });
       localCalc();
     },
 
@@ -589,12 +582,12 @@ export const useDeck = create<State>((set, get) => {
     removePairFromDeck(pairId) {
       set({ pairs: get().pairs.filter((p) => p.id !== pairId),
         pairExclusions: new Set([...get().pairExclusions].filter((id) => id !== pairId)),
-        startRequirements: get().startRequirements.filter((r) => r.sourcePairId !== pairId) });
+        startConditions: get().startConditions.filter((r) => r.sourcePairId !== pairId) });
       localCalc();
     },
-    addCategory(name,relevance) {
+    addCategory(name) {
       persist(set, async () => {
-        const created = await api.addCategory(name,relevance,uid());
+        const created = await api.addCategory(name,uid());
         set({ categories: [...get().categories.filter((c) => c.id !== created.id),created] });
         recompute();
       });
@@ -614,6 +607,61 @@ export const useDeck = create<State>((set, get) => {
         if (cats.has(categoryId)) { await api.removeCardCategory(cardId,categoryId);cats.delete(categoryId); }
         else { await api.addCardCategory(cardId,categoryId);cats.add(categoryId); }
         cc.set(cardId,cats);set({ cardCategories: cc });recompute();
+      });
+    },
+    // ─── Profils de disponibilité et plafonds partagés (étape 5B, contrat §3) ───
+    // Annotations du compte : adoptées après acquittement, puis recalcul (les
+    // statistiques de tout deck contenant la carte deviennent périmées).
+    setProfile(cardId, availability) {
+      // Q1 : un profil sans étiquette ne mesure rien — refusé ici, comme sur le serveur.
+      if (availability && (get().cardCategories.get(cardId)?.size ?? 0) === 0) {
+        set({ persistenceError: 'Choisir d’abord une catégorie non-engine pour cette carte avant son profil.' });
+        return;
+      }
+      persist(set, async () => {
+        const saved = await api.setFlags(cardId,{ availability });
+        const profiles = new Map(get().profiles);
+        if (saved.availability) profiles.set(cardId,{ availability: saved.availability,groupId: saved.group_id });
+        else profiles.delete(cardId);
+        set({ profiles }); recompute();
+      });
+    },
+    setCardGroup(cardId, groupId) {
+      const current = get().profiles.get(cardId);
+      // Q2 : un plafond partagé n'est proposé qu'à une carte profilée.
+      if (groupId && !current) {
+        set({ persistenceError: 'Choisir d’abord un profil de disponibilité avant un plafond partagé.' });
+        return;
+      }
+      persist(set, async () => {
+        const saved = await api.setFlags(cardId,{ group_id: groupId });
+        const profiles = new Map(get().profiles);
+        if (saved.availability) profiles.set(cardId,{ availability: saved.availability,groupId: saved.group_id });
+        else profiles.delete(cardId);
+        set({ profiles }); recompute();
+      });
+    },
+    addGroup(name, capPerTurn) {
+      persist(set, async () => {
+        const created = await api.addGroup(name,capPerTurn,uid());
+        set({ groups: [...get().groups.filter((g) => g.id !== created.id),created] });
+        recompute();
+      });
+    },
+    updateGroup(id, patch) {
+      persist(set, async () => {
+        const updated = await api.updateGroup(id,patch);
+        set({ groups: get().groups.map((g) => (g.id === id ? updated : g)) });
+        recompute();
+      });
+    },
+    deleteGroup(id) {
+      persist(set, async () => {
+        await api.deleteGroup(id);
+        // Les membres gardent leur profil et perdent leur plafond (FK on delete set null).
+        set({ groups: get().groups.filter((g) => g.id !== id),
+          profiles: new Map([...get().profiles].map(([card,p]) => [card,p.groupId === id ? { ...p,groupId: null } : p])) });
+        recompute();
       });
     },
 

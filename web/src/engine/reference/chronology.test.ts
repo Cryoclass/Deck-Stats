@@ -50,7 +50,7 @@ describe('Référence N — profils, sixième carte et plafonds (moteur)', () =>
     deckSize: 40,
     types: [T({ copies: 3, categories: [0], availability: profile, ...over })],
     edges: [],
-    categories: [{ id: 'ne', relevance: 'both' }],
+    categories: [{ id: 'ne' }],
   });
 
   it('N01 (moteur) : chaque profil suit exactement le tableau des fenêtres de l’oracle', () => {
@@ -111,7 +111,7 @@ describe('Référence N — profils, sixième carte et plafonds (moteur)', () =>
         ...(purulia > 0 ? [T({ copies: purulia, categories: [0], availability: 'early', group: 0 })] : []),
       ],
       edges: [],
-      categories: [{ id: 'm', relevance: 'both' }],
+      categories: [{ id: 'm' }],
       groups: [{ id: 'mulcharmy', capPerTurn: cap }],
     });
     const capped = computePass(mulcharmy(2), 'second');
@@ -424,7 +424,10 @@ describe('Pont B04 — deck de 40 cartes : Monte Carlo contre le moteur (hors po
   }
 });
 
-describe('Interprétations conservatrices signalées (questions ouvertes de l’étape 5A)', () => {
+// Questions ouvertes de l'étape 5A, tranchées le 7 septembre 2026 (docs/etape-5a.md,
+// « Réponses ») : Q1, Q2 et Q4 confirment l'interprétation conservatrice ; Q3 remplace
+// la combinaison par ET par un refus explicite (une seule représentation par source).
+describe('Questions Q1–Q4 tranchées (étape 5B)', () => {
   it('Q1 : une carte profilée sans étiquette n’apporte aucune contribution', () => {
     const prep = prepare({ deckSize: 40, types: [T({ copies: 3, availability: 'flexible' })], edges: [], categories: [] });
     expect(evaluate(prep, 'second', [2], -1).ne).toBe(0);
@@ -435,37 +438,44 @@ describe('Interprétations conservatrices signalées (questions ouvertes de l’
       deckSize: 40,
       types: [T({ copies: 3, categories: [0], group: 0 })],
       edges: [],
-      categories: [{ id: 'm', relevance: 'both' }],
+      categories: [{ id: 'm' }],
       groups: [{ id: 'g', capPerTurn: 2 }],
     };
     expect(() => computePass(input, 'first')).toThrow(/sans profil/);
     expect(() => computePass({ ...input, groups: [{ id: 'g', capPerTurn: 0 }] }, 'first')).toThrow(/Plafond/);
   });
 
-  it('Q3 : anciens prérequis et condition ET/OU sur la même source se combinent par ET', () => {
-    const input: EngineInput = {
+  it('Q3 : une source portant anciens prérequis ET condition ET/OU est refusée (une seule représentation)', () => {
+    const legacy: EngineType = T({ isStarter: true, starterPrereqs: [{ requiredType: 1, requiredTotal: 1, minInDeck: 1 }] });
+    const modern: EngineType = T({ isStarter: true, starterCondition: { kind: 'remaining', type: 1, atLeast: 1 } });
+    const both: EngineType = { ...legacy, starterCondition: modern.starterCondition };
+    const make = (t: EngineType): EngineInput => ({ deckSize: 40, types: [t, T()], edges: [], categories: [] });
+    // Chaque représentation seule reste évaluable, avec le même résultat.
+    expect(evaluate(prepare(make(legacy)), 'first', [1, 1]).starts).toBe(0);
+    expect(evaluate(prepare(make(modern)), 'first', [1, 1]).starts).toBe(0);
+    expect(evaluate(prepare(make(modern)), 'first', [1, 0]).starts).toBe(1);
+    expect(() => prepare(make(both))).toThrow(/une seule représentation/);
+    // Idem pour une arête.
+    const edgeInput: EngineInput = {
       deckSize: 40,
-      types: [
-        T({ isStarter: true, starterPrereqs: [{ requiredType: 1, requiredTotal: 1, minInDeck: 1 }], starterCondition: { kind: 'remaining', type: 2, atLeast: 1 } }),
-        T(), T(),
-      ],
-      edges: [],
+      types: [T(), T(), T()],
+      edges: [[0, 1]],
+      edgePrereqs: [[{ requiredType: 2, requiredTotal: 1, minInDeck: 1 }]],
+      edgeConditions: [{ kind: 'remaining', type: 2, atLeast: 1 }],
       categories: [],
     };
-    const prep = prepare(input);
-    expect(evaluate(prep, 'first', [1, 0, 0]).starts).toBe(1);
-    expect(evaluate(prep, 'first', [1, 1, 0]).starts).toBe(0);
-    expect(evaluate(prep, 'first', [1, 0, 1]).starts).toBe(0);
+    expect(() => computePass(edgeInput, 'first')).toThrow(/une seule représentation/);
   });
 
-  it('Q4 : pour une carte profilée, la pertinence historique d’une catégorie n’est pas appliquée (cible §3)', () => {
+  it('Q4/Q5 : les étiquettes n’ont plus de pertinence par contexte ; sans profil, aucune contribution retenue', () => {
     const prep = prepare({
       deckSize: 40,
       types: [T({ categories: [0], availability: 'flexible' }), T({ categories: [0] })],
       edges: [],
-      categories: [{ id: 'first-only', relevance: 'first' }],
+      categories: [{ id: 'first-only' }],
     });
     expect(evaluate(prep, 'second', [1, 0], -1).ne).toBe(1); // profilée : compte en second
-    expect(evaluate(prep, 'second', [0, 1], -1).ne).toBe(0); // historique : pertinence respectée
+    expect(evaluate(prep, 'second', [0, 1], -1).ne).toBe(0); // étiquetée sans profil : zéro (Q5)
+    expect(evaluate(prep, 'second', [0, 1], -1).catCounts).toEqual([1]); // mais piochée
   });
 });

@@ -15,6 +15,10 @@ const SHEET: Record<Scenario, string> = {
   going_first: 'Going First',
   going_second: 'Going Second',
 };
+const SHEET_TITLE: Record<Scenario, string> = {
+  going_first: 'Premier · 5 cartes',
+  going_second: 'Second · 5 cartes + pioche',
+};
 const SHEET_SYNTH = 'Synthèse';
 
 // Géométrie d'un onglet scénario (1-indexée, identique au classeur de référence) :
@@ -70,7 +74,7 @@ function setCell(
 /** Bloc matrice (A ou B) : en-têtes, données en valeur (bleu), totaux en formule. */
 function matrixBlock(ws: Sheet, top: number, title: string, m: ComparisonMatrix): void {
   setCell(ws, `A${top - 2}`, title, { bold: true });
-  setCell(ws, `A${top - 1}`, 'is \\ ne', { bold: true });
+  setCell(ws, `A${top - 1}`, 'départs \\ ne', { bold: true });
   m.colLabels.forEach((label, j) => setCell(ws, `${DATA_COLS[j]}${top - 1}`, label, { bold: true }));
   setCell(ws, `${TOTAL_COL}${top - 1}`, 'Total', { bold: true });
 
@@ -108,7 +112,7 @@ function matrixBlock(ws: Sheet, top: number, title: string, m: ComparisonMatrix)
 /** Bloc delta : intégralement en formules `=B14-B6`, format signé en points de %. */
 function deltaBlock(ws: Sheet, top: number, title: string, m: ComparisonMatrix): void {
   setCell(ws, `A${top - 2}`, title, { bold: true });
-  setCell(ws, `A${top - 1}`, 'is \\ ne', { bold: true });
+  setCell(ws, `A${top - 1}`, 'départs \\ ne', { bold: true });
   m.colLabels.forEach((label, j) => setCell(ws, `${DATA_COLS[j]}${top - 1}`, label, { bold: true }));
   setCell(ws, `${TOTAL_COL}${top - 1}`, 'Total', { bold: true });
 
@@ -140,21 +144,21 @@ function scenarioSheet(wb: ExcelNS.Workbook, cmp: DeckComparison, scenario: Scen
   const ws = wb.addWorksheet(SHEET[scenario]);
   const A = cmp.deckA.matrices[scenario];
   const B = cmp.deckB.matrices[scenario];
-  const label = scenario === 'going_first' ? 'GOING FIRST' : 'GOING SECOND';
+  const label = scenario === 'going_first' ? 'PREMIER · 5 CARTES' : 'SECOND · 5 CARTES + PIOCHE';
 
   ws.getColumn('A').width = 11;
   for (const col of [...DATA_COLS, TOTAL_COL]) ws.getColumn(col).width = 9;
 
-  setCell(ws, 'A1', `MATRICE STARTS × NON-ENGINE — ${label}`, { bold: true });
+  setCell(ws, 'A1', `MATRICE DÉPARTS THÉORIQUES × NON-ENGINE — ${label}`, { bold: true });
   setCell(
     ws,
     'A2',
-    `Probabilité de la main d'ouverture (${A.handSize} cartes). is = starts jouables, ne = non-engine pertinent. Données saisies en bleu, le reste se recalcule.`,
+    `${scenario === 'going_first' ? 'Les 5 cartes initiales' : 'Les 5 cartes initiales et la sixième pioche identifiée'} (${A.handSize} cartes observées). départs = départs théoriques (sources de start disponibles dans la main, sans preuve de ligne), ne = potentiel non-engine retenu (fenêtres et plafonds appliqués). Données saisies en bleu, le reste se recalcule.`,
     { italic: true },
   );
 
   const meta = (m: ComparisonMatrix): string =>
-    `(deck ${m.deckSize} cartes, S = ${m.starterCount}, N = ${m.nonEngineCount})`;
+    `(deck ${m.deckSize} cartes, S = ${m.starterCount} starters, N = ${m.nonEngineCount} non-engine étiquetées)`;
   matrixBlock(ws, A_TOP, `A. ${cmp.deckA.name.toUpperCase()} ${meta(A)}`, A);
   matrixBlock(ws, B_TOP, `B. ${cmp.deckB.name.toUpperCase()} ${meta(B)}`, B);
   deltaBlock(ws, D_TOP, `C. DELTA (${cmp.deckB.name} − ${cmp.deckA.name}, en points de %)`, A);
@@ -249,7 +253,7 @@ function synthSheet(wb: ExcelNS.Workbook, cmp: DeckComparison): void {
   setCell(
     ws,
     'A2',
-    'Agrégats calculés PAR FORMULE depuis les onglets Going First / Going Second. Δ en points de %. Les moyennes sont des planchers (seaux ≥3 et 5+).',
+    `Agrégats calculés PAR FORMULE depuis les onglets ${SHEET.going_first} (${SHEET_TITLE.going_first}) et ${SHEET.going_second} (${SHEET_TITLE.going_second}). Δ en points de %. Départs = départs théoriques ; les moyennes sont des planchers (seaux ≥3 et 5+).`,
     { italic: true },
   );
 

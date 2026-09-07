@@ -202,7 +202,7 @@ export function toEngineInput(spec: OracleSpec): EngineFixture {
       types,
       edges,
       edgeConditions,
-      categories: labels.map((id) => ({ id, relevance: 'both' as const })),
+      categories: labels.map((id) => ({ id })),
       groups,
     },
     names,

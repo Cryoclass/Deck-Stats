@@ -195,22 +195,16 @@ export function computePass(input: EngineInput, pass: AnalysisContext | number):
   const meanNonEngine = nonEngineP.reduce((s, p, i) => s + (p ?? 0) * i, 0);
 
   const perCategory: CategoryDist[] = input.categories.map((cat, c) => {
-    const relevant =
-      cat.relevance === 'both' ||
-      (context === 'first' ? cat.relevance === 'first' : cat.relevance === 'second');
     const dist = norm(catDists[c]);
     return {
       id: cat.id,
-      relevant,
       dist,
       mean: dist.reduce((s, p, i) => s + (p ?? 0) * i, 0),
     };
   });
 
   const crossMatrix = cross.map((row) => norm(row ?? []));
-  const neSignatures = (context === 'first' ? prep.neSigFirst : prep.neSigSecond).map((s) => ({
-    cats: s.cats,
-  }));
+  const neSignatures = prep.neSigs.map((s) => ({ cats: s.cats }));
 
   return {
     context,

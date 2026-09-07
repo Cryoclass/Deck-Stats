@@ -1,4 +1,4 @@
-import { parseConfiguration, type Configuration } from '../../../server/src/domain/deckConfiguration.js';
+import { parseConfiguration, upgradeConfiguration, type Configuration } from '../../../server/src/domain/deckConfiguration.js';
 
 export interface DeckDraft {
   version: 2;
@@ -34,7 +34,9 @@ async function transaction<T>(mode: IDBTransactionMode, action: (store: IDBObjec
 export function validDraft(value: unknown): DeckDraft | null {
   const d = value as Partial<DeckDraft> | null;
   if (!d || d.version !== 2 || typeof d.deckId !== 'string' || !Number.isInteger(d.baseRevision)) return null;
-  try { return { ...d,configuration: parseConfiguration(d.configuration) } as DeckDraft; } catch { return null; }
+  // Un brouillon antérieur à l'étape 5B (prérequis ET plats) est converti explicitement,
+  // par la règle de la migration 002 ; tout autre écart le rend inexploitable.
+  try { return { ...d,configuration: parseConfiguration(upgradeConfiguration(d.configuration)) } as DeckDraft; } catch { return null; }
 }
 export async function saveDraft(draft: DeckDraft): Promise<void> {
   try { await transaction<void>('readwrite',(s) => { s.put(draft); }); } catch { /* Optional local recovery. */ }
