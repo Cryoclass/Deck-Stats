@@ -1,4 +1,6 @@
-import type { Card, Library, Relevance, Zone } from '../types.js';
+import type { Card, Library, Relevance, Zone, ComboPair } from '../types.js';
+import { emptyConfiguration, type Configuration } from '../../../server/src/domain/deckConfiguration.js';
+import type { DeckArchive } from '../../../server/src/domain/deckArchive.js';
 
 const BASE = '/api';
 
@@ -33,8 +35,9 @@ async function j<T>(url: string, init?: RequestInit): Promise<T> {
     // Message d'erreur du serveur si disponible (ex. « code d'invitation invalide »).
     let message = `${init?.method ?? 'GET'} ${url} → ${res.status}`;
     try {
-      const body = JSON.parse(text) as { error?: string };
-      if (body?.error) message = body.error;
+      const body = JSON.parse(text) as { error?: string; message?: string };
+      if (body?.message) message = body.message;
+      else if (body?.error) message = body.error;
     } catch {
       /* corps non-JSON : message générique */
     }
@@ -76,6 +79,11 @@ export interface DeckRequirementRow {
   min_in_deck: number;
 }
 export interface DeckDetail {
+  revision: number;
+  configuration_version: 2;
+  pairs: Array<ComboPair & { disabled: boolean }>;
+  deadFirst: number[];
+  deadSecond: number[];
   id: string;
   name: string;
   cards: Array<{ card_id: number; zone: Zone; copies: number }>;
@@ -117,54 +125,24 @@ export const api = {
   listDecks: () => j<DeckSummary[]>('/decks'),
   getDeck: (id: string) => j<DeckDetail>(`/decks/${id}`),
   createDeck: (name: string, cards: DeckDetail['cards']) =>
-    j<{ id: string }>('/decks', { method: 'POST', body: JSON.stringify({ name, cards }) }),
-  updateDeck: (
-    id: string,
-    patch: {
-      name?: string;
-      cards?: DeckDetail['cards'];
-      params?: unknown;
-      summary?: DeckSummaryStats;
-      notes?: string | null;
-    },
-  ) => j<{ ok: boolean }>(`/decks/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
+    j<{ id: string }>('/decks', { method: 'POST', body: JSON.stringify(emptyConfiguration(name,cards)) }),
+  saveConfiguration: (id: string, configuration: Configuration, expectedRevision: number) =>
+    j<{ revision: number }>(`/decks/${id}`, { method: 'PUT', body: JSON.stringify({ configuration, expectedRevision }) }),
+  importArchive: (archive: DeckArchive) => j<{ id: string }>('/decks/import', { method: 'POST', body: JSON.stringify(archive) }),
+  renameDeck: (id: string, name: string) => j(`/decks/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
   duplicateDeck: (id: string) =>
     j<{ id: string }>(`/decks/${id}/duplicate`, { method: 'POST' }),
   deleteDeck: (id: string) => j<{ ok: boolean }>(`/decks/${id}`, { method: 'DELETE' }),
-  setStarters: (id: string, cardIds: number[]) =>
-    j(`/decks/${id}/starters`, { method: 'PUT', body: JSON.stringify({ cardIds }) }),
-  setPairExclusions: (id: string, pairIds: string[]) =>
-    j(`/decks/${id}/pair-exclusions`, { method: 'PUT', body: JSON.stringify({ pairIds }) }),
-  setStartRequirements: (
-    id: string,
-    requirements: Array<{
-      source_card_id?: number | null;
-      source_pair_id?: string | null;
-      required_card_id: number;
-      min_in_deck?: number;
-    }>,
-  ) =>
-    j(`/decks/${id}/start-requirements`, {
-      method: 'PUT',
-      body: JSON.stringify({ requirements }),
-    }),
-
   // Bibliothèque globale
   getLibrary: () => j<Library>('/library'),
   setFlags: (
     cardId: number,
-    flags: { is_hopt?: boolean; dead_first?: boolean; dead_second?: boolean },
+    flags: { is_hopt: boolean },
   ) => j(`/library/flags/${cardId}`, { method: 'PUT', body: JSON.stringify(flags) }),
-  addPair: (a: number, b: number, note?: string) =>
-    j<{ id: string; card_a_id: number; card_b_id: number; note: string | null }>('/library/pairs', {
-      method: 'POST',
-      body: JSON.stringify({ card_a_id: a, card_b_id: b, note }),
-    }),
-  deletePair: (id: string) => j(`/library/pairs/${id}`, { method: 'DELETE' }),
-  addCategory: (name: string, relevance: Relevance) =>
+  addCategory: (name: string, relevance: Relevance, id?: string) =>
     j<{ id: string; name: string; relevance: Relevance; is_builtin: boolean }>(
       '/library/categories',
-      { method: 'POST', body: JSON.stringify({ name, relevance }) },
+      { method: 'POST', body: JSON.stringify({ name, relevance, id }) },
     ),
   deleteCategory: (id: string) => j(`/library/categories/${id}`, { method: 'DELETE' }),
   addCardCategory: (cardId: number, categoryId: string) =>

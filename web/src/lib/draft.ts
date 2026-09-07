@@ -1,93 +1,62 @@
-import type { DeckCard, StartRequirement } from '../types.js';
-import type { SavedQuery } from '../engine/query.js';
+import { parseConfiguration, type Configuration } from '../../../server/src/domain/deckConfiguration.js';
 
-/**
- * Brouillon local automatique (§4B) — écrit en continu dans IndexedDB, indépendamment
- * de la base. Donne la sécurité de l'autosave sans casser le modèle mental de la
- * sauvegarde explicite : au retour sur un deck ayant un brouillon, on propose de le
- * reprendre. Le brouillon ne contient QUE les données locales au deck.
- */
 export interface DeckDraft {
+  version: 2;
   deckId: string;
   updatedAt: number;
-  name: string;
-  main: DeckCard[];
-  extra: DeckCard[];
-  side: DeckCard[];
-  starters: number[];
-  pairExclusions: string[];
-  startRequirements: StartRequirement[];
-  horizonFirst: number;
-  horizonSecond: number;
-  importance: number;
-  statsView: string;
-  savedQueries: SavedQuery[];
+  baseRevision: number;
+  configuration: Configuration;
 }
-
-const DB_NAME = 'ygo-proba';
 const STORE = 'deck-drafts';
-
 let dbPromise: Promise<IDBDatabase> | null = null;
-
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'deckId' });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+  dbPromise = new Promise((resolve,reject) => {
+    const request = indexedDB.open('ygo-proba',1);
+    request.onupgradeneeded = () => { request.result.createObjectStore(STORE,{ keyPath: 'deckId' }); };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => { dbPromise = null;reject(request.error); };
   });
   return dbPromise;
 }
 
-async function withStore<T>(
-  mode: IDBTransactionMode,
-  fn: (store: IDBObjectStore) => IDBRequest<T>,
-): Promise<T> {
+// Resolve on COMMIT, not request success; aborted transactions must never look saved.
+async function transaction<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore, result: (v:T) => void) => void): Promise<T> {
   const db = await openDb();
-  return new Promise<T>((resolve, reject) => {
-    const tx = db.transaction(STORE, mode);
-    const req = fn(tx.objectStore(STORE));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+  return new Promise((resolve,reject) => {
+    const tx = db.transaction(STORE,mode);let value: T;
+    tx.oncomplete = () => resolve(value);
+    tx.onerror = tx.onabort = () => reject(tx.error ?? new Error('Brouillon non enregistré.'));
+    action(tx.objectStore(STORE),(v) => { value=v; });
   });
 }
 
+export function validDraft(value: unknown): DeckDraft | null {
+  const d = value as Partial<DeckDraft> | null;
+  if (!d || d.version !== 2 || typeof d.deckId !== 'string' || !Number.isInteger(d.baseRevision)) return null;
+  try { return { ...d,configuration: parseConfiguration(d.configuration) } as DeckDraft; } catch { return null; }
+}
 export async function saveDraft(draft: DeckDraft): Promise<void> {
+  try { await transaction<void>('readwrite',(s) => { s.put(draft); }); } catch { /* Optional local recovery. */ }
+}
+export async function loadDraft(id: string): Promise<DeckDraft | null> {
   try {
-    await withStore('readwrite', (s) => s.put(draft));
-  } catch {
-    /* IndexedDB indisponible (mode privé, quota…) : on n'interrompt jamais l'UI. */
-  }
+    return await transaction('readonly',(s,result) => { s.get(id).onsuccess = (e) => result(validDraft((e.target as IDBRequest).result)); });
+  } catch { return null; }
 }
 
-export async function loadDraft(deckId: string): Promise<DeckDraft | null> {
+/** A save may only clear the matching draft, never a newer edit. */
+export async function clearDraft(id: string, saved?: Configuration): Promise<void> {
   try {
-    const d = await withStore<DeckDraft | undefined>('readonly', (s) => s.get(deckId));
-    return d ?? null;
-  } catch {
-    return null;
-  }
+    await transaction<void>('readwrite',(s) => {
+      if (!saved) { s.delete(id);return; }
+      s.get(id).onsuccess = (e) => {
+        const d = validDraft((e.target as IDBRequest).result);
+        if (d && JSON.stringify(d.configuration) === JSON.stringify(saved)) s.delete(id);
+      };
+    });
+  } catch { /* Optional local recovery. */ }
 }
-
-export async function clearDraft(deckId: string): Promise<void> {
-  try {
-    await withStore('readwrite', (s) => s.delete(deckId));
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Purge TOUS les brouillons — à la déconnexion (itération 8) : ils contiennent des
- *  decks entiers et ne doivent pas survivre à un changement de compte sur un poste
- *  partagé. */
 export async function clearAllDrafts(): Promise<void> {
-  try {
-    await withStore('readwrite', (s) => s.clear());
-  } catch {
-    /* ignore */
-  }
+  try { await transaction<void>('readwrite',(s) => { s.clear(); }); } catch { /* Optional local recovery. */ }
 }

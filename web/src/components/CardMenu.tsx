@@ -20,7 +20,7 @@ export function CardMenu({
   const deadFirst = useDeck((s) => s.deadFirst.has(cardId));
   const deadSecond = useDeck((s) => s.deadSecond.has(cardId));
   const removeCard = useDeck((s) => s.removeCard);
-  const removePair = useDeck((s) => s.removePairFromLibrary);
+  const removePair = useDeck((s) => s.removePairFromDeck);
   const toggleDeadFirst = useDeck((s) => s.toggleDeadFirst);
   const toggleDeadSecond = useDeck((s) => s.toggleDeadSecond);
 
@@ -72,7 +72,7 @@ export function CardMenu({
 
           <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
           <div className="px-2 py-0.5 text-[10px] uppercase tracking-wide text-ink-500">
-            Combos en bibliothèque
+            Combos de ce deck
           </div>
           {combos.length === 0 && (
             <div className="px-2 py-1 text-[11px] text-ink-600">aucun</div>
@@ -85,7 +85,7 @@ export function CardMenu({
               <span className="truncate">+ {name(other(cardId, p))}</span>
               <button
                 onClick={() => removePair(p.id)}
-                title="Supprimer définitivement de la bibliothèque"
+                title="Supprimer du deck à la prochaine sauvegarde"
                 className="shrink-0 rounded px-1 text-ink-600 hover:bg-red-500/10 hover:text-red-400"
               >
                 supprimer

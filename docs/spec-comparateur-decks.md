@@ -1,5 +1,13 @@
 # Spec — Comparateur de decks (matrice Starters × Non-Engine)
 
+**Document historique.** Pour la mission de fiabilisation, consulter le
+[contrat métier cible](regles-metier.md) et les [cas de référence](cas-reference.md).
+La formule à trois catégories disjointes ci-dessous n'est valable que dans ce cas
+particulier : elle ne décrit pas le cas général des paires, conditions et cartes
+à la fois starter et non-engine. Les matrices côte à côte, les seaux communs et
+les moyennes explicitement nommées « planchers » restent des comportements à
+préserver. L'étape 1 ne change pas le comparateur.
+
 Feature à intégrer au site : comparer **deux versions d'un deck** sur l'analytic « matrice Starters × Non-Engine », en going first et going second, avec un export Excel.
 
 Le site sait déjà calculer la matrice pour **un** deck. Cette spec ne réécrit pas ce calcul : elle décrit la couche de comparaison au-dessus, plus deux ou trois points sur le calcul existant qui doivent être vérifiés avant de construire dessus (§3 et §6).

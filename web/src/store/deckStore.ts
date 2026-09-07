@@ -4,13 +4,20 @@ import { pairKey } from '../types.js';
 import type { EngineResult } from '../engine/types.js';
 import type { QueryCriterion, SavedQuery } from '../engine/query.js';
 import { computeInWorker } from '../worker/client.js';
-import { api } from '../lib/api.js';
+import { ApiError, api } from '../lib/api.js';
 import type { ParsedDeck } from '../lib/ydk.js';
 import { saveDraft, loadDraft, clearDraft, type DeckDraft } from '../lib/draft.js';
 import type { DeckJson } from '../lib/exportDeck.js';
 import { buildEngineModel, type EngineModel } from '../lib/engineModel.js';
+import { configurationFromState, configurationFromDetail, stateFromConfiguration, libraryState } from '../lib/deckConfiguration.js';
 
 interface State {
+  revision: number;
+  editRevision: number;
+  notes: string | null;
+  saving: boolean;
+  persistenceError: string | null;
+  libraryPending: number;
   cards: Record<number, Card>;
   deckId: string | null;
   deckName: string;
@@ -18,7 +25,7 @@ interface State {
   extra: DeckCard[];
   side: DeckCard[];
 
-  // ─── Bibliothèque globale : enregistrée IMMÉDIATEMENT (connaissance de jeu, §4A) ───
+  // Account-wide HOPT/categories; pairs and start availability are deck-local.
   hopt: Set<number>;
   deadFirst: Set<number>;
   deadSecond: Set<number>;
@@ -72,7 +79,7 @@ interface State {
   toggleDeadSecond: (cardId: number) => void;
   togglePair: (a: number, b: number) => void;
   setPairExcluded: (pairId: string, excluded: boolean) => void;
-  removePairFromLibrary: (pairId: string) => void;
+  removePairFromDeck: (pairId: string) => void;
   toggleRequirement: (
     source: { cardId: number } | { pairId: string },
     requiredCardId: number,
@@ -102,7 +109,7 @@ function clampHorizon(v: number): number {
 const toDeck = (m: Map<number, number>, zone: DeckCard['zone']): DeckCard[] =>
   [...m].map(([cardId, copies]) => ({ cardId, copies, zone }));
 
-const uid = (): string => Math.random().toString(36).slice(2);
+const uid = (): string => crypto.randomUUID();
 const defaultQuery = (): QueryCriterion[] => [
   { id: uid(), subject: { kind: 'starts' }, min: 1, max: null },
 ];
@@ -124,76 +131,27 @@ function scheduleCompute(get: () => State, set: (p: Partial<State>) => void): vo
   }, 50);
 }
 
-// Brouillon local (§4B) : écriture debouncée dans IndexedDB à chaque modif locale.
-let draftTimer: ReturnType<typeof setTimeout> | null = null;
+// Each draft captures the edited deck immediately, even if navigation follows.
 function scheduleDraft(get: () => State): void {
-  if (draftTimer) clearTimeout(draftTimer);
-  draftTimer = setTimeout(() => {
-    const s = get();
-    if (!s.deckId) return;
-    void saveDraft({
-      deckId: s.deckId,
-      updatedAt: Date.now(),
-      name: s.deckName,
-      main: s.main,
-      extra: s.extra,
-      side: s.side,
-      starters: [...s.starters],
-      pairExclusions: [...s.pairExclusions],
-      startRequirements: s.startRequirements,
-      horizonFirst: s.horizonFirst,
-      horizonSecond: s.horizonSecond,
-      importance: s.importance,
-      statsView: s.statsView,
-      savedQueries: s.savedQueries,
-    });
-  }, 500);
+  const s = get();
+  if (!s.deckId) return;
+  try {
+    void saveDraft({ version: 2,deckId: s.deckId,updatedAt: Date.now(),baseRevision: s.revision,configuration: configurationFromState(s) });
+  } catch { /* Incomplete input remains dirty and is reported by explicit save. */ }
 }
-
-// Persistance best-effort de la bibliothèque globale : n'interrompt jamais l'UI (§5).
+let libraryQueue = Promise.resolve();
+let libraryPending = 0;
 function persist(set: (p: Partial<State>) => void, fn: () => Promise<unknown>): void {
-  fn().catch(() => set({ online: false }));
-}
-
-/** Signature des données LOCALES au deck — pour comparer brouillon vs version enregistrée. */
-function localSig(o: {
-  name: string;
-  main: DeckCard[];
-  extra: DeckCard[];
-  side: DeckCard[];
-  starters: number[];
-  pairExclusions: string[];
-  startRequirements: StartRequirement[];
-  horizonFirst: number;
-  horizonSecond: number;
-  importance: number;
-  statsView: string;
-  savedQueries: SavedQuery[];
-}): string {
-  const norm = (arr: DeckCard[]) =>
-    arr.map((c) => `${c.cardId}:${c.zone}:${c.copies}`).sort().join(',');
-  return JSON.stringify({
-    n: o.name,
-    m: norm(o.main),
-    e: norm(o.extra),
-    s: norm(o.side),
-    st: [...o.starters].sort((a, b) => a - b),
-    px: [...o.pairExclusions].sort(),
-    rq: o.startRequirements
-      .map((r) => `${r.sourceCardId ?? ''}|${r.sourcePairId ?? ''}|${r.requiredCardId}|${r.minInDeck}`)
-      .sort(),
-    h1: o.horizonFirst,
-    h2: o.horizonSecond,
-    im: o.importance,
-    sv: o.statsView,
-    sq: JSON.stringify(o.savedQueries),
-  });
+  set({ libraryPending: ++libraryPending,persistenceError: null });
+  libraryQueue = libraryQueue.then(fn).then(() => { set({ online: true }); }, (e: unknown) => {
+    set({ persistenceError: e instanceof Error ? e.message : 'Enregistrement des annotations impossible.',online: e instanceof ApiError });
+  }).finally(() => set({ libraryPending: --libraryPending }));
 }
 
 export const useDeck = create<State>((set, get) => {
   const recompute = () => scheduleCompute(get, set);
   const markDirty = () => {
-    set({ dirty: true });
+    set({ dirty: true,editRevision: get().editRevision+1 });
     scheduleDraft(get);
   };
   // Mutation LOCALE affectant le calcul : recalcul + marquage sale + brouillon.
@@ -203,6 +161,7 @@ export const useDeck = create<State>((set, get) => {
   };
 
   return {
+    revision: 0,editRevision: 0,notes: null,saving: false,persistenceError: null,libraryPending: 0,
     cards: {},
     deckId: null,
     deckName: 'Sans titre',
@@ -241,12 +200,7 @@ export const useDeck = create<State>((set, get) => {
       try {
         const lib = await api.getLibrary();
         set({
-          hopt: new Set(lib.hoptCardIds),
-          deadFirst: new Set(lib.deadFirstCardIds),
-          deadSecond: new Set(lib.deadSecondCardIds),
-          pairs: lib.pairs,
-          categories: lib.categories,
-          cardCategories: groupCardCategories(lib.cardCategories),
+          ...libraryState(lib),
           online: true,
         });
       } catch {
@@ -277,191 +231,68 @@ export const useDeck = create<State>((set, get) => {
       }
     },
 
-    // Import JSON (§4C) : fusionne les annotations globales SANS écraser les paires
-    // existantes (addPair est idempotent), crée le deck, puis rafraîchit la bibliothèque.
+    // One server transaction includes imported global annotations and the deck.
     async importDeckJson(json) {
       try {
-        const nameToCatId = new Map<string, string>();
-        for (const c of get().categories) nameToCatId.set(c.name, c.id);
-        for (const cat of json.categories ?? []) {
-          if (!nameToCatId.has(cat.name)) {
-            const created = await api.addCategory(cat.name, cat.relevance);
-            nameToCatId.set(created.name, created.id);
-          }
-        }
-        const pairIdByKey = new Map<string, string>();
-        for (const p of get().pairs) pairIdByKey.set(pairKey(p.card_a_id, p.card_b_id), p.id);
-        for (const p of json.pairs ?? []) {
-          const created = await api.addPair(p.a, p.b, p.note ?? undefined);
-          pairIdByKey.set(pairKey(created.card_a_id, created.card_b_id), created.id);
-        }
-        for (const id of json.hopt ?? []) await api.setFlags(id, { is_hopt: true });
-        for (const id of json.deadFirst ?? []) await api.setFlags(id, { dead_first: true });
-        for (const id of json.deadSecond ?? []) await api.setFlags(id, { dead_second: true });
-        for (const [cardId, catName] of json.cardCategories ?? []) {
-          const cid = nameToCatId.get(catName);
-          if (cid) await api.addCardCategory(cardId, cid);
-        }
-
-        const { id } = await api.createDeck(
-          json.name || 'Deck importé',
-          (json.cards ?? []).map((c) => ({ card_id: c.cardId, zone: c.zone, copies: c.copies })),
-        );
-        await api.setStarters(id, json.starters ?? []);
-        const exclIds = (json.excludedPairs ?? [])
-          .map(([a, b]) => pairIdByKey.get(pairKey(a, b)))
-          .filter((x): x is string => !!x);
-        await api.setPairExclusions(id, exclIds);
-        if (json.params) await api.updateDeck(id, { params: json.params });
-        await get().bootstrap(); // recharge la bibliothèque enrichie
+        const { id } = await api.importArchive(json);
+        await get().bootstrap();
         return id;
-      } catch {
-        set({ online: false });
+      } catch (e) {
+        set({ persistenceError: e instanceof Error ? e.message : 'Import impossible.' });
         return null;
       }
     },
 
     // Charge un deck depuis la base dans l'éditeur, puis propose un brouillon si présent.
     async loadDeck(id) {
-      let detail: Awaited<ReturnType<typeof api.getDeck>>;
       try {
-        detail = await api.getDeck(id);
-      } catch {
-        set({ online: false });
-        return;
-      }
-      const ids = detail.cards.map((c) => c.card_id);
-      const cardMap: Record<number, Card> = { ...get().cards };
-      try {
-        for (const c of await api.cardsByIds(ids)) cardMap[c.id] = c;
-      } catch {
-        /* images dérivables du CDN */
-      }
-      const params = (detail.params ?? {}) as Record<string, unknown>;
-      const asCards = (zone: DeckCard['zone']): DeckCard[] =>
-        detail.cards.filter((c) => c.zone === zone).map((c) => ({ cardId: c.card_id, zone, copies: c.copies }));
-
-      set({
-        cards: cardMap,
-        deckId: id,
-        deckName: detail.name,
-        main: asCards('main'),
-        extra: asCards('extra'),
-        side: asCards('side'),
-        starters: new Set(detail.starters),
-        pairExclusions: new Set(detail.pair_exclusions),
-        startRequirements: (detail.start_requirements ?? []).map((r) => ({
-          id: r.id,
-          sourceCardId: r.source_card_id,
-          sourcePairId: r.source_pair_id,
-          requiredCardId: r.required_card_id,
-          minInDeck: r.min_in_deck,
-        })),
-        horizonFirst: clampHorizon(Number(params.horizonFirst ?? 1)),
-        horizonSecond: clampHorizon(Number(params.horizonSecond ?? 2)),
-        importance: typeof params.importance === 'number' ? params.importance : 0.5,
-        statsView: typeof params.statsView === 'string' ? params.statsView : 'starts',
-        savedQueries: Array.isArray(params.savedQueries)
-          ? (params.savedQueries as SavedQuery[])
-          : [],
-        queryCriteria: defaultQuery(),
-        handFilterByQuery: false,
-        dirty: false,
-        lastSavedAt: detail.updated_at ? Date.parse(detail.updated_at) : Date.now(),
-        draftAvailable: null,
-        removalToast: null,
-      });
-      recompute();
-
-      // Brouillon plus récent que la version enregistrée ? (§4B, comparaison par contenu)
-      const draft = await loadDraft(id);
-      if (draft) {
-        const s = get();
-        const savedSig = localSig({
-          name: s.deckName,
-          main: s.main,
-          extra: s.extra,
-          side: s.side,
-          starters: [...s.starters],
-          pairExclusions: [...s.pairExclusions],
-          startRequirements: s.startRequirements,
-          horizonFirst: s.horizonFirst,
-          horizonSecond: s.horizonSecond,
-          importance: s.importance,
-          statsView: s.statsView,
-          savedQueries: s.savedQueries,
-        });
-        if (localSig(draft) !== savedSig) set({ draftAvailable: draft });
-        else void clearDraft(id); // brouillon identique = obsolète
+        // Library must be ready before building the model for this deck.
+        await libraryQueue;
+        await get().bootstrap();
+        if (!get().online) throw new Error('Bibliothèque indisponible : impossible de charger une configuration fiable.');
+        const detail = await api.getDeck(id);
+        const configuration = configurationFromDetail(detail);
+        const cardMap = { ...get().cards };
+        const ids = new Set([...configuration.cards.map((c) => c.card_id),...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),...configuration.requirements.map((r) => r.required_card_id)]);
+        try { for (const c of await api.cardsByIds([...ids])) cardMap[c.id] = c; } catch { /* Catalogue lookup is optional. */ }
+        set({ ...stateFromConfiguration(configuration),cards: cardMap,deckId: id,revision: detail.revision,
+          dirty: false,editRevision: 0,lastSavedAt: Date.parse(detail.updated_at ?? ''),draftAvailable: null,
+          persistenceError: null,removalToast: null,queryCriteria: defaultQuery(),handFilterByQuery: false });
+        recompute();
+        const draft = await loadDraft(id);
+        if (get().deckId !== id) return;
+        if (draft && JSON.stringify(draft.configuration) !== JSON.stringify(configuration)) set({ draftAvailable: draft });
+      } catch (e) {
+        set({ persistenceError: e instanceof Error ? e.message : 'Chargement impossible.' });
       }
     },
 
     async saveDeck() {
+      if (get().saving) return;
+      set({ saving: true,persistenceError: null });
       const s = get();
-      if (!s.deckId) return;
-      const summary = s.result
-        ? {
-            startRateFirst: 1 - s.result.first.brick,
-            brickRate: s.result.first.brick,
-            mainSize: s.main.reduce((a, c) => a + c.copies, 0),
-          }
-        : undefined;
+      if (!s.deckId) { set({ saving: false }); return; }
       try {
-        await Promise.all([
-          api.updateDeck(s.deckId, {
-            name: s.deckName,
-            cards: [...s.main, ...s.extra, ...s.side].map((m) => ({
-              card_id: m.cardId,
-              zone: m.zone,
-              copies: m.copies,
-            })),
-            params: {
-              horizonFirst: s.horizonFirst,
-              horizonSecond: s.horizonSecond,
-              importance: s.importance,
-              statsView: s.statsView,
-              savedQueries: s.savedQueries,
-            },
-            summary,
-          }),
-          api.setStarters(s.deckId, [...s.starters]),
-          api.setPairExclusions(s.deckId, [...s.pairExclusions]),
-          api.setStartRequirements(
-            s.deckId,
-            s.startRequirements.map((r) => ({
-              source_card_id: r.sourceCardId,
-              source_pair_id: r.sourcePairId,
-              required_card_id: r.requiredCardId,
-              min_in_deck: r.minInDeck,
-            })),
-          ),
-        ]);
-        set({ dirty: false, lastSavedAt: Date.now(), online: true });
-        await clearDraft(s.deckId);
-      } catch {
-        set({ online: false }); // dirty reste vrai : l'utilisateur voit que ce n'est pas enregistré
+        const configuration = configurationFromState(s);
+        const saved = await api.saveConfiguration(s.deckId,configuration,s.revision);
+        if (get().deckId === s.deckId) {
+          const unchanged = get().editRevision === s.editRevision;
+          set({ revision: saved.revision,dirty: !unchanged,lastSavedAt: Date.now(),online: true });
+          if (!unchanged) scheduleDraft(get);
+        }
+        await clearDraft(s.deckId,configuration);
+      } catch (e) {
+        if (get().deckId === s.deckId) set({ dirty: true,persistenceError: e instanceof Error ? e.message : 'Enregistrement impossible.' });
+      } finally {
+        set({ saving: false });
       }
     },
 
     resumeDraft() {
       const d = get().draftAvailable;
       if (!d) return;
-      set({
-        deckName: d.name,
-        main: d.main,
-        extra: d.extra,
-        side: d.side,
-        starters: new Set(d.starters),
-        pairExclusions: new Set(d.pairExclusions),
-        startRequirements: d.startRequirements ?? [],
-        horizonFirst: clampHorizon(d.horizonFirst),
-        horizonSecond: clampHorizon(d.horizonSecond),
-        importance: d.importance,
-        statsView: d.statsView ?? 'starts',
-        savedQueries: d.savedQueries ?? [],
-        draftAvailable: null,
-        dirty: true,
-      });
+      set({ ...stateFromConfiguration(d.configuration),draftAvailable: null,dirty: true,editRevision: get().editRevision+1 });
+      // Keep the loaded server revision; an old draft is an explicit user restoration.
       recompute();
     },
 
@@ -513,7 +344,7 @@ export const useDeck = create<State>((set, get) => {
     undoRemove() {
       const t = get().removalToast;
       if (!t) return;
-      const main = [...get().main];
+      const main = get().main.filter((c) => c.cardId !== t.card.cardId);
       main.splice(Math.min(t.index, main.length), 0, t.card);
       set({ main, removalToast: null });
       localCalc();
@@ -605,7 +436,7 @@ export const useDeck = create<State>((set, get) => {
           startRequirements: [
             ...get().startRequirements,
             {
-              id: `tmp-req-${Math.random().toString(36).slice(2)}`,
+              id: uid(),
               sourceCardId: isCard ? source.cardId : null,
               sourcePairId: isCard ? null : source.pairId,
               requiredCardId,
@@ -631,108 +462,62 @@ export const useDeck = create<State>((set, get) => {
       localCalc();
     },
 
-    // ─── Mutations GLOBALES (bibliothèque) : enregistrées immédiatement, jamais « sale » ───
+    // Global annotations are adopted only after acknowledgement; queued in order.
     toggleHopt(cardId) {
-      const hopt = new Set(get().hopt);
-      const on = !hopt.has(cardId);
-      if (on) hopt.add(cardId);
-      else hopt.delete(cardId);
-      set({ hopt });
-      recompute();
-      persist(set, () => api.setFlags(cardId, { is_hopt: on }));
+      persist(set, async () => {
+        const hopt = new Set(get().hopt);
+        const on = !hopt.has(cardId);
+        await api.setFlags(cardId,{ is_hopt: on });
+        if (on) hopt.add(cardId); else hopt.delete(cardId);
+        set({ hopt }); recompute();
+      });
     },
-
     toggleDeadFirst(cardId) {
       const deadFirst = new Set(get().deadFirst);
-      const on = !deadFirst.has(cardId);
-      if (on) deadFirst.add(cardId);
-      else deadFirst.delete(cardId);
-      set({ deadFirst });
-      recompute();
-      persist(set, () => api.setFlags(cardId, { dead_first: on }));
+      if (deadFirst.has(cardId)) deadFirst.delete(cardId); else deadFirst.add(cardId);
+      set({ deadFirst }); localCalc();
     },
-
     toggleDeadSecond(cardId) {
       const deadSecond = new Set(get().deadSecond);
-      const on = !deadSecond.has(cardId);
-      if (on) deadSecond.add(cardId);
-      else deadSecond.delete(cardId);
-      set({ deadSecond });
-      recompute();
-      persist(set, () => api.setFlags(cardId, { dead_second: on }));
+      if (deadSecond.has(cardId)) deadSecond.delete(cardId); else deadSecond.add(cardId);
+      set({ deadSecond }); localCalc();
     },
-
-    togglePair(a, b) {
-      if (a === b) return; // auto-combo hors périmètre (§D)
-      const key = pairKey(a, b);
-      const [ca, cb] = a <= b ? [a, b] : [b, a];
-      const existing = get().pairs.find((p) => pairKey(p.card_a_id, p.card_b_id) === key);
-      if (existing) {
-        // Retirer un combo depuis l'annotation = exclusion LOCALE au deck (§5).
-        get().setPairExcluded(existing.id, !get().pairExclusions.has(existing.id));
-        return;
-      }
-      // Nouvelle paire = connaissance GLOBALE, enregistrée immédiatement.
-      const tempId = `tmp-${key}`;
-      set({ pairs: [...get().pairs, { id: tempId, card_a_id: ca, card_b_id: cb }] });
-      recompute();
-      persist(set, async () => {
-        const created = await api.addPair(ca, cb);
-        set({ pairs: get().pairs.map((p) => (p.id === tempId ? { ...p, id: created.id } : p)) });
-      });
+    togglePair(a,b) {
+      if (a === b) return;
+      const existing = get().pairs.find((p) => pairKey(p.card_a_id,p.card_b_id) === pairKey(a,b));
+      if (existing) { get().setPairExcluded(existing.id,!get().pairExclusions.has(existing.id)); return; }
+      set({ pairs: [...get().pairs,{ id: uid(),card_a_id: Math.min(a,b),card_b_id: Math.max(a,b) }] });
+      localCalc();
     },
-
-    removePairFromLibrary(pairId) {
-      // La suppression de la paire cascade côté serveur sur ses exclusions ET ses
-      // prérequis (source_pair_id) ; on nettoie l'état local en miroir.
-      set({
-        pairs: get().pairs.filter((p) => p.id !== pairId),
+    removePairFromDeck(pairId) {
+      set({ pairs: get().pairs.filter((p) => p.id !== pairId),
         pairExclusions: new Set([...get().pairExclusions].filter((id) => id !== pairId)),
-        startRequirements: get().startRequirements.filter((r) => r.sourcePairId !== pairId),
-      });
-      recompute();
-      persist(set, () => api.deletePair(pairId));
+        startRequirements: get().startRequirements.filter((r) => r.sourcePairId !== pairId) });
+      localCalc();
     },
-
-    addCategory(name, relevance) {
-      const tempId = `tmp-cat-${name}`;
-      set({
-        categories: [...get().categories, { id: tempId, name, relevance, is_builtin: false }],
-      });
-      recompute();
+    addCategory(name,relevance) {
       persist(set, async () => {
-        const created = await api.addCategory(name, relevance);
-        set({ categories: get().categories.map((c) => (c.id === tempId ? created : c)) });
+        const created = await api.addCategory(name,relevance,uid());
+        set({ categories: [...get().categories.filter((c) => c.id !== created.id),created] });
+        recompute();
       });
     },
-
     deleteCategory(id) {
-      set({
-        categories: get().categories.filter((c) => c.id !== id),
-        cardCategories: new Map(
-          [...get().cardCategories].map(([cid, cats]) => {
-            const next = new Set(cats);
-            next.delete(id);
-            return [cid, next] as [number, Set<string>];
-          }),
-        ),
+      persist(set, async () => {
+        await api.deleteCategory(id);
+        set({ categories: get().categories.filter((c) => c.id !== id),
+          cardCategories: new Map([...get().cardCategories].map(([card,cats]) => [card,new Set([...cats].filter((cat) => cat !== id))])) });
+        recompute();
       });
-      recompute();
-      persist(set, () => api.deleteCategory(id));
     },
-
-    toggleCardCategory(cardId, categoryId) {
-      const cc = new Map(get().cardCategories);
-      const cats = new Set(cc.get(cardId) ?? []);
-      const on = !cats.has(categoryId);
-      if (on) cats.add(categoryId);
-      else cats.delete(categoryId);
-      cc.set(cardId, cats);
-      set({ cardCategories: cc });
-      recompute();
-      persist(set, () =>
-        on ? api.addCardCategory(cardId, categoryId) : api.removeCardCategory(cardId, categoryId),
-      );
+    toggleCardCategory(cardId,categoryId) {
+      persist(set, async () => {
+        const cc = new Map(get().cardCategories);
+        const cats = new Set(cc.get(cardId) ?? []);
+        if (cats.has(categoryId)) { await api.removeCardCategory(cardId,categoryId);cats.delete(categoryId); }
+        else { await api.addCardCategory(cardId,categoryId);cats.add(categoryId); }
+        cc.set(cardId,cats);set({ cardCategories: cc });recompute();
+      });
     },
 
     setExtraSideHidden(hidden) {
@@ -740,13 +525,3 @@ export const useDeck = create<State>((set, get) => {
     },
   };
 });
-
-function groupCardCategories(
-  rows: Array<{ card_id: number; category_id: string }>,
-): Map<number, Set<string>> {
-  const map = new Map<number, Set<string>>();
-  for (const { card_id, category_id } of rows) {
-    (map.get(card_id) ?? map.set(card_id, new Set()).get(card_id)!).add(category_id);
-  }
-  return map;
-}

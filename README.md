@@ -1,5 +1,13 @@
 # YGO — Calculateur de probabilités & sampler de mains
 
+Les **étapes 1 à 3** de la mission de fiabilisation sont livrées :
+[contrat métier](docs/regles-metier.md), [cas de référence](docs/cas-reference.md),
+[corrections mathématiques et persistance](docs/etapes-2-3.md).
+Les paires sont maintenant propres au deck et enregistrées explicitement.
+La [migration version 2](deploy/configuration-v2.md) est requise sur une base existante.
+L'étape 4 (recalculs) attend sa validation ; les nouveaux profils chronologiques
+et conditions OU ne sont pas encore implémentés.
+
 Importer une decklist, **annoter** les cartes (starters, paires de combo, non-engine,
 HOPT), et obtenir en temps réel des **probabilités exactes** de main d'ouverture + un
 **mur de mains** filtrable. Voir [`reutiliser-la-bdd.md`](reutiliser-la-bdd.md) pour la
@@ -48,9 +56,10 @@ npm run db:schema           # rejoue db/schema.sql (idempotent) sur la base en m
 npm run adopt -- toi@mail.com ton-mot-de-passe   # crée ton compte et lui rattache tout l'existant
 ```
 
-Sans backend/DB, l'app reste utilisable : les annotations vivent en mémoire + dans
-l'URL (`#s=…`, état compressé partageable), et les images sont dérivées de l'`id` via le
-CDN YGOPRODeck. La persistance (bibliothèque, decks) nécessite le backend + un compte.
+Le parcours nécessite le backend et un compte. Les brouillons IndexedDB sont
+une récupération locale facultative ; ils ne remplacent pas une sauvegarde serveur.
+Après l'adoption d'une ancienne base, appliquer la migration de configuration avant
+de démarrer cette version (voir la procédure dans /deploy).
 
 ## Mettre le catalogue à jour
 
@@ -100,19 +109,21 @@ fermée à la clé anon. Elle sert de repère, pas de preuve.
 ## Tests
 
 ```bash
-npm test                    # Vitest : reproduit les valeurs de contrôle §C (moteur)
+npm test                    # Tests web (Vitest) + contrat serveur (node:test)
 ```
 
 ## Structure
 
 ```
-db/schema.sql          schéma normatif (§A) + comptes/sessions (itération 8)
+db/schema.sql          schéma historique + comptes/sessions
+db/migrations/         évolutions versionnées (configuration par deck)
 server/                Fastify + pg
   scripts/migrate-cards.ts       Supabase → Postgres local (§6.1)
   scripts/prune-stale-cards.ts   retire les passcodes périmés, références reportées
   scripts/adopt-legacy.ts        migration base pré-comptes → un compte propriétaire
   src/auth/            scrypt, sessions (cookie httpOnly, token haché), comptes
   src/routes/          auth, cards, decks, library
+  src/domain/          contrat pur partagé avec le web et accès aux configurations SQL
 web/src/
   engine/              moteur exact + tests §C  (binomial, matching, enumerate, evaluate, hand)
     compare.ts         comparateur de decks (matrices starts × non-engine, deltas, agrégats)

@@ -20,6 +20,7 @@ export function EditorPage({ id }: { id: string }) {
   const dirty = useDeck((s) => s.dirty);
   const deckId = useDeck((s) => s.deckId);
   const draftAvailable = useDeck((s) => s.draftAvailable);
+  const persistenceError = useDeck((s) => s.persistenceError);
 
   const [tab, setTab] = useState<Tab>('annotate');
   const [column, setColumn] = useState<'first' | 'second'>('first');
@@ -91,7 +92,7 @@ export function EditorPage({ id }: { id: string }) {
   if (deckId !== id) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3 bg-ink-950 text-sm text-ink-400">
-        <p>Deck introuvable.</p>
+        <p>{persistenceError ?? 'Deck introuvable.'}</p>
         <button
           onClick={() => navigate({ name: 'home' })}
           className="rounded border border-ink-700 px-3 py-1.5 text-xs hover:bg-ink-800"

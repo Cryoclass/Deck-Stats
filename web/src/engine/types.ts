@@ -66,6 +66,7 @@ export interface Outcome {
 
 /** Distribution d'une passe (going first = 5, going second = 6). */
 export interface PassResult {
+  unavailableReason?: string;
   handSize: number;
   deckSize: number;
   total: number; // C(deckSize, handSize)
@@ -90,6 +91,8 @@ export interface NonEngineSignature {
 }
 
 export interface Bucket {
+  /** Integer mass before normalization, retained for exact percentile rounding. */
+  weight?: number;
   starts: number;
   redundancy: number;
   neTotal: number; // total non-engine pertinent pour CETTE passe (= Σ neContrib)

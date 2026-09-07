@@ -66,6 +66,8 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
     );
   }
 
+  const pass = col === 'first' ? result.first : result.second;
+
   return (
     <div className="flex h-full flex-col">
       {/* Barre de contrôle. */}
@@ -170,7 +172,7 @@ export function HandWall({ column }: { column: 'first' | 'second' }) {
           ))}
           {view.length === 0 && (
             <div className="p-6 text-center text-sm text-ink-500">
-              Aucune main ne correspond à ces filtres.
+              {pass.total === 0 ? `Mains indisponibles. ${pass.unavailableReason}` : 'Aucune main ne correspond à ces filtres.'}
             </div>
           )}
         </div>
@@ -210,4 +212,3 @@ function NoteBadge({ note }: { note: number }) {
     </div>
   );
 }
-

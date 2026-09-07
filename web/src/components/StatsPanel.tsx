@@ -3,6 +3,7 @@ import type { PassResult } from '../engine/types.js';
 import { pct, num } from '../lib/fmt.js';
 import { Bar } from './ui.js';
 import { QueryMode } from './QueryMode.js';
+import { toComparisonMatrix } from '../engine/compare.js';
 
 /** Une vue = une distribution parcourable dans le panneau (itération 6). */
 interface StatsView {
@@ -188,6 +189,7 @@ function PassColumn({
   pass: PassResult;
   view: StatsView;
 }) {
+  if (pass.total === 0) return <div className="bg-ink-900 p-3 text-xs text-amber-300">{title} : analyse indisponible. {pass.unavailableReason}</div>;
   const r = resolveView(pass, view.id);
   return (
     <div className="bg-ink-900 p-3">
@@ -245,13 +247,15 @@ function DistTable({ buckets, color, mean, meanLabel, extra }: Resolved) {
   );
 }
 
-function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first' | 'second' }) {
+export function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first' | 'second' }) {
+  if (pass.total === 0) return <div className="p-3 text-xs text-amber-300">Matrice indisponible. {pass.unavailableReason}</div>;
+  const matrix = toComparisonMatrix(pass, column === 'first' ? 'going_first' : 'going_second', { starterCount: 0, nonEngineCount: 0 });
   const maxNe = Math.max(1, pass.nonEngine.length - 1);
   const cols = Array.from({ length: Math.min(maxNe, 5) + 1 }, (_, i) => i);
   const rows = [0, 1, 2, 3];
   const rowLabels = ['0', '1', '2', '≥3'];
   const maxCell = Math.max(
-    ...rows.flatMap((r) => cols.map((c) => pass.crossMatrix[r]?.[c] ?? 0)),
+    ...rows.flatMap((r) => cols.map((c) => matrix.cells[r][c])),
     1e-9,
   );
 
@@ -267,7 +271,7 @@ function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first' | 'se
               <th className="p-1 text-ink-600">↓s \ ne→</th>
               {cols.map((c) => (
                 <th key={c} className="tnum p-1 text-right text-ink-500">
-                  {c === cols.length - 1 && maxNe > 5 ? `${c}+` : c}
+                  {matrix.colLabels[c]}
                 </th>
               ))}
             </tr>
@@ -277,7 +281,7 @@ function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first' | 'se
               <tr key={r}>
                 <td className="tnum p-1 text-right text-ink-500">{rowLabels[ri]}</td>
                 {cols.map((c) => {
-                  const v = pass.crossMatrix[r]?.[c] ?? 0;
+                  const v = matrix.cells[r][c];
                   return (
                     <td
                       key={c}

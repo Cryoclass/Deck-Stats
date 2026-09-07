@@ -32,18 +32,21 @@ export function buildScorer(
 ): (starts: number, neTotal: number) => number {
   const scored = pass.buckets.map((b) => ({
     s: handScore(b.starts, b.neTotal, importance),
-    p: b.p,
+    weight: b.weight ?? Math.round(b.p * pass.total),
   }));
   return (starts, neTotal) => {
     const s = handScore(starts, neTotal, importance);
     let below = 0;
     let equal = 0;
     for (const it of scored) {
-      if (it.s < s) below += it.p;
-      else if (it.s === s) equal += it.p;
+      if (it.s < s) below += it.weight;
+      else if (it.s === s) equal += it.weight;
     }
-    const pct = below + 0.5 * equal; // point milieu pour les égalités
-    return Math.max(0, Math.min(10, Math.round(pct * 10)));
+    if (pass.total === 0) throw new Error('Note indisponible : tirage impossible.');
+    // Exact half-up rational: 10*(2*below+equal)/(2*total).
+    const numerator = 10n * (2n * BigInt(below) + BigInt(equal));
+    const denominator = 2n * BigInt(pass.total);
+    return Math.max(0, Math.min(10, Number((2n * numerator + denominator) / (2n * denominator))));
   };
 }
 
@@ -53,8 +56,8 @@ export function buildScorer(
 export function drawHands(deck: DeckEntry[], handSize: number, count: number): number[][] {
   const pool: number[] = [];
   for (const e of deck) for (let c = 0; c < e.copies; c++) pool.push(e.cardId);
-  if (pool.length === 0) return [];
-  const draw = Math.min(handSize, pool.length);
+  if (!Number.isInteger(handSize) || handSize < 1 || pool.length < handSize) return [];
+  const draw = handSize;
   const hands: number[][] = [];
   for (let h = 0; h < count; h++) {
     // Fisher-Yates partiel : mélange les `draw` premières positions.

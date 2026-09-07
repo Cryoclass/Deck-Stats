@@ -49,9 +49,6 @@ export interface StartRequirement {
 /** Snapshot de la bibliothèque globale (§5). */
 export interface Library {
   hoptCardIds: number[];
-  deadFirstCardIds: number[];
-  deadSecondCardIds: number[];
-  pairs: ComboPair[];
   categories: Category[];
   cardCategories: Array<{ card_id: number; category_id: string }>;
 }

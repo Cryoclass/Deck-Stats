@@ -46,6 +46,10 @@ function prereqsSatisfied(prereqs: Prereq[], k: number[]): boolean {
 }
 
 export function prepare(input: EngineInput): Prepared {
+  // Totals are derived from the CURRENT composition, including marginal variants.
+  const current = (p: Prereq): Prereq => ({ ...p,
+    requiredTotal: p.requiredType === null ? 0 : (input.types[p.requiredType]?.copies ?? 0),
+  });
   const n = input.types.length;
   const typeAdj: boolean[][] = Array.from({ length: n }, () => new Array<boolean>(n).fill(false));
   for (const [a, b] of input.edges) {
@@ -71,7 +75,7 @@ export function prepare(input: EngineInput): Prepared {
     deadSecond[i] = !!input.types[i].deadSecond;
     const sp = input.types[i].starterPrereqs;
     if (sp && sp.length > 0) {
-      starterPrereqs[i] = sp;
+      starterPrereqs[i] = sp.map(current);
       hasPrereqs = true;
     }
   }
@@ -80,7 +84,7 @@ export function prepare(input: EngineInput): Prepared {
     const ep = input.edgePrereqs?.[e];
     if (ep && ep.length > 0) {
       hasPrereqs = true;
-      return ep;
+      return ep.map(current);
     }
     return undefined;
   });

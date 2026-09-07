@@ -112,6 +112,7 @@ export function handContext(h: SampledHand, neSignatures: NonEngineSignature[]):
  * invalide (min > max) bloque l'évaluation → null (l'UI signale l'invalidité).
  */
 export function queryProbability(pass: PassResult, criteria: QueryCriterion[]): number | null {
+  if (pass.total === 0) return null;
   if (criteria.some(criterionInvalid)) return null;
   let p = 0;
   for (const b of pass.buckets) {

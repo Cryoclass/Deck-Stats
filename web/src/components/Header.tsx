@@ -18,6 +18,9 @@ export function Header({
   const online = useDeck((s) => s.online);
   const deckSize = useDeck((s) => s.main.reduce((a, c) => a + c.copies, 0));
   const dirty = useDeck((s) => s.dirty);
+  const saving = useDeck((s) => s.saving);
+  const persistenceError = useDeck((s) => s.persistenceError);
+  const libraryPending = useDeck((s) => s.libraryPending);
   const lastSavedAt = useDeck((s) => s.lastSavedAt);
 
   const outOfBounds = deckSize < 40 || deckSize > 60;
@@ -52,6 +55,8 @@ export function Header({
         {deckSize} cartes
       </span>
 
+      {persistenceError && <p role="alert" className="text-xs text-red-300">{persistenceError}</p>}
+      {libraryPending > 0 && <span role="status" className="text-xs text-ink-400">Enregistrement des annotations…</span>}
       <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
         <div className="flex items-center gap-1.5 text-[11px] text-ink-500" title="Persistance backend">
           <span className={`h-2 w-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-ink-600'}`} />
@@ -77,7 +82,7 @@ export function Header({
 
         <button
           onClick={onSave}
-          disabled={!dirty}
+          disabled={!dirty || saving || libraryPending > 0}
           title="Enregistrer (Ctrl/Cmd + S)"
           className={`flex items-center gap-1.5 rounded px-3 py-1 text-xs font-medium transition-colors ${
             dirty
@@ -85,7 +90,7 @@ export function Header({
               : 'cursor-default bg-ink-800 text-ink-500'
           }`}
         >
-          Enregistrer
+          {saving ? 'Enregistrement…' : 'Enregistrer'}
           {dirty && <span className="h-1.5 w-1.5 rounded-full bg-black/70" />}
         </button>
 

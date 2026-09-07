@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, type DeckDetail, type DeckSummary } from '../lib/api.js';
+import { api, type DeckSummary } from '../lib/api.js';
 import { useRouter } from '../lib/router.js';
-import { buildEngineModel, type EngineModelSource } from '../lib/engineModel.js';
+import { buildEngineModel } from '../lib/engineModel.js';
 import { computePassesInWorker } from '../worker/client.js';
 import {
   compareDecks,
@@ -17,7 +17,7 @@ import {
 import { downloadComparisonXlsx } from '../lib/exportComparison.js';
 import { slugify } from '../lib/exportDeck.js';
 import { pct, num } from '../lib/fmt.js';
-import type { Library } from '../types.js';
+import { sourceFromDetail } from '../lib/deckConfiguration.js';
 
 // ─── Comparateur de decks (itération 9) — matrice starts × non-engine, A vs B ───
 // Même structure que l'export Excel (§9) : matrices A et B (échelle de couleur
@@ -28,44 +28,6 @@ const scenarioTitle: Record<Scenario, string> = {
   going_first: 'Going first — main de 5',
   going_second: 'Going second — main de 6',
 };
-
-function clampHorizon(v: unknown, fallback: number): number {
-  const n = Number(v ?? fallback);
-  return Number.isFinite(n) ? Math.max(1, Math.min(3, Math.round(n))) : fallback;
-}
-
-/** DeckDetail (API) + bibliothèque du compte → source du modèle moteur (§4D). */
-function sourceFromDetail(detail: DeckDetail, lib: Library): EngineModelSource {
-  const params = (detail.params ?? {}) as Record<string, unknown>;
-  const cardCategories = new Map<number, Set<string>>();
-  for (const { card_id, category_id } of lib.cardCategories) {
-    (cardCategories.get(card_id) ?? cardCategories.set(card_id, new Set()).get(card_id)!).add(
-      category_id,
-    );
-  }
-  return {
-    main: detail.cards
-      .filter((c) => c.zone === 'main')
-      .map((c) => ({ cardId: c.card_id, zone: 'main' as const, copies: c.copies })),
-    hopt: new Set(lib.hoptCardIds),
-    deadFirst: new Set(lib.deadFirstCardIds),
-    deadSecond: new Set(lib.deadSecondCardIds),
-    pairs: lib.pairs,
-    categories: lib.categories,
-    cardCategories,
-    starters: new Set(detail.starters),
-    pairExclusions: new Set(detail.pair_exclusions),
-    startRequirements: (detail.start_requirements ?? []).map((r) => ({
-      id: r.id,
-      sourceCardId: r.source_card_id,
-      sourcePairId: r.source_pair_id,
-      requiredCardId: r.required_card_id,
-      minInDeck: r.min_in_deck,
-    })),
-    horizonFirst: clampHorizon(params.horizonFirst, 1),
-    horizonSecond: clampHorizon(params.horizonSecond, 2),
-  };
-}
 
 interface Loaded {
   cmp: DeckComparison;

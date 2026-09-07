@@ -1,5 +1,12 @@
 # Déploiement — analysis.scratchrecode.com
 
+Les étapes 2 et 3 introduisent une migration additive obligatoire avant cette
+version de l'app. Lire [configuration-v2.md](configuration-v2.md) pour ses effets,
+la séquence de déploiement, les contrôles et les tests PostgreSQL reproductibles.
+Les anciens combos restent physiquement conservés ; leur purge et la validation
+complète de sauvegarde/restauration VPS restent prévues à l'étape 8.
+Aucun déploiement VPS n'a été exécuté pour cette livraison.
+
 Cible : le VPS OVH existant (`137.74.172.32`, Ubuntu 24.04) qui héberge déjà
 goldfish (`tcg.scratchrecode.com`). **On réutilise son Caddy** (ports 80/443,
 Let's Encrypt) via un réseau Docker partagé `edge` — cette stack-ci ne publie

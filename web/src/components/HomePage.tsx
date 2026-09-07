@@ -1,6 +1,6 @@
+import { configurationFromDetail } from '../lib/deckConfiguration.js';
 import { useCallback, useEffect, useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { useDeck } from '../store/deckStore.js';
 import { useRouter } from '../lib/router.js';
 import { api, type DeckSummary } from '../lib/api.js';
 import { imageSmall } from '../types.js';
@@ -15,6 +15,11 @@ export function HomePage() {
   const [decks, setDecks] = useState<DeckSummary[] | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [actionError,setActionError] = useState<string | null>(null);
+  const run = (action: () => Promise<unknown>) => {
+    setActionError(null);
+    void action().catch((e: unknown) => setActionError(e instanceof Error ? e.message : 'Action impossible.'));
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -47,7 +52,7 @@ export function HomePage() {
   const open = (id: string) => navigate({ name: 'editor', id });
 
   const rename = async (id: string, name: string) => {
-    await api.updateDeck(id, { name });
+    await api.renameDeck(id,name);
     setDecks((d) => d?.map((x) => (x.id === id ? { ...x, name } : x)) ?? d);
   };
 
@@ -57,7 +62,7 @@ export function HomePage() {
   };
 
   const remove = async (id: string, name: string) => {
-    if (!window.confirm(`Supprimer « ${name} » ? La bibliothèque globale (combos, catégories, flags) n'est pas touchée.`))
+    if (!window.confirm(`Supprimer « ${name} » ? Ses paires et conditions seront supprimées. Les catégories et HOPT partagés sont conservés.`))
       return;
     await api.deleteDeck(id);
     await refresh();
@@ -70,25 +75,8 @@ export function HomePage() {
 
   const exportJson = async (id: string, name: string) => {
     const d = await api.getDeck(id);
-    const s = useDeck.getState();
-    const p = (d.params ?? {}) as Record<string, unknown>;
-    const json = buildDeckJson({
-      name: d.name,
-      cards: d.cards.map((c) => ({ cardId: c.card_id, zone: c.zone, copies: c.copies })),
-      starters: d.starters,
-      excludedPairIds: d.pair_exclusions,
-      pairs: s.pairs,
-      hopt: s.hopt,
-      deadFirst: s.deadFirst,
-      deadSecond: s.deadSecond,
-      categories: s.categories,
-      cardCategories: s.cardCategories,
-      params: {
-        horizonFirst: Number(p.horizonFirst ?? 1),
-        horizonSecond: Number(p.horizonSecond ?? 2),
-        importance: typeof p.importance === 'number' ? p.importance : 0.5,
-      },
-    });
+    const library = await api.getLibrary();
+    const json = buildDeckJson(configurationFromDetail(d),library);
     downloadText(`${slugify(name)}.json`, JSON.stringify(json, null, 2), 'application/json');
   };
 
@@ -119,6 +107,7 @@ export function HomePage() {
         <AccountMenu />
       </header>
 
+      {actionError && <p role="alert" className="px-5 py-2 text-sm text-red-300">{actionError}</p>}
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         {decks === null && <div className="text-sm text-ink-500">Chargement…</div>}
         {decks !== null && decks.length === 0 && (
@@ -142,11 +131,11 @@ export function HomePage() {
               key={d.id}
               deck={d}
               onOpen={() => open(d.id)}
-              onRename={(name) => rename(d.id, name)}
-              onDuplicate={() => duplicate(d.id)}
-              onDelete={() => remove(d.id, d.name)}
-              onExportYdk={() => exportYdk(d.id, d.name)}
-              onExportJson={() => exportJson(d.id, d.name)}
+              onRename={(name) => run(() => rename(d.id, name))}
+              onDuplicate={() => run(() => duplicate(d.id))}
+              onDelete={() => run(() => remove(d.id, d.name))}
+              onExportYdk={() => run(() => exportYdk(d.id, d.name))}
+              onExportJson={() => run(() => exportJson(d.id, d.name))}
             />
           ))}
         </div>

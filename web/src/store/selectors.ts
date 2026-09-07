@@ -59,6 +59,7 @@ export function noteHandsFromStore(hands: number[][], handSize: number): Sampled
   const prep = prepare(s.model.input);
   const typeIndexByCardId = new Map(s.model.typeCardIds.map((id, i) => [id, i]));
   const pass = handSize <= 5 ? s.result.first : s.result.second;
+  if (pass.total === 0) return [];
   const scorer = buildScorer(pass, s.importance);
   return evaluateHands({ hands, typeIndexByCardId, prep, handSize, scorer });
 }

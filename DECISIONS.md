@@ -1,5 +1,33 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étapes 2 et 3, 7 septembre 2026
+
+Les [corrections et décisions livrées](docs/etapes-2-3.md) remplacent les conventions
+historiques de paires globales et d'écritures partielles : configuration version 2,
+paires par deck, validation commune client/serveur, transaction et révision.
+Les anciennes données de paires sont conservées, sans reprise automatique.
+Les résumés statistiques historiques sont invalidés et ne sont plus affichés.
+Le JSON v1 et les anciens brouillons sont refusés ; le JSON v2 conserve conditions,
+notes et requêtes. La migration a été testée uniquement dans une base jetable.
+La purge VPS et les recalculs annulables ne sont pas réalisés à ces étapes.
+
+## Première mission — étape 1, 7 septembre 2026
+
+Le [contrat métier](docs/regles-metier.md) formalise le plan révisé accepté :
+paires permanentes par deck après enregistrement explicite, annotations non-engine
+communes au compte, profils chronologiques, starts théoriques et conditions
+résiduelles ET/OU. Les [cas de référence](docs/cas-reference.md) distinguent les
+règles cibles des comportements déjà vérifiés dans le moteur. Aucun code de
+production, schéma ou enregistrement n'est modifié à cette étape.
+
+Les décisions ci-dessous constituent l'historique. En particulier, les anciens
+horizons numériques, les paires globales et les descriptions de cartes « mortes »
+ne doivent pas servir à contredire le nouveau contrat cible. Les défauts de
+calcul identifiés restent à corriger à l'étape 2 ; les nouveaux tests de référence
+ne constituent pas une certification de conformité de toute l'application.
+
+## Historique des itérations précédentes
+
 Conformément à §F : toute décision prise en cours d'implémentation est écrite ici.
 
 ## Coquilles relevées dans le tableau §C (valeurs de contrôle)

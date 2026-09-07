@@ -96,6 +96,7 @@ export function toComparisonMatrix(
   scenario: Scenario,
   counts: { starterCount: number; nonEngineCount: number },
 ): ComparisonMatrix {
+  if (pass.total === 0) throw new Error(pass.unavailableReason ?? 'Analyse indisponible : tirage impossible.');
   const cells: number[][] = [];
   for (let i = 0; i < 4; i++) {
     const src = pass.crossMatrix[i] ?? [];

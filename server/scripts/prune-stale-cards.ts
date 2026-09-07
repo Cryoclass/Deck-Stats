@@ -313,6 +313,20 @@ try {
 
   await client.query('begin');
 
+  // Count new local references too. The final guard below rolls back a remap
+  // that this legacy maintenance tool cannot yet preserve (pair identity/notes).
+  // In particular, a card used only in a dormant local pair is NOT unreferenced.
+  const localModel = await client.query("select to_regclass('deck_combo_pairs') as name");
+  if (localModel.rows[0].name) {
+    REFS.push(
+      { table: 'deck_combo_pairs', column: 'card_a_id' },
+      { table: 'deck_combo_pairs', column: 'card_b_id' },
+      { table: 'deck_requirements', column: 'source_card_id', where: 'source_card_id is not null' },
+      { table: 'deck_requirements', column: 'required_card_id' },
+      { table: 'deck_flags', column: 'card_id' },
+    );
+  }
+
   await client.query('create temporary table sb_ids (id bigint primary key) on commit drop');
   for (let i = 0; i < ids.length; i += 500) {
     await client.query(
@@ -416,7 +430,8 @@ try {
     );
     if (rows[0].n > 0) {
       throw new Error(
-        `Contrôle final : ${rows[0].n} référence(s) pointent encore vers une carte supprimée.`,
+        `Contrôle final : ${rows[0].n} référence(s) pointent encore vers une carte supprimée. ` +
+        `Tout est annulé. Le report des nouvelles annotations locales (paires, conditions, disponibilités) nécessite une adaptation de cet outil.`,
       );
     }
   }

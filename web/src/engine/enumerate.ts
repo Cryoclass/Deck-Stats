@@ -57,6 +57,22 @@ function probStart(prep: Prepared, handSize: number): number {
 }
 
 export function computePass(input: EngineInput, handSize: number): PassResult {
+  const invalid = !Number.isSafeInteger(input.deckSize) || input.deckSize < 0 ||
+    !Number.isInteger(handSize) || handSize < 1 || handSize > 6 ||
+    input.types.some((t) => !Number.isInteger(t.copies) || t.copies < 0 || t.copies > 3) ||
+    input.types.reduce((sum, t) => sum + t.copies, 0) > input.deckSize;
+  const denominator = invalid ? 0 : binom(input.deckSize, handSize);
+  if (invalid || denominator === 0 || !Number.isSafeInteger(denominator)) {
+    return {
+      handSize, deckSize: input.deckSize, total: 0,
+      unavailableReason: invalid ? 'Composition ou taille de main invalide.' : denominator === 0
+        ? `Impossible de tirer ${handSize} cartes dans un deck de ${input.deckSize} cartes.`
+        : 'Ce tirage dépasse la précision entière prise en charge.',
+      buckets: [], startsBuckets: [], startsExact: [], brick: 0, meanStarts: 0,
+      redundancy: [], nonEngine: [], meanNonEngine: 0, perCategory: [],
+      crossMatrix: [], neSignatures: [],
+    };
+  }
   const prep = prepare(input);
   const total = binom(input.deckSize, handSize);
   const numCat = input.categories.length;
@@ -107,7 +123,7 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
     return out;
   };
 
-  const buckets = [...map.values()].map((v) => ({ ...v.b, p: v.b.p / total }));
+  const buckets = [...map.values()].map((v) => ({ ...v.b, weight: v.b.p, p: v.b.p / total }));
   const startsExactP = norm(startsExact);
   const startsBuckets = [
     startsExactP[0] ?? 0,
@@ -160,8 +176,8 @@ export function computeAll(input: EngineInput): EngineResult {
   const first = computePass(input, 5);
   const second = computePass(input, 6);
 
-  const baseFirst = 1 - first.brick;
-  const baseSecond = 1 - second.brick;
+  const baseFirst = first.startsBuckets.slice(1).reduce((s, p) => s + p, 0);
+  const baseSecond = second.startsBuckets.slice(1).reduce((s, p) => s + p, 0);
 
   const deltas = input.types.map((t, i) => {
     if (t.copies <= 0) return { first: 0, second: 0 };
@@ -172,8 +188,8 @@ export function computeAll(input: EngineInput): EngineResult {
     };
     const prepR = prepare(reduced);
     return {
-      first: baseFirst - probStart(prepR, 5),
-      second: baseSecond - probStart(prepR, 6),
+      first: first.total > 0 ? baseFirst - probStart(prepR, 5) : 0,
+      second: second.total > 0 ? baseSecond - probStart(prepR, 6) : 0,
     };
   });
 

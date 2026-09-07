@@ -18,6 +18,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ../db/schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+      - ../db/migrations/001-deck-configuration.sql:/docker-entrypoint-initdb.d/01-deck-configuration.sql:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ygo -d ygo']
       interval: 5s

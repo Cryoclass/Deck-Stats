@@ -1,4 +1,6 @@
-import type { Category, ComboPair, Relevance, Zone } from '../types.js';
+import type { Library, Zone } from '../types.js';
+import type { Configuration } from '../../../server/src/domain/deckConfiguration.js';
+import { parseArchive, type DeckArchive } from '../../../server/src/domain/deckArchive.js';
 
 export interface DeckCardRow {
   cardId: number;
@@ -21,86 +23,32 @@ export function toYdk(cards: DeckCardRow[]): string {
   return lines.join('\n') + '\n';
 }
 
-/** Sauvegarde JSON réellement complète (§4C) : le deck ET les annotations globales
- *  qu'il utilise. Références par ids de cartes / noms de catégorie → portable. */
-export interface DeckJson {
-  format: 'ygo-proba-deck';
-  version: 1;
-  name: string;
-  cards: DeckCardRow[];
-  starters: number[];
-  excludedPairs: Array<[number, number]>; // paires canoniques désactivées pour ce deck
-  pairs: Array<{ a: number; b: number; note?: string | null }>; // paires globales entre cartes du deck
-  hopt: number[];
-  deadFirst: number[];
-  deadSecond: number[];
-  categories: Array<{ name: string; relevance: Relevance }>;
-  cardCategories: Array<[number, string]>; // [cardId, categoryName]
-  params: { horizonFirst: number; horizonSecond: number; importance: number };
-}
+export type DeckJson = DeckArchive;
 
-export function buildDeckJson(input: {
-  name: string;
-  cards: DeckCardRow[];
-  starters: number[];
-  excludedPairIds: string[];
-  pairs: ComboPair[];
-  hopt: Set<number>;
-  deadFirst: Set<number>;
-  deadSecond: Set<number>;
-  categories: Category[];
-  cardCategories: Map<number, Set<string>>;
-  params: { horizonFirst: number; horizonSecond: number; importance: number };
-}): DeckJson {
-  const inDeck = new Set(input.cards.filter((c) => c.zone === 'main').map((c) => c.cardId));
-  const catById = new Map(input.categories.map((c) => [c.id, c]));
-  const pairById = new Map(input.pairs.map((p) => [p.id, p]));
-
-  // On ne conserve que les annotations touchant des cartes du main deck.
-  const relevantPairs = input.pairs.filter((p) => inDeck.has(p.card_a_id) && inDeck.has(p.card_b_id));
-  const usedCategoryIds = new Set<string>();
-  const cardCategories: Array<[number, string]> = [];
-  for (const [cardId, cats] of input.cardCategories) {
-    if (!inDeck.has(cardId)) continue;
-    for (const cid of cats) {
-      const cat = catById.get(cid);
-      if (!cat) continue;
-      usedCategoryIds.add(cid);
-      cardCategories.push([cardId, cat.name]);
+/** Portable snapshot including dormant local annotations and query references. */
+export function buildDeckJson(configuration: Configuration, library: Library): DeckArchive {
+  const cardIds = new Set([...configuration.cards.map((c) => c.card_id),...configuration.starters,
+    ...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),
+    ...configuration.requirements.flatMap((r) => [r.required_card_id,...(r.source_card_id ? [r.source_card_id] : [])]),
+    ...configuration.deadFirst,...configuration.deadSecond]);
+  const cardCategories = library.cardCategories.filter((cc) => cardIds.has(cc.card_id));
+  const categoryIds = new Set(cardCategories.map((cc) => cc.category_id));
+  const view = configuration.params.statsView;
+  if (typeof view === 'string' && !['starts','nonengine'].includes(view)) categoryIds.add(view);
+  for (const q of (configuration.params.savedQueries ?? []) as Array<{ criteria: Array<{ subject: { kind: string; categoryId?: string; categoryIds?: string[] } }> }>) {
+    for (const { subject } of q.criteria) {
+      if (subject.kind === 'category') categoryIds.add(subject.categoryId!);
+      if (subject.kind === 'group') subject.categoryIds!.forEach((id) => categoryIds.add(id));
     }
   }
-
-  const excludedPairs: Array<[number, number]> = input.excludedPairIds
-    .map((id) => pairById.get(id))
-    .filter((p): p is ComboPair => !!p)
-    .map((p) => [p.card_a_id, p.card_b_id] as [number, number]);
-
-  return {
-    format: 'ygo-proba-deck',
-    version: 1,
-    name: input.name,
-    cards: input.cards,
-    starters: input.starters.filter((id) => inDeck.has(id)),
-    excludedPairs,
-    pairs: relevantPairs.map((p) => ({ a: p.card_a_id, b: p.card_b_id, note: p.note })),
-    hopt: [...input.hopt].filter((id) => inDeck.has(id)),
-    deadFirst: [...input.deadFirst].filter((id) => inDeck.has(id)),
-    deadSecond: [...input.deadSecond].filter((id) => inDeck.has(id)),
-    categories: input.categories
-      .filter((c) => usedCategoryIds.has(c.id))
-      .map((c) => ({ name: c.name, relevance: c.relevance })),
-    cardCategories,
-    params: input.params,
-  };
+  return parseArchive({ format: 'ygo-proba-deck',version: 2,configuration,
+    library: { hoptCardIds: library.hoptCardIds.filter((id) => cardIds.has(id)),
+      categories: library.categories.filter((c) => categoryIds.has(c.id)).map(({ id,name,relevance }) => ({ id,name,relevance })),
+      cardCategories } });
 }
 
-export function parseDeckJson(text: string): DeckJson | null {
-  try {
-    const j = JSON.parse(text);
-    return j?.format === 'ygo-proba-deck' ? (j as DeckJson) : null;
-  } catch {
-    return null;
-  }
+export function parseDeckJson(text: string): DeckArchive | null {
+  try { return parseArchive(JSON.parse(text)); } catch { return null; }
 }
 
 export function downloadText(filename: string, text: string, mime = 'text/plain'): void {

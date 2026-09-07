@@ -9,7 +9,7 @@ export function ComboList() {
   const main = useDeck((s) => s.main);
   const cards = useDeck((s) => s.cards);
   const setPairExcluded = useDeck((s) => s.setPairExcluded);
-  const removePairFromLibrary = useDeck((s) => s.removePairFromLibrary);
+  const removePairFromDeck = useDeck((s) => s.removePairFromDeck);
   const togglePair = useDeck((s) => s.togglePair);
 
   const inMain = useMemo(() => new Set(main.map((c) => c.cardId)), [main]);
@@ -23,12 +23,9 @@ export function ComboList() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-3">
-      {/* Mention permanente : ces données sont globales et auto-enregistrées (§4A). */}
-      <div className="mb-3 rounded-md border border-ink-800 bg-ink-900/60 px-2.5 py-1.5 text-[11px] text-ink-400">
-        Les combos, catégories et flags HOPT/mort sont{' '}
-        <span className="text-ink-200">enregistrés automatiquement</span> — ils sont partagés
-        par tous vos decks. Le bouton <span className="text-ink-200">Enregistrer</span> ne
-        concerne que ce deck (cartes, starters, exclusions, paramètres).
+      <div className="mb-3 rounded-md border border-ink-800 px-2.5 py-1.5 text-[11px] text-ink-400">
+        Les paires et leurs conditions appartiennent à ce deck. Cliquez sur Enregistrer pour les conserver.
+        Les catégories non-engine et HOPT sont communes à vos decks et enregistrées lors de leur modification.
       </div>
 
       {/* Ajout d'une paire depuis les cartes du main deck. */}
@@ -95,8 +92,8 @@ export function ComboList() {
                   {name(p.card_a_id)} <span className="text-ink-500">+</span> {name(p.card_b_id)}
                 </span>
                 <button
-                  onClick={() => removePairFromLibrary(p.id)}
-                  title="Supprimer définitivement de la bibliothèque"
+                  onClick={() => removePairFromDeck(p.id)}
+                  title="Supprimer du deck à la prochaine sauvegarde"
                   className="ml-auto rounded px-1.5 text-ink-600 hover:bg-red-500/10 hover:text-red-400"
                 >
                   supprimer
@@ -111,7 +108,7 @@ export function ComboList() {
       {inapplicable.length > 0 && (
         <div className="mt-4">
           <div className="mb-1 text-[11px] uppercase tracking-wide text-ink-500">
-            Conservés en bibliothèque, carte absente du deck (§D)
+            Conservés dans ce deck, carte absente
           </div>
           <ul className="flex flex-col gap-1">
             {inapplicable.map((p) => (
@@ -121,7 +118,7 @@ export function ComboList() {
               >
                 {name(p.card_a_id)} + {name(p.card_b_id)}
                 <button
-                  onClick={() => removePairFromLibrary(p.id)}
+                  onClick={() => removePairFromDeck(p.id)}
                   className="ml-auto rounded px-1.5 hover:bg-red-500/10 hover:text-red-400"
                 >
                   supprimer

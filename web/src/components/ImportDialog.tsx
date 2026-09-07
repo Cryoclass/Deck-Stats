@@ -51,13 +51,13 @@ export function ImportDialog({
     const reader = new FileReader();
     reader.onload = async () => {
       const json = parseDeckJson(String(reader.result));
-      if (!json) return setError('Fichier JSON invalide (format ygo-proba-deck attendu).');
+      if (!json) return setError('Fichier invalide ou ancienne version JSON. Version 2 requise ; les anciennes paires globales ne sont pas réimportées.');
       setBusy(true);
       setError(null);
-      const id = await importDeckJson({ ...json, name: name || json.name });
+      const id = await importDeckJson({ ...json, configuration: { ...json.configuration, name: name || json.configuration.name } });
       setBusy(false);
       if (id) onCreated(id);
-      else setError('Backend indisponible — import impossible.');
+      else setError(useDeck.getState().persistenceError ?? 'Import impossible.');
     };
     reader.readAsText(file);
   };
