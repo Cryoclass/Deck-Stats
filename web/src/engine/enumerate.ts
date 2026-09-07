@@ -1,6 +1,7 @@
 import { binom } from './binomial.js';
 import { prepare, evaluate, startsAtLeastOne, type Prepared } from './evaluate.js';
 import type {
+  AnalysisContext,
   Bucket,
   CategoryDist,
   EngineInput,
@@ -12,7 +13,8 @@ import type {
  * Énumération par composition (§3.1 / §B.2) — exact, jamais Monte-Carlo, jamais
  * carte par carte. On parcourt les vecteurs (k1..kn) des seuls types annotés, le
  * reste du deck étant fusionné dans le paquet `filler`. Le visiteur reçoit le
- * vecteur `k` (réutilisé — à ne pas conserver) et le poids de la composition.
+ * vecteur `k` (réutilisé — à ne pas conserver) et le poids de la composition
+ * `Π C(nᵢ, kᵢ) · C(F, kF)`.
  */
 function enumerate(
   prep: Prepared,
@@ -43,12 +45,55 @@ function enumerate(
   dfs(0, 0, 1);
 }
 
+/**
+ * Espace des issues d'un contexte (contrat §5). Premier : compositions de 5, poids
+ * `Π C(nᵢ,kᵢ)`, Z = C(D,5). Second : issues (composition initiale, sixième identifiée),
+ * poids `Π C(nᵢ,kᵢ) · (nⱼ − kⱼ)`, Z = C(D,5)·(D−5). On les obtient depuis les
+ * compositions de 6 cartes : pour un ensemble de six copies, chaque copie peut être la
+ * dernière piochée, d'où `w(k6, j) = W(k6) · k6ⱼ` (identité C(n,k+1)(k+1) = C(n,k)(n−k)).
+ * Seuls les types dont l'issue dépend de la sixième (profils early/flexible) sont
+ * distingués ; les autres copies et le filler partagent l'évaluation « sixième neutre »,
+ * strictement identique pour eux. `k` couvre TOUTES les cartes observées.
+ */
+function enumerateOutcomes(
+  prep: Prepared,
+  context: AnalysisContext,
+  visit: (k: number[], sixth: number, weight: number) => void,
+): void {
+  if (context === 'first') {
+    enumerate(prep, 5, (k, w) => visit(k, -1, w));
+    return;
+  }
+  const sensitive: number[] = [];
+  for (let i = 0; i < prep.n; i++) if (prep.sixthSensitive[i]) sensitive.push(i);
+  enumerate(prep, 6, (k, w) => {
+    let plain = 6;
+    for (const t of sensitive) {
+      if (k[t] > 0) {
+        visit(k, t, w * k[t]);
+        plain -= k[t];
+      }
+    }
+    if (plain > 0) visit(k, -1, w * plain);
+  });
+}
+
+const handSizeOf = (context: AnalysisContext): number => (context === 'first' ? 5 : 6);
+
+/** Nombre d'issues pondérées Z du contexte (contrat §5). */
+function outcomesOf(deckSize: number, context: AnalysisContext): number {
+  const c5 = binom(deckSize, 5);
+  return context === 'first' ? c5 : c5 * Math.max(0, deckSize - 5);
+}
+
 /** P(≥1 start) — chemin léger pour la contribution marginale (§3.2) : prédicat
- *  booléen, sans construire sommets/couplage/comptes. */
-function probStart(prep: Prepared, handSize: number): number {
+ *  booléen, sans construire sommets/couplage/comptes. Les starts ne dépendent pas de
+ *  l'identité de la sixième : les compositions de 6 suffisent en second. */
+function probStart(prep: Prepared, context: AnalysisContext): number {
+  const handSize = handSizeOf(context);
   const total = binom(prep.input.deckSize, handSize);
   if (total === 0) return 0;
-  const dead = handSize <= 5 ? prep.deadFirst : prep.deadSecond;
+  const dead = context === 'first' ? prep.deadFirst : prep.deadSecond;
   let w1 = 0;
   enumerate(prep, handSize, (k, w) => {
     if (startsAtLeastOne(prep, k, dead)) w1 += w;
@@ -56,74 +101,88 @@ function probStart(prep: Prepared, handSize: number): number {
   return w1 / total;
 }
 
-export function computePass(input: EngineInput, handSize: number): PassResult {
+/** Contexte d'analyse depuis le paramètre du moteur ; `5`/`6` restent acceptés comme
+ *  synonymes de premier/second (taille observée) pour les appels historiques. */
+export function contextOf(pass: AnalysisContext | number): AnalysisContext | null {
+  if (pass === 'first' || pass === 5) return 'first';
+  if (pass === 'second' || pass === 6) return 'second';
+  return null;
+}
+
+function unavailable(context: AnalysisContext, deckSize: number, reason: string): PassResult {
+  return {
+    context, handSize: handSizeOf(context), deckSize, total: 0, outcomes: 0,
+    unavailableReason: reason,
+    buckets: [], startsBuckets: [], startsExact: [], brick: 0, meanStarts: 0,
+    redundancy: [], nonEngine: [], meanNonEngine: 0, perCategory: [],
+    crossMatrix: [], neSignatures: [],
+  };
+}
+
+export function computePass(input: EngineInput, pass: AnalysisContext | number): PassResult {
+  const context = contextOf(pass);
+  if (context === null) {
+    return unavailable('first', input.deckSize, 'Contexte d’analyse inconnu : premier (5 cartes) ou second (5 + pioche) attendu.');
+  }
+  const handSize = handSizeOf(context);
   const invalid = !Number.isSafeInteger(input.deckSize) || input.deckSize < 0 ||
-    !Number.isInteger(handSize) || handSize < 1 || handSize > 6 ||
     input.types.some((t) => !Number.isInteger(t.copies) || t.copies < 0 || t.copies > 3) ||
     input.types.reduce((sum, t) => sum + t.copies, 0) > input.deckSize;
-  const denominator = invalid ? 0 : binom(input.deckSize, handSize);
-  if (invalid || denominator === 0 || !Number.isSafeInteger(denominator)) {
-    return {
-      handSize, deckSize: input.deckSize, total: 0,
-      unavailableReason: invalid ? 'Composition ou taille de main invalide.' : denominator === 0
-        ? `Impossible de tirer ${handSize} cartes dans un deck de ${input.deckSize} cartes.`
-        : 'Ce tirage dépasse la précision entière prise en charge.',
-      buckets: [], startsBuckets: [], startsExact: [], brick: 0, meanStarts: 0,
-      redundancy: [], nonEngine: [], meanNonEngine: 0, perCategory: [],
-      crossMatrix: [], neSignatures: [],
-    };
+  const total = invalid ? 0 : binom(input.deckSize, handSize);
+  const outcomes = invalid ? 0 : outcomesOf(input.deckSize, context);
+  if (invalid || total === 0 || !Number.isSafeInteger(outcomes)) {
+    return unavailable(context, input.deckSize, invalid ? 'Composition ou taille de main invalide.' : total === 0
+      ? `Impossible de tirer ${handSize} cartes dans un deck de ${input.deckSize} cartes.`
+      : 'Ce tirage dépasse la précision entière prise en charge.');
   }
-  const prep = prepare(input);
-  const total = binom(input.deckSize, handSize);
+  const prep = prepare(input); // jette sur condition ou plafond invalide : jamais silencieux
   const numCat = input.categories.length;
-  const dead = handSize <= 5 ? prep.deadFirst : prep.deadSecond;
 
-  const map = new Map<string, { b: Bucket }>();
+  const map = new Map<string, Bucket>();
   const startsExact: number[] = [];
   const redundancy: number[] = [];
   const nonEngine: number[] = [];
   const catDists: number[][] = Array.from({ length: numCat }, () => []);
-  const cross: number[][] = [[], [], [], []]; // min(starts,3) × neTotal
+  const cross: number[][] = [[], [], [], []]; // min(starts,3) × U
 
   const add = (arr: number[], idx: number, w: number) => {
     arr[idx] = (arr[idx] ?? 0) + w;
   };
 
-  enumerate(prep, handSize, (k, w) => {
-    const out = evaluate(prep, k, dead);
-    const neContrib = handSize <= 5 ? out.neContribFirst : out.neContribSecond;
-    const neTotal = handSize <= 5 ? out.neFirst : out.neSecond;
-    const key = `${out.starts}|${out.redundancy}|${neContrib.join(',')}`;
+  enumerateOutcomes(prep, context, (k, sixth, w) => {
+    const out = evaluate(prep, context, k, sixth);
+    const cappedKey = out.neCapped.length === 0
+      ? ''
+      : '|' + out.neCapped.map((u) => `${u.cap}:${u.members.map((m) => m.join('.')).join(';')}`).join('/');
+    const key = `${out.starts}|${out.redundancy}|${out.neContrib.join(',')}${cappedKey}`;
     const existing = map.get(key);
-    if (existing) existing.b.p += w;
+    if (existing) existing.p += w;
     else
       map.set(key, {
-        b: {
-          starts: out.starts,
-          redundancy: out.redundancy,
-          neTotal,
-          neContrib: neContrib.slice(),
-          p: w,
-        },
+        starts: out.starts,
+        redundancy: out.redundancy,
+        neTotal: out.ne,
+        neContrib: out.neContrib.slice(),
+        ...(out.neCapped.length ? { neCapped: out.neCapped } : {}),
+        p: w,
       });
 
     add(startsExact, out.starts, w);
     add(redundancy, out.redundancy, w);
-    add(nonEngine, neTotal, w);
+    add(nonEngine, out.ne, w);
     for (let c = 0; c < numCat; c++) add(catDists[c], out.catCounts[c], w);
     const sb = Math.min(out.starts, 3);
-    if (!cross[sb]) cross[sb] = [];
-    add(cross[sb], neTotal, w);
+    add(cross[sb], out.ne, w);
   });
 
-  // Normalisation counts → probabilités.
+  // Normalisation poids entiers → probabilités, sur Z (issues pondérées).
   const norm = (arr: number[]): number[] => {
     const out: number[] = [];
-    for (let i = 0; i < arr.length; i++) out[i] = (arr[i] ?? 0) / total;
+    for (let i = 0; i < arr.length; i++) out[i] = (arr[i] ?? 0) / outcomes;
     return out;
   };
 
-  const buckets = [...map.values()].map((v) => ({ ...v.b, weight: v.b.p, p: v.b.p / total }));
+  const buckets = [...map.values()].map((b) => ({ ...b, weight: b.p, p: b.p / outcomes }));
   const startsExactP = norm(startsExact);
   const startsBuckets = [
     startsExactP[0] ?? 0,
@@ -138,7 +197,7 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
   const perCategory: CategoryDist[] = input.categories.map((cat, c) => {
     const relevant =
       cat.relevance === 'both' ||
-      (handSize <= 5 ? cat.relevance === 'first' : cat.relevance === 'second');
+      (context === 'first' ? cat.relevance === 'first' : cat.relevance === 'second');
     const dist = norm(catDists[c]);
     return {
       id: cat.id,
@@ -149,14 +208,16 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
   });
 
   const crossMatrix = cross.map((row) => norm(row ?? []));
-  const neSignatures = (handSize <= 5 ? prep.neSigFirst : prep.neSigSecond).map((s) => ({
+  const neSignatures = (context === 'first' ? prep.neSigFirst : prep.neSigSecond).map((s) => ({
     cats: s.cats,
   }));
 
   return {
+    context,
     handSize,
     deckSize: input.deckSize,
     total,
+    outcomes,
     buckets,
     startsBuckets,
     startsExact: startsExactP,
@@ -171,25 +232,27 @@ export function computePass(input: EngineInput, handSize: number): PassResult {
   };
 }
 
-/** Calcul complet : deux passes + contributions marginales de chaque type (§3.2). */
+/** Calcul complet : les deux contextes + contributions marginales de chaque type
+ *  (§3.2), chacune dérivée du même contexte que la distribution qu'elle accompagne. */
 export function computeAll(input: EngineInput): EngineResult {
-  const first = computePass(input, 5);
-  const second = computePass(input, 6);
+  const first = computePass(input, 'first');
+  const second = computePass(input, 'second');
 
   const baseFirst = first.startsBuckets.slice(1).reduce((s, p) => s + p, 0);
   const baseSecond = second.startsBuckets.slice(1).reduce((s, p) => s + p, 0);
 
   const deltas = input.types.map((t, i) => {
     if (t.copies <= 0) return { first: 0, second: 0 };
-    // Retirer 1 copie = elle bascule dans le filler ; deckSize inchangé.
+    // Retirer 1 copie = elle bascule dans le filler ; deckSize inchangé, conditions
+    // reconstruites depuis la composition réduite (étape 2).
     const reduced: EngineInput = {
       ...input,
       types: input.types.map((tt, j) => (j === i ? { ...tt, copies: tt.copies - 1 } : tt)),
     };
     const prepR = prepare(reduced);
     return {
-      first: first.total > 0 ? baseFirst - probStart(prepR, 5) : 0,
-      second: second.total > 0 ? baseSecond - probStart(prepR, 6) : 0,
+      first: first.total > 0 ? baseFirst - probStart(prepR, 'first') : 0,
+      second: second.total > 0 ? baseSecond - probStart(prepR, 'second') : 0,
     };
   });
 

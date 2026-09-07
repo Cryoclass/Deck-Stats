@@ -33,7 +33,7 @@ ctx.onmessage = (e) => {
   try {
     const result: EngineResult =
       mode === 'passes'
-        ? { first: computePass(input, 5), second: computePass(input, 6), deltas: [] }
+        ? { first: computePass(input, 'first'), second: computePass(input, 'second'), deltas: [] }
         : computeAll(input);
     ctx.postMessage({ id, result, ms: performance.now() - t0 });
   } catch (err) {

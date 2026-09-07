@@ -1,5 +1,6 @@
-import type { Bucket, NonEngineSignature, PassResult } from './types.js';
+import type { Bucket, CappedUnit, NonEngineSignature, PassResult } from './types.js';
 import type { SampledHand } from './hand.js';
+import { cappedPotential } from './evaluate.js';
 
 /**
  * Mode requête (§3.3, itération 7). Un critère = un SUJET + un INTERVALLE [min, max]
@@ -9,7 +10,7 @@ import type { SampledHand } from './hand.js';
 export type QuerySubject =
   | { kind: 'starts' }
   | { kind: 'redundancy' }
-  | { kind: 'nonengine' } // agrégat de TOUTES les catégories (dédupliqué)
+  | { kind: 'nonengine' } // potentiel U de TOUTES les catégories (dédupliqué)
   | { kind: 'category'; categoryId: string }
   | { kind: 'group'; categoryIds: string[]; name?: string };
 
@@ -32,24 +33,25 @@ export interface QueryContext {
   redundancy: number;
   neTotal: number;
   neContrib: number[]; // par signature (aligné sur neSignatures)
+  neCapped?: CappedUnit[]; // unités couplées par un plafond partagé (étape 5)
   neSignatures: NonEngineSignature[];
 }
 
 /**
- * Agrégat d'un groupe de catégories : Σ des signatures dont l'ensemble de catégories
- * pertinentes CROISE le groupe. Chaque signature (donc chaque carte) compté UNE fois →
- * la déduplication est structurelle (§C : agréger ≠ additionner).
+ * Potentiel d'un groupe de catégories : Σ des signatures dont l'ensemble de catégories
+ * CROISE le groupe, plus chaque unité couplée restreinte à ses membres retenus, mesurée
+ * sous les mêmes plafonds. Chaque signature (donc chaque carte) compte UNE fois →
+ * la déduplication est structurelle (§C : agréger ≠ additionner) ; un sous-ensemble
+ * mesure son propre potentiel, jamais une part répartie arbitrairement entre labels.
  */
 function groupAggregate(ctx: QueryContext, ids: Set<string>): number {
+  const selected = ctx.neSignatures.map((sig) => sig.cats.some((c) => ids.has(c)));
   let sum = 0;
   for (let s = 0; s < ctx.neSignatures.length; s++) {
-    const cats = ctx.neSignatures[s].cats;
-    for (let i = 0; i < cats.length; i++) {
-      if (ids.has(cats[i])) {
-        sum += ctx.neContrib[s];
-        break;
-      }
-    }
+    if (selected[s]) sum += ctx.neContrib[s];
+  }
+  if (ctx.neCapped) {
+    for (const unit of ctx.neCapped) sum += cappedPotential(unit, (m) => selected[m[0]] === true);
   }
   return sum;
 }
@@ -93,6 +95,7 @@ export function bucketContext(b: Bucket, neSignatures: NonEngineSignature[]): Qu
     redundancy: b.redundancy,
     neTotal: b.neTotal,
     neContrib: b.neContrib,
+    neCapped: b.neCapped,
     neSignatures,
   };
 }
@@ -103,13 +106,14 @@ export function handContext(h: SampledHand, neSignatures: NonEngineSignature[]):
     redundancy: h.redundancy,
     neTotal: h.neTotal,
     neContrib: h.neContrib,
+    neCapped: h.neCapped,
     neSignatures,
   };
 }
 
 /**
- * Probabilité exacte de la requête sur une passe = Σ des buckets qui matchent. Un critère
- * invalide (min > max) bloque l'évaluation → null (l'UI signale l'invalidité).
+ * Probabilité exacte de la requête sur un contexte = Σ des buckets qui matchent. Un
+ * critère invalide (min > max) bloque l'évaluation → null (l'UI signale l'invalidité).
  */
 export function queryProbability(pass: PassResult, criteria: QueryCriterion[]): number | null {
   if (pass.total === 0) return null;

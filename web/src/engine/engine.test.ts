@@ -114,7 +114,7 @@ describe('§C — couplage maximum & redondance', () => {
     k: number[],
   ) => {
     const prep = prepare({ deckSize: 40, types, edges, categories: [] });
-    return evaluate(prep, k, prep.deadFirst); // aucune carte morte par défaut
+    return evaluate(prep, 'first', k); // aucune carte morte par défaut
   };
 
   it('Saji, Murakumo, Ritual → 1 start, redondance 2', () => {
@@ -182,7 +182,7 @@ describe('§B.3 — starter solo aussi pièce de paire', () => {
       edges: [[0, 1]],
       categories: [],
     });
-    const out = evaluate(prep, [1, 1], prep.deadFirst);
+    const out = evaluate(prep, 'first', [1, 1]);
     expect(out.starts).toBe(1);
     expect(out.redundancy).toBe(1); // le combo A-B est présent
   });
@@ -202,10 +202,10 @@ describe('Lot C — dead_first / dead_second (traitées comme filler)', () => {
       categories: [],
     });
     // Going first : 0 est filler → pas de start, pas d'arête utilisable.
-    expect(evaluate(prep, [1, 1], prep.deadFirst).starts).toBe(0);
-    expect(evaluate(prep, [1, 1], prep.deadFirst).redundancy).toBe(0);
+    expect(evaluate(prep, 'first', [1, 1]).starts).toBe(0);
+    expect(evaluate(prep, 'first', [1, 1]).redundancy).toBe(0);
     // Going second : 0 est vivant → starter compte.
-    expect(evaluate(prep, [1, 1], prep.deadSecond).starts).toBe(1);
+    expect(evaluate(prep, 'second', [1, 1], -1).starts).toBe(1);
   });
 
   it('dead_first n’affecte pas le comptage non-engine (régi par la catégorie)', () => {
@@ -216,9 +216,9 @@ describe('Lot C — dead_first / dead_second (traitées comme filler)', () => {
       categories: [{ id: 'ht', relevance: 'both' }],
     });
     // Morte pour le graphe, mais toujours comptée comme handtrap going first.
-    const out = evaluate(prep, [1], prep.deadFirst);
+    const out = evaluate(prep, 'first', [1]);
     expect(out.catCounts[0]).toBe(1);
-    expect(out.neFirst).toBe(1);
+    expect(out.ne).toBe(1);
   });
 });
 
@@ -236,16 +236,16 @@ describe('Lot A — horizon d’interaction (plafond HOPT non-engine, §B.3.5)',
 
   it('Carte X HOPT, going first (horizon 1) : 1/2/3 copies → toujours 1 non-engine', () => {
     const prep = xPrep();
-    expect(evaluate(prep, [1], prep.deadFirst).neFirst).toBe(1);
-    expect(evaluate(prep, [2], prep.deadFirst).neFirst).toBe(1);
-    expect(evaluate(prep, [3], prep.deadFirst).neFirst).toBe(1);
+    expect(evaluate(prep, 'first', [1]).ne).toBe(1);
+    expect(evaluate(prep, 'first', [2]).ne).toBe(1);
+    expect(evaluate(prep, 'first', [3]).ne).toBe(1);
   });
 
   it('Carte X HOPT, going second (horizon 2) : 2 → 2, 3 → 2', () => {
     const prep = xPrep();
-    expect(evaluate(prep, [1], prep.deadSecond).neSecond).toBe(1);
-    expect(evaluate(prep, [2], prep.deadSecond).neSecond).toBe(2);
-    expect(evaluate(prep, [3], prep.deadSecond).neSecond).toBe(2);
+    expect(evaluate(prep, 'second', [1], -1).ne).toBe(1);
+    expect(evaluate(prep, 'second', [2], -1).ne).toBe(2);
+    expect(evaluate(prep, 'second', [3], -1).ne).toBe(2);
   });
 
   it('Carte Y NON-HOPT : le plafond ne s’applique jamais (3 → 3 aux deux passes)', () => {
@@ -255,9 +255,8 @@ describe('Lot A — horizon d’interaction (plafond HOPT non-engine, §B.3.5)',
       edges: [],
       categories: [{ id: 'y', relevance: 'both' }],
     });
-    const out = evaluate(prep, [3], prep.deadFirst);
-    expect(out.neFirst).toBe(3);
-    expect(out.neSecond).toBe(3);
+    expect(evaluate(prep, 'first', [3]).ne).toBe(3);
+    expect(evaluate(prep, 'second', [3], -1).ne).toBe(3);
   });
 
   it('Horizon réglable : first=2 → 3 copies HOPT plafonnées à 2 ; valeurs hors [1,3] bornées', () => {
@@ -269,8 +268,8 @@ describe('Lot A — horizon d’interaction (plafond HOPT non-engine, §B.3.5)',
       horizonFirst: 2,
       horizonSecond: 3,
     });
-    expect(evaluate(prep2, [3], prep2.deadFirst).neFirst).toBe(2);
-    expect(evaluate(prep2, [3], prep2.deadSecond).neSecond).toBe(3);
+    expect(evaluate(prep2, 'first', [3]).ne).toBe(2);
+    expect(evaluate(prep2, 'second', [3], -1).ne).toBe(3);
 
     // Horizon 5 → borné à 3 ; horizon 0 → borné à 1.
     const clamped = prepare({
@@ -281,16 +280,16 @@ describe('Lot A — horizon d’interaction (plafond HOPT non-engine, §B.3.5)',
       horizonFirst: 0,
       horizonSecond: 5,
     });
-    expect(evaluate(clamped, [3], clamped.deadFirst).neFirst).toBe(1);
-    expect(evaluate(clamped, [3], clamped.deadSecond).neSecond).toBe(3);
+    expect(evaluate(clamped, 'first', [3]).ne).toBe(1);
+    expect(evaluate(clamped, 'second', [3], -1).ne).toBe(3);
   });
 
   it('catCounts (ventilation par catégorie) reste en copies brutes, non plafonné', () => {
     const prep = xPrep();
     // 3 copies HOPT en main : le total non-engine plafonne à 1 (going first) mais la
     // ventilation par catégorie compte les 3 copies physiques (P(≥1) reste invariant).
-    const out = evaluate(prep, [3], prep.deadFirst);
-    expect(out.neFirst).toBe(1);
+    const out = evaluate(prep, 'first', [3]);
+    expect(out.ne).toBe(1);
     expect(out.catCounts[0]).toBe(3);
   });
 
@@ -327,7 +326,7 @@ describe('§F — prérequis en deck', () => {
   const startsFor = (bTotal: number, kA: number, kB: number, bAbsent = false) => {
     const prep = withReq(bTotal, bAbsent);
     const k = bAbsent ? [kA] : [kA, kB];
-    return evaluate(prep, k, prep.deadFirst).starts;
+    return evaluate(prep, 'first', k).starts;
   };
 
   it('table de vérité — A compte comme starter ssi B reste ≥1 en deck', () => {
@@ -371,11 +370,11 @@ describe('§F — prérequis en deck', () => {
       categories: [],
     });
     // E pas en main → il en reste en deck → arête active → couplage 1, redondance 1.
-    const ok = evaluate(prep, [1, 1, 0], prep.deadFirst);
+    const ok = evaluate(prep, 'first', [1, 1, 0]);
     expect(ok.starts).toBe(1);
     expect(ok.redundancy).toBe(1);
     // E en main (dernière copie) → arête retirée → couplage 0, redondance 0.
-    const ko = evaluate(prep, [1, 1, 1], prep.deadFirst);
+    const ko = evaluate(prep, 'first', [1, 1, 1]);
     expect(ko.starts).toBe(0);
     expect(ko.redundancy).toBe(0);
   });

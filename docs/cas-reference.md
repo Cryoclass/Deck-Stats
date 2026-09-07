@@ -1,6 +1,7 @@
 # Cas de référence et état de conformité
 
-Références établies à l’étape 1, 7 septembre 2026.
+Références établies à l’étape 1, 7 septembre 2026, étendues à l’étape 5A
+(section « Cas de l’étape 5A » ci-dessous).
 Les [étapes 2 et 3 sont maintenant livrées](etapes-2-3.md) ; les résultats
 ci-dessous relatifs à la seule étape 1 constituent le relevé historique. Lire le [contrat métier](regles-metier.md) pour la
 sémantique cible. **Un test de référence réussi prouve son exemple, pas la
@@ -20,6 +21,12 @@ Pour les seuls nouveaux cas :
 
 ```powershell
 npm.cmd run test -w web -- src/engine/reference/rules.test.ts --no-cache
+```
+
+Pour les cas de l’étape 5A (chronologie, profils, plafonds, ET/OU, oracles) :
+
+```powershell
+node scripts/test-quiet.mjs web/src/engine/reference/chronology.test.ts
 ```
 
 Aucune base, réseau, graine aléatoire ou donnée personnelle n'est nécessaire aux
@@ -109,6 +116,50 @@ chronologique, les plafonds de groupe et le OU existent déjà dans l'applicatio
 P05 et M01–M03 ont depuis été reliés aux tests de régression de production dans
 [corrections.test.ts](../web/src/engine/corrections.test.ts), à l’étape 2.
 
+## Cas de l’étape 5A — chronologie, profils, plafonds et conditions
+
+Ajoutés le 7 septembre 2026 dans
+[chronology.test.ts](../web/src/engine/reference/chronology.test.ts). L’oracle de
+l’étape 1 ([oracle.ts](../web/src/engine/reference/oracle.ts), inchangé) est étendu
+par [deckOracle.ts](../web/src/engine/reference/deckOracle.ts) : énumération
+physique exhaustive de decks entiers (mains de cinq, puis chaque sixième carte
+distinguée), starts par sous-ensembles d’actions, potentiel par affectation brute des
+copies aux fenêtres, conditions ET/OU sur le deck restant. Un second oracle
+[monteCarlo.ts](../web/src/engine/reference/monteCarlo.ts) tire un million de mains
+par cas avec une graine fixe (mulberry32) depuis le multiset physique. Ni l’un ni
+l’autre n’importe un algorithme de production ; l’adaptateur spec → `EngineInput`
+est du code de test.
+
+Notation : D taille du deck ; en second, Z = C(D,5)·(D−5) issues (composition
+initiale, sixième identifiée), soit 6·C(D,6). Le moteur expose `total` = C(D,h)
+mains distinctes et `outcomes` = Z ; les poids des buckets sont entiers sur Z.
+
+| ID | Exemple et résultat attendu | Ce que cela vérifie |
+| --- | --- | --- |
+| P06 | D=7 : 21 issues en premier ; 7 mains distinctes et 42 issues en second, poids entiers de somme 42 ; D=40 : Z = C(40,5)·35 = 6·C(40,6) = 23 030 280 ; D=5 : aucune issue second | Espace chronologique du contrat §5 dans le moteur ; 5/6 restent des synonymes de premier/second |
+| N01 (moteur) | Une carte de chaque profil, seule dans D=40 : premier, second initiale, second sixième | Le moteur reproduit exactement le tableau des fenêtres de l’oracle ; copies brutes toujours comptées |
+| N08 | Fuwalos ×3 précoce, D=40. Second : P(U≥1) = 222111/658008 (Fuwalos parmi les 5 initiales) ; copies brutes P(≥1 parmi 6) = 1513596/3838380 ; écart = première Fuwalos en sixième = 1307691/23030280 = 5,678… % ; P(U=3) = C(37,2)·35/23030280. Premier : U ≡ 0, copies brutes 222111/658008 | Une sixième précoce est piochée mais sans fenêtre ; jamais déclarée morte |
+| N09 | Ash ×3 flexible HOPT, D=40. Second : P(U=1) = 1307691/3838380 (exactement une Ash parmi 6, initiale ou sixième). Premier : P(U=1) = 222111/658008, U ≤ 1 | Une copie contribue une fois malgré deux fenêtres |
+| N10 | Mêmes Ash. Second : P(U=2) = 205905/3838380 (≥2 parmi 6, même si la seconde est la sixième), U ≤ 2. Premier : P(U≥2) = 0 ; sans HOPT, P(U≥2) = (3·C(37,3)+C(37,2))/658008 | Un tour par copie HOPT, sixième affectée au tour propre |
+| N11 | Fuwalos ×3 + Purulia ×3 précoces, groupe plafonné à 2, D=40. Second : P(U=2) = 101496/658008, P(U≥3) = 0 ; plafond 3 : P(U=3) = 11736/658008 ; Fuwalos seules sous plafond 2 : P(U=2) = (3·C(37,3)+C(37,2))/658008 ; deux flexibles sous plafond 1 : U=2 en second (un par tour), 1 en premier | Plafond partagé par tour, distinct du HOPT, remis à zéro au tour suivant |
+| N12 | D=10 : F×3 flexible HOPT (h), P×2 préparée (h,q), M précoce (m,q), groupe w plafonné à 1. Second : E[U(h)] + E[U(q)] > E[U(h∪q)] > 0, et U(h∪q) ≤ U total | Sous-ensembles mesurés sous les mêmes plafonds ; déduplication ; non-additivité |
+| C05 | D=8 : A,A,C,D,X×4 ; A starter exige (C≥1 OU D≥1) restant. Premier : P(S=1) = 18/56, P(S=2) = 16/56, P(S≥1) = 34/56, P(S≥3) = 0 ; « C≥1 ET C≥1 » = « C≥1 » ; groupe vide, quantité 0, opérateur inconnu, type hors modèle : refusés | Une alternative satisfaite deux fois compte une fois ; rien ne devient vrai par défaut |
+| C06 | D=7 : A,B,X×5 ; A exige B≥1 restant. Premier : 5/21 ; second : 6/42 (les six observées = A + cinq X). D=6 (C04) : 1/6 en premier, 0 en second | Condition évaluée après les 5 cartes, puis après les 5 + sixième |
+| B02 | Trois decks de 10 cartes cumulant profils, HOPT, plafond partagé, paire, conditions ET/OU, paires conditionnées, starts désactivés par position, catégories recouvrantes : premier (252 mains) et second (1 260 issues) | Moteur = énumération physique à 10⁻¹² : starts, redondance, U, copies brutes, matrice du comparateur, requêtes par catégorie et union pour chaque valeur, mur de mains (starts, U, sujets, note /10), contributions marginales par contexte |
+| B03 | Deck B02 n° 1, 10⁶ mains par contexte, graine 20260907 | Monte Carlo contre énumération et contre le moteur : S, U et 24 cellules sous 5 erreurs types + 5 tirages |
+| B04 | 40 cartes (Ash, Fuwalos, Purulia plafonnées, Imperm, Nibiru, starter OU, paire conditionnée, start désactivé en premier), 10⁶ mains par contexte, graine 50907 | Hors portée de l’énumération physique : moteur contre Monte Carlo sur S, U, matrice et potentiels par catégorie |
+| Q1–Q4 | Interprétations conservatrices (voir [etape-5a.md](etape-5a.md), questions ouvertes) | Profilée sans étiquette = 0 ; groupe sans profil refusé ; anciens prérequis ET condition = ET ; pertinence historique non appliquée aux cartes profilées |
+
+Tolérance Monte Carlo : pour une probabilité exacte p et n tirages,
+`5·√(p(1−p)/n) + 5/n`, soit cinq erreurs types plus cinq tirages pour les événements
+rares. À graine fixe, le résultat est déterministe : un dépassement est une
+divergence reproductible, jamais un bruit à absorber. Aucun test n’ajuste cette borne.
+
+Vérification par mutation (7 septembre 2026, non versionnée) : six erreurs
+volontaires du moteur — sixième ignorée, plafond sans terme 2·cap, flexible en
+sixième au tour adverse, OU évalué comme ET, HOPT ignoré, précoce en sixième avec
+fenêtre — font chacune échouer de 3 à 13 tests des ponts, dont les ponts Monte Carlo.
+
 ## Écarts de l’audit initial et étapes responsables
 
 | Zone actuelle | Écart / risque constaté | Preuve et résultat exigé ensuite |
@@ -117,7 +168,7 @@ P05 et M01–M03 ont depuis été reliés aux tests de régression de production
 | [enumerate.ts](../web/src/engine/enumerate.ts), passe impossible | Distribution vide puis `1−brick` peut donner 1 | Étape 2 : P05 à l'API moteur et dans les états d'interface |
 | [StatsPanel.tsx](../web/src/components/StatsPanel.tsx), `CrossMatrix` | La cellule étiquetée 5+ lit seulement l'indice 5, omettant l'indice 6 | Étape 2 : M02 appliqué à l'affichage ; même matrice que le comparateur |
 | [hand.ts](../web/src/engine/hand.ts), `buildScorer` | Une accumulation flottante peut placer une demi-unité du mauvais côté de l'arrondi | Étape 2 : M03 puis fixtures réelles de distribution avec égalités |
-| [evaluate.ts](../web/src/engine/evaluate.ts), [types.ts](../web/src/engine/types.ts) | La main de six n'a pas d'origine de pioche ; horizon numérique, prérequis ET seulement | Étape 5 : N01–N07 et C01–C04 adaptés au moteur et au mur de mains |
+| [evaluate.ts](../web/src/engine/evaluate.ts), [types.ts](../web/src/engine/types.ts) | La main de six n'a pas d'origine de pioche ; horizon numérique, prérequis ET seulement | Étape 5A livrée : contexte unique, sixième identifiée, profils, plafonds, ET/OU (P06, N08–N12, C05–C06, B02–B04) ; l’horizon historique subsiste pour les cartes sans profil jusqu’à la migration (5B) |
 | [deckStore.ts](../web/src/store/deckStore.ts), `togglePair`, `saveDeck` | Création de paires globales immédiate ; plusieurs écritures de sauvegarde indépendantes | Étape 3 : sauvegarde explicite, paires par deck, tests d'isolation et d'atomicité |
 | [deckStore.ts](../web/src/store/deckStore.ts), `scheduleCompute`, [client.ts](../web/src/worker/client.ts) | Version changée après debounce, pas d'annulation du worker ni de rejet général des promesses | Étape 4 : réponse ancienne durant debounce ignorée, nouvelle édition pendant calcul, erreur/arrêt/changement de deck sans promesse bloquée |
 | [ydk.ts](../web/src/lib/ydk.ts), [exportDeck.ts](../web/src/lib/exportDeck.ts) | Tolérance silencieuse de lignes invalides/quantités ; export version 1 incomplet pour conditions et requêtes | Étapes 3/6 : import explicite, modèle commun et aller-retour sans perte des données prises en charge |
@@ -139,7 +190,7 @@ pas des défauts mathématiques.
 | 2. Calculs confirmés défectueux | Tests de régression reliés au moteur et à l’affichage ; masses, arrondis et conditions corrects | Livrée, 6 nouveaux tests de régression |
 | 3. Modèle et persistance | Paires manuelles propres au deck, non-engine commun au compte, enregistrement cohérent, import/export et duplication testés | Livrée, tests web/serveur/PostgreSQL ; migration seulement en base jetable |
 | 4. Recalcul | État périmé visible, actions possibles, invalidation immédiate, annulation et absence de réponse ancienne adoptée | Livrée, tests `store/recompute.test.ts` et `worker/computeClient.test.ts` (faux worker, horloge simulée) |
-| 5. Chronologie et conditions | Comparaison exacte à l'oracle sur 5+pioche ; mêmes règles dans tous les consommateurs ; ET/OU testés | Non commencée |
+| 5. Chronologie et conditions | Comparaison exacte à l'oracle sur 5+pioche ; mêmes règles dans tous les consommateurs ; ET/OU testés | Partie A livrée (moteur et oracles, [etape-5a.md](etape-5a.md)) ; partie B (persistance, interface) à venir |
 | 6. Configuration, création et mobile | Même deck métier depuis création/import ; erreurs explicites ; principales actions et sélections utilisables aux largeurs retenues | Non commencée |
 | 7. Comparateur et exports | Matrices côte à côte sur mobile, deltas non arrondis, données identiques entre analyse/Excel/comparateur | Non commencée |
 | 8. Déploiement | Scripts dans /deploy, inventaire et simulation, purge exacte annoncée, contrôles après migration et restauration testée | Non commencée |

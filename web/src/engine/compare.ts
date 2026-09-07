@@ -1,4 +1,4 @@
-import type { EngineInput, PassResult } from './types.js';
+import type { AnalysisContext, EngineInput, PassResult } from './types.js';
 
 // ─── Comparateur de decks — matrice Starts × Non-Engine (spec comparateur §4–§7) ───
 //
@@ -81,10 +81,18 @@ export function scenarioCounts(
   for (const t of input.types) {
     const dead = first ? t.deadFirst : t.deadSecond;
     if (t.isStarter && !dead) s += t.copies;
-    if (t.categories.some((c) => relevant[c])) n += t.copies;
+    // Étape 5 : une carte profilée est non-engine par ses étiquettes (composition du
+    // deck, pas activations promises) ; sans profil, la pertinence historique décide.
+    const labelled = t.availability !== undefined ? t.categories.length > 0 : t.categories.some((c) => relevant[c]);
+    if (labelled) n += t.copies;
   }
   return { starterCount: s, nonEngineCount: n };
 }
+
+/** Contexte moteur d'un scénario du comparateur : les matrices A/B partagent
+ *  exactement les hypothèses du contexte (contrat §3 et §5). */
+export const contextOfScenario = (scenario: Scenario): AnalysisContext =>
+  scenario === 'going_first' ? 'first' : 'second';
 
 /**
  * Normalise le `crossMatrix` d'une passe en matrice 4 × 6 aux seaux fixes :
@@ -97,6 +105,9 @@ export function toComparisonMatrix(
   counts: { starterCount: number; nonEngineCount: number },
 ): ComparisonMatrix {
   if (pass.total === 0) throw new Error(pass.unavailableReason ?? 'Analyse indisponible : tirage impossible.');
+  if (pass.context !== contextOfScenario(scenario)) {
+    throw new Error(`Comparaison impossible : la passe « ${pass.context} » ne correspond pas au scénario ${scenario}.`);
+  }
   const cells: number[][] = [];
   for (let i = 0; i < 4; i++) {
     const src = pass.crossMatrix[i] ?? [];

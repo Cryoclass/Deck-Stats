@@ -58,8 +58,11 @@ export function noteHandsFromStore(hands: number[][], handSize: number): Sampled
   if (!s.model || !s.result || hands.length === 0) return [];
   const prep = prepare(s.model.input);
   const typeIndexByCardId = new Map(s.model.typeCardIds.map((id, i) => [id, i]));
-  const pass = handSize <= 5 ? s.result.first : s.result.second;
+  // Contexte unique du moteur (étape 5) : 5 cartes = premier, 6 = second (sixième
+  // identifiée = dernière carte tirée), mêmes règles que la distribution exacte.
+  const context = handSize <= 5 ? 'first' : 'second';
+  const pass = context === 'first' ? s.result.first : s.result.second;
   if (pass.total === 0) return [];
   const scorer = buildScorer(pass, s.importance);
-  return evaluateHands({ hands, typeIndexByCardId, prep, handSize, scorer });
+  return evaluateHands({ hands, typeIndexByCardId, prep, context, scorer });
 }

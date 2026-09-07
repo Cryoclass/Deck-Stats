@@ -1,5 +1,14 @@
 import { maxMatching, countEdges, edgeKey } from './matching.js';
-import type { EngineInput, Outcome, Prereq } from './types.js';
+import type {
+  AnalysisContext,
+  AvailabilityProfile,
+  CappedMember,
+  CappedUnit,
+  Condition,
+  EngineInput,
+  Outcome,
+  Prereq,
+} from './types.js';
 
 /** Vue précompilée de l'entrée : matrice d'adjacence + flags de pertinence. */
 export interface Prepared {
@@ -7,49 +16,119 @@ export interface Prepared {
   n: number;
   filler: number; // §B.1 : taille_deck − Σ copies annotées
   typeAdj: boolean[][];
-  neFirst: boolean[]; // type i pertinent going first (catégorie first|both)
-  neSecond: boolean[]; // type i pertinent going second (catégorie second|both)
-  deadFirst: boolean[]; // type i mort going first → filler pour cette passe (Lot C)
-  deadSecond: boolean[]; // type i mort going second
-  horizonFirst: number; // §B.3.5 : plafond activable d'une carte HOPT non-engine (1..3)
+  neFirst: boolean[]; // type i non-engine en premier (label + profil, ou pertinence historique)
+  neSecond: boolean[]; // type i non-engine en second
+  deadFirst: boolean[]; // starts du type i désactivés en premier → filler pour ce contexte (Lot C)
+  deadSecond: boolean[]; // idem en second
+  horizonFirst: number; // modèle historique (types sans profil) : plafond HOPT 1..3
   horizonSecond: number;
-  // Itération 5 : prérequis en deck.
-  hasPrereqs: boolean; // aucun prérequis → chemin rapide strictement identique à avant
-  starterPrereqs: Array<Prereq[] | undefined>; // par type
-  edgePrereqs: Array<Prereq[] | undefined>; // aligné sur input.edges
-  // Itération 7 : signatures non-engine (types groupés par ensemble de catégories
-  // PERTINENTES pour la passe) — permet d'agréger tout groupe de catégories sans double
-  // comptage. Une signature porte ses cartes (types) et ses ids de catégories.
+  // Étape 5 : conditions ET/OU sur le deck restant, validées ; `undefined` = source
+  // inconditionnelle. Anciens prérequis (ET) traduits et combinés par ET.
+  hasConditions: boolean; // aucune condition → chemin rapide
+  starterConditions: Array<Condition | undefined>; // par type
+  edgeConditions: Array<Condition | undefined>; // aligné sur input.edges
+  // Itération 7 : signatures non-engine (types groupés par ensemble de catégories) —
+  // permet d'agréger tout groupe de catégories sans double comptage. Une signature
+  // porte ses cartes (types) et ses ids de catégories.
   neSigFirst: NeSignature[];
   neSigSecond: NeSignature[];
+  // Étape 5 : plafonds partagés (aligné sur input.groups) et types dont l'issue dépend
+  // de leur présence en sixième carte (profils early et flexible).
+  groupCaps: number[];
+  sixthSensitive: boolean[];
+  anySixthSensitive: boolean;
 }
 
 interface NeSignature {
-  cats: string[]; // ids des catégories pertinentes partagées par ces types
+  cats: string[]; // ids des catégories partagées par ces types
   types: number[]; // index des types de cette signature
 }
 
-/** §B.3.5 : horizon = entier dans [1, 3]. Défauts : first=1 (on pose un board, un seul
- *  tour adverse), second=2 (la partie s'étend, plusieurs tours servent). */
+/** Modèle historique : horizon = entier dans [1, 3]. Défauts : first=1, second=2. */
 function clampHorizon(v: number | undefined, fallback: number): number {
   if (v === undefined || !Number.isFinite(v)) return fallback;
   return Math.max(1, Math.min(3, Math.round(v)));
 }
 
-/** Prérequis (ET) satisfaits ? copies restantes en deck = requiredTotal − k[requiredType]. */
-function prereqsSatisfied(prereqs: Prereq[], k: number[]): boolean {
-  for (const p of prereqs) {
-    const kReq = p.requiredType !== null ? k[p.requiredType] ?? 0 : 0;
-    if (p.requiredTotal - kReq < p.minInDeck) return false;
+const PROFILES: ReadonlySet<string> = new Set<AvailabilityProfile>(['early', 'flexible', 'prepared', 'breaker']);
+
+// ─── Conditions ET/OU (contrat §4) ───
+
+const invalidCondition = (why: string): Error =>
+  new Error(`Condition de start invalide : ${why}`);
+
+/** Valide et normalise une condition ; refuse groupe vide, opérateur inconnu, quantité
+ *  ou type invalide — rien ne devient silencieusement vrai. */
+export function normalizeCondition(value: unknown, typeCount: number): Condition {
+  if (typeof value !== 'object' || value === null) throw invalidCondition('opérateur inconnu.');
+  const c = value as Record<string, unknown>;
+  switch (c.kind) {
+    case 'remaining': {
+      const type = c.type;
+      if (type !== null && (!Number.isInteger(type) || (type as number) < 0 || (type as number) >= typeCount)) {
+        throw invalidCondition('carte requise hors du modèle.');
+      }
+      if (!Number.isInteger(c.atLeast) || (c.atLeast as number) < 1) {
+        throw invalidCondition('quantité requise entière ≥ 1 attendue.');
+      }
+      return { kind: 'remaining', type: type as number | null, atLeast: c.atLeast as number };
+    }
+    case 'and':
+    case 'or': {
+      const children = c.kind === 'and' ? c.all : c.any;
+      if (!Array.isArray(children) || children.length === 0) {
+        throw invalidCondition('groupe ET/OU vide (configuration incomplète).');
+      }
+      const normalized = children.map((child) => normalizeCondition(child, typeCount));
+      return c.kind === 'and' ? { kind: 'and', all: normalized } : { kind: 'or', any: normalized };
+    }
+    default:
+      throw invalidCondition('opérateur inconnu.');
   }
-  return true;
 }
 
+/** Anciens prérequis (ET) → feuilles « restant ≥ q ». Le total requis est reconstruit
+ *  depuis la composition courante (étape 2), la feuille ne porte donc que le type. */
+function prereqsToCondition(prereqs: Prereq[], typeCount: number): Condition {
+  return normalizeCondition(
+    {
+      kind: 'and',
+      all: prereqs.map((p) => ({ kind: 'remaining', type: p.requiredType, atLeast: p.minInDeck })),
+    },
+    typeCount,
+  );
+}
+
+function combineConditions(a: Condition | undefined, b: Condition | undefined): Condition | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return { kind: 'and', all: [a, b] };
+}
+
+/**
+ * Condition satisfaite pour le tirage observé `k` ? Copies restantes en deck =
+ * copies totales − copies observées (les 5 en premier ; les 5 et la sixième en second).
+ * Valeur booléenne : plusieurs alternatives vraies n'ajoutent rien ; les cibles ne sont
+ * pas consommées ; répéter « B ≥ 1 » ne devient pas « B ≥ 2 ».
+ */
+export function conditionHolds(c: Condition, k: number[], copies: number[]): boolean {
+  switch (c.kind) {
+    case 'remaining': {
+      if (c.type === null) return false;
+      return copies[c.type] - (k[c.type] ?? 0) >= c.atLeast;
+    }
+    case 'and':
+      for (const child of c.all) if (!conditionHolds(child, k, copies)) return false;
+      return true;
+    case 'or':
+      for (const child of c.any) if (conditionHolds(child, k, copies)) return true;
+      return false;
+  }
+}
+
+// ─── Préparation ───
+
 export function prepare(input: EngineInput): Prepared {
-  // Totals are derived from the CURRENT composition, including marginal variants.
-  const current = (p: Prereq): Prereq => ({ ...p,
-    requiredTotal: p.requiredType === null ? 0 : (input.types[p.requiredType]?.copies ?? 0),
-  });
   const n = input.types.length;
   const typeAdj: boolean[][] = Array.from({ length: n }, () => new Array<boolean>(n).fill(false));
   for (const [a, b] of input.edges) {
@@ -59,52 +138,91 @@ export function prepare(input: EngineInput): Prepared {
     typeAdj[b][a] = true;
   }
 
+  const groups = input.groups ?? [];
+  const groupCaps = groups.map((g, gi) => {
+    if (!Number.isInteger(g.capPerTurn) || g.capPerTurn < 1) {
+      throw new Error(`Plafond de groupe invalide (« ${g.id ?? gi} ») : entier ≥ 1 attendu.`);
+    }
+    return g.capPerTurn;
+  });
+
   const neFirst = new Array<boolean>(n).fill(false);
   const neSecond = new Array<boolean>(n).fill(false);
   const deadFirst = new Array<boolean>(n).fill(false);
   const deadSecond = new Array<boolean>(n).fill(false);
-  const starterPrereqs = new Array<Prereq[] | undefined>(n).fill(undefined);
-  let hasPrereqs = false;
+  const sixthSensitive = new Array<boolean>(n).fill(false);
+  const starterConditions = new Array<Condition | undefined>(n).fill(undefined);
+  let hasConditions = false;
   for (let i = 0; i < n; i++) {
-    for (const c of input.types[i].categories) {
-      const rel = input.categories[c]?.relevance;
-      if (rel === 'first' || rel === 'both') neFirst[i] = true;
-      if (rel === 'second' || rel === 'both') neSecond[i] = true;
+    const t = input.types[i];
+    const profile = t.availability;
+    if (profile !== undefined && !PROFILES.has(profile)) {
+      throw new Error(`Profil de disponibilité inconnu : « ${String(profile)} ».`);
     }
-    deadFirst[i] = !!input.types[i].deadFirst;
-    deadSecond[i] = !!input.types[i].deadSecond;
-    const sp = input.types[i].starterPrereqs;
-    if (sp && sp.length > 0) {
-      starterPrereqs[i] = sp.map(current);
-      hasPrereqs = true;
+    if (t.group !== undefined) {
+      if (!Number.isInteger(t.group) || t.group < 0 || t.group >= groups.length) {
+        throw new Error('Plafond de groupe : référence hors du modèle.');
+      }
+      if (profile === undefined) {
+        // Interprétation conservatrice (étape 5A, question ouverte) : un plafond partagé
+        // n'a pas de sens sans fenêtres définies ; on refuse plutôt que d'ignorer.
+        throw new Error('Plafond de groupe sans profil de disponibilité : configuration incomplète.');
+      }
+    }
+    const labelled = t.categories.length > 0;
+    if (profile !== undefined) {
+      // Cible (contrat §3) : le profil détermine les fenêtres ; les catégories sont des
+      // étiquettes (la pertinence historique ne s'applique pas). Sans étiquette, la
+      // carte n'est pas non-engine : aucune contribution (conservateur).
+      neFirst[i] = labelled;
+      neSecond[i] = labelled;
+      sixthSensitive[i] = profile === 'early' || profile === 'flexible';
+    } else {
+      for (const c of t.categories) {
+        const rel = input.categories[c]?.relevance;
+        if (rel === 'first' || rel === 'both') neFirst[i] = true;
+        if (rel === 'second' || rel === 'both') neSecond[i] = true;
+      }
+    }
+    deadFirst[i] = !!t.deadFirst;
+    deadSecond[i] = !!t.deadSecond;
+    const legacy = t.starterPrereqs && t.starterPrereqs.length > 0 ? prereqsToCondition(t.starterPrereqs, n) : undefined;
+    const modern = t.starterCondition !== undefined ? normalizeCondition(t.starterCondition, n) : undefined;
+    const combined = combineConditions(legacy, modern);
+    if (combined) {
+      starterConditions[i] = combined;
+      hasConditions = true;
     }
   }
 
-  const edgePrereqs = input.edges.map((_, e) => {
+  const edgeConditions = input.edges.map((_, e) => {
     const ep = input.edgePrereqs?.[e];
-    if (ep && ep.length > 0) {
-      hasPrereqs = true;
-      return ep.map(current);
-    }
-    return undefined;
+    const legacy = ep && ep.length > 0 ? prereqsToCondition(ep, n) : undefined;
+    const ec = input.edgeConditions?.[e];
+    const modern = ec !== undefined ? normalizeCondition(ec, n) : undefined;
+    const combined = combineConditions(legacy, modern);
+    if (combined) hasConditions = true;
+    return combined;
   });
 
   const usedCopies = input.types.reduce((s, t) => s + t.copies, 0);
   const filler = Math.max(0, input.deckSize - usedCopies);
 
-  // Signatures non-engine : on groupe les types par leur ensemble de catégories
-  // PERTINENTES pour la passe. Le filtrage par pertinence se fait donc AVANT l'union.
+  // Signatures non-engine : types groupés par ensemble de catégories retenues pour le
+  // contexte — toutes les étiquettes pour un type profilé, les seules catégories
+  // pertinentes pour un type du modèle historique.
   const catRelFirst = input.categories.map((c) => c.relevance === 'first' || c.relevance === 'both');
   const catRelSecond = input.categories.map((c) => c.relevance === 'second' || c.relevance === 'both');
-  const relCats = (i: number, rel: boolean[]): string[] =>
+  const labelsOf = (i: number, rel: boolean[]): string[] =>
     input.types[i].categories
-      .filter((c) => rel[c])
+      .filter((c) => input.types[i].availability !== undefined || rel[c])
       .map((c) => input.categories[c].id)
       .sort();
-  const buildSigs = (rel: boolean[]): NeSignature[] => {
+  const buildSigs = (rel: boolean[], ne: boolean[]): NeSignature[] => {
     const map = new Map<string, NeSignature>();
     for (let i = 0; i < n; i++) {
-      const cats = relCats(i, rel);
+      if (!ne[i]) continue;
+      const cats = labelsOf(i, rel);
       if (cats.length === 0) continue;
       const key = cats.join('|');
       const sig = map.get(key) ?? { cats, types: [] };
@@ -125,42 +243,125 @@ export function prepare(input: EngineInput): Prepared {
     deadSecond,
     horizonFirst: clampHorizon(input.horizonFirst, 1),
     horizonSecond: clampHorizon(input.horizonSecond, 2),
-    hasPrereqs,
-    starterPrereqs,
-    edgePrereqs,
-    neSigFirst: buildSigs(catRelFirst),
-    neSigSecond: buildSigs(catRelSecond),
+    hasConditions,
+    starterConditions,
+    edgeConditions,
+    neSigFirst: buildSigs(catRelFirst, neFirst),
+    neSigSecond: buildSigs(catRelSecond, neSecond),
+    groupCaps,
+    sixthSensitive,
+    anySixthSensitive: sixthSensitive.some(Boolean),
   };
 }
 
-/**
- * evaluer(composition) — §B.3. `k[i]` = nombre de copies du type i dans la main.
- * Ne dépend pas de la taille de main pour starts/redondance ; `dead[i]` retire les
- * cartes mortes de la passe courante (Lot C). Itération 5 : AVANT les étapes 2 et 3,
- * les sources de start (starter ou arête) dont le prérequis en deck n'est pas satisfait
- * sont neutralisées — le starter ne compte pas, l'arête est retirée du graphe (donc de
- * la redondance). Le comptage non-engine (étape 5) n'est pas concerné.
- */
-export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome {
-  const { input, typeAdj, horizonFirst, horizonSecond } = prep;
+// ─── Potentiel non-engine (contrat §3 et §5) ───
 
-  // 0. Prérequis (itération 5) — chemin rapide sauté si aucun prérequis.
+/**
+ * Capacités d'un type profilé pour l'issue : [tour adverse, tour propre, copies ayant
+ * au moins une fenêtre]. `initial` = copies parmi les 5 initiales ; `sixth` = 1 si la
+ * sixième carte est de ce type (second seulement). Le HOPT limite chaque tour à une
+ * contribution par identité ; il ne crée jamais une fenêtre.
+ */
+function capacities(
+  profile: AvailabilityProfile,
+  isHopt: boolean,
+  context: AnalysisContext,
+  initial: number,
+  sixth: number,
+): CappedMember {
+  let opp = 0;
+  let own = 0;
+  let total = 0;
+  if (context === 'first') {
+    // Une seule fenêtre observée : le tour adverse qui suit. early/breaker : aucune.
+    if (profile === 'flexible' || profile === 'prepared') {
+      opp = initial;
+      total = initial;
+    }
+  } else {
+    switch (profile) {
+      case 'early':
+        opp = initial; // la sixième arrive après le tour adverse initial : zéro fenêtre
+        total = initial;
+        break;
+      case 'flexible':
+        opp = initial; // seule une carte initiale peut servir au tour adverse initial
+        own = initial + sixth;
+        total = initial + sixth;
+        break;
+      case 'prepared':
+      case 'breaker':
+        own = initial + sixth;
+        total = initial + sixth;
+        break;
+    }
+  }
+  if (isHopt) {
+    opp = Math.min(opp, 1);
+    own = Math.min(own, 1);
+  }
+  return [0, opp, own, total];
+}
+
+/**
+ * Potentiel d'une unité (flot maximum = coupe minimale) sur deux fenêtres : chaque
+ * copie contribue au plus une fois ; par tour, ≤ capacité de chaque membre (HOPT) et
+ * ≤ `cap` pour l'ensemble. `keep` restreint l'unité aux membres retenus (sous-ensemble
+ * de catégories mesuré sous les mêmes plafonds). En premier, la fenêtre propre n'existe
+ * pas (own = 0) : la formule se réduit à min(Σ opp, cap).
+ */
+export function cappedPotential(unit: CappedUnit, keep?: (member: CappedMember) => boolean): number {
+  let each = 0;
+  let opp = 0;
+  let own = 0;
+  for (const m of unit.members) {
+    if (keep && !keep(m)) continue;
+    each += Math.min(m[3], m[1] + m[2]);
+    opp += m[1];
+    own += m[2];
+  }
+  return Math.min(each, unit.cap + own, unit.cap + opp, 2 * unit.cap);
+}
+
+/**
+ * Évalue une issue (§B.3 / contrat §4–§5). `k[i]` = copies du type i parmi TOUTES les
+ * cartes observées (5 en premier ; 5 + sixième en second) ; en second, `sixth` identifie
+ * le type de la sixième carte (−1 : carte non annotée). Les conditions sont évaluées
+ * sur le deck restant après ces cartes ; les sources non satisfaites sont neutralisées
+ * AVANT les étapes 2 et 3 (starter non compté, arête retirée du graphe et de la
+ * redondance). Le potentiel non-engine applique fenêtres et plafonds du contexte.
+ */
+export function evaluate(prep: Prepared, context: AnalysisContext, k: number[], sixth?: number): Outcome {
+  const { input, typeAdj } = prep;
+  if (context === 'second') {
+    if (sixth === undefined || !Number.isInteger(sixth) || sixth < -1 || sixth >= prep.n) {
+      throw new Error('Contexte second : la sixième carte doit être identifiée (index de type ou −1).');
+    }
+    if (sixth >= 0 && (k[sixth] ?? 0) < 1) throw new Error('Contexte second : la sixième carte doit figurer dans le tirage.');
+  } else if (sixth !== undefined && sixth !== -1) {
+    throw new Error('Contexte premier : aucune sixième carte.');
+  }
+  const sixthType = context === 'second' ? (sixth as number) : -1;
+  const dead = context === 'first' ? prep.deadFirst : prep.deadSecond;
+  const copies = input.types.map((t) => t.copies);
+
+  // 0. Conditions — chemin rapide sauté si aucune source conditionnelle.
   let disabled: Set<number> | undefined;
-  const starterOff = (ti: number): boolean =>
-    prep.hasPrereqs
-      ? !!prep.starterPrereqs[ti] && !prereqsSatisfied(prep.starterPrereqs[ti]!, k)
-      : false;
-  if (prep.hasPrereqs) {
+  const starterOff = (ti: number): boolean => {
+    const c = prep.starterConditions[ti];
+    return c !== undefined && !conditionHolds(c, k, copies);
+  };
+  if (prep.hasConditions) {
     for (let e = 0; e < input.edges.length; e++) {
-      const ep = prep.edgePrereqs[e];
-      if (ep && !prereqsSatisfied(ep, k)) {
+      const ec = prep.edgeConditions[e];
+      if (ec && !conditionHolds(ec, k, copies)) {
         const [a, b] = input.edges[e];
         (disabled ??= new Set()).add(edgeKey(a, b));
       }
     }
   }
 
-  // 1. Sommets : ki sommets, ou 1 seul si HOPT (§2.3). Cartes mortes ignorées.
+  // 1. Sommets : ki sommets, ou 1 seul si HOPT (§2.3). Starts désactivés ignorés.
   const vertices: number[] = [];
   for (let i = 0; i < k.length; i++) {
     if (k[i] <= 0 || dead[i]) continue;
@@ -169,12 +370,12 @@ export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome 
     for (let v = 0; v < count; v++) vertices.push(i);
   }
 
-  // 2. Starters 1-carte : retirés d'abord, +1 chacun — sauf prérequis non satisfait,
+  // 2. Starters 1-carte : retirés d'abord, +1 chacun — sauf condition non satisfaite,
   //    auquel cas le sommet redevient une pièce ordinaire disponible pour le couplage.
   let starts = 0;
   const nonStarter: number[] = [];
   for (const ti of vertices) {
-    if (input.types[ti].isStarter && !starterOff(ti)) starts += 1;
+    if (input.types[ti].isStarter && !(prep.hasConditions && starterOff(ti))) starts += 1;
     else nonStarter.push(ti);
   }
 
@@ -184,66 +385,90 @@ export function evaluate(prep: Prepared, k: number[], dead: boolean[]): Outcome 
   // 4. Redondance = arêtes présentes (§2.4) APRÈS retrait des arêtes non satisfaites.
   const redundancy = countEdges(vertices, typeAdj, disabled);
 
-  // 5. Non-engine : ventilation brute par catégorie (pour le panneau de stats) +
-  //    contributions dédupliquées par SIGNATURE (union par catégories pertinentes, PUIS
-  //    plafond HOPT — l'ordre est impératif, §C). Le total par passe = Σ des signatures.
+  // 5. Copies brutes par catégorie : toutes les cartes observées, sans plafond ni
+  //    perte de la sixième (contrat §5).
   const catCounts = new Array<number>(input.categories.length).fill(0);
   for (let i = 0; i < k.length; i++) {
     if (k[i] <= 0) continue;
     for (const c of input.types[i].categories) catCounts[c] += k[i];
   }
 
-  const contribOf = (sigs: NeSignature[], horizon: number): number[] =>
-    sigs.map((sig) => {
-      let sum = 0;
-      for (const t of sig.types) {
-        if (k[t] <= 0) continue;
-        sum += input.types[t].isHopt ? Math.min(k[t], horizon) : k[t];
+  // 6. Potentiel non-engine U : par signature (union dédupliquée), fenêtres du profil
+  //    et plafonds appliqués ; les types sans profil suivent le modèle historique
+  //    (pertinence + horizon) jusqu'à la migration. Les groupes à plafond partagé sont
+  //    des unités couplées, évaluées ensemble et conservées pour les requêtes.
+  const sigs = context === 'first' ? prep.neSigFirst : prep.neSigSecond;
+  const horizon = context === 'first' ? prep.horizonFirst : prep.horizonSecond;
+  const neContrib = new Array<number>(sigs.length).fill(0);
+  let units: Map<number, CappedUnit> | undefined;
+  for (let s = 0; s < sigs.length; s++) {
+    for (const t of sigs[s].types) {
+      if (k[t] <= 0) continue;
+      const type = input.types[t];
+      if (type.availability === undefined) {
+        neContrib[s] += type.isHopt ? Math.min(k[t], horizon) : k[t];
+        continue;
       }
-      return sum;
-    });
-  const neContribFirst = contribOf(prep.neSigFirst, horizonFirst);
-  const neContribSecond = contribOf(prep.neSigSecond, horizonSecond);
-  const neFirstTotal = neContribFirst.reduce((s, v) => s + v, 0);
-  const neSecondTotal = neContribSecond.reduce((s, v) => s + v, 0);
+      const isSixth = sixthType === t ? 1 : 0;
+      const member = capacities(type.availability, type.isHopt, context, k[t] - isSixth, isSixth);
+      member[0] = s;
+      if (type.group === undefined) {
+        neContrib[s] += Math.min(member[3], member[1] + member[2]);
+      } else {
+        units ??= new Map();
+        const unit = units.get(type.group) ?? { cap: prep.groupCaps[type.group], members: [] };
+        unit.members.push(member);
+        units.set(type.group, unit);
+      }
+    }
+  }
+  let ne = 0;
+  for (let s = 0; s < neContrib.length; s++) ne += neContrib[s];
+  const neCapped: CappedUnit[] = [];
+  if (units) {
+    for (const [, unit] of [...units.entries()].sort((a, b) => a[0] - b[0])) {
+      unit.members.sort(compareMembers);
+      neCapped.push(unit);
+      ne += cappedPotential(unit);
+    }
+  }
 
-  return {
-    starts,
-    redundancy,
-    catCounts,
-    neFirst: neFirstTotal,
-    neSecond: neSecondTotal,
-    neContribFirst,
-    neContribSecond,
-  };
+  return { starts, redundancy, catCounts, ne, neContrib, neCapped };
+}
+
+function compareMembers(a: CappedMember, b: CappedMember): number {
+  for (let i = 0; i < 4; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
 }
 
 /**
- * Prédicat rapide « starts ≥ 1 » pour la contribution marginale (§3.2). Sans prérequis,
- * comportement strictement identique à avant. Avec prérequis : un starter compte s'il est
- * présent ET son prérequis satisfait ; une arête suffit si ses deux extrémités sont
- * présentes ET son prérequis satisfait (à ce stade aucun starter « comptant » n'est
- * présent, sinon la première boucle aurait déjà renvoyé vrai).
+ * Prédicat rapide « starts ≥ 1 » pour la contribution marginale (§3.2). Sans condition,
+ * comportement strictement identique à avant. Avec conditions : un starter compte s'il
+ * est présent ET sa condition satisfaite ; une arête suffit si ses deux extrémités sont
+ * présentes ET sa condition satisfaite (à ce stade aucun starter « comptant » n'est
+ * présent, sinon la première boucle aurait déjà renvoyé vrai). Les starts ne dépendent
+ * pas de l'identité de la sixième carte : `k` couvre toutes les cartes observées.
  */
 export function startsAtLeastOne(prep: Prepared, k: number[], dead: boolean[]): boolean {
   const { input } = prep;
-  const hp = prep.hasPrereqs;
+  const hc = prep.hasConditions;
+  const copies = hc ? input.types.map((t) => t.copies) : [];
   for (let i = 0; i < k.length; i++) {
     if (k[i] > 0 && !dead[i] && input.types[i].isStarter) {
-      if (!hp) return true;
-      const pr = prep.starterPrereqs[i];
-      if (!pr || prereqsSatisfied(pr, k)) return true;
+      if (!hc) return true;
+      const c = prep.starterConditions[i];
+      if (!c || conditionHolds(c, k, copies)) return true;
     }
   }
   for (let e = 0; e < input.edges.length; e++) {
     const [a, b] = input.edges[e];
     if (a === b) continue;
     if (k[a] > 0 && k[b] > 0 && !dead[a] && !dead[b]) {
-      if (!hp) {
+      if (!hc) {
         if (!input.types[a].isStarter && !input.types[b].isStarter) return true;
       } else {
-        const pr = prep.edgePrereqs[e];
-        if (!pr || prereqsSatisfied(pr, k)) return true;
+        const c = prep.edgeConditions[e];
+        if (!c || conditionHolds(c, k, copies)) return true;
       }
     }
   }

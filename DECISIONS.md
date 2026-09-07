@@ -1,5 +1,53 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 5, partie A, 7 septembre 2026
+
+Le [compte rendu](docs/etape-5a.md) détaille le moteur chronologique et ses oracles.
+Aucune persistance ni interface touchée ; l'application calcule encore avec ses
+annotations historiques.
+
+- **Contexte unique `'first' | 'second'`** comme paramètre du moteur ; `5` et `6`
+  restent acceptés comme synonymes (taille observée) pour les appels historiques et le
+  pont B01, tout autre paramètre rend la passe indisponible. Matrice, deltas, requêtes
+  et mur de mains (`evaluateHands({ context })`, dernière carte = sixième) en dérivent ;
+  `toComparisonMatrix` refuse une passe d'un autre contexte que son scénario.
+- **Deux dénominateurs sur `PassResult`** : `total` = mains distinctes C(D,h)
+  (sens inchangé, B01 intact) et `outcomes` = issues pondérées Z du contrat §5
+  (second : C(D,5)·(D−5) = 6·C(D,6)). Poids des buckets entiers sur Z ; note /10 et
+  probabilités divisent par Z. Question ouverte Q7 si l'on préfère un seul champ.
+- **Sixième identifiée depuis les compositions de six** : `w(k6, j) = W(k6)·k6ⱼ`
+  (identité C(n,k+1)(k+1) = C(n,k)(n−k)). Seuls les types précoces et flexibles sont
+  séparés ; les autres copies et le filler partagent l'évaluation « sixième neutre »,
+  identique pour eux (vérifié par oracle et mutation). Coût : au plus 1 + nombre de
+  types sensibles présents par composition.
+- **Potentiel U = flot maximum sur deux fenêtres, par coupe minimale** :
+  `min(Σ min(total, opp+own), cap + Σ own, cap + Σ opp, 2·cap)` par unité (groupe
+  plafonné) ; type seul = plafond infini. HOPT borne chaque tour à 1 par identité ; une
+  flexible ne sert au tour adverse que si elle est initiale ; une précoce en sixième n'a
+  aucune fenêtre. En premier, une seule fenêtre (own = 0).
+- **Unités couplées conservées dans les buckets** (`neCapped`) à côté de la partie
+  additive par signature (`neContrib`) : une requête par catégorie ou union mesure son
+  propre potentiel sous les mêmes plafonds (`cappedPotential(unit, keep)`), jamais une
+  part répartie entre labels ; la clé de bucket inclut les unités canonisées.
+- **Conditions ET/OU** (`Condition`) validées dans `prepare` : groupe vide, opérateur
+  inconnu, quantité < 1, type hors modèle → exception explicite relayée par le worker
+  (ancien résultat conservé, obsolète). Anciens prérequis traduits en feuilles et
+  combinés par ET avec une condition moderne (Q3).
+- **Modèle historique conservé pour les types sans profil** (pertinence + horizon) :
+  aucune correspondance implicite anciens labels → profils (contrat §3), c'est l'objet
+  de la migration de la partie B. Pour un type profilé, la pertinence de catégorie n'est
+  pas appliquée (Q4) ; une carte profilée sans étiquette ne contribue pas (Q1) ; un
+  groupe sans profil est refusé (Q2).
+- **Oracles** : `deckOracle.ts` étend `oracle.ts` (intact) à des decks entiers sans
+  rien partager avec la production ; `monteCarlo.ts` (10⁶ mains, mulberry32, graine
+  fixe) évalue chaque classe d'issue avec les primitives brutes et vérifie le poids des
+  issues indépendamment. Tolérance `5·√(p(1−p)/n) + 5/n`, jamais ajustée : toute
+  divergence entre oracles ou avec le moteur est un échec.
+- **Nouveaux cas de référence dans un fichier séparé** (`chronology.test.ts`) plutôt
+  qu'ajoutés à `rules.test.ts`, pour ne pas toucher au fichier de l'étape 1 ; les
+  appels `evaluate(prep, k, dead)` d'`engine.test.ts` sont réécrits vers la nouvelle
+  signature avec leurs valeurs attendues inchangées.
+
 ## Première mission — étape 4, 7 septembre 2026
 
 Le [compte rendu](docs/etape-4.md) détaille le recalcul versionné et annulable.

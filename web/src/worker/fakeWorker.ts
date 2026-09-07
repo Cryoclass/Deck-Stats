@@ -46,7 +46,7 @@ export function createFakeWorker(): FakeWorker {
       if (terminated) return; // un worker terminé ne répond plus
       const result: EngineResult =
         mode === 'passes'
-          ? { first: computePass(input, 5), second: computePass(input, 6), deltas: [] }
+          ? { first: computePass(input, 'first'), second: computePass(input, 'second'), deltas: [] }
           : computeAll(input);
       worker.onmessage?.({ data: { id, result, ms } satisfies ComputeResponse });
     },

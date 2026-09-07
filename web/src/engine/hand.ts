@@ -1,5 +1,5 @@
 import { evaluate, type Prepared } from './evaluate.js';
-import type { PassResult } from './types.js';
+import type { AnalysisContext, CappedUnit, PassResult } from './types.js';
 
 export interface DeckEntry {
   cardId: number;
@@ -7,12 +7,13 @@ export interface DeckEntry {
 }
 
 export interface SampledHand {
-  cards: number[]; // passcodes tirés (handSize)
+  cards: number[]; // passcodes tirés ; en second, la DERNIÈRE est la sixième pioche
   starts: number;
   redundancy: number;
-  neTotal: number; // non-engine pertinents pour la passe
+  neTotal: number; // potentiel non-engine U du contexte
   catCounts: number[];
   neContrib: number[]; // contributions par signature (itération 7) — mêmes que les buckets
+  neCapped: CappedUnit[]; // unités couplées (étape 5) — mêmes que les buckets
   note: number; // 0..10 (§4.4)
 }
 
@@ -24,15 +25,16 @@ function handScore(starts: number, neTotal: number, importance: number): number 
 /**
  * Note sur 10 = percentile auto-calibré sur le deck lui-même (§4.4) : la main est
  * meilleure que X % des mains que ce deck peut ouvrir. On calibre sur la
- * distribution EXACTE des mains (buckets de la passe), pas sur l'échantillon.
+ * distribution EXACTE des issues (buckets du contexte), pas sur l'échantillon.
  */
 export function buildScorer(
   pass: PassResult,
   importance: number,
 ): (starts: number, neTotal: number) => number {
+  const outcomes = pass.outcomes ?? pass.total;
   const scored = pass.buckets.map((b) => ({
     s: handScore(b.starts, b.neTotal, importance),
-    weight: b.weight ?? Math.round(b.p * pass.total),
+    weight: b.weight ?? Math.round(b.p * outcomes),
   }));
   return (starts, neTotal) => {
     const s = handScore(starts, neTotal, importance);
@@ -42,17 +44,18 @@ export function buildScorer(
       if (it.s < s) below += it.weight;
       else if (it.s === s) equal += it.weight;
     }
-    if (pass.total === 0) throw new Error('Note indisponible : tirage impossible.');
-    // Exact half-up rational: 10*(2*below+equal)/(2*total).
+    if (pass.total === 0 || outcomes === 0) throw new Error('Note indisponible : tirage impossible.');
+    // Exact half-up rational: 10*(2*below+equal)/(2*outcomes).
     const numerator = 10n * (2n * BigInt(below) + BigInt(equal));
-    const denominator = 2n * BigInt(pass.total);
+    const denominator = 2n * BigInt(outcomes);
     return Math.max(0, Math.min(10, Number((2n * numerator + denominator) / (2n * denominator))));
   };
 }
 
 /** Tire `count` mains brutes (listes de passcodes) depuis le multiset réel du deck.
  *  Séparé de l'évaluation : les mêmes mains peuvent être RE-NOTÉES sans re-tirage
- *  quand le deck change (§4.4 / itération 3 C2). */
+ *  quand le deck change (§4.4 / itération 3 C2). L'ordre de tirage est conservé :
+ *  pour une main de 6, la dernière carte est la sixième pioche. */
 export function drawHands(deck: DeckEntry[], handSize: number, count: number): number[][] {
   const pool: number[] = [];
   for (const e of deck) for (let c = 0; c < e.copies; c++) pool.push(e.cardId);
@@ -72,37 +75,44 @@ export function drawHands(deck: DeckEntry[], handSize: number, count: number): n
   return hands;
 }
 
-/** (Re)évalue et (re)note des mains FIXES contre l'état courant du deck. C'est ce
- *  qui renote les mains déjà affichées quand la distribution change (C2). */
+/** (Re)évalue et (re)note des mains FIXES contre l'état courant du deck, avec les mêmes
+ *  règles que la distribution exacte (contexte, sixième identifiée, conditions,
+ *  fenêtres et plafonds). C'est ce qui renote les mains déjà affichées quand la
+ *  distribution change (C2). En second, la dernière carte de chaque main est la
+ *  sixième pioche ; une main de taille inattendue est ignorée. */
 export function evaluateHands(params: {
   hands: number[][];
   typeIndexByCardId: Map<number, number>;
   prep: Prepared;
-  handSize: number;
+  context: AnalysisContext;
   scorer: (starts: number, neTotal: number) => number;
 }): SampledHand[] {
-  const { hands, typeIndexByCardId, prep, handSize, scorer } = params;
+  const { hands, typeIndexByCardId, prep, context, scorer } = params;
   const nTypes = prep.input.types.length;
-  const dead = handSize <= 5 ? prep.deadFirst : prep.deadSecond;
+  const handSize = context === 'first' ? 5 : 6;
 
-  return hands.map((cards) => {
+  const out: SampledHand[] = [];
+  for (const cards of hands) {
+    if (cards.length !== handSize) continue;
     const k = new Array<number>(nTypes).fill(0);
     for (const cardId of cards) {
       const ti = typeIndexByCardId.get(cardId);
       if (ti !== undefined) k[ti] += 1;
     }
-    const out = evaluate(prep, k, dead);
-    const neTotal = handSize <= 5 ? out.neFirst : out.neSecond;
-    return {
+    const sixth = context === 'second' ? (typeIndexByCardId.get(cards[cards.length - 1]) ?? -1) : undefined;
+    const o = evaluate(prep, context, k, sixth);
+    out.push({
       cards,
-      starts: out.starts,
-      redundancy: out.redundancy,
-      neTotal,
-      catCounts: out.catCounts,
-      neContrib: handSize <= 5 ? out.neContribFirst : out.neContribSecond,
-      note: scorer(out.starts, neTotal),
-    };
-  });
+      starts: o.starts,
+      redundancy: o.redundancy,
+      neTotal: o.ne,
+      catCounts: o.catCounts,
+      neContrib: o.neContrib,
+      neCapped: o.neCapped,
+      note: scorer(o.starts, o.ne),
+    });
+  }
+  return out;
 }
 
 /** Tirage + évaluation en une passe (utilitaire ; conserve l'API d'origine). */
@@ -110,10 +120,10 @@ export function sampleHands(params: {
   deck: DeckEntry[];
   typeIndexByCardId: Map<number, number>;
   prep: Prepared;
-  handSize: number;
+  context: AnalysisContext;
   count: number;
   scorer: (starts: number, neTotal: number) => number;
 }): SampledHand[] {
-  const hands = drawHands(params.deck, params.handSize, params.count);
+  const hands = drawHands(params.deck, params.context === 'first' ? 5 : 6, params.count);
   return evaluateHands({ ...params, hands });
 }

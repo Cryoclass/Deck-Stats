@@ -122,3 +122,13 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - `opening` numérote chaque `loadDeck` ; réponses d'ouvertures antérieures ignorées → une sauvegarde d'une ouverture précédente n'adopte pas sa révision (409 honnête possible ensuite), brouillon effacé par contenu.
 - Annotations globales n'invalident qu'après acquittement serveur.
 - `worker/fakeWorker.ts` réservé aux tests, répond avec le moteur réel → assertions sur des valeurs exactes.
+
+## Étape 5, partie A (7 septembre 2026)
+- Contexte unique `'first' | 'second'` paramètre du moteur (5/6 synonymes tolérés) → matrice, deltas, requêtes, mur de mains et comparateur (`toComparisonMatrix` garde le contexte) dérivent tous du même contexte.
+- `PassResult.total` = mains distinctes C(D,h), `outcomes` = issues Z (second : C(D,5)·(D−5) = 6·C(D,6)) → poids des buckets et note /10 sur Z ; B01 intact.
+- Sixième identifiée depuis les compositions de six, `w(k6,j) = W(k6)·k6ⱼ` ; seuls early/flexible séparés → sixième neutre pour les autres, identique.
+- Profils `availability` (early/flexible/prepared/breaker) = fenêtres ; U = flot maximum par coupe minimale `min(Σ min(total, opp+own), cap+Σown, cap+Σopp, 2·cap)` → HOPT = 1 par identité et par tour ; flexible au tour adverse seulement si initiale ; précoce sixième sans fenêtre.
+- Plafond partagé `groups`/`group` = unité couplée conservée dans les buckets (`neCapped`) → requêtes par catégorie/union mesurent leur propre potentiel sous les mêmes plafonds, jamais additives.
+- Conditions ET/OU validées dans `prepare` (groupe vide, opérateur inconnu, quantité < 1, type hors modèle = exception) → rien ne devient vrai par défaut ; anciens prérequis + condition = ET.
+- Types sans profil = modèle historique (pertinence + horizon) jusqu'à la migration → aucune correspondance implicite labels → profils ; profilée sans étiquette = 0 ; groupe sans profil refusé ; pertinence non appliquée aux profilées (questions Q1–Q7 de docs/etape-5a.md).
+- Oracles réservés aux tests : `deckOracle.ts` (énumération physique de decks entiers) et `monteCarlo.ts` (10⁶ mains, graine fixe, tolérance `5·√(p(1−p)/n)+5/n` jamais ajustée) → toute divergence = échec ; nouveaux cas dans `chronology.test.ts`, `oracle.ts` et `rules.test.ts` intacts.

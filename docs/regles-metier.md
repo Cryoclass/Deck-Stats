@@ -9,8 +9,12 @@ pour comprendre le fonctionnement actuel.
 
 Avancement : [étapes 2 et 3 livrées](etapes-2-3.md), avec migration additive testée
 en base jetable ; [étape 4 livrée](etape-4.md) : recalcul versionné, invalidation
-immédiate, annulation, état périmé visible. La purge reste à l’étape 8. Les profils chronologiques et ET/OU
-ci-dessous restent la cible de l’étape 5.
+immédiate, annulation, état périmé visible. La purge reste à l’étape 8.
+[Étape 5, partie A livrée](etape-5a.md) : le moteur implémente la chronologie
+premier/second avec sixième identifiée, les profils, les plafonds partagés et les
+conditions ET/OU, vérifiés par oracle d’énumération et oracle Monte Carlo ; la
+persistance, l’interface et la migration des annotations historiques relèvent de la
+partie B.
 
 La stack est conservée. Les notations des tests sont indépendantes du futur
 schéma SQL et des interfaces du moteur. Aucun moteur de résolution de cartes ou
