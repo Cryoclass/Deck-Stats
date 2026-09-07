@@ -1,0 +1,54 @@
+# Architecture — où est quoi, comment ça circule
+
+Complète AGENTS.md (commandes, règles, pièges). Sémantique métier : regles-metier.md. Décisions : decisions-compressees.md.
+
+## Flux principaux
+
+1. **Calcul** : composant React → `web/src/store/deckStore.ts` (état éditeur) → `web/src/lib/engineModel.ts` (deck + annotations → `EngineInput`) → `web/src/worker/client.ts` → Web Worker → `engine/computeAll` → `EngineResult` (deux `PassResult`, deltas) → sélecteurs, panneau de stats, mode requête et mur de mains (ces deux derniers lisent les `buckets`, sans recalcul).
+2. **Enregistrement d'un deck** : bouton Enregistrer → `lib/deckConfiguration.ts` (`configurationFromState`) → `PUT /api/decks/:id { configuration, expectedRevision }` → route (garde auth, transaction, verrou de la ligne, `parseConfiguration`) → `server/src/domain/deckRepository.ts` (écriture complète) → `revision + 1`. Brouillon IndexedDB (`lib/draft.ts`) écrit en continu, indépendant.
+3. **Bibliothèque du compte** (HOPT, catégories, affectations) : écriture immédiate via `/api/library/*`, sans passer par Enregistrer.
+4. **Comparateur** : deux `DeckDetail` + bibliothèque → même `engineModel` → worker mode `passes` → `engine/compare.ts` (pur) → page + export Excel (`lib/exportComparison.ts`, ExcelJS en import dynamique).
+5. **Catalogue** : Supabase (clé anon, lecture) → `server/scripts/migrate-cards.ts` → table locale `cards` + `catalog_version` ; `prune-stale-cards.ts` reporte puis supprime les passcodes périmés. Images dérivées de l'id via le CDN YGOPRODeck.
+6. **Auth** : cookie de session httpOnly → `server/src/auth/session.ts` → garde `preHandler` globale pose `req.user` ; côté web, `lib/auth.tsx` rend la page de connexion à la place de la route demandée ; 401 sur route protégée → événement `ygo:unauthorized`.
+
+## Dossiers
+
+| Chemin | Rôle |
+| --- | --- |
+| `db/schema.sql` | Schéma idempotent (catalogue, comptes, decks, bibliothèque, tables historiques), rejoué à chaque déploiement |
+| `db/migrations/NNN-*.sql` | Migrations additives, transactionnelles, journalisées dans `app_migrations` |
+| `server/src/index.ts` | Fastify : CORS, cookies, rate-limit, garde globale, `/api/health`, service du front en prod (`WEB_DIST`) |
+| `server/src/env.ts`, `db.ts` | Chargement du `.env` racine ; pool pg, `query`, `tx` ; bigint → Number |
+| `server/src/auth/` | scrypt, sessions (SHA-256 du token), création de compte + catégories de base |
+| `server/src/domain/` | `deckConfiguration.ts` (contrat v2 pur, partagé avec le web), `deckArchive.ts` (JSON v2), `deckRepository.ts` (SQL des configurations) |
+| `server/src/routes/` | `auth`, `discord`, `cards`, `decks`, `library` |
+| `server/scripts/` | `migrate-cards`, `prune-stale-cards`, `adopt-legacy` (compilés dans l'image) |
+| `server/tests/` | `*.test.ts` unitaires (node:test), `persistence.integration.ts` (PostgreSQL jetable) |
+| `web/src/engine/` | Moteur exact pur : `binomial` (bigint), `matching` (couplage maximum), `evaluate` (prepare/evaluate, prérequis, HOPT, cartes mortes, signatures), `enumerate` (computePass/computeAll, buckets, deltas), `hand` (tirage et note), `query` (critères), `compare` (comparateur), `reference/` (oracle + tests P/N/S/C/M) |
+| `web/src/worker/` | `engine.worker.ts` (calcule, c'est tout) et `client.ts` (promesses par id) |
+| `web/src/store/` | `deckStore.ts` (état éditeur, dirty, révision, debounce du recalcul), `selectors.ts` |
+| `web/src/lib/` | `api.ts`, `auth.tsx`, `router.tsx` (`/decks`, `/decks/:id`, `/compare/:a/:b`), `deckConfiguration.ts`, `draft.ts`, `engineModel.ts`, `exportDeck.ts`, `exportComparison.ts`, `ydk.ts`, `fmt.ts`, `colors.ts` |
+| `web/src/components/` | Pages (Home, Editor, Compare, Login), grille d'annotation et modes, combos, inventaire, stats, requête, mur de mains, dialogues |
+| `deploy/` | `Dockerfile` (multi-étages, Node 22), `docker-compose.prod.yml` (db + app, aucun port publié, réseau `edge`), `deploy.sh`, `backup.sh`, `configuration-v2.md` |
+| `docs/` | `regles-metier.md`, `cas-reference.md`, `etapes-*.md`, `PLAN.md`, `spec-comparateur-decks.md`, `design-system.md` |
+
+## API (préfixe `/api`, JSON, cookie de session sauf mention)
+
+- Public : `GET /health` ; `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /auth/providers` ; `GET /auth/discord/start`, `GET /auth/discord/callback`, `DELETE /auth/discord` (déliaison, en session).
+- Catalogue : `GET /cards?ids=`, `GET /cards/search?q=&limit=`.
+- Decks : `GET /decks`, `POST /decks`, `POST /decks/import`, `GET /decks/:id`, `PUT /decks/:id` (configuration complète + `expectedRevision`, 409 si périmée), `PATCH /decks/:id` (nom), `POST /decks/:id/duplicate`, `DELETE /decks/:id`. `PUT /decks/:id/{starters,pair-exclusions,start-requirements}` → 410.
+- Bibliothèque : `GET /library`, `PUT /library/flags/:cardId`, `POST /library/categories`, `DELETE /library/categories/:id`, `POST /library/card-categories`, `DELETE /library/card-categories/:cardId/:categoryId`. `POST /library/pairs`, `DELETE /library/pairs/:id` → 410.
+- Erreurs : 400 `ConfigurationError`, 401 non authentifié, 404 ressource absente ou d'autrui, 409 révision, 410 endpoint retiré.
+
+## Base de données
+
+- Catalogue : `cards` (id = passcode, lookup sans FK), `catalog_version` (une ligne).
+- Comptes : `users`, `sessions`, `user_identities`.
+- Deck (local, via Enregistrer) : `decks` (`revision`, `params` jsonb, `notes`, `summary` jsonb invalidé), `deck_cards`, `deck_starters`, `deck_combo_pairs`, `deck_requirements`, `deck_flags`.
+- Bibliothèque du compte : `card_flags` (`is_hopt` ; `dead_*` historiques), `nonengine_categories`, `card_categories`.
+- Historiques conservées jusqu'à l'étape 8, plus utilisées par l'API : `combo_pairs`, `deck_pair_exclusions`, `deck_start_requirements`.
+- Journal : `app_migrations`.
+
+## Environnement
+
+`DATABASE_URL`, `PORT`, `INVITE_CODES`, `APP_ORIGIN`, `COOKIE_SECURE`, `TRUST_PROXY`, `DISCORD_CLIENT_ID/SECRET/REDIRECT_URI` (+ `DISCORD_AUTHORIZE_URL/TOKEN_URL/USER_URL` pour un mock), `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `WEB_DIST` (prod), `WEB_PORT`, `API_PROXY` (Vite), `TEST_DATABASE_URL` (intégration), `NODE_ENV`.

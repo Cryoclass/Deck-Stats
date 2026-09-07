@@ -1,0 +1,26 @@
+# Dépendances et sorties de build
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+# Données locales, dumps et sauvegardes SQL (db/schema.sql et db/migrations/ restent lisibles)
+pgdata/
+dump.sql
+*.sql.gz
+*.dump
+backups/
+# Lockfiles
+package-lock.json
+# Fixtures volumineuses et exports de test (Excel, JSON, YDK)
+fixtures/
+__fixtures__/
+exports/
+*.xlsx
+*.ydk
+*.export.json
+*.log
+# Secrets locaux (les .example restent lisibles)
+.env
+.env.local
+.env.prod
