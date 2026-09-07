@@ -61,6 +61,14 @@ export async function libraryRoutes(app: FastifyInstance) {
       if (body.group_id) {
         const owned = await c.query('select id from nonengine_groups where id=$1 and owner_id=$2', [body.group_id,uid]);
         if (!owned.rowCount) throw Object.assign(new Error('Plafond partagé introuvable.'), { statusCode: 404 });
+        // Q2 : le plafond exige un profil — celui envoyé, sinon celui déjà enregistré. La
+        // contrainte SQL seule ne suffit pas : PostgreSQL évalue le CHECK sur la ligne
+        // proposée à l'insertion AVANT de détecter le conflit, donc « group_id » seul sur
+        // une carte déjà profilée échouait à tort (constaté à l'écran, étape 6B).
+        const profile = body.availability !== undefined
+          ? body.availability
+          : (await c.query<{ availability: string | null }>('select availability from card_flags where owner_id=$1 and card_id=$2', [uid,id])).rows[0]?.availability ?? null;
+        if (!profile) throw new ConfigurationError('Un plafond partagé exige un profil de disponibilité sur la carte.');
       }
       if (body.availability) {
         // Q1 : un profil décrit quand une contribution est disponible, l'étiquette ce qui
@@ -71,7 +79,7 @@ export async function libraryRoutes(app: FastifyInstance) {
       try {
         const { rows: [row] } = await c.query(
           `insert into card_flags (owner_id,card_id,is_hopt,availability,group_id)
-           values ($1,$2,coalesce($3,false),$4,$5)
+           values ($1,$2,coalesce($3,false),$4,case when $4::text is null then null else $5::uuid end)
            on conflict (owner_id,card_id) do update set
              is_hopt=coalesce($3,card_flags.is_hopt),
              availability=case when $6 then $4 else card_flags.availability end,

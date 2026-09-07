@@ -155,3 +155,12 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Constructeur : `addCard`/`setCopies` → `false` + motif hors 1–3 ou non entier, 0 = retrait ; dialogue « ×3 · max » → le serveur reste la garde finale.
 - Messages rendus tels quels : 400 de création affiché (hors-ligne = fetch rejeté), `parseDeckJson` lève le motif, `GET /api/cards?ids=` strict (400) via `domain/cardIds.ts`.
 - Équivalence création / YDK / JSON v2 = mêmes `buildEngineModel` après ordre canonique (zone, passcode) + mêmes agrégats sur le modèle non trié → aucun tri ajouté à la saisie ; création manuelle limitée au main (Q2).
+
+## Étape 6, partie B (7 septembre 2026)
+- Q3 : delta de tuile = statistique du §5 → atténué (`opacity-45`) quand `stale`, infobulle « version précédente » ; stepper, menu ⋯ et clic restent pleins (contrat §6) → révision de la limite de l'étape 4.
+- `PUT /library/flags` : PostgreSQL évalue le CHECK sur la ligne proposée AVANT le conflit → pré-contrôle du profil (envoyé ou enregistré) + ligne proposée conforme ; contrainte SQL = garde finale ; test d'intégration ajouté, client inchangé.
+- Cibles tactiles 32 px (stepper, menu ⋯ tuile/deck, Enregistrer, Nouveau deck, Importer, Terminer, ✕ des dialogues), 24 px minimum ailleurs, une seule mise en page (pas de variante `pointer: coarse`) → tuile de 96 px, stepper sur sa ligne, delta insécable + ⋯ sur la suivante (9 colonnes à 1440 au lieu de 11).
+- Débordements corrigés par retour à la ligne (`flex-wrap` : bandeau de mode, en-tête d'accueil, pied du dialogue d'import) et une colonne de zones de fichier sous 640 px → jamais de compression ni d'`overflow:hidden`.
+- Inventaire : problème présumé non confirmé à 360 / 390 / 768 → inchangé (correction uniquement de ce qui est cassé à l'écran).
+- Largeurs validées 360 / 390 / 768 + bureau inscrites au contrat §6 et à la charte §6.3 ; comparateur et mur de mains → étape 7.
+- Validation par `playwright-core` dans le scratchpad, worker ralenti / forcé en échec par réécriture du script servi (moteur intact), scripts et captures non versionnés → aucune non-régression UI automatique dans le dépôt (limite consignée).

@@ -300,6 +300,18 @@ permet une relance. Sans résultat précédent, afficher un état initial de cal
 deck. Une sauvegarde terminée ne doit pas effacer le statut modifié d'une édition
 plus récente. Les tests de ces contrats relèvent des étapes 3 et 4.
 
+### Largeurs et cibles tactiles (étape 6, partie B)
+
+L'interface est validée au navigateur sur bureau et aux largeurs **360 px** (petit
+téléphone), **390 px** (téléphone courant) et **768 px** (tablette portrait, sous le point
+de rupture de 1024 px où le panneau de statistiques devient un onglet). À ces largeurs,
+aucune barre ne déborde horizontalement, les actions et sélections restent utilisables,
+et les cibles tactiles mesurent **32 px** pour le stepper de copies, le menu ⋯ d'une
+tuile ou d'un deck et les actions primaires (Enregistrer, Nouveau deck, Importer,
+Terminer un mode, fermer un dialogue), **24 px minimum avec espacement** ailleurs
+(WCAG 2.5.8). Le comparateur et le mur de mains sont vérifiés à l'étape 7 ; les
+raccourcis clavier affichés sur tactile restent tels quels.
+
 ### Suppression ciblée, à préparer dans /deploy
 
 La remise à zéro des anciennes paires concerne les `combo_pairs` du périmètre de

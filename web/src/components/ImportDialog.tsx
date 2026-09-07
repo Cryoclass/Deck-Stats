@@ -106,7 +106,11 @@ export function ImportDialog({
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-ink-100">{review ? 'Vérifier l’import' : 'Nouveau deck'}</h2>
-          <button onClick={onClose} className="text-ink-500 hover:text-ink-200">
+          <button
+            onClick={onClose}
+            title="Fermer"
+            className="flex h-8 w-8 items-center justify-center rounded text-ink-500 hover:bg-ink-800 hover:text-ink-200"
+          >
             ✕
           </button>
         </div>
@@ -131,7 +135,9 @@ export function ImportDialog({
               />
             </label>
 
-            <div className="mb-3 grid grid-cols-2 gap-3">
+            {/* Étape 6B : une colonne sous 640 px — deux zones de fichier côte à côte
+                forçaient le dialogue au-delà de 360 px (largeur minimale des <input type=file>). */}
+            <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FileZone label="Fichier YDK" accept=".ydk,text/plain" onFile={onYdkFile} />
               <FileZone label="Fichier JSON complet" accept=".json,application/json" onFile={onJsonFile} />
             </div>
@@ -151,18 +157,18 @@ export function ImportDialog({
 
             {error && <div role="alert" className="mb-3 text-xs text-red-400">{error}</div>}
 
-            <div className="flex items-center justify-between gap-2">
-              <button onClick={onEmpty} disabled={busy} className="text-xs text-ink-400 hover:text-ink-200">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button onClick={onEmpty} disabled={busy} className="whitespace-nowrap py-1 text-xs text-ink-400 hover:text-ink-200">
                 Créer un deck vide
               </button>
-              <div className="flex gap-2">
+              <div className="ml-auto flex gap-2">
                 <button onClick={onClose} className="rounded px-3 py-1.5 text-sm text-ink-300 hover:bg-ink-800">
                   Annuler
                 </button>
                 <button
                   onClick={onPaste}
                   disabled={busy || !text.trim()}
-                  className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-black disabled:opacity-40"
+                  className="whitespace-nowrap rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-black disabled:opacity-40"
                 >
                   {busy ? 'Création…' : 'Importer le texte'}
                 </button>
@@ -302,7 +308,7 @@ function FileZone({
         type="file"
         accept={accept}
         onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-        className="mx-auto block w-full text-[11px] text-ink-300 file:mr-2 file:rounded file:border-0 file:bg-ink-700 file:px-2 file:py-1 file:text-ink-100"
+        className="mx-auto block w-full min-w-0 text-[11px] text-ink-300 file:mr-2 file:rounded file:border-0 file:bg-ink-700 file:px-2 file:py-1 file:text-ink-100"
       />
     </div>
   );

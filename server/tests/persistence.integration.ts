@@ -219,6 +219,21 @@ test('profiles and shared caps are account annotations: label before profile (Q1
   assert.deepEqual((await library()).profiles.find((p: { card_id:number }) => p.card_id===300),{ card_id:300,availability:'flexible',group_id:null });
 });
 
+test('a shared cap sent alone to an already profiled card is accepted (étape 6B : CHECK evaluated before ON CONFLICT)',async () => {
+  const cat=(await app.inject({ method:'POST',url:'/library/categories',payload:{ name:'Étiquette 6B' } })).json();
+  assert.equal((await app.inject({ method:'POST',url:'/library/card-categories',payload:{ card_id:301,category_id:cat.id } })).statusCode,201);
+  const gid=(await app.inject({ method:'POST',url:'/library/groups',payload:{ name:'Plafond 6B',cap_per_turn:2 } })).json().id as string;
+  assert.equal((await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ availability:'early' } })).statusCode,200);
+  // Le menu ⋯ n'envoie que `group_id` : constaté 400 à l'écran avant correction.
+  const capOnly=await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ group_id:gid } });
+  assert.equal(capOnly.statusCode,200,capOnly.body);assert.deepEqual(capOnly.json(),{ ok:true,card_id:301,is_hopt:false,availability:'early',group_id:gid });
+  // Retirer le plafond seul garde le profil ; un plafond avec profil explicitement nul reste refusé.
+  assert.deepEqual((await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ group_id:null } })).json(),{ ok:true,card_id:301,is_hopt:false,availability:'early',group_id:null });
+  const nullProfile=await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ availability:null,group_id:gid } });
+  assert.equal(nullProfile.statusCode,400,nullProfile.body);assert.match(nullProfile.body,/profil/);
+  assert.equal((await app.inject({ method:'DELETE',url:`/library/groups/${gid}` })).statusCode,200);
+});
+
 test('every global change invalidates the cached summaries of the decks concerned',async () => {
   const withCard=await create(emptyConfiguration('With 400',[{ card_id:400,zone:'main',copies:1 }]));
   const without=await create(emptyConfiguration('Without 400'));

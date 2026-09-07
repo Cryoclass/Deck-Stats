@@ -71,7 +71,11 @@ export function AddCardDialog({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
           <h2 className="text-base font-semibold text-ink-100">Ajouter une carte</h2>
-          <button onClick={onClose} className="text-ink-500 hover:text-ink-200">
+          <button
+            onClick={onClose}
+            title="Fermer"
+            className="flex h-8 w-8 items-center justify-center rounded text-ink-500 hover:bg-ink-800 hover:text-ink-200"
+          >
             ✕
           </button>
         </div>

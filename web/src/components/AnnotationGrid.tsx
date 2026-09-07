@@ -230,7 +230,7 @@ export function AnnotationGrid({
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         <div
           className="grid gap-1.5"
-          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))' }}
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}
         >
           {main.map((c) => (
             <CardTile
@@ -364,17 +364,19 @@ function ModeBanner({
   }
 
   return (
-    <div className={`flex items-center gap-3 border-b px-3 py-1.5 text-xs ${accent}`}>
-      <span className="font-semibold">Mode {MODE_LABEL[mode]}</span>
-      <span className="opacity-90">{hint}</span>
-      <span className="tnum ml-auto rounded bg-black/20 px-1.5 py-0.5 text-[11px]">
+    // Étape 6B : sous 400 px la consigne passe sur sa propre ligne (flex-wrap) au lieu
+    // d'écraser le compteur et les boutons ; actions du mode à 32 px de haut.
+    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-3 py-1.5 text-xs ${accent}`}>
+      <span className="shrink-0 font-semibold">Mode {MODE_LABEL[mode]}</span>
+      <span className="min-w-[12rem] flex-1 opacity-90">{hint}</span>
+      <span className="tnum ml-auto shrink-0 whitespace-nowrap rounded bg-black/20 px-1.5 py-0.5 text-[11px]">
         {modCount} modif.
         {skipped > 0 ? ` · ${skipped} sans étiquette, ignorée${skipped > 1 ? 's' : ''}` : ''}
       </span>
       {mode === 'combo' && comboPivot !== null && (
         <button
           onClick={onNewPivot}
-          className="rounded border border-white/20 px-2 py-0.5 text-[11px] hover:bg-black/20"
+          className="h-8 shrink-0 rounded border border-white/20 px-2.5 text-[11px] hover:bg-black/20"
         >
           Nouveau pivot
         </button>
@@ -382,14 +384,14 @@ function ModeBanner({
       {mode === 'prereq' && prereqSource !== null && (
         <button
           onClick={onNewSource}
-          className="rounded border border-white/20 px-2 py-0.5 text-[11px] hover:bg-black/20"
+          className="h-8 shrink-0 rounded border border-white/20 px-2.5 text-[11px] hover:bg-black/20"
         >
           Nouvelle source
         </button>
       )}
       <button
         onClick={onDone}
-        className="rounded bg-black/25 px-2 py-0.5 text-[11px] hover:bg-black/40"
+        className="h-8 shrink-0 rounded bg-black/25 px-2.5 text-[11px] hover:bg-black/40"
         title="Échap"
       >
         Terminer

@@ -1,5 +1,58 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 6, partie B, 7 septembre 2026
+
+Le [compte rendu 6B](docs/etape-6.md) décrit l'infrastructure jetable, les verdicts par
+point avec leurs captures et les mesures mobile avant / après.
+
+- **Q3 — les deltas de tuile sont atténués à l'état périmé.** Le §6 du contrat exige que
+  « les dernières statistiques restent visibles avec leur contexte antérieur, atténuées »,
+  et le delta d'une copie est un indicateur du §5. L'étape 4 avait laissé la ligne de
+  delta à pleine intensité (limite consignée : « seule l'indication du panneau signale
+  leur péremption ») ; à l'écran, panneau et requête à 0,45 face à des deltas à 1 étaient
+  un mélange d'anciennes statistiques présentées comme courantes. Révision : la seule
+  ligne de delta passe à `opacity-45` quand `stale` est vrai, infobulle « version
+  précédente, recalcul en cours » ; stepper, menu ⋯ et clic restent pleins (« les
+  contrôles restent utilisables »). Confirmé par l'utilisateur avant modification.
+- **Défaut serveur corrigé : plafond partagé refusé sur une carte profilée.** Constaté au
+  menu ⋯ (400 « Un plafond partagé exige un profil ») ; cause : PostgreSQL évalue le CHECK
+  sur la ligne proposée par `insert … on conflict do update` **avant** de détecter le
+  conflit, donc `group_id` seul (profil absent du corps) violait la contrainte même si la
+  ligne existante portait un profil. La suite d'intégration ne couvrait que « plafond seul
+  sans ligne » (400 attendu, obtenu pour la mauvaise raison) et « profil + plafond ».
+  Correction côté route (pré-contrôle du profil envoyé ou enregistré ; ligne proposée qui
+  respecte le CHECK) et non côté client, pour que le contrat de l'API soit vrai pour tout
+  appelant ; la contrainte SQL reste la garde finale ; test d'intégration ajouté, aucun
+  test existant modifié, client inchangé.
+- **Cibles tactiles unifiées, pas conditionnées au pointeur.** 32 px (`h-8 w-8`, `py-2`
+  sur `text-xs`) pour le stepper, le menu ⋯ d'une tuile ou d'un deck, Enregistrer,
+  Nouveau deck, Importer, Terminer et le ✕ des dialogues ; 24 px minimum ailleurs (le
+  sélecteur de contexte passe de 21 à 25 px). Une seule mise en page plutôt qu'une variante
+  `pointer: coarse` : plus honnête à valider et sans dépendance à l'émulation.
+- **Tuile de 96 px et pied sur deux lignes.** Trois cibles de 32 px ne tiennent pas dans
+  78 px : le stepper prend sa ligne, le delta (insécable) et le menu ⋯ la suivante, et la
+  grille impose 96 px (3 colonnes à 360 / 390, 7 à 768, 9 à 1440 au lieu de 11). Le libellé
+  « −1 : −6.38% » est conservé. Charte §6.3 mise à jour.
+- **Retours à la ligne plutôt que compression.** Bandeau de mode et en-tête de l'accueil
+  en `flex-wrap` avec libellés insécables ; zones de fichier du dialogue d'import en une
+  colonne sous 640 px (deux `<input type=file>` côte à côte forçaient le dialogue à 406 px
+  pour un viewport de 360) ; pied du dialogue en `flex-wrap`.
+- **Inventaire laissé tel quel.** Le problème présumé (titre tronqué par le compteur) n'a
+  pas été confirmé : aucune troncature ni chevauchement mesuré aux trois largeurs, titre
+  et compteur passent à la ligne. Correction uniquement de ce qui est cassé.
+- **Worker ralenti ou forcé en échec par réécriture du script servi**, via une route
+  Playwright qui enveloppe `onmessage` après l'évaluation du module : le moteur, le worker
+  et le client de calcul sont intacts ; c'est le seul moyen d'observer « Calcul initial »,
+  « Recalcul… » et « Statistiques obsolètes » sur un deck de 40 cartes calculé en 75 ms.
+- **Gardes de validation hors dépôt.** Scripts Playwright et captures dans le scratchpad
+  (rien installé dans le projet) ; le contrôle par mutation des corrections visuelles
+  repose sur eux, celui de la correction serveur sur la suite d'intégration. Limite
+  consignée : aucune non-régression automatique de l'interface dans le dépôt.
+- **Largeurs validées inscrites au contrat** (§6, « Largeurs et cibles tactiles ») : 360,
+  390, 768 px et bureau ; comparateur et mur de mains à l'étape 7.
+- **Hors liste, corrigé par cohérence** : le ✕ du dialogue « Ajouter une carte » (même
+  défaut de 13 px que celui de l'import). Question ouverte plutôt que décision silencieuse.
+
 ## Première mission — étape 6, partie A, 7 septembre 2026
 
 Le [compte rendu](docs/etape-6.md) contient le plan validé, l'inventaire complet

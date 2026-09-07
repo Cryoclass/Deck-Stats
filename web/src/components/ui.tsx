@@ -31,7 +31,7 @@ export function Segmented<T extends string | number>({
           key={String(o.value)}
           title={o.title}
           onClick={() => onChange(o.value)}
-          className={`${size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'} tnum transition-colors ${
+          className={`${size === 'sm' ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1 text-xs'} tnum transition-colors ${
             value === o.value
               ? 'bg-ink-600 text-ink-100'
               : 'text-ink-400 hover:bg-ink-800 hover:text-ink-200'

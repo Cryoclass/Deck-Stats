@@ -41,7 +41,7 @@ export function CardMenu({
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
-          className="rounded px-1.5 py-0.5 leading-none text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded leading-none text-ink-400 hover:bg-ink-800 hover:text-ink-100"
           title="Plus d'actions"
           onClick={(e) => e.stopPropagation()}
         >

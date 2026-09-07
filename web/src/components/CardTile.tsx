@@ -51,6 +51,9 @@ export function CardTile({
   const profile = useDeck((s) => s.profiles.get(cardId));
   const groupName = useDeck((s) => s.groups.find((g) => g.id === profile?.groupId)?.name);
   const context = useDeck((s) => s.context);
+  // Q3 (étape 6B, contrat §6) : le delta est une statistique du dernier résultat ; périmé,
+  // il reste visible mais atténué comme le panneau — les contrôles de la tuile, eux, restent vifs.
+  const stale = useDeck((s) => s.stale);
   const inActiveCat = useDeck((s) =>
     activeCategoryId ? !!s.cardCategories.get(cardId)?.has(activeCategoryId) : false,
   );
@@ -190,12 +193,14 @@ export function CardTile({
         )}
       </button>
 
-      {/* Footer : compteur de copies (A1) + menu ⋯ (rare ops). */}
-      <div className="flex items-center justify-between gap-1 px-1 py-1">
+      {/* Footer (étape 6B, cibles tactiles 32 px) : le stepper de copies (A1) occupe sa
+          propre ligne ; le menu ⋯ (rare ops) partage la ligne du delta, insécable. La
+          grille garantit 96 px par tuile (AnnotationGrid) pour que les deux tiennent. */}
+      <div className="flex items-center justify-center pt-1">
         <div className="flex shrink-0 items-center rounded border border-ink-700 bg-ink-850">
           <button
             onClick={() => setCopies(cardId, copies - 1)}
-            className="px-1.5 py-0.5 text-xs text-ink-300 hover:text-ink-100"
+            className="flex h-8 w-8 items-center justify-center text-sm text-ink-300 hover:text-ink-100"
             title={copies <= 1 ? 'Retirer du deck (0 copie)' : 'Moins de copies'}
           >
             −
@@ -204,21 +209,27 @@ export function CardTile({
           <button
             onClick={() => setCopies(cardId, copies + 1)}
             disabled={copies >= 3}
-            className="px-1.5 py-0.5 text-xs text-ink-300 hover:text-ink-100 disabled:opacity-30"
+            className="flex h-8 w-8 items-center justify-center text-sm text-ink-300 hover:text-ink-100 disabled:opacity-30"
             title="Plus de copies"
           >
             +
           </button>
         </div>
-        <CardMenu cardId={cardId} onOpenDetail={() => setDetailOpen(true)} />
       </div>
 
       {/* Delta permanent : contribution marginale (§3.2) du contexte d'analyse courant. */}
-      <div
-        className="h-4 px-1 pb-1 text-center text-[10px] tnum leading-none text-ink-500"
-        title={`Δ P(≥1 départ théorique) si l'on retire une copie — contexte ${context === 'first' ? 'premier' : 'second'}`}
-      >
-        {delta && Math.abs(contextDelta) > 1e-9 ? `−1 : ${signedPct(-contextDelta)}` : ' '}
+      <div className="flex items-center gap-0.5 pb-0.5 pl-0.5">
+        <div
+          className={`tnum min-w-0 flex-1 whitespace-nowrap text-center text-[10px] leading-none text-ink-500 transition-opacity ${
+            stale ? 'opacity-45' : ''
+          }`}
+          title={`Δ P(≥1 départ théorique) si l'on retire une copie — contexte ${context === 'first' ? 'premier' : 'second'}${
+            stale ? ' — version précédente, recalcul en cours' : ''
+          }`}
+        >
+          {delta && Math.abs(contextDelta) > 1e-9 ? `−1 : ${signedPct(-contextDelta)}` : ' '}
+        </div>
+        <CardMenu cardId={cardId} onOpenDetail={() => setDetailOpen(true)} />
       </div>
 
       {detailOpen && <CardDetailDialog cardId={cardId} onClose={() => setDetailOpen(false)} />}

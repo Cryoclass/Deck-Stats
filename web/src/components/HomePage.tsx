@@ -82,10 +82,12 @@ export function HomePage() {
 
   return (
     <div className="flex h-screen flex-col bg-ink-950 text-ink-200">
-      <header className="flex shrink-0 items-center gap-3 border-b border-ink-800 bg-ink-950 px-5 py-3">
+      {/* Étape 6B : sous 400 px les actions passent sur une seconde ligne (flex-wrap) au lieu
+          de déborder ; boutons primaires 32 px, libellés insécables. */}
+      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-ink-800 bg-ink-950 px-5 py-3">
         <span className="text-sm font-bold tracking-tight text-ink-100">YGO</span>
-        <span className="text-[11px] text-ink-500">probabilités &amp; mains</span>
-        <h1 className="ml-2 text-sm text-ink-300">Mes decks</h1>
+        <span className="whitespace-nowrap text-[11px] text-ink-500">probabilités &amp; mains</span>
+        <h1 className="ml-2 whitespace-nowrap text-sm text-ink-300">Mes decks</h1>
         <button
           onClick={() => setCompareOpen(true)}
           disabled={(decks?.length ?? 0) < 2}
@@ -94,13 +96,13 @@ export function HomePage() {
               ? 'Il faut au moins deux decks pour comparer.'
               : 'Comparer deux decks (matrice starts × non-engine)'
           }
-          className="ml-auto rounded border border-ink-700 px-3 py-1.5 text-xs font-medium text-ink-200 hover:bg-ink-800 disabled:opacity-40"
+          className="ml-auto whitespace-nowrap rounded border border-ink-700 px-3 py-2 text-xs font-medium text-ink-200 hover:bg-ink-800 disabled:opacity-40"
         >
           ⇄ Comparer
         </button>
         <button
           onClick={() => setNewOpen(true)}
-          className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-black hover:bg-emerald-500"
+          className="whitespace-nowrap rounded bg-emerald-600 px-3 py-2 text-xs font-medium text-black hover:bg-emerald-500"
         >
           + Nouveau deck
         </button>
@@ -118,7 +120,7 @@ export function HomePage() {
             </p>
             <button
               onClick={() => setNewOpen(true)}
-              className="mt-4 rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-black hover:bg-emerald-500"
+              className="mt-4 rounded bg-emerald-600 px-3 py-2 text-xs font-medium text-black hover:bg-emerald-500"
             >
               + Importer un deck
             </button>
@@ -265,7 +267,7 @@ function DeckMenu({
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button className="shrink-0 rounded px-1.5 py-0.5 text-ink-400 hover:bg-ink-800 hover:text-ink-100">
+        <button className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-ink-400 hover:bg-ink-800 hover:text-ink-100">
           ⋯
         </button>
       </DropdownMenu.Trigger>

@@ -328,9 +328,21 @@ navigation », pas « empiler ».
 Grilles fluides, jamais de nombre de colonnes en dur :
 
 ```css
-grid-template-columns: repeat(auto-fill, minmax(78px,  1fr));  /* vignettes de cartes */
+grid-template-columns: repeat(auto-fill, minmax(96px,  1fr));  /* tuiles de cartes (grille d'annotation) */
+grid-template-columns: repeat(auto-fill, minmax(72px,  1fr));  /* vignettes en lecture (inventaire) */
 grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));  /* cartes de deck */
 ```
+
+Largeurs validées à l'écran (étape 6B, contrat §6) : **360, 390 et 768 px** en plus du
+bureau. Sous 400 px, les barres d'en-tête et les bandeaux de mode **passent à la ligne**
+(`flex-wrap`) au lieu de déborder ou d'écraser leurs pastilles ; les zones de fichier du
+dialogue d'import passent en une colonne sous 640 px (`sm:`). Cibles tactiles : **32 px**
+(`h-8 w-8` ou `py-2` sur `text-xs`) pour le stepper de copies, le menu ⋯ d'une tuile ou
+d'un deck, les actions primaires (Enregistrer, Nouveau deck, Importer, Terminer, ✕ d'un
+dialogue) ; **24 px minimum** partout ailleurs (onglets, boutons de mode, sélecteur de
+contexte, lignes d'inventaire, entrées de menu). Le minimum de 96 px par tuile vient de
+là : un stepper de trois cibles de 32 px sur sa propre ligne, puis le delta insécable et le
+menu ⋯ côte à côte.
 
 ### 6.4 Ascenseurs
 

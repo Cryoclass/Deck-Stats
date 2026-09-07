@@ -214,3 +214,136 @@ Lire ce document, docs/PLAN.md et docs/design-system.md, puis dérouler les poin
 dans le scratchpad, jamais dans le projet). Ajouter les largeurs à regles-metier.md,
 trancher Q3 en citant le §6, corriger uniquement ce qui est cassé, puis commit, tag
 `etape-6-ok`, mise à jour de PLAN.md, section « étape 6, partie B » dans DECISIONS.md.
+
+## Compte rendu 6B (7 septembre 2026)
+
+### Infrastructure jetable
+
+Conteneur `testhand-step6b-visual` (label `purpose=testhand-step6b`, `--rm`, données en
+tmpfs) sur 127.0.0.1:**55434**, distinct du 55433 de la suite d'intégration ; schéma puis
+migrations 001 et 002 rejoués **par stdin** (`docker exec -i … psql -f -`) ; 17 cartes
+synthétiques (passcodes 90000001–90000017, images SVG inline en `data:` : aucune requête
+réseau, captures déterministes) ; compte `step6b@example.test` créé par
+`POST /api/auth/register` avec `INVITE_CODES` posé dans l'environnement ; serveur
+`npx tsx src/index.ts` avec `DATABASE_URL`, `PORT=8790`, `APP_ORIGIN=http://localhost:5174`
+(le `.env` racine n'écrase rien) ; Vite `WEB_PORT=5174 API_PROXY=http://localhost:8790`.
+Pilotage par `playwright-core` 1.55.0 installé dans le scratchpad sur le Chromium 1169
+du cache ; dix scripts de scénario (préparation, étape 4, contexte, menu, conditions,
+import, mobile, bureau, garde de cibles, Q3) et 92 captures dans le scratchpad, **non
+versionnés**. Le deck « Deck 6B » (40 cartes, 15 identités) est importé par collage puis
+annoté avec les modes de l'interface (starters Alpha/Beta, combo Gamma+Delta, HOPT
+Epsilon, étiquettes Handtrap / Board breaker, profils, condition Alpha → Target Xi) et
+enregistré. Aucune base personnelle, aucun VPS, rien installé dans le projet.
+
+### Point 3 — verdicts
+
+| # | Point | Captures (scratchpad) | Verdict |
+| --- | --- | --- | --- |
+| 1 | Étape 4 | `02-etape4-calcul-initial` (« Calcul initial des statistiques… », grille sans delta ; worker ralenti à 3 s par réécriture du script servi par Vite, moteur intact) ; `02-etape4-recalcul-stale` (en-tête « 41 cartes », pastille « Recalcul… », bandeau « Statistiques de la version précédente (deck de 40 cartes) », colonnes, matrice et requête à opacité 0,45, stepper et menus vifs) ; `02-etape4-recalcul-termine` (retour à 1) ; `02-etape4-erreur-relance` (worker forcé en échec après annulation d'un calcul en cours : « Statistiques obsolètes : le recalcul a échoué — Uncaught Error: Échec forcé du worker (validation 6B) », bouton Relancer, anciennes statistiques atténuées) ; `02-etape4-apres-relance` ; `02-etape4-erreur-initiale` (sans résultat : « Le calcul a échoué — … Relancer » seul) ; `02-etape4-erreur-initiale-relancee` | Conforme |
+| 2 | Deltas périmés (Q3) | `02-etape4-recalcul-stale` : ligne « −1 : −6.38% » à opacité 1 pendant le recalcul → écart au §6 ; après correction `02-q3-recalcul-stale-delta-attenue` et `02-q3-tuile-delta-stale` : 0,45, infobulle « version précédente, recalcul en cours », stepper à 1, retour à 1 après le calcul | Corrigé (Q3) |
+| 3 | Réglage premier/second | `03-contexte-premier` / `03-contexte-second` : delta d'Alpha −6.38 % → −6.17 %, titre de matrice « … — Second · 5 cartes + pioche » avec colonne 5+, colonne active surlignée, infobulle du delta « contexte second » ; `03-mur-second-sixieme` : 60 mains de 6, sixième cerclée bleu avec badge « 6ᵉ », légende « sixième carte = pioche » ; `03-mur-premier` : mains de 5, sans légende | Conforme |
+| 4 | Mode Profil | `04-mode-profil-menu` (Précoce, Flexible, Préparée, Board breaker, Retirer le profil) ; `04-mode-profil-flexible-skipped` (badges Fx sur Epsilon et Zeta, « 2 modif. · 1 sans étiquette, ignorée » après un clic sur Filler Lambda) ; badges Pc / Pp ensuite | Conforme |
+| 5 | Menu ⋯ | `05-menu-sans-etiquette` (« poser d'abord une étiquette non-engine », aucune section plafond) ; `05-menu-etiquetee-sans-profil` (quatre profils + « Aucun » coché, aucune section plafond) ; `05-menu-profilee-sans-plafond` (« aucun plafond défini ») ; `05-combos-plafond-cree` ; `05-menu-plafond-propose` (« Mulcharmy · 2/tour ») ; badge « ? » ambre (`rgba(251,191,36)`) `05-tuile-kappa-badge-interrogation` | **Cassé** puis corrigé : choisir le plafond répondait 400 « Un plafond partagé exige un profil de disponibilité sur la carte » (message en en-tête, `05-grille-apres-plafond` avant correction). Après correction : badge « Pc· » avec infobulle « Profil Précoce · plafond « Mulcharmy » » (`05-tuile-eta-badge-plafond`), radio cochée (`05-menu-plafond-coche`), retrait du plafond qui garde le profil |
+| 6 | Éditeur ET/OU | `06-mode-condition` (dépendante cerclée ambre, « ↑ requise en deck » sur Target Xi, marqueur ▤) ; `06-inventaire-condition-initiale` ; `06-inventaire-ou` (« ou… » → groupe OU avec « ＋ ou… ») ; `06-inventaire-et-ou-n` (« ＋ et… » → clause ET Starter Beta, ≥ 2 saisi, probabilités recalculées) ; `06-inventaire-derniere-feuille` (retrait de toutes les feuilles → section disparue, marqueur ▤ retiré : source inconditionnelle) ; `06-combos-condition-paire` (« requiert en deck : » sous Gamma + Delta, avec OU) | Conforme ; le texte « source inconditionnelle » n'apparaît jamais dans l'inventaire, qui ne liste que les sources conditionnées |
+| 7 | Avertissement sans profil | `01-editor-annotated` : « 1 carte non-engine sans profil, non comptée dans le potentiel : Breaker Kappa. » ; « 4 cartes … » pendant l'annotation (`04-mode-profil-flexible-skipped`) | Conforme |
+| 8 | Aperçu d'import (6A) | `07-import-apercu` (4 copies « → ramenée à 3 », lignes l.8 et l.9 non reconnues, en-tête `#side` l.11, passcode 12345678 inconnu conservé, bouton « Importer avec 3 copies maximum ») ; `07-import-main-vide` (« Importer quand même ») ; `07-import-aucune-carte` (erreur avec les trois lignes) ; `01-ajout-carte-max` (« ×3 · max », ligne désactivée) | Conforme |
+
+**Défaut hors visuel corrigé** (point 5) : `PUT /api/library/flags/:cardId` avec
+`group_id` seul échouait sur toute carte déjà profilée. Cause : `insert … on conflict do
+update` — PostgreSQL évalue le CHECK `card_flags_group_requires_profile` sur la ligne
+**proposée à l'insertion** (profil `null`, plafond renseigné) avant de détecter le conflit,
+donc avant la branche `do update` qui aurait conservé le profil. Reproduit en SQL sur la
+base jetable, corrigé dans `server/src/routes/library.ts` : pré-contrôle du profil
+(envoyé, sinon celui enregistré) et ligne proposée qui respecte le CHECK ; la contrainte
+SQL reste la garde finale. Test ajouté dans `persistence.integration.ts` (plafond seul sur
+carte profilée → 200 ; `group_id: null` garde le profil ; profil nul + plafond → 400) ;
+aucun test existant modifié. Le client (`setCardGroup`) est inchangé.
+
+### Point 4 — mobile
+
+Mesures à 360 px **avant** correction (script Playwright, `isMobile`, `hasTouch`) :
+
+| Problème présumé | Mesure à l'écran | Verdict | Correction |
+| --- | --- | --- | --- |
+| Bandeau de mode sans retour à la ligne | Pas de débordement (scrollWidth = clientWidth) mais consigne écrasée en colonne étroite, pastille « 0 modif. » coupée sur deux lignes, « Terminer » 58×20 (`m360-avant-bandeau-condition`) | Confirmé (écrasement, cibles) | `flex-wrap`, consigne `flex-1`, compteur insécable, boutons du mode 32 px |
+| En-tête de l'accueil sans retour à la ligne | scrollWidth 440 > 360, « + Nouveau deck » 73×60 sur trois lignes, « Comparer » 80×46 (`m360-avant-accueil`) | Confirmé | `flex-wrap`, libellés insécables, boutons 32 px, menu ⋯ 32×32 |
+| Lignes de section de l'inventaire | 9 lignes mesurées à 360 / 390 / 768 : aucun débordement, aucune troncature du titre, aucun chevauchement titre/compteur (titre et compteur passent à la ligne, `m360-avant-inventaire`) | **Non confirmé** | Aucune |
+| Stepper de la tuile ~20 px | 20×20 | Confirmé | 32×32 |
+| Menu ⋯ de la tuile ~20 px | 26×20 | Confirmé | 32×32 |
+| Aperçu d'import à deux colonnes | Dialogue de 406 px pour un viewport de 360 (largeur minimale des `<input type=file>`), contenu coupé à droite (`m360-avant-import`) | Confirmé | Une colonne sous 640 px, `min-w-0` |
+
+Le plan comptait « six problèmes » sur cinq puces : stepper et menu ⋯ sont comptés
+séparément. Autres cibles mesurées et corrigées par la même règle : Enregistrer 24 → 32,
+sélecteur de contexte 21 → 25, ✕ des dialogues (import et ajout de carte) 13×24 → 32×32,
+« Créer un deck vide » 16 → 24, menu ⋯ d'un deck 26×28 → 32×32, pied du dialogue d'import
+en `flex-wrap` (le bouton « Importer le texte » se cassait sur deux lignes à 360).
+Conservées (≥ 24 px) : onglets 24, boutons de mode 26, entrées de menu 28, lignes
+d'inventaire 32. Conséquence assumée : le stepper (3 × 32 px) prend sa propre ligne, le
+delta insécable et le menu ⋯ partagent la suivante, et la tuile impose 96 px de large
+(78 avant) : 3 colonnes à 360 et 390, 7 à 768, 9 à 1440 (11 avant).
+
+Mesures **après** correction (captures `m{360,390,768}-apres-*`, `01-editor-apres-corrections`) :
+
+| Largeur | Débordement (accueil, éditeur, bandeau, inventaire, stats) | Stepper / ⋯ / ✕ / Enregistrer / Nouveau deck | Contexte | Delta | Colonnes |
+| --- | --- | --- | --- | --- | --- |
+| 360 | aucun | 32 / 32 / 32 / 32 / 32 | 25 | une ligne, non coupé | 3 |
+| 390 | aucun | idem | 25 | idem | 3 |
+| 768 | aucun | idem | 25 | idem | 7 |
+| 1440 | aucun | idem | 25 | idem | 9 |
+
+Le menu ⋯ ouvert reste dans le viewport aux trois largeurs (`m*-menu`) ; la matrice tient
+sans ascenseur horizontal ; l'onglet Stats mobile empile les deux contextes (`m360-apres-stats`).
+Comparateur et mur de mains : captures `m*-mur` pour mémoire seulement (étape 7).
+
+### Preuves
+
+```powershell
+npm.cmd run typecheck
+npm.cmd run build
+node scripts/test-quiet.mjs
+$env:TEST_DATABASE_URL = 'postgres://step23:step23-disposable@127.0.0.1:55433/step23'
+npm.cmd run test:integration -w server
+```
+
+Résultats : **164 tests web** (inchangés), **7 tests serveur**, **11 tests PostgreSQL**
+(10 + 1 nouveau, conteneur 55433 recréé pour chaque passage) ; build vert avec
+l'avertissement ExcelJS attendu ; conteneurs 55433 et 55434 arrêtés et supprimés.
+
+Contrôle par mutation, chaque erreur volontaire détectée puis annulée (fichiers comparés
+octet à octet à leur copie de référence) :
+
+| Mutation | Garde qui échoue |
+| --- | --- |
+| S1 `library.ts` : ligne proposée sans le `case` (forme fautive) | `persistence.integration.ts` test 8 (plafond seul → 400) |
+| S2 `library.ts` : pré-contrôle du profil neutralisé | `persistence.integration.ts` test 7 (plafond sans profil ni ligne accepté en silence) |
+| M1 `CardTile` : stepper `h-5 w-5` | script de garde (scratchpad) : stepper 20×20 à 360 et 1440 |
+| M2 `HomePage` : en-tête sans `flex-wrap` | script de garde : « + Nouveau deck » inatteignable (débordement) |
+| M3 `ImportDialog` : `grid-cols-2` | script de garde : zone de fichier 111 px |
+| M4 `AnnotationGrid` : tuile 78 px | script de garde : delta coupé (53 px pour 43) |
+| M5 `ModeBanner` : sans `flex-wrap` | script de garde : bandeau déborde à 360 |
+| M6 `CardTile` : delta jamais atténué | script Q3 : opacité 1 pendant le recalcul |
+
+Les gardes M1–M6 sont des scripts Playwright du scratchpad, pas des tests du dépôt (Vitest
+tourne en environnement `node`, sans DOM) : elles prouvent la validation de cette session,
+pas une non-régression future.
+
+### Limites et reports vers l'étape 7
+
+- Aucun test React ni navigateur dans le dépôt ; les scripts et captures de 6B ne sont pas
+  versionnés (rien installé dans le projet).
+- Grille d'annotation moins dense sur bureau (9 colonnes à 1440 px au lieu de 11) : coût
+  des cibles de 32 px ; à réévaluer si jugé gênant (grille plus dense sur pointeur fin).
+- Comparateur et mur de mains hors périmètre ; raccourcis clavier affichés sur tactile
+  inchangés.
+- En dev, le navigateur journalise un 404 sur `/favicon.ico` (aucune icône servie) : sans
+  effet, hors périmètre.
+- L'éditeur ET/OU n'a toujours pas de mise en page dédiée pour un arbre plus profond que
+  « ET de clauses, OU de feuilles ».
+
+### Questions ouvertes (non tranchées silencieusement)
+
+- Le ✕ du dialogue « Ajouter une carte » a été porté à 32 px par cohérence avec celui de
+  l'import (même défaut, 13 px de large) bien qu'il ne figure pas dans la liste du plan.
+- Le libellé « −1 : −6.38% » du delta est conservé tel quel ; une forme plus courte aurait
+  permis une tuile plus étroite.
+- La densité de la grille sur bureau (ci-dessus) est une conséquence acceptée, à confirmer.

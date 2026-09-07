@@ -89,7 +89,7 @@ export function Header({ onSave, onHome }: { onSave: () => void; onHome: () => v
           onClick={onSave}
           disabled={!dirty || saving || libraryPending > 0}
           title="Enregistrer (Ctrl/Cmd + S)"
-          className={`flex items-center gap-1.5 rounded px-3 py-1 text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1.5 rounded px-3 py-2 text-xs font-medium transition-colors ${
             dirty
               ? 'bg-emerald-600 text-black hover:bg-emerald-500'
               : 'cursor-default bg-ink-800 text-ink-500'
