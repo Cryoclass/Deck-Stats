@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
 import { api } from '../lib/api.js';
 import type { Card } from '../types.js';
+import { MAX_COPIES } from '../lib/ydk.js';
 import { CardImage } from './CardImage.js';
 
 /**
@@ -50,7 +51,11 @@ export function AddCardDialog({ onClose }: { onClose: () => void }) {
     };
   }, [query]);
 
+  // Étape 6 (C1) : à 3 copies, l'ajout est refusé explicitement (bouton désactivé,
+  // libellé « max ») ; le store refuse aussi, sans réduction silencieuse.
+  const atMax = (card: Card) => copiesOf(card.id) >= MAX_COPIES;
   const add = (card: Card) => {
+    if (atMax(card)) return;
     addCard(card);
     inputRef.current?.focus(); // rester au clavier pour enchaîner
   };
@@ -84,7 +89,7 @@ export function AddCardDialog({ onClose }: { onClose: () => void }) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Escape') onClose();
-              if (e.key === 'Enter' && results[0]) {
+              if (e.key === 'Enter' && results[0] && !atMax(results[0])) {
                 e.preventDefault();
                 add(results[0]);
               }
@@ -110,7 +115,9 @@ export function AddCardDialog({ onClose }: { onClose: () => void }) {
                 <li key={card.id}>
                   <button
                     onClick={() => add(card)}
-                    className={`flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-ink-800 ${
+                    disabled={inDeck >= MAX_COPIES}
+                    title={inDeck >= MAX_COPIES ? `Déjà ${MAX_COPIES} copies : convention 1–${MAX_COPIES} par carte et par zone` : undefined}
+                    className={`flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-ink-800 disabled:cursor-default disabled:hover:bg-transparent ${
                       i === 0 ? 'ring-1 ring-inset ring-emerald-500/30' : ''
                     }`}
                   >
@@ -123,7 +130,11 @@ export function AddCardDialog({ onClose }: { onClose: () => void }) {
                         {[card.type, card.race, card.attribute].filter(Boolean).join(' · ')}
                       </span>
                     </span>
-                    {inDeck > 0 ? (
+                    {inDeck >= MAX_COPIES ? (
+                      <span className="tnum shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] text-amber-300">
+                        ×{inDeck} · max
+                      </span>
+                    ) : inDeck > 0 ? (
                       <span className="tnum shrink-0 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[11px] text-emerald-200">
                         ×{inDeck} → +1
                       </span>

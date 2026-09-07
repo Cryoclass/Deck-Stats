@@ -27,8 +27,10 @@ describe('Étape 3 — formats et références',() => {
     const state=stateFromConfiguration(c);expect(configurationFromState(state).conditions).toEqual(c.conditions);
     expect(configurationFromState(state).pairs).toEqual(c.pairs);
   });
-  it('rejette les anciennes versions sans ressusciter les paires globales',() => {
-    expect(parseDeckJson(JSON.stringify({ format:'ygo-proba-deck',version:1,pairs:[{ a:1,b:2 }] }))).toBeNull();
+  it('rejette les anciennes versions sans ressusciter les paires globales, avec le motif exact (étape 6, C4)',() => {
+    expect(() => parseDeckJson(JSON.stringify({ format:'ygo-proba-deck',version:1,pairs:[{ a:1,b:2 }] }))).toThrow(/Version JSON non prise en charge/);
+    expect(() => parseDeckJson('{ pas du json')).toThrow(/illisible/);
+    expect(() => parseDeckJson(JSON.stringify({ format:'ygo-proba-deck',version:2,configuration:emptyConfiguration('X'),library:{ hoptCardIds:[],categories:[{ id:'a',name:'Dup' },{ id:'b',name:'Dup' }],cardCategories:[] } }))).toThrow(/Catégorie dupliquée/);
     expect(validDraft({ deckId:'old',pairExclusions:[] })).toBeNull();
     const configuration=emptyConfiguration('New');
     expect(validDraft({ version:2,deckId:'new',baseRevision:1,updatedAt:1,configuration })?.configuration).toEqual(configuration);
@@ -47,9 +49,9 @@ describe('Étape 3 — formats et références',() => {
     const draft=validDraft({ version:2,deckId:'d',baseRevision:1,updatedAt:1,configuration:legacy });
     expect(draft?.configuration.conditions).toEqual(upgraded.conditions);
     const archive=parseDeckJson(JSON.stringify({ format:'ygo-proba-deck',version:2,configuration:legacy,library:{ hoptCardIds:[],categories:[{ id:'c',name:'Old',relevance:'first' }],cardCategories:[] } }));
-    expect(archive?.configuration.conditions).toEqual(upgraded.conditions);
-    expect(archive?.library.categories).toEqual([{ id:'c',name:'Old' }]);
-    expect(archive?.library.profiles).toEqual([]);
+    expect(archive.configuration.conditions).toEqual(upgraded.conditions);
+    expect(archive.library.categories).toEqual([{ id:'c',name:'Old' }]);
+    expect(archive.library.profiles).toEqual([]);
     // L'API (configurationFromState → parseConfiguration) refuse l'ancien format : un client périmé doit recharger.
     expect(() => configurationFromState({ ...stateFromConfiguration(emptyConfiguration('X')),startConditions:[{ id:'not-a-uuid',sourceCardId:1,sourcePairId:null,condition:{ kind:'and',all:[] } }] })).toThrow();
   });

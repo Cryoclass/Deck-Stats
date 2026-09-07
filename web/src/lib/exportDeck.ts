@@ -52,8 +52,13 @@ export function buildDeckJson(configuration: Configuration, library: Library): D
       groups: (library.groups ?? []).filter((g) => groupIds.has(g.id)).map(({ id,name,cap_per_turn }) => ({ id,name,cap_per_turn })) } });
 }
 
-export function parseDeckJson(text: string): DeckArchive | null {
-  try { return parseArchive(JSON.parse(text)); } catch { return null; }
+/** Lit une archive JSON. Toute cause de refus est une exception porteuse du message
+ *  exact (`ConfigurationError` de `parseArchive`, ou JSON illisible), jamais un `null`
+ *  muet : le dialogue d'import affiche ce message. */
+export function parseDeckJson(text: string): DeckArchive {
+  let value: unknown;
+  try { value = JSON.parse(text); } catch { throw new Error('Fichier JSON illisible.'); }
+  return parseArchive(value);
 }
 
 export function downloadText(filename: string, text: string, mime = 'text/plain'): void {

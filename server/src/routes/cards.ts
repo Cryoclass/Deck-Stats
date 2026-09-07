@@ -1,19 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import { query } from '../db.js';
+import { parseCardIdList } from '../domain/cardIds.js';
 
 const CARD_COLS =
   'id, name, type, race, attribute, atk, def, level, description, image_url, image_url_small, image_url_cropped';
 
 export async function cardsRoutes(app: FastifyInstance) {
   // Résolution par ids (import YDK → passcodes). GET /api/cards?ids=123,456
+  // Étape 6 (C5) : passcodes entiers positifs stricts, sinon 400 explicite.
   app.get<{ Querystring: { ids?: string } }>('/', async (req, reply) => {
     const raw = req.query.ids;
     if (!raw) return reply.code(400).send({ error: 'paramètre `ids` requis' });
-    const ids = raw
-      .split(',')
-      .map((s) => Number(s.trim()))
-      .filter((n) => Number.isFinite(n));
-    if (ids.length === 0) return [];
+    const ids = parseCardIdList(raw);
+    if (!ids) return reply.code(400).send({ error: 'paramètre `ids` invalide : passcodes entiers positifs séparés par des virgules' });
     const { rows } = await query(
       `select ${CARD_COLS} from cards where id = any($1::bigint[])`,
       [ids],

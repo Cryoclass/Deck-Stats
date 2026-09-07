@@ -2,6 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { emptyConfiguration, parseConfiguration, upgradeConfiguration, validateCondition, type ConditionNode } from '../src/domain/deckConfiguration.js';
 import { parseArchive, remapCategoryReferences } from '../src/domain/deckArchive.js';
+import { parseCardIdList } from '../src/domain/cardIds.js';
+
+test('catalogue lookup ids are strict positive integers, never coerced (étape 6, C5)', () => {
+  assert.deepEqual(parseCardIdList('14558127, 27204311,1'),[14558127,27204311,1]);
+  assert.deepEqual(parseCardIdList('7,7'),[7]);
+  for (const bad of ['1e3','0x10','12.5','-5','0','','1,,2','abc','1 2','9007199254740993']) assert.equal(parseCardIdList(bad),null,bad);
+});
 
 const leaf=(card_id: number, at_least=1): ConditionNode => ({ kind:'remaining',card_id,at_least });
 const CID='00000000-0000-4000-8000-000000000001';

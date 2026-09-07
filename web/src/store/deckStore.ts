@@ -6,7 +6,7 @@ import type { QueryCriterion, SavedQuery } from '../engine/query.js';
 import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled, type ComputeClient, type ComputeTask } from '../worker/computeClient.js';
 import { ApiError, api } from '../lib/api.js';
-import type { ParsedDeck } from '../lib/ydk.js';
+import { MAX_COPIES, type ParsedDeck } from '../lib/ydk.js';
 import { saveDraft, loadDraft, clearDraft, type DeckDraft } from '../lib/draft.js';
 import type { DeckJson } from '../lib/exportDeck.js';
 import { buildEngineModel, type EngineModel } from '../lib/engineModel.js';
@@ -90,8 +90,9 @@ interface State {
   recompute: () => void; // relance explicite (après une erreur de calcul)
   resumeDraft: () => void;
   discardDraft: () => Promise<void>;
-  addCard: (card: Card, copies?: number) => void;
-  setCopies: (cardId: number, copies: number) => void;
+  /** `false` = refusé (convention 1–3), motif dans `persistenceError`. */
+  addCard: (card: Card, copies?: number) => boolean;
+  setCopies: (cardId: number, copies: number) => boolean;
   undoRemove: () => void;
   dismissRemovalToast: () => void;
   removeCard: (cardId: number) => void;
@@ -291,10 +292,12 @@ export const useDeck = create<State>((set, get) => {
 
     // Crée un deck en base (import YDK / collage / vide) et renvoie son id. Ne charge
     // pas l'état d'édition : l'éditeur appelle loadDeck(id) après navigation.
+    // Étape 6 (C3) : un refus du serveur (400 : quantité, passcode, nom) est rendu par
+    // son message dans `persistenceError` ; seul un fetch qui rejette vaut « hors-ligne ».
     async createDeckFromParsed(name, parsed, cards) {
       const cardMap: Record<number, Card> = { ...get().cards };
       for (const c of cards) cardMap[c.id] = c;
-      set({ cards: cardMap });
+      set({ cards: cardMap, persistenceError: null });
       const all = [
         ...toDeck(parsed.main, 'main'),
         ...toDeck(parsed.extra, 'extra'),
@@ -306,8 +309,9 @@ export const useDeck = create<State>((set, get) => {
           all.map((c) => ({ card_id: c.cardId, zone: c.zone, copies: c.copies })),
         );
         return id;
-      } catch {
-        set({ online: false });
+      } catch (e) {
+        if (e instanceof ApiError) set({ persistenceError: e.message, online: true });
+        else set({ online: false, persistenceError: 'Backend indisponible — impossible de créer le deck.' });
         return null;
       }
     },
@@ -407,29 +411,37 @@ export const useDeck = create<State>((set, get) => {
     },
 
     // ─── Mutations LOCALES au deck (marquent « non enregistré ») ───
+    // Étape 6 (C1, C2) : la convention 1–3 copies (contrat §2) est REFUSÉE, jamais
+    // appliquée par réduction silencieuse ; le refus est dit dans `persistenceError`
+    // et la mutation retourne `false`. 0 copie = retrait, documenté (§D).
     addCard(card, copies = 1) {
-      const cards = { ...get().cards, [card.id]: card };
       const existing = get().main.find((m) => m.cardId === card.id);
+      const requested = existing ? existing.copies + 1 : copies;
+      if (!Number.isInteger(requested) || requested < 1 || requested > MAX_COPIES) {
+        set({ persistenceError: `${card.name} : déjà ${existing?.copies ?? 0} copie${(existing?.copies ?? 0) > 1 ? 's' : ''} — convention 1 à ${MAX_COPIES} par carte et par zone, aucune réduction appliquée.` });
+        return false;
+      }
+      const cards = { ...get().cards, [card.id]: card };
       const main = existing
-        ? get().main.map((m) =>
-            m.cardId === card.id ? { ...m, copies: Math.min(3, m.copies + 1) } : m,
-          )
-        : [
-            ...get().main,
-            { cardId: card.id, copies: Math.max(1, Math.min(3, copies)), zone: 'main' as const },
-          ];
-      set({ cards, main });
+        ? get().main.map((m) => (m.cardId === card.id ? { ...m, copies: requested } : m))
+        : [...get().main, { cardId: card.id, copies: requested, zone: 'main' as const }];
+      set({ cards, main, persistenceError: null });
       localCalc();
+      return true;
     },
 
     setCopies(cardId, copies) {
       if (copies <= 0) {
         get().removeCard(cardId); // 0 copie = retrait (§D)
-        return;
+        return true;
       }
-      const c = Math.min(3, copies);
-      set({ main: get().main.map((m) => (m.cardId === cardId ? { ...m, copies: c } : m)) });
+      if (!Number.isInteger(copies) || copies > MAX_COPIES) {
+        set({ persistenceError: `Quantité ${copies} refusée : convention 1 à ${MAX_COPIES} copies par carte et par zone, aucune réduction appliquée.` });
+        return false;
+      }
+      set({ main: get().main.map((m) => (m.cardId === cardId ? { ...m, copies } : m)), persistenceError: null });
       localCalc();
+      return true;
     },
 
     // Retrait : uniquement deck_cards. Annotations CONSERVÉES, inertes, restaurées au

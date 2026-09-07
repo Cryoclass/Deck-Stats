@@ -1,5 +1,50 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 6, partie A, 7 septembre 2026
+
+Le [compte rendu](docs/etape-6.md) contient le plan validé, l'inventaire complet
+(Y1–Y8, P1–P5, C1–C6) et les réponses Q1–Q5. L'étape est découpée en deux sessions ;
+la partie B (validation visuelle, mobile) reprend depuis ce document.
+
+- **Le parseur ne réduit ni n'ignore rien en silence.** `parseYdk` et
+  `parsePastedIds` renvoient un rapport : quantités brutes (4 copies restent 4),
+  lignes non reconnues avec leur numéro, en-têtes ressemblant à une zone mais inconnus,
+  cartes hors convention. Un passcode est un entier décimal strict : `0x10`, `1e7`,
+  `+123`, `12.5` ne sont plus coercés mais rapportés. La réduction à la convention
+  1–3 est un geste séparé (`clampToConvention`) appelé après décision de l'utilisateur.
+- **Tolérances documentées, non rapportées** : lignes avant tout `#main` rangées dans
+  le main ; lignes `#…` / `!…` commentaires (sauf en-tête de zone inconnu) ; texte
+  après le passcode ignoré dans le collage ; formes « 3x id », « 3 id » et « id »
+  (compte 1–2 chiffres, passcode ≥ 4 chiffres, donc sans ambiguïté). Le libellé du
+  champ les énonce. Un compte nul ou une ligne non reconnue est rapporté.
+- **Aperçu d'import avec décision explicite (contrat §2).** Sans anomalie, l'import est
+  direct. Sinon l'écran « Vérifier l'import » liste : main vide (importé avec
+  avertissement, Q1 : deck vide permis), quantités hors convention (importées à 3
+  copies seulement si l'utilisateur clique « Importer avec 3 copies maximum », Q5),
+  lignes non reconnues, en-têtes inconnus, passcodes inconnus du catalogue (conservés
+  avec leur passcode et comptés, jamais rendus neutres), catalogue indisponible (dit,
+  au lieu d'être avalé). Aucune carte reconnue → erreur listant les premières lignes.
+- **Constructeur strict.** `addCard` et `setCopies` refusent toute quantité hors 1–3
+  ou non entière (`false`, motif dans `persistenceError`, aucune mutation, aucun
+  marquage sale) ; 0 reste un retrait documenté. Le dialogue d'ajout affiche
+  « ×3 · max » et désactive la ligne. Le serveur reste la garde finale (400).
+- **Erreurs rendues telles quelles.** Un 400 à la création est affiché par son message
+  (`ApiError`), « hors-ligne » est réservé au fetch qui rejette ; `parseDeckJson` lève
+  le motif exact (`ConfigurationError` ou « Fichier JSON illisible ») au lieu de
+  `null` ; `GET /api/cards?ids=` refuse en 400 tout identifiant non entier positif
+  (helper pur `server/src/domain/cardIds.ts`, plus d'erreur SQL sur `12.5`).
+- **Équivalence création / import mesurée sur le modèle moteur.** Le test compare les
+  `buildEngineModel` des trois chemins après mise en ordre canonique du main (zone,
+  passcode : l'ordre de `readConfiguration`) et prouve séparément que les agrégats de
+  `computeAll` sont identiques sur le modèle non trié (à 10⁻¹² près, les seaux bruts
+  suivant l'ordre d'énumération). Aucun tri n'est ajouté dans l'éditeur pendant la
+  saisie ; la relecture serveur réordonne déjà.
+- **Limite consignée (Q2)** : la création manuelle n'ajoute qu'au main deck ; extra et
+  side ne viennent que d'un import. L'équivalence porte sur le main, seul analysé.
+- **Tolérances de `buildEngineModel` inchangées** : toutes documentées en 5B et
+  signalées dans l'interface (paire à membre absent, cible absente, condition inerte,
+  plafond supprimé, profil sans étiquette, starter retiré).
+
 ## Première mission — étape 5, partie B, 7 septembre 2026
 
 Le [compte rendu](docs/etape-5b.md) détaille la migration, l'interface et les exports.

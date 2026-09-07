@@ -147,3 +147,11 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Gardes Q1/Q2 : interface (Profil ignore les cartes sans étiquette, plafond seulement si profilée), serveur (400 + contrainte SQL), moteur (5A) → trois niveaux.
 - Catégories sans pertinence : colonne `relevance` conservée (`'both'`), jamais renvoyée ni comparée à l'import → étiquette pure.
 - Tests du modèle historique réécrits vers la règle décidée (bloc horizon d'`engine.test.ts`, Q3 de `chronology.test.ts`) ; `oracle.ts`, `rules.test.ts`, ponts B02–B04 intacts → jamais « pour faire passer le code ».
+
+## Étape 6, partie A (7 septembre 2026)
+- Parseur YDK / collage = rapport (`deck` brut, `ignored` numérotées, `unknownHeaders`, `overLimit`) ; passcode = entier décimal strict → jamais de réduction ni d'absorption silencieuse ; `clampToConvention` = geste explicite après décision.
+- Tolérances documentées dans le libellé : lignes avant `#main` → main ; `#…`/`!…` commentaires sauf en-tête de zone inconnu ; « 3x id », « 3 id », texte après le passcode ignoré.
+- Aperçu « Vérifier l'import » dès une anomalie (main vide importé avec avertissement Q1 ; > 3 copies → 3 seulement sur clic explicite Q5 ; lignes ignorées ; passcodes inconnus conservés, jamais neutres ; catalogue indisponible dit) → contrat §2 « décision explicite ».
+- Constructeur : `addCard`/`setCopies` → `false` + motif hors 1–3 ou non entier, 0 = retrait ; dialogue « ×3 · max » → le serveur reste la garde finale.
+- Messages rendus tels quels : 400 de création affiché (hors-ligne = fetch rejeté), `parseDeckJson` lève le motif, `GET /api/cards?ids=` strict (400) via `domain/cardIds.ts`.
+- Équivalence création / YDK / JSON v2 = mêmes `buildEngineModel` après ordre canonique (zone, passcode) + mêmes agrégats sur le modèle non trié → aucun tri ajouté à la saisie ; création manuelle limitée au main (Q2).

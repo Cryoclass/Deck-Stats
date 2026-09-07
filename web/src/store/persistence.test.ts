@@ -10,7 +10,7 @@ vi.mock('../worker/client.js',() => ({ createEngineClient: () => ({ compute: () 
 vi.mock('../lib/draft.js',() => ({ saveDraft: vi.fn(async () => {}),clearDraft: vi.fn(async () => {}),loadDraft: vi.fn(async () => null) }));
 vi.mock('../lib/api.js',async (original) => {
   const actual=await original<typeof import('../lib/api.js')>();
-  return { ...actual,api:{ ...actual.api,saveConfiguration:vi.fn(),getLibrary:vi.fn(),getDeck:vi.fn(),cardsByIds:vi.fn(async () => []),setFlags:vi.fn(),addCategory:vi.fn(),addCardCategory:vi.fn(),removeCardCategory:vi.fn(),addGroup:vi.fn(),updateGroup:vi.fn(),deleteGroup:vi.fn() } };
+  return { ...actual,api:{ ...actual.api,saveConfiguration:vi.fn(),createDeck:vi.fn(),getLibrary:vi.fn(),getDeck:vi.fn(),cardsByIds:vi.fn(async () => []),setFlags:vi.fn(),addCategory:vi.fn(),addCardCategory:vi.fn(),removeCardCategory:vi.fn(),addGroup:vi.fn(),updateGroup:vi.fn(),deleteGroup:vi.fn() } };
 });
 const deckId='00000000-0000-4000-8000-000000000001';
 function deferred<T>() { let resolve!: (value:T) => void;const promise=new Promise<T>((r) => { resolve=r; });return { promise,resolve }; }
@@ -120,5 +120,42 @@ describe('Étape 3 — persistance du store',() => {
     useDeck.getState().toggleHopt(1);
     await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
     expect(useDeck.getState().hopt.has(1)).toBe(false);expect(useDeck.getState().persistenceError).toBe('Réseau indisponible');
+  });
+});
+
+describe('Étape 6 — constructeur : convention 1–3 refusée, jamais réduite en silence (C1–C3)',() => {
+  const card={ id:9,name:'Nouvelle' };
+  it('C1 : le quatrième ajout est refusé avec son motif, sans modifier le deck ni le marquer modifié',() => {
+    const s=useDeck.getState();
+    expect([s.addCard(card),s.addCard(card),s.addCard(card)]).toEqual([true,true,true]);
+    const before=useDeck.getState().editRevision;
+    expect(useDeck.getState().addCard(card)).toBe(false);
+    expect(useDeck.getState().main.find((m) => m.cardId===9)?.copies).toBe(3);
+    expect(useDeck.getState().editRevision).toBe(before);
+    expect(useDeck.getState().persistenceError).toMatch(/convention 1 à 3/);
+    expect(useDeck.getState().addCard({ id:10,name:'Trop' },4)).toBe(false);
+    expect(useDeck.getState().main.some((m) => m.cardId===10)).toBe(false);
+  });
+  it('C2 : une quantité hors convention ou non entière est refusée ; 0 reste un retrait',() => {
+    const s=useDeck.getState();
+    expect(s.setCopies(1,4)).toBe(false);expect(useDeck.getState().main[0].copies).toBe(3);
+    expect(useDeck.getState().persistenceError).toMatch(/Quantité 4 refusée/);
+    expect(useDeck.getState().setCopies(1,2.5)).toBe(false);expect(useDeck.getState().main[0].copies).toBe(3);
+    expect(useDeck.getState().setCopies(1,2)).toBe(true);expect(useDeck.getState().main[0].copies).toBe(2);
+    expect(useDeck.getState().persistenceError).toBeNull();
+    expect(useDeck.getState().setCopies(1,0)).toBe(true);expect(useDeck.getState().main.some((m) => m.cardId===1)).toBe(false);
+  });
+  it('C3 : un refus du serveur à la création est rendu par son message ; seul un échec réseau vaut hors-ligne',async () => {
+    const parsed={ main:new Map([[1,4]]),extra:new Map(),side:new Map() };
+    vi.mocked(api.createDeck).mockRejectedValue(new ApiError(400,'Carte, zone ou quantité invalide.'));
+    expect(await useDeck.getState().createDeckFromParsed('X',parsed,[])).toBeNull();
+    expect(useDeck.getState()).toMatchObject({ persistenceError:'Carte, zone ou quantité invalide.',online:true });
+    vi.mocked(api.createDeck).mockRejectedValue(new TypeError('Failed to fetch'));
+    expect(await useDeck.getState().createDeckFromParsed('X',parsed,[])).toBeNull();
+    expect(useDeck.getState()).toMatchObject({ online:false });
+    expect(useDeck.getState().persistenceError).toMatch(/indisponible/);
+    vi.mocked(api.createDeck).mockResolvedValue({ id:'new' });
+    expect(await useDeck.getState().createDeckFromParsed('  ',parsed,[])).toBe('new');
+    expect(vi.mocked(api.createDeck).mock.calls.at(-1)).toEqual(['Deck importé',[{ card_id:1,zone:'main',copies:4 }]]); // aucune réduction côté client : le serveur tranche
   });
 });
