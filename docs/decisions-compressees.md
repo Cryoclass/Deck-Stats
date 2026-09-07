@@ -173,3 +173,12 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Gardes visuelles versionnées dans `web/e2e/` (`playwright-core` en devDependency de `web`, Chrome installé, pile jetable montée et démontée par `run.mjs`, `--keep` / `--attach` / `--down`) → hors `npm test` et hors `test-quiet.mjs` ; M1–M6 de 6B et la fixture Deck A / Deck B portés, captures « conforme » non transformées en gardes (Q5).
 - Export Excel vérifié au navigateur (téléchargement réel relu par ExcelJS, comparé aux infobulles) → l'écran et le classeur portent les mêmes nombres.
 - Point 3 (responsive du comparateur et du mur), Q3 (cellules compactes sous 640 px), Q4 (cibles 32 px du comparateur) et contrat §5 / §6, charte §6.3 → session 7B.
+
+## Étape 7, partie B (8 septembre 2026)
+- Scénario `mobile` dans `web/e2e/` joué AVANT toute correction (360 / 390 / 768 tactiles, 1440 en non-régression) → verdict cassé / conforme par point et par largeur avec captures ; corrections limitées aux points cassés (en-tête, ✕ du dialogue, matrices A / B, mur de mains).
+- Q3 : sous 640 px, A et B côte à côte en grille de deux colonnes à cellules compactes (9 px, espacement 1 px, 20 px minimum par colonne, coin « S\U »), Δ en dessous en pleine largeur ; lisibilité prouvée sur capture à 360 (DPR 2) → aucun repli à défilement confiné.
+- Q4 : Exporter Excel, ⇄ Inverser A/B, Comparer et ✕ du dialogue à 32 px ; en-tête du comparateur en `flex-wrap` avec libellés insécables, noms A / B cèdent en premier (`basis-0 truncate`) → même convention que l'accueil en 6B.
+- Mur de mains : bande de cartes `shrink-0` et ligne `flex-wrap` → vignettes jamais déformées, récapitulatif à la ligne sous 640 px (charte §6.3) ; coût : 124 px par main au lieu de 80 ; alternative compacte non tranchée.
+- Gardes renforcées quand une capture contredisait un verdict « conforme » (libellés sur une ligne, ratio 59/86 des cartes) ; garde P4 corrigée (signe « − » U+2212) sans toucher l'écran ; export non bloquant dans le scénario.
+- 7 mutations CSS toutes détectées ; contrat §5 (« · » = zéro exact, disposition validée) et §6 (cibles et largeurs du comparateur et du mur), charte §6.3 mis à jour ; `MSYS_NO_PATHCONV=1` vérifié pour la base jetable 55433 depuis Git Bash.
+- Questions ouvertes → PLAN.md : densité du mur sous 640 px, « Nouvelles mains » à 24 px, Δ compacte sous 640 px, reports 6B (grille d'annotation, arbre ET/OU).

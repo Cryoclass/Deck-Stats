@@ -344,6 +344,21 @@ contexte, lignes d'inventaire, entrées de menu). Le minimum de 96 px par tuile 
 là : un stepper de trois cibles de 32 px sur sa propre ligne, puis le delta insécable et le
 menu ⋯ côte à côte.
 
+Comparateur et mur de mains (étape 7B, contrat §5 / §6, gardés par `web/e2e/` scénario
+`mobile`) : l'en-tête du comparateur suit la recette de l'accueil (`flex-wrap`,
+`gap-x-3 gap-y-2`, libellés `whitespace-nowrap`, noms A / B en `flex-1 basis-0 truncate`
+pour qu'ils cèdent la place en premier) ; ⇄ Inverser A/B, Exporter Excel, Comparer et le ✕
+du dialogue rejoignent la liste des cibles de 32 px. Les matrices A et B restent **côte à
+côte à toute largeur** : sous 640 px, `grid grid-cols-2 gap-2` avec Δ en `col-span-2`, puis
+`sm:flex sm:flex-wrap sm:gap-4` ; les cellules deviennent compactes sous 640 px (`text-[9px]`,
+`border-spacing-px`, `px-px py-1`, `min-w-5` soit 20 px par colonne pour qu'une colonne de
+« · » n'écrase pas son en-tête, coin « S\U »), puis reprennent `text-[10px]`, `w-8`, `p-1`
+comme la matrice du panneau ; le conteneur et les cartes se resserrent (`p-2` / `p-1.5`)
+sous 640 px pour garder quelques pixels de marge quelle que soit la police système. Une
+ligne de main du mur est `flex-wrap` avec une bande de cartes `shrink-0` : les vignettes ne
+sont jamais déformées, le récapitulatif passe à la ligne quand la largeur manque (sous
+640 px) au lieu de comprimer les cartes.
+
 ### 6.4 Ascenseurs
 
 Discrets et cohérents avec le chrome — à reprendre tel quel :

@@ -32,7 +32,7 @@ const DB_PASSWORD = 'e2e-disposable';
 const DB_NAME = 'e2e';
 const DATABASE_URL = `postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:${DB_PORT}/${DB_NAME}`;
 const API = `http://localhost:${API_PORT}`;
-const ALL_SCENARIOS = ['setup', 'guards', 'compare'];
+const ALL_SCENARIOS = ['setup', 'guards', 'compare', 'mobile'];
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);

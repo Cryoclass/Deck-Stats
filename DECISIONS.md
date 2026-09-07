@@ -1,5 +1,56 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 7, partie B, 8 septembre 2026
+
+Le [compte rendu 7B](docs/etape-7.md) contient les verdicts par point et par largeur,
+les corrections, les gardes ajoutées, le contrôle par mutation et les questions ouvertes.
+
+- **Q3 tranchée : cellules compactes, pas de bande à défilement.** À 360 et 390 px, A et B
+  s'empilaient (cartes de 296 px dans 320 px utiles). Sous 640 px, A et B occupent chacune
+  une colonne d'une grille de deux colonnes ; les cellules passent à 9 px avec un
+  espacement de 1 px et **20 px minimum par colonne** — sans ce minimum, une colonne ne
+  contenant que « · » s'écrasait à 14 px et ses en-têtes « 4 » et « 5 » se touchaient ; le
+  coin devient « S\U » ; le conteneur et les cartes se resserrent pour laisser 8,5 px de
+  marge (police système différente sur Android / iOS). Δ passe en dessous en pleine
+  largeur. La capture `mobile-360-matrices.png` (DPR 2) montre des cellules distinctes et
+  lisibles : le repli prévu n'a pas été nécessaire.
+- **Q4 appliquée** : Exporter Excel et ⇄ Inverser A/B en `py-2` (32 px), ✕ du dialogue en
+  `h-8 w-8` avec `title="Fermer"` (même recette que l'aperçu d'import) ; Comparer mesurait
+  déjà 32 px.
+- **En-tête du comparateur : même convention que l'accueil en 6B.** Sans `flex-wrap`, rien
+  ne débordait mais les libellés se coupaient sur deux à trois lignes et les noms A / B se
+  tronquaient à « A. … ». Les gardes de départ (débordement, cibles) ne le voyaient pas :
+  elles ont été renforcées (libellés sur une ligne, noms ≥ 40 px) avant la correction,
+  pour que la garde échoue d'abord. Les noms prennent la place restante (`flex-1 basis-0
+  truncate`) : ils cèdent en premier, les actions passent à la ligne sous 400 px.
+- **Mur de mains : passer à la ligne plutôt qu'écraser.** Les vignettes de 68 px de haut
+  étaient comprimées à 28 px de large en second à 360 px (ratio 0,41 au lieu de 59/86).
+  Décision : bande de cartes `shrink-0` (jamais déformée) et ligne de main `flex-wrap`, le
+  récapitulatif départs / non-engine / note passant à la ligne sous 640 px — la règle de la
+  charte §6.3 (« passer à la ligne au lieu de déborder ou d'écraser »). Coût assumé : une
+  main mesure 124 px de haut au lieu de 80 sous 640 px. L'alternative d'un récapitulatif
+  vertical compact sans libellés n'est pas tranchée (question ouverte).
+- **Gardes avant corrections, verdicts avec captures.** Le scénario `mobile` a été écrit et
+  joué avant toute correction : le premier passage a produit le tableau « cassé /
+  conforme » par point et par largeur, puis les corrections ont été limitées aux points
+  cassés (P1, P2, P3, P7 ; P4, P5, P6, P8 intacts). Une garde initiale de P4 était fausse
+  (elle ignorait le signe « − » U+2212 de `fmt.ts`) : corrigée comme défaut de garde, sans
+  toucher l'écran.
+- **Export non bloquant dans le scénario.** Un téléchargement impossible (bouton hors
+  viewport avec la mutation X1) est enregistré comme garde en échec au lieu de lever une
+  exception qui aurait masqué les autres verdicts de la largeur.
+- **Contrôle par mutation sur les CSS** : sept erreurs volontaires (en-tête sans
+  `flex-wrap`, police 8 px, `grid-cols-1`, ✕ 24 px, bande sans `shrink-0`, Exporter 28 px,
+  `min-w-5` retiré), toutes détectées par les gardes `mobile`, fichiers restaurés et
+  vérifiés par empreinte.
+- **`MSYS_NO_PATHCONV=1` vérifié** : la suite PostgreSQL jetable 55433 passe depuis Git
+  Bash avec cette variable (11 tests) ; consigné dans AGENTS.md à côté de la consigne
+  PowerShell.
+- **Hors périmètre, non tranché** : densité du mur sous 640 px, « ↻ Nouvelles mains » à
+  24 px (conforme au contrat, action secondaire), Δ compacte sous 640 px, reports 6B sur la
+  grille d'annotation (9 colonnes à 1440 px) et l'arbre ET/OU profond — listés dans
+  docs/PLAN.md.
+
 ## Première mission — étape 7, partie A, 8 septembre 2026
 
 Le [compte rendu 7A](docs/etape-7.md) contient le plan validé, l'inventaire des deltas

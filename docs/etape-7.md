@@ -201,3 +201,146 @@ uniquement ce qui est cassé (Q3 : cellules compactes sous 640 px, verdict de li
 capture ; Q4 : cibles 32 px), rejouer `npm run e2e` complet, puis contrôle par mutation
 (gardes e2e), commit, tag `etape-7-ok`, PLAN.md, section « étape 7, partie B » dans
 DECISIONS.md et decisions-compressees.md.
+
+## Compte rendu 7B (8 septembre 2026)
+
+Le plan du point 3 est resté cohérent après 7A : le point 6 (export Excel comparé aux
+infobulles) était déjà couvert à 1440 px par `compare.mjs` ; le scénario `mobile` ajoute
+seulement le téléchargement réel aux quatre largeurs. Aucune incohérence à signaler.
+
+### Scénario `mobile` ([web/e2e/scenarios/mobile.mjs](../web/e2e/scenarios/mobile.mjs))
+
+Inscrit dans `ALL_SCENARIOS` de `run.mjs`, joué après `compare` (62 s). Pour chaque largeur
+360 / 390 / 768 (tactile, DPR 2) et 1440 px (non-régression) : accueil → dialogue
+« Comparer deux decks » (P2) → page du comparateur (P1 en-tête, P5 avertissements, P3
+matrices, P4 synthèse, P6 export réel, P8 bureau) → éditeur de Deck A, onglet « Mur de
+mains » avec le worker ralenti à 4 s par réécriture du script servi (P7 premier, second
+avec « 6ᵉ », état périmé après une copie de plus dans l'onglet Annoter). Toutes les
+gardes d'une largeur sont évaluées avant l'échec global ; l'export est non bloquant (un
+téléchargement impossible est une garde en échec, pas une exception qui masquerait le
+reste) ; un tableau **verdict par point et par largeur** est imprimé en fin de scénario.
+Captures : `mobile-{largeur}-{dialogue, comparateur (pleine page), matrices (section
+« Premier »), mains-premier, mains-second, mains-perime}` (24) et
+`mobile-{largeur}-export.xlsx` (4).
+
+### Point 3 — verdicts avant correction (premier passage, captures relues)
+
+| Point | 360 | 390 | 768 | 1440 |
+| --- | --- | --- | --- | --- |
+| P1 en-tête | **cassé** : aucun débordement, mais « ← Mes decks », « ⇄ Inverser A/B » et « Exporter Excel » coupés sur 2 à 3 lignes, noms A / B tronqués à « A. … » (les gardes de départ ne le voyaient pas ; renforcées : libellés sur une ligne, noms ≥ 40 px) | idem | **cassé** (Q4) : Inverser 100 × 30, Exporter 101 × 28 | idem |
+| P2 dialogue | **cassé** (Q4) : ✕ 13 × 24 ; sélecteurs et Comparer (32 px) conformes | idem | idem | idem |
+| P3 matrices | **cassé** : A (296 px) et B empilés, Δ 278 px | idem | conforme : A et B côte à côte, Δ seul sur la ligne suivante | conforme : A, B et Δ sur une ligne |
+| P4 synthèse | conforme (défilement confiné, D1 visible : « +6.4 », « −6.4 », « · » réservé au zéro exact) | conforme | conforme | conforme |
+| P5 avertissements | conforme (2 × Q5, retour à la ligne) | conforme | conforme | conforme |
+| P6 export | conforme (classeur réel téléchargé) | conforme | conforme | conforme |
+| P7 mur de mains | **cassé** : en second, cartes écrasées à 28 × 68 px (ratio 0,41 au lieu de 59/86 = 0,686), en premier 36 × 68 ; barre de contrôle, cibles ≥ 24 px, « 6ᵉ », état périmé conformes | **cassé** : 33 × 68 en second, 41 × 68 en premier | conforme | conforme |
+| P8 bureau | — | — | — | conforme |
+
+La première version de la garde P4 comptait 11 deltas sur 24 : elle ignorait le signe
+« − » (U+2212) émis par `fmt.ts`. Défaut de garde, pas d'écran ; corrigée (lecture des
+colonnes 4 et 7 de chaque ligne).
+
+### Corrections (CSS et structure JSX seulement, moteur et `compare.ts` intacts)
+
+- **En-tête du comparateur** ([ComparePage.tsx](../web/src/components/ComparePage.tsx)) :
+  `flex-wrap` avec `gap-x-3 gap-y-2`, libellés `whitespace-nowrap`, noms A / B en
+  `flex-1 basis-0 truncate` (ils prennent la place restante de la première ligne, les
+  actions passent à la ligne sous 400 px), ⇄ Inverser et Exporter Excel en `py-2` (32 px,
+  Q4). Même convention que l'accueil en 6B.
+- **Dialogue** : ✕ en `h-8 w-8` avec `title="Fermer"` (même recette que l'aperçu d'import).
+- **Matrices (Q3)** : sous 640 px, `grid grid-cols-2 gap-2` pour A et B, Δ en `col-span-2`
+  (pleine largeur, légende sous la matrice) ; à partir de 640 px, `flex flex-wrap gap-4`
+  inchangé. Cellules compactes sous 640 px : police 9 px, `border-spacing` 1 px,
+  `px-px py-1`, **20 px minimum par colonne** (sans ce minimum, une colonne ne contenant
+  que « · » s'écrasait et ses en-têtes « 4 » et « 5 » se touchaient), en-tête de coin
+  « S\U » (« ↓S \ U→ » dès 640 px) ; conteneur `p-2` et cartes `p-1.5` sous 640 px.
+  Mesures à 360 px : cartes de 168 px, tableau de 145,5 px, cellules 20 × 22 px, marge
+  ≥ 3 px dans la carte (garde), aucun défilement interne.
+- **Mur de mains** ([HandWall.tsx](../web/src/components/HandWall.tsx)) : la bande de
+  cartes est `shrink-0` (jamais déformée) et la ligne de main est `flex-wrap` : sous
+  640 px, le récapitulatif départs / non-engine / note passe à la ligne, aligné à droite,
+  au lieu d'écraser les cartes (charte §6.3, « passer à la ligne au lieu de déborder ou
+  d'écraser »). À 768 px et plus, une seule ligne comme avant.
+
+### Verdict Q3 sur capture
+
+`mobile-360-matrices.png` (720 px physiques, DPR 2) : A et B côte à côte, chaque cellule
+lisible (« 16.9 », « 20.9 », « 0.1 », « · » distincts), échelle de couleur commune
+conservée, ligne S / N sur deux lignes sous chaque matrice, Δ en dessous en pleine largeur
+avec sa légende. Le repli « bande à défilement confiné » n'a pas été nécessaire.
+`mobile-390-matrices.png` identique avec 15 px de plus par carte.
+
+### Gardes ajoutées (transformation des corrections)
+
+Toutes dans `mobile.mjs`, évaluées aux quatre largeurs sauf mention :
+
+| Garde | Correction protégée |
+| --- | --- |
+| en-tête sans débordement, body sans défilement horizontal, ⇄ Inverser et Exporter Excel dans le viewport, ≥ 32 px et ≤ 36 px (une ligne), « ← Mes decks » ≤ 20 px, noms A / B ≥ 40 px | en-tête `flex-wrap`, `py-2`, `basis-0` |
+| dialogue dans le viewport, ✕ (`title="Fermer"`) ≥ 32 px, Comparer ≥ 32 px, sélecteurs ≥ 24 px, ⇄ Comparer de l'accueil ≥ 32 px | ✕ `h-8 w-8` |
+| A et B sur la même ligne (même `y`, B à droite de A), dans le viewport ; matrice entière (aucun défilement interne) ; 24 cellules ; police ≥ 9 px, hauteur ≥ 14 px, aucune coupée ; colonnes ≥ 18 px ; marge ≥ 3 px dans la carte (< 640) ; ligne S / N ; Δ avec légende, dans le viewport, sous A / B en pleine largeur (< 640) ; A, B, Δ sur une ligne (≥ 1024) | grille 2 colonnes, cellules compactes, `min-w-5`, `col-span-2` |
+| synthèse dans le viewport, `overflow-x: auto` sans défilement du body, 24 deltas, « · » ⇔ infobulle « 0.00 pt » / « 0.000 », au moins un delta non nul | D1 (7A) |
+| 2 avertissements « sans profil », chacun dans le viewport sans débordement | — |
+| export Excel réel > 1 ko | — |
+| barre de contrôle sans débordement ; Nouvelles mains, contexte, n, filtre, tri ≥ 24 px ; ligne de main dans le viewport sans débordement ; 5 puis 6 cartes, entières, ratio 59/86 à ± 0,03, ≥ 40 px de large ; récapitulatif dans le viewport ; badge « 6ᵉ » et mention « sixième carte = pioche » ; état périmé annoncé (« Recalcul… notes de la version précédente »), mains à 0,45 puis 1 | `shrink-0`, `flex-wrap` |
+
+### Preuves
+
+```powershell
+npm.cmd run typecheck
+npm.cmd run build
+node scripts/test-quiet.mjs
+npm.cmd run e2e -w web
+```
+
+```bash
+# Git Bash : suite PostgreSQL jetable 55433 sans réécriture MSYS du chemin tmpfs
+export MSYS_NO_PATHCONV=1
+docker run --name testhand-step23-tests --label purpose=testhand-step23 --rm --tmpfs /var/lib/postgresql/data -e POSTGRES_USER=step23 -e POSTGRES_PASSWORD=step23-disposable -e POSTGRES_DB=step23 -p 127.0.0.1:55433:5432 -d postgres:17-alpine
+TEST_DATABASE_URL='postgres://step23:step23-disposable@127.0.0.1:55433/step23' npm run test:integration -w server
+docker stop testhand-step23-tests
+```
+
+Résultats : **177 tests web**, **7 serveur**, **11 PostgreSQL** (inchangés : aucun test
+existant modifié, `guards.mjs` et `compare.mjs` intacts) ; build vert avec l'avertissement
+ExcelJS attendu ; `npm run e2e` complet : `setup`, `guards`, `compare`, `mobile`, verdict
+« conforme » sur les huit points aux quatre largeurs, 35 captures et 5 classeurs dans
+`web/e2e/out/`. Conteneurs `testhand-e2e-db` et `testhand-step23-tests` arrêtés et
+supprimés, serveur et Vite détachés arrêtés, ports 5174 / 8790 / 55433 / 55434 libres.
+
+Contrôle par mutation sur la pile conservée (`--attach --only mobile`), fichier restauré
+depuis une copie et vérifié par empreinte SHA-256 après chaque essai :
+
+| Mutation | Garde qui échoue |
+| --- | --- |
+| X1 `ComparePage.tsx` : en-tête sans `flex-wrap` | 360 / 390 : en-tête déborde (417 px), noms A / B à 0 px, export impossible (clic hors viewport) |
+| X2 `ComparePage.tsx` : cellules `text-[8px]` | 360 / 390 : police 8 < 9 px (A, B, premier et second) |
+| X3 `ComparePage.tsx` : `grid-cols-1` | 360 / 390 : A et B empilés, matrice tronquée (défilement interne), marge négative |
+| X4 `ComparePage.tsx` : ✕ `h-6 w-6` | quatre largeurs : ✕ 24 × 24 |
+| X5 `HandWall.tsx` : bande sans `shrink-0`, ligne sans `flex-wrap` | 360 / 390 : cartes 28–41 × 68 px, ratio faux |
+| X6 `ComparePage.tsx` : Exporter Excel `py-1.5` | quatre largeurs : 101 × 28 |
+| X7 `ComparePage.tsx` : `min-w-5` retiré | 360 / 390 : colonnes de 14 px (en-têtes collés) |
+
+### Limites
+
+- Les gardes mesurent le rendu de Chrome avec la police système de Windows (Segoe UI) :
+  sur Android / iOS les chiffres sont un peu plus larges, d'où la marge exigée (≥ 3 px,
+  8,5 px mesurés) et le minimum de 20 px par colonne qui absorbe la variation.
+- Sous 640 px, la ligne de main passe de 80 à 124 px de haut (récapitulatif à la ligne) :
+  cinq mains visibles à 360 × 740 au lieu de huit. Alternative non retenue : un
+  récapitulatif vertical compact (« S 3 / U 1 ») aurait gardé la densité au prix des
+  libellés — question ouverte ci-dessous.
+- La matrice Δ garde les cellules compactes de 9 px sous 640 px bien qu'elle dispose de
+  toute la largeur (cohérence avec A et B ; un rendu à 10 px y serait possible).
+- Le 404 `/favicon.ico` en dev subsiste (hors périmètre).
+
+### Questions ouvertes (non tranchées)
+
+1. Densité du mur sous 640 px : conserver le récapitulatif à la ligne (libellés complets,
+   cartes intactes) ou le compacter à droite des cartes (« S 3 · U 1 » + note) ?
+2. « ↻ Nouvelles mains » mesure 24 px (conforme au contrat §6, « ailleurs ») ; le
+   promouvoir en action primaire de 32 px comme Enregistrer ?
+3. Reports 6B listés sous 7B mais hors du point 3 : densité de la grille d'annotation sur
+   bureau (9 colonnes à 1440 px) et mise en page d'un arbre ET/OU plus profond que « ET de
+   clauses, OU de feuilles » — non traités, à replacer (étape 8 ou hors étape).
+4. Δ sous 640 px en cellules de 10 px (taille bureau) plutôt que compactes ?

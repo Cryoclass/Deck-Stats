@@ -107,16 +107,19 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
 
   return (
     <div className="flex h-screen flex-col bg-ink-950 text-ink-200">
-      <header className="flex shrink-0 items-center gap-3 border-b border-ink-800 bg-ink-950 px-5 py-3">
+      {/* Étape 7B (Q4, charte §6.3) : sous 400 px les actions passent sur une seconde ligne
+          (flex-wrap) au lieu de couper leurs libellés ; les noms A / B prennent la place
+          restante (basis-0, truncate) ; ⇄ Inverser et Exporter Excel mesurent 32 px. */}
+      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-ink-800 bg-ink-950 px-5 py-3">
         <button
           onClick={() => navigate({ name: 'home' })}
-          className="text-xs text-ink-400 hover:text-ink-100"
+          className="whitespace-nowrap text-xs text-ink-400 hover:text-ink-100"
         >
           ← Mes decks
         </button>
-        <h1 className="text-sm font-semibold text-ink-100">Comparateur</h1>
+        <h1 className="whitespace-nowrap text-sm font-semibold text-ink-100">Comparateur</h1>
         {state.status === 'ready' && (
-          <span className="min-w-0 truncate text-xs text-ink-400">
+          <span className="min-w-0 flex-1 basis-0 truncate text-xs text-ink-400">
             <span className="text-ink-200">A. {state.cmp.deckA.name}</span>
             {' vs '}
             <span className="text-ink-200">B. {state.cmp.deckB.name}</span>
@@ -126,14 +129,14 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
           <button
             onClick={() => navigate({ name: 'compare', a: b, b: a })}
             title="Échanger référence et variante"
-            className="rounded border border-ink-700 px-2.5 py-1.5 text-xs text-ink-300 hover:bg-ink-800"
+            className="whitespace-nowrap rounded border border-ink-700 px-2.5 py-2 text-xs text-ink-300 hover:bg-ink-800"
           >
             ⇄ Inverser A/B
           </button>
           <button
             onClick={onExport}
             disabled={state.status !== 'ready' || blocking.length > 0 || exporting}
-            className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-black hover:bg-emerald-500 disabled:opacity-40"
+            className="whitespace-nowrap rounded bg-emerald-600 px-3 py-2 text-xs font-medium text-black hover:bg-emerald-500 disabled:opacity-40"
           >
             {exporting ? 'Export…' : 'Exporter Excel'}
           </button>
@@ -150,7 +153,7 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
           </div>
         )}
         {state.status === 'ready' && (
-          <div className="mx-auto max-w-5xl p-5">
+          <div className="mx-auto max-w-5xl p-2 sm:p-5">
             <WarningsBanner warnings={state.cmp.warnings} />
             {blocking.length === 0 && (
               <>
@@ -204,7 +207,10 @@ function ScenarioSection({ cmp, scenario }: { cmp: DeckComparison; scenario: Sce
       <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">
         {scenarioTitle[scenario]}
       </h2>
-      <div className="flex flex-wrap gap-4">
+      {/* Étape 7B (Q3, contrat §5) : sous 640 px, A et B restent côte à côte dans une grille
+          de deux colonnes à cellules compactes, Δ en dessous sur toute la largeur ; à partir
+          de 640 px, les trois cartes gardent leur largeur naturelle (flex-wrap). */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-4">
         <MatrixCard title={`A. ${cmp.deckA.name}`} m={A} maxCell={maxCell} />
         <MatrixCard title={`B. ${cmp.deckB.name}`} m={B} maxCell={maxCell} />
         <DeltaCard cmp={cmp} scenario={scenario} />
@@ -215,8 +221,8 @@ function ScenarioSection({ cmp, scenario }: { cmp: DeckComparison; scenario: Sce
 
 function MatrixCard({ title, m, maxCell }: { title: string; m: ComparisonMatrix; maxCell: number }) {
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-3">
-      <div className="mb-2 text-xs font-semibold text-ink-100">{title}</div>
+    <div className="min-w-0 rounded-lg border border-ink-800 bg-ink-900 p-1.5 sm:p-3">
+      <div className="mb-2 truncate text-xs font-semibold text-ink-100" title={title}>{title}</div>
       <MatrixGrid
         rowLabels={m.rowLabels}
         colLabels={m.colLabels}
@@ -246,7 +252,7 @@ function DeltaCard({ cmp, scenario }: { cmp: DeckComparison; scenario: Scenario 
     };
   };
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-3">
+    <div className="col-span-2 rounded-lg border border-ink-800 bg-ink-900 p-1.5 sm:p-3">
       <div className="mb-2 text-xs font-semibold text-ink-100">Δ (B − A), en points de %</div>
       <MatrixGrid
         rowLabels={A.rowLabels}
@@ -282,13 +288,19 @@ function MatrixGrid({
   cellTitle: (v: number) => string;
 }) {
   return (
+    // Cellules compactes sous 640 px (Q3) : police 9 px, espacement 1 px, largeur au
+    // contenu avec un minimum de 20 px par colonne (sinon une colonne de « · » écrase son
+    // en-tête) ; à partir de 640 px, cellules de 32 px à 10 px comme le panneau.
     <div className="overflow-x-auto">
-      <table className="border-separate border-spacing-0.5 text-[10px]">
+      <table className="border-separate border-spacing-px text-[9px] sm:border-spacing-0.5 sm:text-[10px]">
         <thead>
           <tr>
-            <th className="p-1 text-ink-600" title={STARTS_HINT}>↓S \ U→</th>
+            <th className="px-px py-1 text-ink-600 sm:p-1" title={STARTS_HINT}>
+              <span className="sm:hidden">S\U</span>
+              <span className="hidden sm:inline">↓S \ U→</span>
+            </th>
             {colLabels.map((c) => (
-              <th key={c} className="tnum w-8 p-1 text-right text-ink-500">
+              <th key={c} className="tnum min-w-5 px-px py-1 text-right text-ink-500 sm:w-8 sm:p-1">
                 {c}
               </th>
             ))}
@@ -297,12 +309,12 @@ function MatrixGrid({
         <tbody>
           {cells.map((row, i) => (
             <tr key={i}>
-              <td className="tnum p-1 text-right text-ink-500">{rowLabels[i]}</td>
+              <td className="tnum px-px py-1 text-right text-ink-500 sm:p-1">{rowLabels[i]}</td>
               {row.map((v, j) => (
                 <td
                   key={j}
                   title={cellTitle(v)}
-                  className="tnum w-8 rounded p-1 text-right text-ink-100"
+                  className="tnum min-w-5 rounded px-px py-1 text-right text-ink-100 sm:w-8 sm:p-1"
                   style={cellStyle(v)}
                 >
                   {format(v)}
@@ -409,7 +421,11 @@ export function CompareDialog({
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-ink-100">Comparer deux decks</h2>
-          <button onClick={onClose} className="text-ink-500 hover:text-ink-200">
+          <button
+            onClick={onClose}
+            title="Fermer"
+            className="flex h-8 w-8 items-center justify-center rounded text-ink-500 hover:bg-ink-800 hover:text-ink-200"
+          >
             ✕
           </button>
         </div>

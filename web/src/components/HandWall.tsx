@@ -168,9 +168,11 @@ export function HandWall() {
           {view.map((h, i) => (
             <div
               key={i}
-              className="flex items-center gap-2 rounded-md border border-ink-800 bg-ink-900 p-1.5"
+              className="flex flex-wrap items-center gap-2 rounded-md border border-ink-800 bg-ink-900 p-1.5"
             >
-              <div className="flex items-end gap-1">
+              {/* Étape 7B (charte §6.3) : les cartes gardent leur taille (shrink-0) ; sous
+                  640 px le récapitulatif passe à la ligne au lieu d'écraser les cartes. */}
+              <div className="flex shrink-0 items-end gap-1">
                 {h.cards.map((id, ci) => {
                   const sixth = context === 'second' && ci === h.cards.length - 1;
                   return (

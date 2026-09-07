@@ -267,12 +267,24 @@ comparateur au dixième selon leur affichage actuel, valeurs fines accessibles.
 Les moyennes suivent la précision de leur libellé. Aucun arrondi intermédiaire
 avant agrégation, delta ou notation. La somme des valeurs affichées peut différer
 de 100 % à cause de l'arrondi ; la somme sous-jacente doit valoir 1 à la tolérance
-numérique près. Un symbole pour une faible probabilité ne doit pas signifier zéro.
+numérique près. Un symbole pour une faible probabilité ne doit pas signifier zéro :
+depuis l'étape 7, « · » dans une matrice, une matrice de delta ou la synthèse du
+comparateur signifie **zéro exact** ; une valeur non nulle qui s'arrondit à zéro s'affiche
+« 0.0 » (ou « +0.0 » / « −0.0 » pour un delta), comme dans les formats de nombre de
+l'export Excel, et la valeur fine reste accessible dans l'infobulle. La couleur d'un
+delta de synthèse suit le signe du delta exact selon la direction de l'indicateur, neutre
+seulement pour le zéro exact.
 
 ### Comparateur
 
 Les matrices A/B conservent leurs seaux communs 4×6 et leur disposition côte à côte,
-y compris sur mobile. Toute adaptation responsive devra être vérifiée à l'étape 7.
+y compris sur mobile. Disposition validée à l'étape 7 (partie B) aux largeurs du §6 :
+sous 640 px, A et B occupent chacune une colonne d'une grille de deux colonnes, avec des
+cellules compactes (police 9 px, 20 px minimum par colonne, aucun défilement interne) et
+la matrice Δ en dessous sur toute la largeur avec sa légende ; à partir de 640 px, les
+trois cartes gardent leur largeur naturelle sur une ligne (Δ passe seule à la ligne
+suivante à 768 px). L'échelle de couleur reste commune à A et B, la ligne « deck, S, N »
+reste sous chaque matrice. Le repli en bande à défilement confiné n'a pas été nécessaire.
 Les deltas sont **B−A**, en points de pourcentage pour une probabilité ; ils sont
 distincts du delta marginal d'une carte. Les calculs utilisent les valeurs non
 arrondies, avec des échelles visuelles comparables.
@@ -309,8 +321,19 @@ aucune barre ne déborde horizontalement, les actions et sélections restent uti
 et les cibles tactiles mesurent **32 px** pour le stepper de copies, le menu ⋯ d'une
 tuile ou d'un deck et les actions primaires (Enregistrer, Nouveau deck, Importer,
 Terminer un mode, fermer un dialogue), **24 px minimum avec espacement** ailleurs
-(WCAG 2.5.8). Le comparateur et le mur de mains sont vérifiés à l'étape 7 ; les
-raccourcis clavier affichés sur tactile restent tels quels.
+(WCAG 2.5.8). Les raccourcis clavier affichés sur tactile restent tels quels.
+
+Comparateur et mur de mains (étape 7, partie B, mêmes largeurs plus 1440 px en
+non-régression) : l'en-tête du comparateur passe ses actions à la ligne sous 400 px sans
+couper leurs libellés, les noms A / B se tronquent en dernier ; **32 px** aussi pour
+Exporter Excel, ⇄ Inverser A/B, le bouton Comparer et le ✕ du dialogue « Comparer deux
+decks » ; la synthèse défile dans son propre conteneur, jamais le corps de page ; les
+avertissements passent à la ligne. Dans le mur de mains, une ligne de main garde ses
+cartes entières et non déformées (ratio 59/86) : sous 640 px, le récapitulatif
+départs / non-engine / note passe à la ligne sous les cartes ; la barre de contrôle et ses
+commandes (Nouvelles mains, contexte, n, filtre, tri) mesurent au moins 24 px ; la sixième
+carte reste marquée « 6ᵉ » et l'état périmé reste annoncé. Ces règles sont gardées par le
+scénario `mobile` de `web/e2e/`.
 
 ### Suppression ciblée, à préparer dans /deploy
 
