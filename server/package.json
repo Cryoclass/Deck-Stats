@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "node --import tsx --test tests/configuration.test.ts",
-    "test:integration": "node --import tsx --test tests/persistence.integration.ts",
+    "test:integration": "node --import tsx --test tests/persistence.integration.ts && node --import tsx --test tests/purge.integration.ts",
     "dev": "tsx watch src/index.ts",
     "migrate": "tsx scripts/migrate-cards.ts",
     "prune-cards": "tsx scripts/prune-stale-cards.ts",

@@ -1,5 +1,82 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 8, partie A, 8 septembre 2026
+
+Le [compte rendu 8A](docs/etape-8.md) contient l'inventaire prouvé, le plan validé, les
+réponses Q1–Q10, le rapport de simulation sur le dump réel et la passation vers 8B.
+
+- **Inventaire prouvé avant tout code.** Catalogue relevé sur un PostgreSQL jetable après
+  schéma + 001 + 002 (tables, colonnes, index, contraintes, dépendances : aucune vue ni
+  trigger) et références de code par grep. Restes : `combo_pairs`, `deck_pair_exclusions`,
+  `deck_start_requirements`, `deck_requirements`, `nonengine_categories.relevance`,
+  `card_flags.dead_first` / `dead_second` ; `decks.summary` n'en fait pas partie (cache
+  invalidé, recalcul à l'étape 9, Q9).
+- **D1 : `schema.sql` garde un bloc « Modèle historique » conditionnel.** La migration 001
+  lit `deck_start_requirements` et `card_flags.dead_*` sur une base neuve, et 001/002 ne
+  changent pas : le schéma doit donc encore créer ces objets, mais seulement tant que 003
+  n'est pas journalisée, sinon chaque rejeu du schéma (à chaque déploiement, avant les
+  migrations) ressusciterait des tables vides. Le bloc est un `do $$` qui interroge
+  `app_migrations` par SQL dynamique (la table peut ne pas exister) ; 003 refuse à chaque
+  rejeu tout objet réapparu, et la suite le prouve en rejouant le schéma après la purge.
+  `relevance` reçoit un défaut `'both'` pour que l'API cesse de l'écrire sans casser la
+  suite persistence, qui s'arrête à 002. Alternative écartée : schéma en état final avec
+  journal pré-rempli, qui aurait touché 001/002 par ricochet.
+- **« Non convertie » a une définition vérifiable.** Le contenu des conditions ne prouve rien
+  (l'utilisateur peut les avoir éditées après 002). 003 s'appuie sur des invariants
+  structurels : un prérequis historique source carte est converti si son id est dans
+  `deck_requirements` (001 copie les ids, la table n'est plus jamais écrite) ; un prérequis
+  v2 est converti si sa (deck, source) porte une condition. Tout écart est nommé (deck, id,
+  cartes) et arrête la migration sans rien modifier, de même qu'un horizon résiduel.
+- **Purge exacte annoncée = empreinte du rapport.** Le rapport (P1–P6) est produit avant
+  toute suppression ; son md5 (lignes triées) doit être fourni par `testhand.purge_accept`
+  pour appliquer dès qu'une ligne est purgée. Une paire apparue depuis la simulation change
+  l'empreinte et bloque (testé). Rien à purger = aucune acceptation, pour les bases neuves
+  (initdb, e2e). L'acceptation vaut périmètre explicite de comptes (Q1 : tous, rapport par
+  compte).
+- **D2 : simulation = exécution réelle dans une sous-transaction annulée volontairement.**
+  Le fichier reste du SQL pur (exécutable par psql et par le pilote pg des tests) ; le mode
+  est une GUC de session posée avant le fichier. En simulation, suppressions et contrôles
+  après sont réellement joués puis annulés par une exception interne (SQLSTATE `TH003`)
+  attrapée dans le bloc ; la migration se termine normalement (code 0) sur la ligne
+  « SIMULATION TERMINÉE », distincte de tout échec (exception, code 3 sous psql). Rapport
+  émis à la fois par `select` (stdout) et `raise notice`, depuis la même table temporaire :
+  aucune divergence possible entre ce qui est simulé et ce qui est appliqué.
+- **Q5 : `dead_first` / `dead_second` purgés.** Copiés par deck par 001, jamais lus par
+  l'API ; seul prune-stale-cards les fusionnait. Les lignes à drapeau vrai sont rapportées
+  (P6) avant suppression des colonnes.
+- **prune-stale-cards refuse avant 003 et ne tranche jamais un conflit (Q6).** L'outil
+  reporte les emplacements v2 : paires par deck (collision → survivante non concernée par le
+  report, porteuse de la note ; paire devenue (X, X) supprimée avec ses conditions, comptées),
+  conditions (source carte, source paire, feuilles JSON), drapeaux par deck (OU), profils et
+  plafonds (repris s'ils manquent). Deux conditions à fusionner ou des profils contradictoires
+  annulent toute la transaction en nommant le conflit : une seule condition par source
+  (contrat §4) et une annotation manuelle ne se devinent pas.
+- **jsonpath en mode strict, obligatoire.** En mode lax, `$.**` rend chaque élément de
+  tableau deux fois (6 feuilles comptées pour 3) ; constaté en base, corrigé en `strict` pour
+  le comptage des références et la localisation des feuilles à réécrire.
+- **Le rapport ne porte que des identifiants internes**, des noms de cartes (catalogue), de
+  decks et de catégories, et les notes des paires ; jamais d'email ni de nom de compte, pour
+  pouvoir être joint à la documentation et relu.
+- **Suite `purge.integration.ts` séparée, aucune suite existante modifiée.** Elle réinitialise
+  le schéma public de la base jetable, seulement si la base est vide ou porte les fixtures
+  d'une suite du dépôt (même garde d'URL que persistence) ; faux Supabase HTTP local
+  (≥ 10 000 ids) pour prune-stale-cards ; fixture `legacy-representative.sql` = base de
+  production pré-001 à identifiants fixes. `npm run test:integration` enchaîne persistence
+  puis purge.
+- **`deploy.sh` ne rejoue pas encore 003** : exception assumée à la règle « nouvelle
+  migration = rejeu dans deploy.sh », parce qu'un rejeu naïf refuserait (acceptation
+  requise) ; l'intégration avec sauvegarde, simulation, acceptation et contrôles est le
+  point 5 (8B). Un déploiement lancé maintenant appliquerait 001 et 002 seulement ; la
+  nouvelle app fonctionne sans 003 (Q8).
+- **Piège d'outillage** : `String.prototype.replace` interprète `$$` (→ `$`) et `$1` dans la
+  chaîne de remplacement ; un patch de `schema.sql` par script a perdu ses `do $$` avant
+  d'être repris avec une fonction de remplacement. Consigné dans AGENTS.md.
+- **Dump réel joué en simulation dès 8A** (Q3) sur conteneur jetable : 185 paires globales,
+  15 exclusions, 15 prérequis tous source carte (convertis en 14 conditions par 002), 4
+  pertinences, aucun drapeau ; puis purge appliquée sur la copie avec l'empreinte,
+  conditions, cartes et starters identiques avant/après, rejeux sans effet. Le dump reste
+  hors dépôt.
+
 ## Première mission — étape 7, partie B, 8 septembre 2026
 
 Le [compte rendu 7B](docs/etape-7.md) contient les verdicts par point et par largeur,

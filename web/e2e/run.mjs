@@ -80,14 +80,15 @@ async function waitDb() {
 
 function applySchema() {
   // Par STDIN, jamais via un fichier monté (inode figé après git pull, cf. AGENTS.md).
-  const files = ['db/schema.sql', 'db/migrations/001-deck-configuration.sql', 'db/migrations/002-profiles-and-conditions.sql'];
+  // 003 (étape 8) : base neuve, rien à purger, donc aucune acceptation requise.
+  const files = ['db/schema.sql', 'db/migrations/001-deck-configuration.sql', 'db/migrations/002-profiles-and-conditions.sql', 'db/migrations/003-purge-legacy.sql'];
   for (const f of files) {
     const r = psql(readFileSync(path.join(ROOT, f), 'utf8'));
     if (r.status !== 0) throw new Error(`${f} : ${r.stderr.trim()}`);
   }
   const r = psql(cardsSql());
   if (r.status !== 0) throw new Error(`cartes synthétiques : ${r.stderr.trim()}`);
-  log('schéma, migrations 001 / 002 et cartes synthétiques appliqués');
+  log('schéma, migrations 001 / 002 / 003 et cartes synthétiques appliqués');
 }
 
 function spawnLogged(name, argv, cwd, env) {

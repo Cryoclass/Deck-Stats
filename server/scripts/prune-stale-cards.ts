@@ -14,12 +14,21 @@
  *   npm run prune-cards -- --emit-sql purge.sql  # écrit le SQL autonome (prod)
  *
  * Le catalogue étant un LOOKUP et non une contrainte (cf. note de schema.sql),
- * aucune FK ne fait le report à notre place : les 8 emplacements de passcode
- * sont traités un par un, conflits de clés composites compris.
+ * aucune FK ne fait le report à notre place : chaque emplacement de passcode est
+ * traité un par un, conflits de clés composites compris.
  *
- * Règle de sûreté : un orphelin RÉFÉRENCÉ mais SANS cible sûre n'est jamais
+ * Étape 8 : le modèle historique (combo_pairs, deck_pair_exclusions,
+ * deck_start_requirements, deck_requirements) est purgé par la migration 003 ; ce
+ * script REFUSE de tourner tant qu'elle n'est pas journalisée, et ne connaît que les
+ * emplacements v2 : deck_cards, deck_starters, card_flags (profil et plafond compris),
+ * card_categories, deck_combo_pairs (paires par deck), deck_conditions (source carte,
+ * source paire, feuilles `card_id` de l'arbre JSON) et deck_flags.
+ *
+ * Règles de sûreté : un orphelin RÉFÉRENCÉ mais SANS cible sûre n'est jamais
  * supprimé — perdre la ligne changerait silencieusement les probabilités d'un
- * deck. Il est conservé et signalé.
+ * deck. Il est conservé et signalé. Un conflit que l'outil ne sait pas résoudre
+ * sûrement (deux conditions pour une même source après fusion de paires, profils ou
+ * plafonds contradictoires) annule TOUTE la transaction en nommant le conflit.
  *
  * Tout est dans UNE transaction : ou tout passe, ou rien ne change.
  */
@@ -27,6 +36,7 @@ import '../src/env.js';
 import { pool } from '../src/db.js';
 import { writeFileSync } from 'node:fs';
 import type pg from 'pg';
+import type { ConditionNode } from '../src/domain/deckConfiguration.js';
 
 const args = process.argv.slice(2);
 const APPLY = args.includes('--apply');
@@ -43,22 +53,23 @@ const PAGE = 1000;
 // Sans lui, une réponse vide ferait de TOUT le catalogue un « orphelin ».
 const MIN_EXPECTED = 10_000;
 
-/** Les 8 emplacements de passcode, hors `cards` (catalogue = lookup, pas de FK). */
+/** Emplacements de passcode en colonne, hors `cards` (catalogue = lookup, pas de FK). */
 type Ref = { table: string; column: string; where?: string };
 const REFS: Ref[] = [
   { table: 'deck_cards', column: 'card_id' },
   { table: 'deck_starters', column: 'card_id' },
   { table: 'card_flags', column: 'card_id' },
   { table: 'card_categories', column: 'card_id' },
-  { table: 'combo_pairs', column: 'card_a_id' },
-  { table: 'combo_pairs', column: 'card_b_id' },
-  {
-    table: 'deck_start_requirements',
-    column: 'source_card_id',
-    where: 'source_card_id is not null',
-  },
-  { table: 'deck_start_requirements', column: 'required_card_id' },
+  { table: 'deck_combo_pairs', column: 'card_a_id' },
+  { table: 'deck_combo_pairs', column: 'card_b_id' },
+  { table: 'deck_conditions', column: 'source_card_id', where: 'source_card_id is not null' },
+  { table: 'deck_flags', column: 'card_id' },
 ];
+// Feuilles `{ kind: 'remaining', card_id, at_least }` de l'arbre ET/OU, à toute profondeur.
+// Mode strict obligatoire : en mode lax, `.**` rend chaque élément de tableau deux fois.
+const LEAF_REFS_SQL =
+  `select (leaf->>'card_id')::bigint as card_id, count(*) as n from deck_conditions c ` +
+  `cross join lateral jsonb_path_query(c.condition, 'strict $.** ? (@.kind == "remaining")') as leaf group by 1`;
 
 async function fetchSupabaseIds(): Promise<number[]> {
   const ids: number[] = [];
@@ -85,11 +96,16 @@ async function fetchSupabaseIds(): Promise<number[]> {
 // entre ce qui est simulé ici et ce qui sera joué en production.
 const sqlLog: string[] = [];
 
-/** Inline un paramètre. N'accepte QUE des entiers ou des uuid — rien d'autre
- *  ne peut atteindre le fichier, donc aucune injection possible. */
+/** Inline un paramètre. N'accepte QUE des entiers, des uuid et le JSON d'un arbre de
+ *  condition (clés et valeurs du contrat, sans apostrophe) — rien d'autre ne peut
+ *  atteindre le fichier, donc aucune injection possible. */
 function lit(v: unknown): string {
   if (typeof v === 'number' && Number.isSafeInteger(v)) return String(v);
   if (typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v)) return `'${v}'`;
+  if (typeof v === 'string' && v.startsWith('{') && /^[\w\s"{}[\]:,.-]*$/.test(v)) {
+    JSON.parse(v); // lève si ce n'est pas du JSON
+    return `'${v}'`;
+  }
   if (Array.isArray(v) && v.every((x) => typeof x === 'number' && Number.isSafeInteger(x))) {
     return `'{${v.join(',')}}'`;
   }
@@ -115,79 +131,108 @@ async function run(
   return n;
 }
 
-// Désignation du survivant quand un remap fait collisionner deux paires du même
-// compte. Le `order by` fait gagner la paire NON concernée par le remap : c'est
-// elle qui porte la note écrite par l'utilisateur.
-const CP_DUP_SQL = `create temporary table cp_dup as
+// Désignation de la survivante quand un remap fait collisionner deux paires du même
+// deck. Le `order by` fait gagner la paire NON concernée par le remap : c'est elle
+// qui porte la note écrite par l'utilisateur et l'identifiant déjà référencé.
+const DCP_DUP_SQL = `create temporary table dcp_dup as
   with fin as (
-    select id, owner_id, card_a_id, card_b_id,
+    select deck_id, id, card_a_id, card_b_id,
            least(case when card_a_id = $1 then $2 else card_a_id end,
                  case when card_b_id = $1 then $2 else card_b_id end) as na,
            greatest(case when card_a_id = $1 then $2 else card_a_id end,
                     case when card_b_id = $1 then $2 else card_b_id end) as nb
-      from combo_pairs
+      from deck_combo_pairs
   ), ranked as (
-    select id,
+    select deck_id, id,
            first_value(id) over w as keep_id,
            row_number()    over w as rn
       from fin
-    window w as (partition by owner_id, na, nb
+    window w as (partition by deck_id, na, nb
                  order by (case when card_a_id = $1 or card_b_id = $1 then 1 else 0 end), id)
   )
-  select id as loser, keep_id as winner from ranked where rn > 1`;
+  select deck_id, id as loser, keep_id as winner from ranked where rn > 1`;
+
+/** Réécrit les feuilles `card_id = oldId` d'un arbre de condition. */
+function remapLeaves(node: ConditionNode, oldId: number, newId: number): ConditionNode {
+  switch (node.kind) {
+    case 'remaining':
+      return node.card_id === oldId ? { ...node, card_id: newId } : node;
+    case 'and':
+      return { kind: 'and', all: node.all.map((n) => remapLeaves(n, oldId, newId)) };
+    case 'or':
+      return { kind: 'or', any: node.any.map((n) => remapLeaves(n, oldId, newId)) };
+  }
+}
 
 /** Report de toutes les références de `oldId` vers `newId`. */
 async function remap(c: pg.PoolClient, oldId: number, newId: number): Promise<void> {
   const p = [oldId, newId];
 
-  // ── combo_pairs ── le cas épineux : unicité (owner, a, b) ET check a <= b.
-  await c.query(CP_DUP_SQL, p);
+  // ── deck_combo_pairs ── le cas épineux : unicité (deck, a, b) ET check b > a.
+  // Une paire (old, new) deviendrait (new, new) : hors périmètre (§D, le moteur ignore
+  // a === b, l'UI interdit de la créer). Supprimée, ses conditions avec elle — comptées.
+  await run(
+    c,
+    'deck_conditions (condition d’une paire dégénérée supprimée)',
+    `delete from deck_conditions x using deck_combo_pairs p
+      where p.deck_id = x.deck_id and p.id = x.source_pair_id
+        and p.card_a_id = least($1::bigint, $2::bigint) and p.card_b_id = greatest($1::bigint, $2::bigint)`,
+    p,
+  );
+  await run(
+    c,
+    'deck_combo_pairs (paire dégénérée supprimée)',
+    `delete from deck_combo_pairs
+      where card_a_id = least($1::bigint, $2::bigint) and card_b_id = greatest($1::bigint, $2::bigint)`,
+    p,
+  );
+
+  await c.query(DCP_DUP_SQL, p);
   const dupCount = Number(
-    (await c.query<{ n: string }>('select count(*)::text n from cp_dup')).rows[0].n,
+    (await c.query<{ n: string }>('select count(*)::text n from dcp_dup')).rows[0].n,
   );
   if (EMIT_TO && dupCount > 0) {
     sqlLog.push(
       `-- paires de combo à fusionner suite au report ${oldId} → ${newId} (${dupCount})\n` +
-        inline(CP_DUP_SQL, p).trim() +
+        inline(DCP_DUP_SQL, p).trim() +
         ';',
     );
   }
-
-  // Exclusions du perdant : rerouter, sauf si le deck exclut déjà le survivant
-  // (la PK (deck_id, pair_id) refuserait le doublon).
+  // Refus : la perdante ET la survivante portent une condition dans le même deck.
+  // Une seule condition par source (contrat §4) : l'outil ne fusionne pas des conditions
+  // écrites par l'utilisateur, il s'arrête et nomme le conflit.
+  const conflicts = await c.query<{ deck_id: string; loser: string; winner: string }>(
+    `select d.deck_id, d.loser, d.winner from dcp_dup d
+      where exists (select 1 from deck_conditions x where x.deck_id = d.deck_id and x.source_pair_id = d.loser)
+        and exists (select 1 from deck_conditions y where y.deck_id = d.deck_id and y.source_pair_id = d.winner)`,
+  );
+  if (conflicts.rowCount) {
+    const k = conflicts.rows[0];
+    throw new Error(
+      `Report ${oldId} → ${newId} : dans le deck ${k.deck_id}, les paires ${k.loser} et ${k.winner} fusionnent et portent chacune une condition. ` +
+        `Fusionner ces conditions à la main dans l'application, puis relancer. Tout est annulé.`,
+    );
+  }
   await run(
     c,
-    'deck_pair_exclusions (doublon écarté)',
-    `delete from deck_pair_exclusions e using cp_dup d
-      where e.pair_id = d.loser
-        and exists (select 1 from deck_pair_exclusions k
-                     where k.deck_id = e.deck_id and k.pair_id = d.winner)`,
+    'deck_conditions.source_pair_id (reportée vers la paire survivante)',
+    `update deck_conditions x set source_pair_id = d.winner
+       from dcp_dup d where x.deck_id = d.deck_id and x.source_pair_id = d.loser`,
   );
   await run(
     c,
-    'deck_pair_exclusions (reportée)',
-    `update deck_pair_exclusions e set pair_id = d.winner from cp_dup d where e.pair_id = d.loser`,
+    'deck_combo_pairs (doublon fusionné)',
+    `delete from deck_combo_pairs p using dcp_dup d where p.deck_id = d.deck_id and p.id = d.loser`,
   );
-  await run(
-    c,
-    'deck_start_requirements.source_pair_id (reportée)',
-    `update deck_start_requirements r set source_pair_id = d.winner
-      from cp_dup d where r.source_pair_id = d.loser`,
-  );
-  await run(
-    c,
-    'combo_pairs (doublon fusionné)',
-    `delete from combo_pairs p using cp_dup d where p.id = d.loser`,
-  );
-  await c.query('drop table cp_dup');
-  if (EMIT_TO && dupCount > 0) sqlLog.push('drop table cp_dup;');
+  await c.query('drop table dcp_dup');
+  if (EMIT_TO && dupCount > 0) sqlLog.push('drop table dcp_dup;');
 
   // Remap et recanonicalisation en UN seul update : passer par deux updates
-  // violerait le check `card_a_id <= card_b_id` entre les deux.
+  // violerait le check `card_b_id > card_a_id` entre les deux.
   await run(
     c,
-    'combo_pairs (reportée)',
-    `update combo_pairs
+    'deck_combo_pairs (reportée)',
+    `update deck_combo_pairs
         set card_a_id = least(case when card_a_id = $1 then $2 else card_a_id end,
                               case when card_b_id = $1 then $2 else card_b_id end),
             card_b_id = greatest(case when card_a_id = $1 then $2 else card_a_id end,
@@ -195,15 +240,43 @@ async function remap(c: pg.PoolClient, oldId: number, newId: number): Promise<vo
       where card_a_id = $1 or card_b_id = $1`,
     p,
   );
-  // Une paire (X, X) est hors périmètre (§D) : le moteur l'ignore
-  // (`if (a === b) continue`) et l'UI interdit de la créer. Ne pas laisser de
-  // ligne morte derrière soi.
+
+  // ── deck_conditions.source_card_id ── unicité (deck, source) : refus si le deck a
+  // déjà une condition sur la carte cible.
+  const sourceConflict = await c.query<{ deck_id: string }>(
+    `select x.deck_id from deck_conditions x
+      where x.source_card_id = $1
+        and exists (select 1 from deck_conditions y where y.deck_id = x.deck_id and y.source_card_id = $2)`,
+    p,
+  );
+  if (sourceConflict.rowCount) {
+    throw new Error(
+      `Report ${oldId} → ${newId} : le deck ${sourceConflict.rows[0].deck_id} porte une condition sur chacune des deux cartes. ` +
+        `Fusionner ces conditions à la main dans l'application, puis relancer. Tout est annulé.`,
+    );
+  }
   await run(
     c,
-    'combo_pairs (paire dégénérée supprimée)',
-    `delete from combo_pairs where card_a_id = $1 and card_b_id = $1`,
-    [newId],
+    'deck_conditions.source_card_id (reportée)',
+    `update deck_conditions set source_card_id = $2 where source_card_id = $1`,
+    p,
   );
+
+  // ── deck_conditions.condition ── feuilles de l'arbre ET/OU, à toute profondeur.
+  const trees = await c.query<{ deck_id: string; id: string; condition: ConditionNode }>(
+    `select deck_id, id, condition from deck_conditions
+      where jsonb_path_exists(condition, 'strict $.** ? (@.card_id == $old)', jsonb_build_object('old', $1::bigint))
+      order by deck_id, id`,
+    [oldId],
+  );
+  for (const t of trees.rows) {
+    await run(
+      c,
+      'deck_conditions.condition (feuilles reportées)',
+      `update deck_conditions set condition = $3::jsonb where deck_id = $1 and id = $2`,
+      [t.deck_id, t.id, JSON.stringify(remapLeaves(t.condition, oldId, newId))],
+    );
+  }
 
   // ── deck_cards ── PK (deck_id, card_id, zone). Si le deck contient déjà la
   // carte cible dans la même zone, on cumule les copies (plafond 3 du check).
@@ -243,15 +316,52 @@ async function remap(c: pg.PoolClient, oldId: number, newId: number): Promise<vo
     p,
   );
 
-  // ── card_flags ── PK (owner_id, card_id). Fusion par OU : un drapeau posé
-  // sur l'une ou l'autre entrée reste posé.
+  // ── deck_flags ── PK (deck_id, card_id). Fusion par OU.
   await run(
     c,
-    'card_flags (drapeaux fusionnés)',
-    `update card_flags d
-        set is_hopt     = d.is_hopt     or s.is_hopt,
-            dead_first  = d.dead_first  or s.dead_first,
+    'deck_flags (drapeaux fusionnés)',
+    `update deck_flags d
+        set dead_first  = d.dead_first  or s.dead_first,
             dead_second = d.dead_second or s.dead_second
+       from deck_flags s
+      where s.card_id = $1 and d.card_id = $2 and d.deck_id = s.deck_id`,
+    p,
+  );
+  await run(
+    c,
+    'deck_flags (doublon fusionné)',
+    `delete from deck_flags s
+      where s.card_id = $1
+        and exists (select 1 from deck_flags d where d.deck_id = s.deck_id and d.card_id = $2)`,
+    p,
+  );
+  await run(c, 'deck_flags (reportée)', `update deck_flags set card_id = $2 where card_id = $1`, p);
+
+  // ── card_flags ── PK (owner_id, card_id). HOPT fusionné par OU ; profil et plafond
+  // repris s'ils manquent sur la cible ; contradictoires = refus (l'outil ne tranche pas
+  // entre deux annotations manuelles).
+  const flagConflict = await c.query<{ owner_id: string; sa: string | null; da: string | null; sg: string | null; dg: string | null }>(
+    `select s.owner_id, s.availability sa, d.availability da, s.group_id sg, d.group_id dg
+       from card_flags s join card_flags d on d.owner_id = s.owner_id and d.card_id = $2
+      where s.card_id = $1
+        and ((s.availability is not null and d.availability is not null and s.availability <> d.availability)
+          or (s.group_id is not null and d.group_id is not null and s.group_id <> d.group_id))`,
+    p,
+  );
+  if (flagConflict.rowCount) {
+    const k = flagConflict.rows[0];
+    throw new Error(
+      `Report ${oldId} → ${newId} : pour le compte ${k.owner_id}, les deux cartes portent un profil ou un plafond contradictoire ` +
+        `(${k.sa ?? '—'} / ${k.sg ?? '—'} contre ${k.da ?? '—'} / ${k.dg ?? '—'}). Harmoniser à la main, puis relancer. Tout est annulé.`,
+    );
+  }
+  await run(
+    c,
+    'card_flags (drapeaux, profil et plafond fusionnés)',
+    `update card_flags d
+        set is_hopt      = d.is_hopt or s.is_hopt,
+            availability = coalesce(d.availability, s.availability),
+            group_id     = coalesce(d.group_id, s.group_id)
        from card_flags s
       where s.card_id = $1 and d.card_id = $2 and d.owner_id = s.owner_id`,
     p,
@@ -282,26 +392,24 @@ async function remap(c: pg.PoolClient, oldId: number, newId: number): Promise<vo
     `update card_categories set card_id = $2 where card_id = $1`,
     p,
   );
-
-  // ── deck_start_requirements ── aucune unicité : report direct.
-  await run(
-    c,
-    'deck_start_requirements.source_card_id (reportée)',
-    `update deck_start_requirements set source_card_id = $2 where source_card_id = $1`,
-    p,
-  );
-  await run(
-    c,
-    'deck_start_requirements.required_card_id (reportée)',
-    `update deck_start_requirements set required_card_id = $2 where required_card_id = $1`,
-    p,
-  );
 }
 
 type Orphan = { id: number; name: string; targets: number[]; refs: number };
 
 const client = await pool.connect();
 try {
+  // ── 0. Le modèle historique doit avoir été purgé (migration 003) ──
+  const journal = await client.query<{ t: string | null }>("select to_regclass('public.app_migrations') as t");
+  const purged = journal.rows[0].t
+    ? (await client.query("select 1 from app_migrations where id = '003-purge-legacy'")).rowCount
+    : 0;
+  if (!purged) {
+    throw new Error(
+      'Jouer db/migrations/003-purge-legacy.sql avant la purge du catalogue : ce script ne connaît plus ' +
+        'les tables historiques (combo_pairs, deck_pair_exclusions, deck_start_requirements, deck_requirements).',
+    );
+  }
+
   // ── 1. Source de vérité ──
   const ids = await fetchSupabaseIds();
   if (ids.length < MIN_EXPECTED) {
@@ -312,20 +420,6 @@ try {
   }
 
   await client.query('begin');
-
-  // Count new local references too. The final guard below rolls back a remap
-  // that this legacy maintenance tool cannot yet preserve (pair identity/notes).
-  // In particular, a card used only in a dormant local pair is NOT unreferenced.
-  const localModel = await client.query("select to_regclass('deck_combo_pairs') as name");
-  if (localModel.rows[0].name) {
-    REFS.push(
-      { table: 'deck_combo_pairs', column: 'card_a_id' },
-      { table: 'deck_combo_pairs', column: 'card_b_id' },
-      { table: 'deck_requirements', column: 'source_card_id', where: 'source_card_id is not null' },
-      { table: 'deck_requirements', column: 'required_card_id' },
-      { table: 'deck_flags', column: 'card_id' },
-    );
-  }
 
   await client.query('create temporary table sb_ids (id bigint primary key) on commit drop');
   for (let i = 0; i < ids.length; i += 500) {
@@ -350,13 +444,16 @@ try {
       order by c.name`,
   );
 
-  // ── 3. Références réelles, comptées en une passe ──
-  const refSql = REFS.map(
-    (r) =>
-      `select ${r.column} as card_id, count(*) as n from ${r.table}` +
-      (r.where ? ` where ${r.where}` : '') +
-      ` group by ${r.column}`,
-  ).join(' union all ');
+  // ── 3. Références réelles, comptées en une passe (colonnes + feuilles JSON) ──
+  const refSql = [
+    ...REFS.map(
+      (r) =>
+        `select ${r.column} as card_id, count(*) as n from ${r.table}` +
+        (r.where ? ` where ${r.where}` : '') +
+        ` group by ${r.column}`,
+    ),
+    LEAF_REFS_SQL,
+  ].join(' union all ');
   const { rows: refRows } = await client.query<{ card_id: number; n: string }>(
     `select card_id, sum(n)::int as n from (${refSql}) x group by card_id`,
   );
@@ -431,7 +528,7 @@ try {
     if (rows[0].n > 0) {
       throw new Error(
         `Contrôle final : ${rows[0].n} référence(s) pointent encore vers une carte supprimée. ` +
-        `Tout est annulé. Le report des nouvelles annotations locales (paires, conditions, disponibilités) nécessite une adaptation de cet outil.`,
+          `Tout est annulé : un report est resté en attente, inspecter avant de relancer.`,
       );
     }
   }

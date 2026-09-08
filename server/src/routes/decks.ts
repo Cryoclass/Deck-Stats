@@ -36,7 +36,7 @@ async function mergeLibrary(c: PoolClient, uid: string, archive: DeckArchive): P
     const { rows: [existing] } = await c.query('select id from nonengine_categories where owner_id=$1 and name=$2', [uid,cat.name]);
     if (existing) mapping.set(cat.id,existing.id);
     else {
-      const { rows: [created] } = await c.query('insert into nonengine_categories (owner_id,name,relevance) values ($1,$2,$3) returning id', [uid,cat.name,'both']);
+      const { rows: [created] } = await c.query('insert into nonengine_categories (owner_id,name) values ($1,$2) returning id', [uid,cat.name]);
       mapping.set(cat.id,created.id);
     }
   }

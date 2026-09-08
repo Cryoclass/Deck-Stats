@@ -182,3 +182,18 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Gardes renforcées quand une capture contredisait un verdict « conforme » (libellés sur une ligne, ratio 59/86 des cartes) ; garde P4 corrigée (signe « − » U+2212) sans toucher l'écran ; export non bloquant dans le scénario.
 - 7 mutations CSS toutes détectées ; contrat §5 (« · » = zéro exact, disposition validée) et §6 (cibles et largeurs du comparateur et du mur), charte §6.3 mis à jour ; `MSYS_NO_PATHCONV=1` vérifié pour la base jetable 55433 depuis Git Bash.
 - Questions ouvertes → PLAN.md : densité du mur sous 640 px, « Nouvelles mains » à 24 px, Δ compacte sous 640 px, reports 6B (grille d'annotation, arbre ET/OU).
+
+## Étape 8, partie A (8 septembre 2026)
+- Inventaire prouvé (catalogue jetable + grep) avant tout code : restes = `combo_pairs`, `deck_pair_exclusions`, `deck_start_requirements`, `deck_requirements`, `nonengine_categories.relevance`, `card_flags.dead_*` ; `decks.summary` conservée (cache, étape 9).
+- D1 : bloc « Modèle historique » de `schema.sql` créé seulement tant que 003 n'est pas journalisée (001 en a besoin sur base neuve) → un rejeu du schéma ne ressuscite rien ; 003 refuse tout objet réapparu ; `relevance` à défaut `'both'`, plus jamais écrite par l'API.
+- 003 : « non convertie » = prérequis historique dont l'id manque dans `deck_requirements`, prérequis v2 dont la (deck, source) n'a pas de condition, horizon résiduel → refus nominatif, rien modifié.
+- Purge exacte annoncée : rapport P1–P6 avant suppression, empreinte md5 des lignes ; `testhand.purge_accept = '<empreinte>'` exigée dès qu'une ligne est purgée (recalculée : une donnée apparue depuis bloque) ; rien à purger = aucune acceptation ; tous les comptes, rapport par compte (Q1).
+- D2 : `testhand.purge_mode = 'simulate'` = suppressions et contrôles réellement joués dans une sous-transaction annulée volontairement (SQLSTATE `TH003`), fin normale code 0 sur « SIMULATION TERMINÉE » → tout échec reste une exception (code 3 psql) ; SQL pur, rapport par `select` et `raise notice` depuis la même table.
+- `dead_first` / `dead_second` purgés (copiés par deck par 001, jamais lus), lignes vraies rapportées (Q5).
+- prune-stale-cards : refus avant 003 ; emplacements v2 (survivante non concernée, paire (X, X) supprimée avec conditions comptées, feuilles JSON réécrites, drapeaux OU, profils et plafonds repris s'ils manquent) ; conflit (deux conditions à fusionner, profils ou plafonds contradictoires) = annulation totale nommée (Q6).
+- jsonpath `$.**` toujours en mode `strict` (lax double chaque élément de tableau).
+- Rapport sans email ni nom de compte (identifiants internes, cartes, decks, catégories, notes) → joignable à la documentation.
+- Suite `purge.integration.ts` séparée (réinitialise la base jetable seulement si vide ou fixtures connues ; faux Supabase local ; fixture pré-001 à identifiants fixes) ; aucune suite existante modifiée ; `test:integration` enchaîne persistence puis purge.
+- `deploy.sh` ne rejoue pas 003 avant 8B (un rejeu naïf refuserait) ; nouvelle app fonctionnelle sans 003 (Q8).
+- Patch par script : `s.replace(from, () => to)`, jamais une chaîne (`$$` → `$`).
+- Dump réel simulé sur conteneur jetable dès 8A (185 paires, 15 exclusions, 15 prérequis convertis, 4 pertinences), purge appliquée et vérifiée sur la copie ; dump jamais commité.

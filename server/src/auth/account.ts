@@ -5,12 +5,11 @@ import type { SessionUser } from './session.js';
 
 // Catégories fournies de base (§2.6). La bibliothèque étant par compte (Lot B),
 // elles sont créées pour CHAQUE compte à sa création — plus de seed SQL global.
-export const BUILTIN_CATEGORIES: ReadonlyArray<{
-  name: string;
-  relevance: 'first' | 'second' | 'both';
-}> = [
-  { name: 'Handtrap', relevance: 'both' },
-  { name: 'Board breaker', relevance: 'second' },
+// Étape 8 : une catégorie est une étiquette pure (5B, Q4) ; la pertinence historique
+// n'est plus écrite (colonne purgée par la migration 003).
+export const BUILTIN_CATEGORIES: ReadonlyArray<{ name: string }> = [
+  { name: 'Handtrap' },
+  { name: 'Board breaker' },
 ];
 
 export async function seedBuiltinCategories(c: pg.PoolClient, userId: string): Promise<void> {
@@ -19,12 +18,12 @@ export async function seedBuiltinCategories(c: pg.PoolClient, userId: string): P
     // legacy, la contrainte d'unicité par compte n'existe qu'APRÈS `npm run adopt` —
     // un register avant l'adoption ne doit pas répondre 500 pour autant.
     await c.query(
-      `insert into nonengine_categories (owner_id, name, relevance, is_builtin)
-       select $1, $2, $3, true
+      `insert into nonengine_categories (owner_id, name, is_builtin)
+       select $1, $2, true
        where not exists (
          select 1 from nonengine_categories where owner_id = $1 and name = $2
        )`,
-      [userId, cat.name, cat.relevance],
+      [userId, cat.name],
     );
   }
 }

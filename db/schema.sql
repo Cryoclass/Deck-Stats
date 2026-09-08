@@ -114,27 +114,19 @@ create table if not exists card_flags (
   dead_second  boolean not null default false,  -- Lot C : morte going second
   primary key (owner_id, card_id)
 );
--- Idempotent pour les bases déjà initialisées avant le Lot C.
-alter table card_flags add column if not exists dead_first  boolean not null default false;
-alter table card_flags add column if not exists dead_second boolean not null default false;
+-- Idempotent pour les bases déjà initialisées avant le Lot B. Les colonnes `dead_first` /
+-- `dead_second` (Lot C) sont historiques : copiées par deck par la migration 001, purgées
+-- par 003 ; leur rajout idempotent est dans le bloc « Modèle historique » plus bas, comme
+-- `combo_pairs`.
 alter table card_flags add column if not exists owner_id uuid references users on delete cascade;
-
-create table if not exists combo_pairs (
-  id          uuid primary key default gen_random_uuid(),
-  owner_id    uuid not null references users on delete cascade,
-  card_a_id   bigint not null,   -- passcode (pas de FK catalogue)
-  card_b_id   bigint not null,
-  note        text,
-  check (card_a_id <= card_b_id),      -- canonicalisation
-  constraint combo_pairs_owner_pair unique (owner_id, card_a_id, card_b_id)
-);
-alter table combo_pairs add column if not exists owner_id uuid references users on delete cascade;
 
 create table if not exists nonengine_categories (
   id          uuid primary key default gen_random_uuid(),
   owner_id    uuid not null references users on delete cascade,
   name        text not null,     -- 'Handtrap', 'Board breaker', ...
-  relevance   text not null check (relevance in ('first','second','both')),
+  -- Historique : plus jamais écrite par l'API (étiquette pure depuis 5B), purgée par 003.
+  -- Le défaut permet à l'API de ne plus la fournir sur une base antérieure à 003.
+  relevance   text not null default 'both' check (relevance in ('first','second','both')),
   is_builtin  boolean not null default false,
   constraint nonengine_categories_owner_name unique (owner_id, name)
 );
@@ -144,14 +136,10 @@ alter table nonengine_categories add column if not exists owner_id uuid referenc
 -- NULL est distinct dans un index unique, les lignes legacy (owner_id null) ne gênent
 -- pas. Sans cette bascule, un register sur base legacy percuterait l'ancienne
 -- unicité globale (ex. seed de 'Handtrap' vs la ligne legacy). Le PK de card_flags,
--- lui, exige NOT NULL et ne peut basculer que dans `adopt`.
-alter table combo_pairs drop constraint if exists combo_pairs_card_a_id_card_b_id_key;
+-- lui, exige NOT NULL et ne peut basculer que dans `adopt`. La bascule de
+-- `combo_pairs` est dans le bloc « Modèle historique » plus bas.
 alter table nonengine_categories drop constraint if exists nonengine_categories_name_key;
 do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'combo_pairs_owner_pair') then
-    alter table combo_pairs
-      add constraint combo_pairs_owner_pair unique (owner_id, card_a_id, card_b_id);
-  end if;
   if not exists (select 1 from pg_constraint where conname = 'nonengine_categories_owner_name') then
     alter table nonengine_categories
       add constraint nonengine_categories_owner_name unique (owner_id, name);
@@ -171,32 +159,71 @@ create table if not exists deck_starters (              -- starters 1-carte
   primary key (deck_id, card_id)
 );
 
-create table if not exists deck_pair_exclusions (       -- paires globales désactivées ici
-  deck_id  uuid not null references decks on delete cascade,
-  pair_id  uuid not null references combo_pairs on delete cascade,
-  primary key (deck_id, pair_id)
-);
+-- ─── Modèle historique (étape 8) : paires globales, exclusions, prérequis historiques,
+--     drapeaux dead_* du compte, pertinence des catégories ───
+-- Encore nécessaire à une base NEUVE : la migration 001 lit `deck_start_requirements` et
+-- `card_flags.dead_*` avant que 003 ne purge ces objets. Sur une base où 003 est
+-- journalisée, ce bloc ne recrée RIEN : la purge est définitive, un rejeu du schéma ne
+-- ressuscite aucun objet historique (règle vérifiée par 003 à chaque rejeu).
+do $$
+declare purged boolean := false;
+begin
+  if to_regclass('public.app_migrations') is not null then
+    execute 'select exists (select 1 from app_migrations where id = $1)' into purged using '003-purge-legacy';
+  end if;
+  if purged then return; end if;
 
--- Prérequis en deck (itération 5) — LOCAUX au deck. Une source de start (starter
--- 1-carte OU paire de combo) exige ≥ min_in_deck copies d'une carte DANS LE DECK.
-create table if not exists deck_start_requirements (
-  id                uuid primary key default gen_random_uuid(),
-  deck_id           uuid   not null references decks on delete cascade,
-  source_card_id    bigint,                                        -- starter concerné (pas de FK catalogue)
-  source_pair_id    uuid   references combo_pairs on delete cascade, -- ou paire concernée
-  required_card_id  bigint not null,                               -- carte requise en deck
-  min_in_deck       smallint not null default 1,
-  check ((source_card_id is not null) <> (source_pair_id is not null)) -- exactement une source
-);
-create index if not exists dsr_deck on deck_start_requirements (deck_id);
+  -- Idempotent pour les bases déjà initialisées avant le Lot C.
+  alter table card_flags add column if not exists dead_first  boolean not null default false;
+  alter table card_flags add column if not exists dead_second boolean not null default false;
+
+  create table if not exists combo_pairs (
+    id          uuid primary key default gen_random_uuid(),
+    owner_id    uuid not null references users on delete cascade,
+    card_a_id   bigint not null,   -- passcode (pas de FK catalogue)
+    card_b_id   bigint not null,
+    note        text,
+    check (card_a_id <= card_b_id),      -- canonicalisation
+    constraint combo_pairs_owner_pair unique (owner_id, card_a_id, card_b_id)
+  );
+  alter table combo_pairs add column if not exists owner_id uuid references users on delete cascade;
+  -- Bascule idempotente de l'unicité legacy → par compte (cf. bloc nonengine_categories).
+  alter table combo_pairs drop constraint if exists combo_pairs_card_a_id_card_b_id_key;
+  if not exists (select 1 from pg_constraint where conname = 'combo_pairs_owner_pair') then
+    alter table combo_pairs
+      add constraint combo_pairs_owner_pair unique (owner_id, card_a_id, card_b_id);
+  end if;
+  -- Retrait des FK catalogue pour les bases créées avant cette décision.
+  alter table combo_pairs drop constraint if exists combo_pairs_card_a_id_fkey;
+  alter table combo_pairs drop constraint if exists combo_pairs_card_b_id_fkey;
+  -- Pertinence : défaut pour les bases antérieures à 003 (l'API ne l'écrit plus).
+  alter table nonengine_categories alter column relevance set default 'both';
+
+  create table if not exists deck_pair_exclusions (       -- paires globales désactivées ici
+    deck_id  uuid not null references decks on delete cascade,
+    pair_id  uuid not null references combo_pairs on delete cascade,
+    primary key (deck_id, pair_id)
+  );
+
+  -- Prérequis en deck (itération 5) — LOCAUX au deck. Une source de start (starter
+  -- 1-carte OU paire de combo) exige ≥ min_in_deck copies d'une carte DANS LE DECK.
+  create table if not exists deck_start_requirements (
+    id                uuid primary key default gen_random_uuid(),
+    deck_id           uuid   not null references decks on delete cascade,
+    source_card_id    bigint,                                        -- starter concerné (pas de FK catalogue)
+    source_pair_id    uuid   references combo_pairs on delete cascade, -- ou paire concernée
+    required_card_id  bigint not null,                               -- carte requise en deck
+    min_in_deck       smallint not null default 1,
+    check ((source_card_id is not null) <> (source_pair_id is not null)) -- exactement une source
+  );
+  create index if not exists dsr_deck on deck_start_requirements (deck_id);
+end $$;
 
 -- ─── Retrait des FK catalogue pour les bases créées avant cette décision ───
 alter table deck_cards      drop constraint if exists deck_cards_card_id_fkey;
 alter table deck_starters   drop constraint if exists deck_starters_card_id_fkey;
 alter table card_flags      drop constraint if exists card_flags_card_id_fkey;
 alter table card_categories drop constraint if exists card_categories_card_id_fkey;
-alter table combo_pairs     drop constraint if exists combo_pairs_card_a_id_fkey;
-alter table combo_pairs     drop constraint if exists combo_pairs_card_b_id_fkey;
 
 -- ─── Catégories fournies de base (§2.6) ───
 -- Depuis l'itération 8 (Lot B), la bibliothèque est par compte : les deux

@@ -2,12 +2,12 @@
 
 ## Commandes
 - Installer : `npm install` (workspaces `server` + `web` ; Node ≥ 20, Docker, npm).
-- Base locale : `npm run db:up` (Postgres 17, port hôte **5433**) · `npm run db:schema` (rejoue db/schema.sql, idempotent) · migrations sur base existante, dans l'ordre : `docker compose exec -T db psql -U ygo -d ygo -v ON_ERROR_STOP=1 -f - < db/migrations/001-deck-configuration.sql` puis la même commande avec `db/migrations/002-profiles-and-conditions.sql`.
+- Base locale : `npm run db:up` (Postgres 17, port hôte **5433**) · `npm run db:schema` (rejoue db/schema.sql, idempotent) · migrations sur base existante, dans l'ordre : `docker compose exec -T db psql -U ygo -d ygo -v ON_ERROR_STOP=1 -f - < db/migrations/001-deck-configuration.sql` puis la même commande avec `db/migrations/002-profiles-and-conditions.sql`, puis `db/migrations/003-purge-legacy.sql` (étape 8 : purge du modèle historique ; simulation d'abord avec `-c "set testhand.purge_mode = 'simulate'"` avant `-f -`, puis application avec `-c "set testhand.purge_accept = '<empreinte du rapport>'"` ; base neuve = rien à purger, aucune acceptation).
 - Catalogue : `npm run migrate` (Supabase → local, upsert) · `npm run prune-cards` (simulation) · `npm run prune-cards -- --apply` · legacy : `npm run adopt -- <email> <mdp>`.
 - Dev : `npm run dev` (API :8787 + Vite :5173) ou `npm run dev:server` / `npm run dev:web` ; `./start.ps1` = db + dev.
 - Vérifier : `npm run typecheck` · `npm run build` · `npm test` (web Vitest puis server node:test).
 - Tests silencieux : `node scripts/test-quiet.mjs` (suite complète) · `node scripts/test-quiet.mjs web/src/engine/engine.test.ts` (un ou plusieurs fichiers). Après une modification ciblée, lance uniquement le fichier de test concerné ; la suite complète seulement avant de conclure une étape.
-- Intégration PostgreSQL (base jetable sur 127.0.0.1:55433, procédure dans deploy/configuration-v2.md) : `TEST_DATABASE_URL=… npm run test:integration -w server`. Le `docker run` de la base jetable se lance depuis PowerShell, ou depuis Git Bash avec `MSYS_NO_PATHCONV=1` (vérifié en 7B, 11 tests verts).
+- Intégration PostgreSQL (base jetable sur 127.0.0.1:55433, procédure dans deploy/configuration-v2.md) : `TEST_DATABASE_URL=… npm run test:integration -w server` = suite `persistence` (base vide exigée, 11 tests) puis suite `purge` (étape 8 : migration 003, prune-stale-cards v2, faux Supabase local ; réinitialise la base jetable, 10 tests). Le `docker run` de la base jetable se lance depuis PowerShell, ou depuis Git Bash avec `MSYS_NO_PATHCONV=1` (vérifié en 7B, 11 tests verts).
 - Gardes visuelles (étape 7, hors `npm test` et hors test-quiet.mjs) : `npm run e2e -w web` monte une pile jetable complète (conteneur PostgreSQL `testhand-e2e-db` sur 127.0.0.1:55434, schéma et migrations par stdin, cartes synthétiques, serveur 8790, Vite 5174, compte `e2e@example.test`), joue les scénarios `web/e2e/scenarios/` (`setup` = fixture Deck A / Deck B, `guards` = M1–M6 de 6B, `compare` = export réel comparé à l'écran à 1440, `mobile` = responsive du comparateur et du mur de mains à 360 / 390 / 768 / 1440 avec verdict par point et par largeur) sur le Chrome installé via `playwright-core`, puis démonte tout. Prérequis : Docker en marche (image postgres:17-alpine), Google Chrome (ou `E2E_BROWSER` = chemin d'un Chromium), ports 55434 / 8790 / 5174 libres. Options : `-- --only guards,compare`, `-- --keep` (pile conservée pour itérer avec `-- --attach --only …`), `-- --down` (démontage d'une pile conservée). Captures et journaux dans `web/e2e/out/` (ignoré par git). Lance-la avant de conclure une étape qui touche l'interface ; jamais contre la base de dev.
 - Prod : `bash deploy/deploy.sh` s'exécute sur le VPS uniquement (deploy/README.md). Jamais depuis le poste.
 
@@ -17,7 +17,7 @@ Monorepo npm workspaces. `db/` : schéma normatif idempotent + migrations additi
 ## Règles
 - Avant de toucher au moteur (`web/src/engine`), lis docs/regles-metier.md §4–5 et docs/cas-reference.md. Ne modifie jamais `engine/reference/oracle.ts` ni un test de référence pour faire passer le code.
 - Avant de toucher au modèle de deck, aux routes decks/library ou au store, lis docs/etapes-2-3.md et deploy/configuration-v2.md.
-- Avant de toucher au schéma ou aux migrations, lis server/AGENTS.md. Aucune table historique supprimée avant l'étape 8.
+- Avant de toucher au schéma ou aux migrations, lis server/AGENTS.md. Le modèle historique est purgé par la migration 003 (étape 8) ; `db/schema.sql` ne le recrée que tant que 003 n'est pas journalisée (bloc « Modèle historique », nécessaire à 001 sur base neuve).
 - Avant de toucher au comparateur ou à l'export Excel, lis docs/spec-comparateur-decks.md et docs/regles-metier.md §5 « Comparateur ».
 - Avant de toucher à l'interface, lis docs/design-system.md.
 - Avant de toucher à deploy/, lis deploy/README.md. Aucune commande vers le VPS, Supabase ou une base réelle sans demande explicite.
@@ -28,7 +28,10 @@ Monorepo npm workspaces. `db/` : schéma normatif idempotent + migrations additi
 ## Pièges
 - `.env` unique à la racine, chargé par `server/src/env.ts` par chemin explicite (les scripts tournent avec cwd `server/`). En conteneur, tout vient de l'environnement. Ne l'affiche jamais (secrets).
 - Le SQL monté dans `docker-entrypoint-initdb.d` ne s'exécute que sur un `pgdata/` vierge. Sur une base existante, rejoue schéma et migrations **par stdin** (`-f -`), jamais via le fichier monté (inode figé après `git pull`).
-- Nouvelle migration = fichier `db/migrations/NNN-*.sql` + montage dans docker-compose.yml et deploy/docker-compose.prod.yml + rejeu dans deploy/deploy.sh.
+- Nouvelle migration = fichier `db/migrations/NNN-*.sql` + montage dans docker-compose.yml et deploy/docker-compose.prod.yml + rejeu dans deploy/deploy.sh. Exception en cours : `deploy.sh` ne rejoue pas encore 003 (intégration en 8B avec sauvegarde préalable, simulation, acceptation et contrôles).
+- `prune-stale-cards` refuse de tourner tant que 003 n'est pas journalisée ; toute jsonpath `$.**` sur `deck_conditions.condition` doit être en mode `strict` (en lax, chaque élément de tableau est rendu deux fois).
+- Patch de fichiers par script Node : `String.prototype.replace` interprète `$$` et `$1` dans la chaîne de remplacement (a corrompu les `do $$` de schema.sql une fois) ; passer une fonction (`s.replace(from, () => to)`).
+- Conteneurs jetables de l'étape 8 : 55433 intégration, 55434 e2e, 55435 et plus pour inventaires et répétitions (`--label purpose=testhand-step8`, `--rm`, `--tmpfs`), jamais la base de dev 5433.
 - Les tests d'intégration refusent toute URL autre que `postgres://step23:step23-disposable@127.0.0.1:55433/step23` et exigent une base vide : conteneur jetable, jamais le DATABASE_URL de dev.
 - `npm run build` affiche un avertissement Vite sur le chunk ExcelJS (~940 kB) : attendu, pas une régression.
 - Sous PowerShell les docs utilisent `npm.cmd`. Si Vitest échoue au premier lancement (esbuild, Windows), relance `npm run test -w web -- --no-cache`.

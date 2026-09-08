@@ -5,9 +5,11 @@ build/
 .env.local
 .env.prod
 /dump.sql
+*.sql.gz
 *.log
 .DS_Store
 coverage/
 .vite/
 pgdata/
 web/e2e/out/
+deploy/out/

@@ -3,9 +3,12 @@
 Les étapes 2 et 3 introduisent une migration additive obligatoire avant cette
 version de l'app. Lire [configuration-v2.md](configuration-v2.md) pour ses effets,
 la séquence de déploiement, les contrôles et les tests PostgreSQL reproductibles.
-Les anciens combos restent physiquement conservés ; leur purge et la validation
-complète de sauvegarde/restauration VPS restent prévues à l'étape 8.
-Aucun déploiement VPS n'a été exécuté pour cette livraison.
+La migration `003-purge-legacy.sql` (étape 8, partie A) purge le modèle historique
+après simulation et acceptation explicite du rapport ; son intégration à `deploy.sh`
+(sauvegarde préalable obligatoire, simulation, acceptation, contrôles après migration),
+les sauvegardes vérifiées et le runbook arrivent en partie B — voir
+[docs/etape-8.md](../docs/etape-8.md). **`deploy.sh` ne rejoue pas encore 003.**
+Aucun déploiement VPS n'a été exécuté depuis l'étape 1.
 
 Cible : le VPS OVH existant (`137.74.172.32`, Ubuntu 24.04) qui héberge déjà
 goldfish (`tcg.scratchrecode.com`). **On réutilise son Caddy** (ports 80/443,
@@ -149,7 +152,9 @@ dc exec app node server/dist/scripts/prune-stale-cards.js  # 3. SIMULATION de la
 
 L'étape 3 n'écrit rien : elle joue toutes les opérations puis annule la transaction,
 et affiche le plan (cartes reportées, cartes supprimées, cartes conservées faute de
-cible sûre). **Lire ce plan**, puis seulement :
+cible sûre). Depuis l'étape 8, le script refuse de tourner tant que la migration 003
+n'est pas journalisée, et annule tout si un report exige de fusionner deux conditions
+ou tranche entre des profils contradictoires. **Lire ce plan**, puis seulement :
 
 ```bash
 dc exec app node server/dist/scripts/prune-stale-cards.js --apply

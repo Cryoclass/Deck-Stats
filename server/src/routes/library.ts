@@ -98,14 +98,14 @@ export async function libraryRoutes(app: FastifyInstance) {
   // Stale clients cannot resurrect or purge legacy global combos.
   for (const method of ['POST','DELETE'] as const) app.route({ method, url: method === 'POST' ? '/pairs' : '/pairs/:id', handler: async (_req,reply) => reply.code(410).send({ error: 'Les paires sont enregistrées avec chaque deck. Rechargez cette application.' }) });
 
-  // Catégorie = étiquette manuelle (Q4) ; `relevance` historique conservée en base, sans effet.
+  // Catégorie = étiquette manuelle (Q4) ; la `relevance` historique n'est plus écrite (purgée par 003).
   app.post<{ Body: { id?: string; name: string } }>('/categories', async (req,reply) => {
     const { id, name } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim() || name.length > 200 || (id !== undefined && !uuidPattern.test(id))) throw new ConfigurationError('Catégorie invalide.');
     const result = await libraryWrite(requireUser(req).id, async (c) => {
       const existing = await c.query('select id,name,is_builtin from nonengine_categories where owner_id=$1 and name=$2', [requireUser(req).id,name.trim()]);
       if (existing.rows[0]) return existing.rows[0];
-      const { rows: [row] } = await c.query('insert into nonengine_categories (id,owner_id,name,relevance) values (coalesce($1::uuid,gen_random_uuid()),$2,$3,$4) returning id,name,is_builtin', [id ?? null,requireUser(req).id,name.trim(),'both']);
+      const { rows: [row] } = await c.query('insert into nonengine_categories (id,owner_id,name) values (coalesce($1::uuid,gen_random_uuid()),$2,$3) returning id,name,is_builtin', [id ?? null,requireUser(req).id,name.trim()]);
       return row;
     });
     return reply.code(201).send(result);

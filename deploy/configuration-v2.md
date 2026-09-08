@@ -135,3 +135,50 @@ schéma historique, sème des fixtures, éprouve une migration invalide puis val
 rejoue la migration et utilise les vraies routes Fastify et transactions PostgreSQL.
 Elle ne contacte ni Supabase ni le VPS. Les tests authentifient des comptes fictifs
 dans leur propre serveur d'injection ; ils ne remplacent pas une recette de connexion.
+
+## Migration 003 — purge du modèle historique (étape 8, partie A)
+
+Après 001 et 002, appliquer `db/migrations/003-purge-legacy.sql` (transaction, verrou
+consultatif, journal `app_migrations`, aucun psql-isme). Elle **supprime** :
+
+- `combo_pairs` (paires globales, notes comprises), `deck_pair_exclusions`,
+  `deck_start_requirements` (source carte convertie par 001, source paire jamais copiée),
+  `deck_requirements` (v2 intermédiaire convertie par 002), avec leurs index et contraintes ;
+- `nonengine_categories.relevance` (sans effet depuis 5B) et `card_flags.dead_first` /
+  `dead_second` (copiés par deck par 001).
+
+Elle **refuse**, sans rien modifier et en nommant les lignes : 001 ou 002 non journalisée ;
+prérequis historique source carte absent de `deck_requirements` (jamais converti) ;
+prérequis v2 sans condition ET/OU pour sa source ; horizon encore présent dans
+`decks.params` ; rapport non accepté ; après journalisation, objet historique réapparu.
+
+Modes, par GUC de session posée **avant** le fichier :
+
+```bash
+# Simulation : tout est joué (contrôles, rapport, suppressions, contrôles après) dans une
+# sous-transaction annulée volontairement ; code 0, dernière ligne « SIMULATION TERMINÉE ».
+docker compose exec -T db psql -U ygo -d ygo -v ON_ERROR_STOP=1 -c "set testhand.purge_mode = 'simulate'" -f - < db/migrations/003-purge-legacy.sql
+# Application : l'empreinte du rapport de simulation vaut acceptation explicite (purge
+# exacte annoncée : une donnée apparue depuis change l'empreinte et bloque).
+docker compose exec -T db psql -U ygo -d ygo -v ON_ERROR_STOP=1 -c "set testhand.purge_accept = '<empreinte du rapport>'" -f - < db/migrations/003-purge-legacy.sql
+```
+
+Une base neuve (montages `docker-entrypoint-initdb.d`, pile e2e) n'a rien à purger :
+003 s'applique sans acceptation. Le rapport (sections `compte`, `P1` paires, `P2`
+exclusions, `P3` prérequis source paire, `P4` prérequis v2 convertis, `P5` pertinences,
+`P6` drapeaux, `avant`, `résumé`, `empreinte`, `après`, `statut`) sort sur stdout et en
+`NOTICE`. Contrôles après migration :
+
+```sql
+select * from app_migrations where id = '003-purge-legacy';
+select to_regclass('combo_pairs'), to_regclass('deck_pair_exclusions'),
+       to_regclass('deck_start_requirements'), to_regclass('deck_requirements'); -- quatre NULL
+select count(*) from information_schema.columns where table_name in ('card_flags', 'nonengine_categories')
+   and column_name in ('relevance', 'dead_first', 'dead_second');              -- 0
+select count(*) from deck_conditions;   -- inchangé par 003 (lignes « après » du rapport)
+```
+
+Rejeu : sans effet si journalisée ; un rejeu de `db/schema.sql` ne recrée aucun objet
+historique (bloc conditionnel), et 003 refuse tout objet réapparu. `deploy.sh` ne rejoue
+pas encore 003 : intégration, sauvegarde préalable, répétition sur dump réel et runbook en
+partie B ([docs/etape-8.md](../docs/etape-8.md)).

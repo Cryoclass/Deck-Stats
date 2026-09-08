@@ -16,14 +16,14 @@ Complète AGENTS.md (commandes, règles, pièges). Sémantique métier : regles-
 | Chemin | Rôle |
 | --- | --- |
 | `db/schema.sql` | Schéma idempotent (catalogue, comptes, decks, bibliothèque, tables historiques), rejoué à chaque déploiement |
-| `db/migrations/NNN-*.sql` | Migrations additives, transactionnelles, journalisées dans `app_migrations` |
+| `db/migrations/NNN-*.sql` | Migrations transactionnelles journalisées dans `app_migrations` : 001 et 002 additives ; 003 (étape 8) purge le modèle historique après simulation (GUC `testhand.purge_mode`) et acceptation par empreinte (`testhand.purge_accept`) |
 | `server/src/index.ts` | Fastify : CORS, cookies, rate-limit, garde globale, `/api/health`, service du front en prod (`WEB_DIST`) |
 | `server/src/env.ts`, `db.ts` | Chargement du `.env` racine ; pool pg, `query`, `tx` ; bigint → Number |
 | `server/src/auth/` | scrypt, sessions (SHA-256 du token), création de compte + catégories de base |
 | `server/src/domain/` | `deckConfiguration.ts` (contrat v2 pur, partagé avec le web : cartes, starters, paires, conditions ET/OU par source, `upgradeConfiguration` pour les documents antérieurs à l'étape 5B), `deckArchive.ts` (JSON v2 avec profils et plafonds), `deckRepository.ts` (SQL des configurations) |
 | `server/src/routes/` | `auth`, `discord`, `cards`, `decks`, `library` |
-| `server/scripts/` | `migrate-cards`, `prune-stale-cards`, `adopt-legacy` (compilés dans l'image) |
-| `server/tests/` | `*.test.ts` unitaires (node:test), `persistence.integration.ts` (PostgreSQL jetable) |
+| `server/scripts/` | `migrate-cards`, `prune-stale-cards` (emplacements v2, refuse avant 003), `adopt-legacy` (avant 001 seulement) — compilés dans l'image |
+| `server/tests/` | `*.test.ts` unitaires (node:test), `persistence.integration.ts` puis `purge.integration.ts` (PostgreSQL jetable ; fixture `fixtures/legacy-representative.sql`) |
 | `web/src/engine/` | Moteur exact pur à contexte unique (`'first'` = 5 cartes, `'second'` = 5 + sixième identifiée) : `binomial` (bigint), `matching` (couplage maximum), `evaluate` (prepare/evaluate, conditions ET/OU, profils de disponibilité, HOPT, plafonds partagés par coupe minimale, starts désactivés, signatures), `enumerate` (computePass/computeAll, issues pondérées Z, buckets avec unités couplées, deltas), `hand` (tirage et note), `query` (critères, potentiel par catégorie sous plafonds), `compare` (comparateur, garde de contexte), `reference/` (oracle de l'étape 1 + `deckOracle` + `monteCarlo`, tests P/N/S/C/M et chronologie) |
 | `web/src/worker/` | `engine.worker.ts` (calcule, c'est tout ; erreur relayée avec l'id), `computeClient.ts` (client pur : propriété des tâches, annulation par `terminate`, promesses toujours réglées), `fakeWorker.ts` (faux worker contrôlable, tests), `client.ts` (seul import du worker Vite) |
 | `web/src/store/` | `deckStore.ts` (état éditeur, dirty, révision, ouvertures numérotées, recalcul versionné `modelVersion`/`resultVersion`, `stale`, `resultContext`, debounce, annulation), `selectors.ts` |
@@ -45,9 +45,8 @@ Complète AGENTS.md (commandes, règles, pièges). Sémantique métier : regles-
 - Catalogue : `cards` (id = passcode, lookup sans FK), `catalog_version` (une ligne).
 - Comptes : `users`, `sessions`, `user_identities`.
 - Deck (local, via Enregistrer) : `decks` (`revision`, `params` jsonb, `notes`, `summary` jsonb invalidé), `deck_cards`, `deck_starters`, `deck_combo_pairs`, `deck_conditions` (une condition ET/OU jsonb par source), `deck_flags`.
-- Bibliothèque du compte : `card_flags` (`is_hopt`, `availability`, `group_id` ; `dead_*` historiques), `nonengine_categories` (`relevance` historique, sans effet), `card_categories`, `nonengine_groups` (plafonds partagés par tour).
-- Conservée depuis l'étape 3, plus lue ni écrite depuis l'étape 5B : `deck_requirements` (prérequis ET plats, convertis par la migration 002).
-- Historiques conservées jusqu'à l'étape 8, plus utilisées par l'API : `combo_pairs`, `deck_pair_exclusions`, `deck_start_requirements`, `deck_requirements`.
+- Bibliothèque du compte : `card_flags` (`is_hopt`, `availability`, `group_id`), `nonengine_categories` (étiquette : `name`, `is_builtin`), `card_categories`, `nonengine_groups` (plafonds partagés par tour).
+- Modèle historique (`combo_pairs`, `deck_pair_exclusions`, `deck_start_requirements`, `deck_requirements`, `nonengine_categories.relevance`, `card_flags.dead_first` / `dead_second`) : purgé par la migration 003 (étape 8) ; `db/schema.sql` ne le recrée que tant que 003 n'est pas journalisée, parce que 001 le lit sur une base neuve.
 - Journal : `app_migrations`.
 
 ## Environnement
