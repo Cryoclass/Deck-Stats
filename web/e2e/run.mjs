@@ -10,6 +10,12 @@
 //   npm run e2e -w web -- --attach --only … → réutilise une pile laissée par --keep
 //                                             (aucune création de conteneur ni de compte)
 //   npm run e2e -w web -- --down            → démonte une pile laissée par --keep
+//   npm run e2e -w web -- --db <url> --db-container <nom>
+//                                           → base FOURNIE, déjà migrée (répétition 8B) : aucun
+//                                             conteneur créé ni démonté, schéma et migrations non
+//                                             rejoués, cartes synthétiques insérées par psql dans
+//                                             ce conteneur ; serveur, Vite, compte et scénarios
+//                                             comme d'habitude. Refusée hors 127.0.0.1 ou sur 5433.
 //
 // Prérequis : Docker en marche (image postgres:17-alpine), Google Chrome installé (ou
 // E2E_BROWSER = chemin d'un Chromium), ports 55434 / 8790 / 5174 libres (E2E_DB_PORT,
@@ -25,12 +31,7 @@ const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const DB_PORT = Number(process.env.E2E_DB_PORT ?? 55434);
 const API_PORT = Number(process.env.E2E_API_PORT ?? 8790);
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5174);
-const CONTAINER = 'testhand-e2e-db';
 const LABEL = 'purpose=testhand-e2e';
-const DB_USER = 'e2e';
-const DB_PASSWORD = 'e2e-disposable';
-const DB_NAME = 'e2e';
-const DATABASE_URL = `postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:${DB_PORT}/${DB_NAME}`;
 const API = `http://localhost:${API_PORT}`;
 const ALL_SCENARIOS = ['setup', 'guards', 'compare', 'mobile'];
 
@@ -40,6 +41,20 @@ const option = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i 
 const keep = flag('--keep');
 const attach = flag('--attach');
 const down = flag('--down');
+// Base fournie (--db) : jamais la base de dev (5433) ni un hôte distant.
+const externalDb = option('--db');
+if (externalDb !== undefined) {
+  let u;
+  try { u = new URL(externalDb); } catch { console.error(`--db : URL invalide (${externalDb})`); process.exit(2); }
+  if (u.hostname !== '127.0.0.1' || !u.port || u.port === '5433') { console.error('--db : base jetable sur 127.0.0.1 avec un port explicite différent de 5433 attendue.'); process.exit(2); }
+  if (!option('--db-container')) { console.error('--db-container <nom> requis avec --db (cartes synthétiques insérées par psql dans ce conteneur).'); process.exit(2); }
+}
+const externalUrl = externalDb === undefined ? null : new URL(externalDb);
+const CONTAINER = externalUrl ? option('--db-container') : 'testhand-e2e-db';
+const DB_USER = externalUrl ? decodeURIComponent(externalUrl.username) : 'e2e';
+const DB_PASSWORD = externalUrl ? decodeURIComponent(externalUrl.password) : 'e2e-disposable';
+const DB_NAME = externalUrl ? externalUrl.pathname.replace(/^\//, '') : 'e2e';
+const DATABASE_URL = externalUrl ? externalUrl.toString() : `postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:${DB_PORT}/${DB_NAME}`;
 const STACK_FILE = path.join(E2E.out, 'stack.json'); // pids laissés par --keep, pour --down
 const scenarios = option('--only')?.split(',').map((s) => s.trim()).filter(Boolean) ?? ALL_SCENARIOS;
 for (const s of scenarios) if (!ALL_SCENARIOS.includes(s)) { console.error(`Scénario inconnu : ${s} (${ALL_SCENARIOS.join(', ')})`); process.exit(2); }
@@ -86,9 +101,15 @@ function applySchema() {
     const r = psql(readFileSync(path.join(ROOT, f), 'utf8'));
     if (r.status !== 0) throw new Error(`${f} : ${r.stderr.trim()}`);
   }
+  applyCards();
+  log('schéma, migrations 001 / 002 / 003 et cartes synthétiques appliqués');
+}
+
+function applyCards() {
+  // Idempotent (on conflict do nothing) : sur une base fournie, les passcodes 9000xxxx n'existent
+  // pas dans le catalogue réel et ne touchent aucun deck existant.
   const r = psql(cardsSql());
   if (r.status !== 0) throw new Error(`cartes synthétiques : ${r.stderr.trim()}`);
-  log('schéma, migrations 001 / 002 / 003 et cartes synthétiques appliqués');
 }
 
 function spawnLogged(name, argv, cwd, env) {
@@ -161,20 +182,23 @@ function teardown() {
   if (attach) return;
   if (keep) {
     for (const { child } of children) child.expectedExit = true;
-    writeFileSync(STACK_FILE, JSON.stringify({ pids: children.map((c) => ({ name: c.name, pid: c.child.pid })) }));
+    writeFileSync(STACK_FILE, JSON.stringify({ pids: children.map((c) => ({ name: c.name, pid: c.child.pid })), external: externalUrl !== null }));
     log(`pile conservée (--keep) : ${E2E.base}, API ${API}, base ${DATABASE_URL} — démontage : npm run e2e -w web -- --down`);
     return;
   }
   stopChildren();
-  stopDb();
+  if (!externalUrl) stopDb();
 }
 
 if (down) {
+  let external = false;
   if (existsSync(STACK_FILE)) {
-    for (const { name, pid } of JSON.parse(readFileSync(STACK_FILE, 'utf8')).pids) { killPid(pid); log(`${name} (pid ${pid}) arrêté`); }
+    const stack = JSON.parse(readFileSync(STACK_FILE, 'utf8'));
+    external = stack.external === true;
+    for (const { name, pid } of stack.pids) { killPid(pid); log(`${name} (pid ${pid}) arrêté`); }
     rmSync(STACK_FILE);
   }
-  stopDb();
+  if (!external) stopDb();
   process.exit(0);
 }
 
@@ -183,9 +207,14 @@ process.on('SIGINT', () => { teardown(); process.exit(130); });
 let failed = false;
 try {
   if (!attach) {
-    startDb();
-    await waitDb();
-    applySchema();
+    if (externalUrl) {
+      applyCards();
+      log(`base fournie ${DATABASE_URL} (conteneur ${CONTAINER}) : schéma et migrations non rejoués, cartes synthétiques insérées`);
+    } else {
+      startDb();
+      await waitDb();
+      applySchema();
+    }
     startServer();
     startWeb();
     await waitHttp(`${API}/api/health`, 'API');

@@ -20,7 +20,7 @@
     "dev": "concurrently -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "build": "npm run build -w server && npm run build -w web",
     "test": "npm run test -w web && npm run test -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web && tsc -p scripts/tsconfig.json",
     "prepare": "husky"
   },
   "devDependencies": {

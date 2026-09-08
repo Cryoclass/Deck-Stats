@@ -1,0 +1,6 @@
+{
+  "name": "@ygo-proba/scripts",
+  "private": true,
+  "type": "module",
+  "description": "Scripts de maintenance hors workspaces (ESM) : recompute-check.ts (étape 8B)."
+}

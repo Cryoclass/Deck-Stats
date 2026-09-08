@@ -1,5 +1,80 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 8, partie B, 8 septembre 2026
+
+Le [compte rendu 8B](docs/etape-8.md) contient le rapport de répétition sur le dump réel, les
+preuves, les mutations et la passation vers 8C ; [docs/deploy-runbook.md](docs/deploy-runbook.md)
+est la procédure d'exécution.
+
+- **D3 concrétisée : une sauvegarde n'est « vérifiée » que restaurée.** `backup.sh` écrit
+  `<archive>.sha256` puis restaure l'archive dans `ygo_verify` (recréée, supprimée après) et
+  n'écrit `<archive>.fingerprint` (`fingerprint.sql` : effectif et md5 des lignes triées par
+  table, réglages de session fixés) qu'à ce moment. La ligne `sauvegarde ok: …` garde son
+  format et précède la vérification : le cron reste lisible tel quel ; un échec de
+  vérification conserve l'archive, ajoute `sauvegarde NON vérifiée: …`, n'écrit aucun
+  `.fingerprint` et rend 1 — `restore.sh` refusera cette archive sans `--without-fingerprint`.
+  En cron l'app tourne : l'empreinte vivante est prise avant et après l'export, une table
+  qui a bougé (`sessions`) est « non vérifiable », pas un faux positif ; en
+  `--pre-migration` (app arrêtée) toute table qui bouge est un échec.
+- **Rétention.** `find -maxdepth 1 -name 'ygo-*.sql.gz*' -mtime +14` : `keep/` (archives
+  pré-migration et pré-restauration) est hors rétention, les compagnons partent avec
+  l'archive. Comportement par défaut inchangé (aucun sous-dossier n'existait).
+- **`restore.sh` restaure par bascule de bases.** Restauration de contrôle dans
+  `ygo_restore`, comparaison ligne à ligne au `.fingerprint` (la moindre différence est un
+  refus, rien n'est modifié), confirmation « OUI » (ou `--yes`), sauvegarde de sécurité
+  vérifiée dans `keep/ygo-pre-restauration-*`, puis `ygo` → `ygo_previous` et `ygo_restore` →
+  `ygo` (maintenance depuis la base `postgres`), empreinte relue. Ce qui a été vérifié est
+  exactement ce qui est servi ; deux retours arrière (archive de sécurité, base précédente).
+  `--check-only` vérifie une copie hors VPS sur un conteneur jetable (runbook, avant OUI).
+- **Une seule séquence, dans `lib.sh`, avec des crochets d'app.** `deploy.sh` et
+  `rehearsal.sh` appellent la même `run_migration_sequence` ; `deploy.sh` ne porte que
+  Compose (`build`, `stop`, `start`, `up -d`). C'est ce qui rend la séquence testable hors VPS
+  (`test-migration-sequence.sh`, six cas) et mutable « comme deploy.sh ». D2 appliquée :
+  succès = code 0 **et** marqueur (« SIMULATION TERMINÉE », « PURGE APPLIQUÉE ») ; un code 0
+  sans marqueur est un échec (cas C).
+- **États d'échec, Q8 précisée.** Échec avant 003 (sauvegarde, schéma, 001, 002 :
+  transactions annulées) → ancien conteneur relancé, base intacte (code 1). 003 refusée en
+  simulation, en échec à l'application, ou rapport refusé (« OUI » absent, `--accept`
+  différent, pas de terminal) → nouvelle app démarrée sans 003 (codes 1 et 3). Seul un
+  contrôle après migration en échec laisse l'app arrêtée, la commande de restauration de
+  l'archive pré-migration affichée (code 2).
+- **001 et 002 ne se rejouent plus une fois 003 journalisée.** Découvert par le cas de rejeu
+  (F) : 001 recrée `deck_requirements` sans condition et 003 refuse ensuite tout rejeu
+  (« objet historique réapparu »). 001, 002 et 003 restent intouchées ; la séquence saute
+  001 / 002 quand le journal porte 003 et rejoue toujours le schéma (bloc conditionnel D1).
+  Alternative écartée : conditionner 001, contraire à « 001 et 002 ne changent pas ».
+- **Contrôles après migration.** `check-migration.sql` (journal 001 / 002 / 003, objets
+  historiques absents, objets v2 présents, aucun horizon, sources uniques) plus empreintes :
+  tables intactes de bout en bout (`cards`, `catalog_version`, `users`, `user_identities`,
+  `sessions`, `deck_cards`, `deck_starters`, `card_categories`) et périmètre de 003 (après
+  002 → après 003 identique hors `app_migrations`, `card_flags`, `nonengine_categories` et
+  tables supprimées). Une ligne `KO|` suffit.
+- **Inventaire avant 001.** Effectifs par table, journal, résumés (que 001 met à NULL) et
+  modèle historique en JSON (paires, exclusions, prérequis source paire), écrits dans le
+  dossier de sortie ; identifiants internes et noms de decks seulement.
+- **Recalcul : la référence est l'ancien moteur, jamais le résumé stocké.** Première
+  exécution sur le dump réel contre `decks.summary` : 12 decks exacts, 4 avec un résidu. Le
+  résumé est un cache de la dernière sauvegarde que l'ancienne app n'invalidait pas quand
+  une paire globale bougeait ; le reproduire n'est pas l'objet du contrôle (l'étape 9 le
+  recalcule). Décision : la référence est calculée par l'ancien moteur e890078 (celui de la
+  production, extrait par `git show` dans `deploy/out/reference-engine-e890078/`, jamais
+  versionné) sur `ygo_old` (archive pré-migration restaurée) avec l'ancien modèle ; (a)
+  nouveau moteur avec paires réinjectées attendu identique à 1e-9, (b) écart après purge
+  attribué et chiffré ; le résumé stocké n'est qu'une colonne informative. Les heuristiques
+  intermédiaires (sous-ensemble de paires, préfixe par ordre physique, trace, budget) ont été
+  retirées. Résultat : 16 / 16 identiques en (a) à 1e-12.
+- **Gardes e2e sur une base fournie.** `run.mjs --db <url> --db-container <nom>` : aucun
+  conteneur créé ni démonté, schéma et migrations non rejoués, cartes synthétiques
+  insérées ; `cardsSql` ne comble que les images manquantes (`coalesce`) parce que le jeu
+  représentatif partage les passcodes 9000xxxx sans image. Aucun scénario modifié.
+- **Jeu représentatif rejoué comme une archive.** `rehearsal.sh --fixture` construit la base
+  pré-001, fabrique les résumés (`--fabricate`), archive par `pg_dump` puis suit le chemin
+  d'une archive réelle : un seul chemin de code.
+- **Postes Windows.** `lib.sh` exporte `MSYS_NO_PATHCONV=1` (Docker) et fournit `host_path`
+  (cygpath) pour les chemins destinés à Node. Un retour arrière est tombé une fois parce que
+  `restore.sh` a été modifié pendant que la répétition l'exécutait (bash lit un script au fil
+  de l'eau) ; non reproduit ensuite, consigne ajoutée à AGENTS.md.
+
 ## Première mission — étape 8, partie A, 8 septembre 2026
 
 Le [compte rendu 8A](docs/etape-8.md) contient l'inventaire prouvé, le plan validé, les

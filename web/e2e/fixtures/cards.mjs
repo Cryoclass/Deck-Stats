@@ -36,7 +36,10 @@ export function cardsSql() {
   return [
     'insert into cards (id, name, type, race, attribute, description, image_url, image_url_small, image_url_cropped) values',
     rows.join(',\n'),
-    'on conflict (id) do nothing;',
+    // Une carte déjà présente garde ses valeurs ; seules ses images MANQUANTES sont comblées (jeu
+    // représentatif de l'étape 8, mêmes passcodes 9000xxxx sans image : le mur de mains mesure le
+    // ratio des vignettes). Sur le catalogue réel, aucun de ces passcodes n'existe.
+    'on conflict (id) do update set image_url = coalesce(cards.image_url, excluded.image_url), image_url_small = coalesce(cards.image_url_small, excluded.image_url_small), image_url_cropped = coalesce(cards.image_url_cropped, excluded.image_url_cropped);',
     `insert into catalog_version (version, copied_cards_count, local_cards_count) values ('synthetic-e2e', ${CARDS.length}, ${CARDS.length}) on conflict (only_row) do nothing;`,
     '',
   ].join('\n');

@@ -469,3 +469,259 @@ oracles, migrations 001/002 et interface intacts.
   `deploy.sh` qui saute la sauvegarde si la structure le permet.
 - Ne pas oublier la règle AGENTS.md sur `String.prototype.replace` (`$$`) pour tout patch
   de SQL par script.
+
+## Compte rendu 8B (8 septembre 2026)
+
+Points 3, 4 et 5 du plan validé (D2, D3, Q2, Q3, Q7, Q8), sur conteneurs jetables et sur le
+dump réel du 8 septembre (hors dépôt). Le rapport P1 de 8A est accepté tel quel : les 185
+paires globales sont purgées et seront ressaisies à la main, aucune conversion ajoutée.
+Rien n'a touché le moteur, les oracles, 001 / 002 / 003, `prune-stale-cards`, l'interface ni
+un test existant ; aucune commande vers le VPS ni vers la base de dev (5433).
+
+### Points signalés avant de commencer
+
+- Le dump réel (pg_dump 17.10) commence par la méta-commande `\restrict` : restauration par
+  psql ≥ 17.6 seulement (psql 17.10 du conteneur), jamais par le pilote pg — tous les scripts
+  restaurent par psql dans le conteneur.
+- La rétention `find "$DIR" -name 'ygo-*.sql.gz' -mtime +14 -delete` du cron aurait suivi
+  `keep/` : `-maxdepth 1` ajouté, motif étendu aux compagnons `.sha256` / `.fingerprint`.
+  Comportement observable inchangé (aucun sous-dossier n'existait).
+- En cron, l'app tourne pendant l'export : empreinte vivante prise avant et après, comparaison
+  stricte sur les tables stables, tables modifiées listées « non vérifiables » ; en
+  `--pre-migration` (app arrêtée) toute table qui bouge est un échec.
+- États d'échec de `deploy.sh` : avant 003 (sauvegarde, schéma, 001, 002) → ancien conteneur
+  relancé, base intacte ; 003 en échec ou rapport refusé → nouvelle app démarrée sans 003 (Q8) ;
+  seul un contrôle après migration en échec laisse l'app arrêtée.
+- Deux ajouts de périmètre : `deploy/test-migration-sequence.sh` (cas négatifs de la séquence
+  partagée, `deploy.sh` ne pouvant pas tourner hors VPS) et le mode `--db` / `--db-container`
+  de `web/e2e/run.mjs` (harnais, aucun scénario ni test modifié).
+
+### Point devenu incohérent après 8A, découvert par le cas de rejeu
+
+Un second `deploy.sh` après 8C aurait échoué : 001 recrée `deck_requirements` sans condition
+(`create table if not exists`) et 003, journalisée, refuse alors le rejeu (« objet historique
+réapparu »). 001, 002 et 003 restent intouchées : la séquence de `lib.sh` ne rejoue 001 et 002
+que tant que 003 n'est pas journalisée, le schéma se rejoue toujours (bloc conditionnel D1).
+Prouvé par le cas F de `test-migration-sequence.sh` (séquence complète puis rejeu : code 0,
+« déjà journalisée », base identique).
+
+### Livré
+
+- [deploy/lib.sh](../deploy/lib.sh) : accès à la base (Compose de production par défaut,
+  `TESTHAND_DB_CONTAINER` pour un conteneur jetable, jamais un port hôte), empreintes
+  (`db_fingerprint`, `fingerprint_diff`), bases de travail (`ygo_verify`, `ygo_restore`,
+  `ygo_previous`, garde contre la base servie et les bases système), vérification d'archive
+  (`verify_backup`, `check_archive_files`), inventaire, `simulate_003` / `apply_003` (code 0
+  **et** marqueur), `accept_report` (« OUI » sur /dev/tty, `auto`, ou empreinte fournie ;
+  `EXPECTED_FINGERPRINT` affichée), `check_after_migration`, `run_migration_sequence` avec
+  crochets d'app et codes 0 / 1 / 2 / 3.
+- [deploy/fingerprint.sql](../deploy/fingerprint.sql) (effectif et md5 des lignes triées par
+  table, empreinte globale, réglages de session fixés),
+  [deploy/inventory.sql](../deploy/inventory.sql) (effectifs, journal, résumés, modèle
+  historique en jsonb, SQL dynamique : jamais d'erreur sur une table absente),
+  [deploy/check-migration.sql](../deploy/check-migration.sql) (lignes `OK|` / `KO|`).
+- [deploy/backup.sh](../deploy/backup.sh) étendu : `.sha256`, restauration dans `ygo_verify`,
+  `.fingerprint`, `--pre-migration` et `--keep <libellé>` dans `keep/` hors rétention ; ligne
+  `sauvegarde ok: …` inchangée, `sauvegarde vérifiée: …` ou `sauvegarde NON vérifiée: …`
+  (archive conservée, sans `.fingerprint`, code 1). Chemin par défaut, cron, `umask 077`
+  et `sudo mkdir` conservés.
+- [deploy/restore.sh](../deploy/restore.sh) (D3) : refus sans `.sha256`, somme fausse,
+  `.fingerprint` absent (sauf `--without-fingerprint`) ou différent ; restauration de contrôle
+  dans `ygo_restore`, « OUI » ou `--yes`, sauvegarde de sécurité vérifiée
+  `keep/ygo-pre-restauration-*`, bascule `ygo` → `ygo_previous` et `ygo_restore` → `ygo`,
+  empreinte relue, app redémarrée ; `--check-only` pour une copie hors VPS.
+- [deploy/rehearsal.sh](../deploy/rehearsal.sh) : conteneur jetable 55436, restauration de
+  l'archive (ou `--fixture` : jeu représentatif archivé puis rejoué comme une archive réelle),
+  séquence partagée avec `--accept <empreinte>` (attendue) ou acceptation automatique,
+  recalcul, gardes e2e sur la pile migrée, retour arrière par `restore.sh`, rapport
+  `deploy/out/rehearsal-<horodatage>/rapport.md`, démontage.
+- [deploy/deploy.sh](../deploy/deploy.sh) : `git pull` → build → db → séquence partagée
+  (crochets Compose) → `up -d` ; `--expect <empreinte>` (comparaison affichée avant « OUI »),
+  `--accept <empreinte>` (sans question) ; rapports dans `deploy/out/deploy-<horodatage>/`.
+- [deploy/test-backup-restore.sh](../deploy/test-backup-restore.sh) (deux conteneurs 55438 /
+  55439, huit cas, M2 incluse) et
+  [deploy/test-migration-sequence.sh](../deploy/test-migration-sequence.sh) (55440, cas A–F :
+  sauvegarde en échec, 003 refusée, marqueur absent avec code 0, empreinte différente,
+  contrôle après migration en échec, acceptation exacte puis rejeu).
+- [scripts/recompute-check.ts](../scripts/recompute-check.ts) (+ `scripts/tsconfig.json`,
+  `scripts/package.json`, `npm run typecheck` étendu) : référence = ancien moteur e890078
+  matérialisé depuis git dans `deploy/out/reference-engine-e890078/` (ignoré, jamais versionné)
+  sur `ygo_old` (archive pré-migration restaurée) avec l'ancien modèle ; (a) nouveau moteur
+  avec paires globales réinjectées, attendu identique à 1e-9 ; (b) nouveau moteur après
+  purge, écart attribué et chiffré ; résumé stocké informatif seulement ; `--fabricate` pour
+  le jeu représentatif ; refuse tout hôte hors 127.0.0.1 et le port 5433.
+- [web/e2e/run.mjs](../web/e2e/run.mjs) : `--db <url> --db-container <nom>` (base fournie,
+  aucun conteneur créé ni démonté, migrations non rejouées, cartes synthétiques insérées) ;
+  [web/e2e/fixtures/cards.mjs](../web/e2e/fixtures/cards.mjs) ne comble que les images
+  manquantes (`coalesce`) : le jeu représentatif partage les passcodes 9000xxxx sans image.
+- [docs/deploy-runbook.md](deploy-runbook.md) pour 8C : commande par commande, sorties
+  attendues, retour arrière à chaque étape, point de non-retour à la saisie de « OUI », copie
+  de l'archive pré-migration par scp et `restore.sh --check-only` avant ce point, lecture du
+  rapport réel (empreinte attendue `e0efff5c2ddacc8d27bbd9e9e76694b1`, différences à
+  expliquer par `diff` avec le rapport de 8A), contrôles navigateur après.
+- Documentation : AGENTS.md (exception « `deploy.sh` ne rejoue pas 003 » retirée, commandes
+  et pièges de 8B), server/AGENTS.md, docs/architecture.md, deploy/README.md (§7, §9),
+  deploy/configuration-v2.md, DECISIONS.md, docs/decisions-compressees.md, docs/PLAN.md.
+
+### Rapport de répétition sur le dump réel (8 septembre 2026)
+
+Archive `ygo-prod-2026-09-08.sql.gz` (1,5 Mo, SHA-256
+`066fcb08d32259be39df78a18450926602f78c8e99919a2ec2bf854bd60c562e`), conteneur jetable
+`testhand-rehearsal-db` (127.0.0.1:55436), `--accept e0efff5c2ddacc8d27bbd9e9e76694b1` ;
+identifiants internes et noms de decks seulement.
+
+| Étape | Résultat | Détail |
+| --- | --- | --- |
+| 1. Restauration de l'archive | ok | 14 tables, 16 decks, 14 529 cartes (23 s) |
+| 2. Séquence partagée (sauvegarde pré-migration vérifiée, inventaire, schéma, 001, 002, 003 simulée et appliquée, contrôles) | ok | code 0 ; à purger : 204 lignes — P1 paires 185, P2 exclusions 15, P3 prérequis source paire 0, P5 pertinences 4, P6 drapeaux 0 ; P4 prérequis v2 convertis retirés avec leur table : 15 ; empreinte `e0efff5c2ddacc8d27bbd9e9e76694b1`, identique à 8A (85 s) |
+| 3. Recalcul : ancien moteur e890078 (référence) contre nouveau moteur, paires réinjectées puis purgées | ok | 16 decks comparés, 16 identiques en (a), 0 en échec (126 s) |
+| 4. Gardes e2e sur la pile migrée | ok | setup 37,0 s, guards 35,1 s, compare 14,6 s, mobile 107,7 s (336 s) |
+| 5. Retour arrière par `restore.sh` sur l'archive pré-migration | ok | empreinte initiale `9a50ef2e4172434f45b63dcf79f87920` retrouvée ligne à ligne (397 s) |
+
+Inventaire avant migration (journal vide = base pré-001) : card_categories 23, card_flags 122,
+cards 14 529, catalog_version 1, combo_pairs 185, deck_cards 663, deck_pair_exclusions 15,
+deck_start_requirements 15 (source carte 15, source paire 0), deck_starters 105, decks 16
+(16 résumés non nuls), nonengine_categories 4 (relevance : second 2, both 2), sessions 4,
+user_identities 1, users 1. Archive pré-migration `keep/ygo-pre-migration-20260908-114338.sql.gz`,
+sha256 `30d2c8dd…b71e0bf`, empreinte `9a50ef2e4172434f45b63dcf79f87920` = empreinte initiale.
+Après 003 : deck_conditions 14 (inchangées entre après 002 et après 003), deck_flags 0,
+deck_combo_pairs 0, `PURGE APPLIQUÉE : 003-purge-legacy journalisée, 204 ligne(s)
+supprimée(s)`. Contrôles après migration : 33 lignes `OK|`, aucune `KO|` (journal 001 / 002 /
+003, quatre tables et trois colonnes historiques absentes, objets v2 présents, aucun horizon,
+sources uniques, tables intactes de bout en bout, 003 limitée à ses propres objets).
+
+Recalcul, passe premier (5 cartes), tolérance 1e-9 ; (a) = nouveau moteur avec les paires
+globales purgées réinjectées, écart à la référence nul à 12 décimales sur les 16 decks ; (b) =
+nouveau moteur après purge ; le résumé stocké (cache de la dernière sauvegarde) est donné à
+titre informatif :
+
+| Deck | Main | Référence (ancien moteur) | (a) réinjecté | (b) après purge | Δ brick | Paires actives purgées | Résumé stocké − référence |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Azamina RoLaD | 40 | 0,076798458377 | identique | 0,099968389442 | +2,3170 pts | 12 | +0,000434645172 |
+| Branded | 40 | 0,053478073215 | identique | 0,099968389442 | +4,6490 pts | 12 | 0 |
+| Crystron | 40 | 0,222363557890 | identique | 0,422876317613 | +20,0513 pts | 22 | 0 |
+| Elfnote | 40 | 0,082584102321 | identique | 0,180476529161 | +9,7892 pts | 21 | +0,004361649098 |
+| Mitsu Orcust (06e8834e) | 50 | 0,078797504201 | identique | 0,086572334762 | +0,7775 pts | 8 | 0 |
+| Mitsu Orcust (95f31d1a) | 40 | 0,082786227523 | identique | 0,099968389442 | +1,7182 pts | 8 | 0 |
+| Mitsu Orcust (heavy orcust) | 41 | 0,058990015986 | identique | 0,064850720178 | +0,5861 pts | 6 | 0 |
+| Mitsu Rolad | 44 | 0,063212241530 | identique | 0,074336468976 | +1,1124 pts | 11 | +0,002017480535 |
+| Mitsu Rolad no Futsu | 40 | 0,075047719785 | identique | 0,087232981970 | +1,2185 pts | 9 | 0 |
+| Mitsu Rolad test | 50 | 0,060813872265 | identique | 0,069903622874 | +0,9090 pts | 11 | 0 |
+| Mitsurugi Pure | 40 | 0,090874275085 | identique | 0,136063695274 | +4,5189 pts | 8 | 0 |
+| Mitsurugi Pure (post Mamo) | 40 | 0,104164387059 | identique | 0,164336907758 | +6,0173 pts | 12 | 0 |
+| RoLaD Branded | 41 | 0,085663425843 | identique | 0,158467196336 | +7,2804 pts | 14 | 0 |
+| Ryzeal onomat | 40 | 0,049116424116 | identique | 0,051137676138 | +0,2021 pts | 1 | 0 |
+| Unchained Soul | 40 | 0,112498632235 | identique | 0,216571834993 | +10,4073 pts | 21 | 0 |
+| YCS paris 2 | 60 | 0,045106739672 | identique | 0,074813714590 | +2,9707 pts | 42 | +0,009314270480 |
+
+Lecture : aucun deck n'est sans paire globale active (0 « identique sans paire ») ; la purge
+élève le brick de chaque deck de 0,2 à 20 points, ce qui est exactement l'effet des paires
+globales retirées (les 185 paires sont à ressaisir par deck). Pour quatre decks, le résumé
+stocké dépasse la référence : cache de la dernière sauvegarde, jamais invalidé par
+l'ancienne app quand une paire globale bougeait ; il n'est pas une référence et l'étape 9 le
+recalcule. La première exécution du contrôle comparait aux résumés stockés (12 exacts, 4
+résidus) ; des heuristiques de datation ont été essayées puis retirées à la demande de
+l'utilisateur, la référence étant l'ancien moteur lui-même.
+
+Gardes e2e (`run.mjs --db`) : compte `e2e@example.test` créé sur la copie migrée, cartes
+synthétiques ajoutées, scénarios setup, guards, compare et mobile conformes (captures dans
+`web/e2e/out/`). Retour arrière : `restore.sh` sur l'archive pré-migration (restauration de
+contrôle dans `ygo_restore`, sauvegarde de sécurité `keep/ygo-pre-restauration-*`, bascule),
+empreinte de la base identique ligne à ligne à l'empreinte initiale. Durée totale 401 s ;
+conteneur supprimé.
+
+### Répétition sur le jeu représentatif
+
+`rehearsal.sh --fixture` : schéma + `legacy-representative.sql`, résumés fabriqués par le
+moteur (`--fabricate`), archivé par pg_dump puis rejoué. Simulation : 14 lignes à purger
+(P1 4, P2 1, P3 2, P5 5, P6 2 ; P4 3), empreinte `cc59821b5dfd55935ae3b98ae978325f`,
+purge appliquée, contrôles OK, gardes e2e conformes, retour arrière prouvé (empreinte
+`ecbd6641468ba57f2eaf4e3cbae53d74`), 219 s. Recalcul (référence = ancien moteur sur la
+base pré-001) : Deck A3, sans paire globale active, identique avant et après purge
+(0,422876317613) ; Deck A1 (3 paires actives, 1 prérequis source paire) +6,0197 points de
+brick après purge, Deck A2 (2 paires) +8,2148 points, Deck B1 (1 paire, 1 prérequis) écart
+nul (la paire Alpha + Beta n'ajoute aucun départ : ses deux cartes sont déjà starters) ; (a)
+identique sur les 4 decks ; les résumés fabriqués par `--fabricate` coïncident avec la
+référence. RECALCUL CONFORME.
+
+### Preuves
+
+Toutes jouées en fin de tâche, après les mutations, sur les scripts restaurés :
+
+```powershell
+npm.cmd run typecheck                      # serveur, web, scripts/recompute-check.ts : 0 erreur
+npm.cmd run build                          # avertissement ExcelJS attendu
+node scripts/test-quiet.mjs                # 177 tests web (15 fichiers), 7 serveur — inchangés
+# PostgreSQL jetable 55433 (deploy/configuration-v2.md), depuis Git Bash avec MSYS_NO_PATHCONV=1
+TEST_DATABASE_URL=postgres://step23:step23-disposable@127.0.0.1:55433/step23 npm run test:integration -w server
+                                           # persistence 11 tests, purge 10 tests
+npm.cmd run e2e -w web                     # pile jetable standard : setup, guards, compare, mobile conformes
+bash deploy/test-backup-restore.sh         # 57 gardes, deux conteneurs 55438 / 55439
+bash deploy/test-migration-sequence.sh     # cas A–F, 34 gardes, conteneur 55440
+bash deploy/rehearsal.sh --fixture         # jeu représentatif : RÉPÉTITION CONFORME
+bash deploy/rehearsal.sh ../testhand-dumps/ygo-prod-2026-09-08.sql.gz --accept e0efff5c2ddacc8d27bbd9e9e76694b1
+                                           # dump réel : RÉPÉTITION CONFORME (rapport ci-dessus)
+```
+
+Conteneurs 55433, 55434, 55436, 55438, 55439, 55440 et 55441 supprimés (`--rm`), ports
+libres ; base de dev 5433 jamais touchée ; aucune commande vers le VPS ; dump réel et archives
+de répétition hors dépôt (`deploy/out/` ignoré, `*.sql.gz` ignoré).
+
+### Contrôle par mutation
+
+Chaque erreur volontaire est appliquée par remplacement exact, le test attendu est joué,
+le fichier est restauré depuis sa copie d'origine et vérifié par SHA-256 (les trois
+sommes d'origine retrouvées à la fin). Six mutations, six détections :
+
+| Mutation | Erreur volontaire | Test | Gardes en échec (extrait) |
+| --- | --- | --- | --- |
+| M2a | `lib.sh` (`check_archive_files`) : somme SHA-256 non vérifiée | `test-backup-restore.sh` | « 5b message « somme SHA-256 différente » » (l'archive corrompue n'est plus refusée par la somme mais par gunzip lors de la restauration de contrôle : le test distingue les deux) |
+| M2b (M2) | `restore.sh` : empreinte enregistrée non comparée, une empreinte fausse est acceptée | `test-backup-restore.sh` | « 5c empreinte globale fausse : code 2 », « 5c empreinte table fausse : code 2 », « 5 la cible n'a pas été modifiée », « 5 aucune sauvegarde de sécurité créée » (6 gardes) |
+| M7 | `lib.sh` (séquence de `deploy.sh`) : résultat du contrôle après migration ignoré | `test-migration-sequence.sh` | « E code 2 », « E app laissée arrêtée avec la commande de restauration », « E aucun démarrage de l'app » (4 gardes) |
+| M8 | `lib.sh` : marqueur « SIMULATION TERMINÉE » non exigé, le code 0 seul vaut succès | `test-migration-sequence.sh` | « C code 1 (le code 0 de psql sans marqueur n'est pas un succès) », « C 003 non journalisée », « C la table combo_pairs existe encore » (5 gardes) |
+| M9 | `backup.sh` : vérification en échec sans code de retour 1 | `test-backup-restore.sh` | « code 1 » du cas 4 (extension en échec partiel) |
+| M10 | `lib.sh` (séquence de `deploy.sh`) : sauvegarde pré-migration sautée et gardes de l'archive retirées | `test-migration-sequence.sh` | « A code 1 », « A ancienne app relancée », « A base intacte », « E app laissée arrêtée avec la commande de restauration » (6 gardes) |
+
+Les mutations M1, M3–M6 de 8A restent celles du compte rendu 8A.
+
+### Limites
+
+- `deploy.sh` n'a pas tourné sur le VPS : sa partie Compose (`build`, `stop`, `start`,
+  `up -d`, crochets) n'est prouvée que par lecture ; la séquence partagée l'est par
+  `rehearsal.sh` et `test-migration-sequence.sh`.
+- La vérification d'une sauvegarde en cron restaure l'archive dans `ygo_verify` sur le même
+  serveur : elle prouve que l'archive se restaure et porte les données, pas que le disque
+  sous-jacent survivra ; la copie hors VPS (runbook §4) reste indispensable.
+- `fingerprint.sql` repose sur `x::text` des lignes : deux bases identiques donnent la même
+  empreinte, mais une différence de représentation textuelle (version majeure de PostgreSQL)
+  la ferait diverger ; comparer toujours entre bases d'une même majeure (17).
+- Le contrôle de recalcul ne couvre que la passe premier (brick), comme le résumé historique ;
+  les autres indicateurs sont couverts par les oracles du moteur (étapes 1 et 5).
+- Un retour arrière de répétition a échoué une fois parce que `restore.sh` était modifié
+  pendant son exécution (bash lit le script au fil de l'eau) ; non reproduit sur trois
+  passages suivants ; consigne ajoutée à AGENTS.md.
+- L'équivalence complète `--emit-sql` / `--apply` de `prune-stale-cards` (report de 8A) n'est
+  toujours pas prouvée.
+
+### Questions ouvertes
+
+- **Q11** — `ygo_previous` : `restore.sh` garde la base remplacée sous ce nom jusqu'à la
+  restauration suivante (deuxième retour arrière, immédiat). Faut-il la supprimer d'office à
+  la fin d'une restauration réussie, ou après un délai ? Non tranché : conservée.
+- **Q12** — `--without-fingerprint` : les archives quotidiennes antérieures à 8B n'ont ni
+  `.sha256` ni `.fingerprint` ; `restore.sh` les refuse. Faut-il un mode qui vérifie une telle
+  archive par restauration seule (somme calculée sur place) ? Non tranché : refus, l'option
+  explicite `--without-fingerprint` exige encore le `.sha256`.
+- **Q13** — deploy.sh sur un rapport refusé (code 3) démarre la nouvelle app sans 003 ; les
+  tables historiques restent en base et l'ancien modèle n'est plus servi. Combien de temps cet
+  état intermédiaire est-il acceptable avant de relancer ? Non tranché : à décider en 8C.
+
+### Passation vers 8C
+
+- Suivre docs/deploy-runbook.md ; commit et tag de 8B à pousser au préalable (rien n'est
+  poussé par cette session), `git pull` sur le VPS avant `deploy.sh`.
+- Empreinte attendue `e0efff5c2ddacc8d27bbd9e9e76694b1` si la production n'a pas bougé depuis
+  le dump du 8 septembre ; sinon répéter d'abord sur une archive fraîche (runbook §0).
+- Les 185 paires globales sont à ressaisir par deck après 8C (décision de l'utilisateur) ;
+  poser ensuite les profils des cartes étiquetées.
+- Étape 9 : recalcul des aperçus (`decks.summary` reste NULL après 001 / 002).

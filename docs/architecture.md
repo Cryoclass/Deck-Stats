@@ -29,8 +29,9 @@ Complète AGENTS.md (commandes, règles, pièges). Sémantique métier : regles-
 | `web/src/store/` | `deckStore.ts` (état éditeur, dirty, révision, ouvertures numérotées, recalcul versionné `modelVersion`/`resultVersion`, `stale`, `resultContext`, debounce, annulation), `selectors.ts` |
 | `web/src/lib/` | `api.ts`, `auth.tsx`, `router.tsx` (`/decks`, `/decks/:id`, `/compare/:a/:b`), `deckConfiguration.ts`, `conditions.ts` (opérations pures sur l'arbre ET/OU, traduction vers le moteur), `draft.ts`, `engineModel.ts` (profils, plafonds, conditions → `EngineInput` ; cartes étiquetées sans profil listées), `exportDeck.ts`, `exportComparison.ts`, `ydk.ts`, `fmt.ts`, `colors.ts` |
 | `web/src/components/` | Pages (Home, Editor, Compare, Login), grille d'annotation et modes, combos, inventaire, stats, requête, mur de mains, dialogues |
-| `deploy/` | `Dockerfile` (multi-étages, Node 22), `docker-compose.prod.yml` (db + app, aucun port publié, réseau `edge`), `deploy.sh`, `backup.sh`, `configuration-v2.md` |
-| `docs/` | `regles-metier.md`, `cas-reference.md`, `etapes-*.md`, `PLAN.md`, `spec-comparateur-decks.md`, `design-system.md` |
+| `deploy/` | `Dockerfile` (multi-étages, Node 22), `docker-compose.prod.yml` (db + app, aucun port publié, réseau `edge`), `lib.sh` (accès base, empreintes, séquence de migration partagée), `deploy.sh`, `backup.sh` (archive vérifiée : `.sha256`, `ygo_verify`, `.fingerprint`, `keep/` hors rétention), `restore.sh` (réversible, `--check-only`), `rehearsal.sh` (répétition sur copie jetable), `fingerprint.sql`, `inventory.sql`, `check-migration.sql`, `test-backup-restore.sh`, `test-migration-sequence.sh`, `configuration-v2.md` ; `out/` ignoré par git (rapports, archives de répétition, ancien moteur matérialisé) |
+| `scripts/` | `test-quiet.mjs` (tests silencieux), `recompute-check.ts` (étape 8B : ancien moteur e890078 matérialisé depuis git en référence sur la base pré-migration, nouveau moteur avec paires réinjectées puis après purge ; `--fabricate` pour le jeu représentatif), `tsconfig.json` (typecheck racine), paquet ESM |
+| `docs/` | `regles-metier.md`, `cas-reference.md`, `etapes-*.md`, `PLAN.md`, `spec-comparateur-decks.md`, `design-system.md`, `deploy-runbook.md` (exécution 8C) |
 
 ## API (préfixe `/api`, JSON, cookie de session sauf mention)
 

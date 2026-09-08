@@ -179,6 +179,9 @@ select count(*) from deck_conditions;   -- inchangé par 003 (lignes « après �
 ```
 
 Rejeu : sans effet si journalisée ; un rejeu de `db/schema.sql` ne recrée aucun objet
-historique (bloc conditionnel), et 003 refuse tout objet réapparu. `deploy.sh` ne rejoue
-pas encore 003 : intégration, sauvegarde préalable, répétition sur dump réel et runbook en
-partie B ([docs/etape-8.md](../docs/etape-8.md)).
+historique (bloc conditionnel), et 003 refuse tout objet réapparu — y compris
+`deck_requirements`, que 001 recréerait : la séquence de `deploy/lib.sh` ne rejoue plus 001
+ni 002 une fois 003 journalisée. `deploy.sh` enchaîne sauvegarde pré-migration vérifiée,
+simulation, acceptation (« OUI » ou `--accept <empreinte>`), application et contrôles
+(partie B, [docs/etape-8.md](../docs/etape-8.md)) ; exécution sur le VPS :
+[docs/deploy-runbook.md](../docs/deploy-runbook.md).
