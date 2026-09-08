@@ -725,3 +725,114 @@ Les mutations M1, M3–M6 de 8A restent celles du compte rendu 8A.
 - Les 185 paires globales sont à ressaisir par deck après 8C (décision de l'utilisateur) ;
   poser ensuite les profils des cartes étiquetées.
 - Étape 9 : recalcul des aperçus (`decks.summary` reste NULL après 001 / 002).
+
+## Préparation de 8C : départ à vide (8 septembre 2026)
+
+Session courte, sans nouvelle session de code lourde. Tag `etape-8c-ready`, rien poussé.
+
+### Décision
+
+Après 8B, l'utilisateur a décidé que **la production repart d'une base vide**. Rien n'est
+conservé : ni decks, ni comptes, ni annotations. L'archive de l'état actuel est prise, vérifiée
+et copiée hors VPS par principe (souvenir), mais elle n'est plus un chemin de retour à préparer.
+Conséquences :
+
+- le runbook reçoit une **variante « départ à vide »** (V1–V7) qui remplace ses §3 à §5 ; §0
+  (répétition sur archive fraîche) devient inutile, l'empreinte `e0efff5c…` n'est plus attendue
+  en production, §7 (retour arrière) reste valable avec l'archive souvenir ;
+- la ressaisie manuelle des 185 paires globales est **sans objet** (aucun deck repris) ; les decks
+  utiles se réimportent depuis leurs fichiers YDK ;
+- le contrôle de recalcul contre l'ancien moteur (8B) reste prouvé mais ne s'applique plus à la
+  production (aucun deck à comparer) ; le recalcul des aperçus de l'étape 9 garde son sens
+  pour les decks réimportés ;
+- Q12 (archives antérieures à 8B) et Q13 (durée de l'état « app sans 003 ») perdent leur objet en
+  8C : sur base vide, toute question posée par `deploy.sh` signifie que la base n'était pas vide
+  et se refuse (`NON`) ; Q11 (`ygo_previous`) est inchangée.
+
+### Point 1 — comment une base neuve reçoit le catalogue, et en combien de temps
+
+Vérifié par lecture puis prouvé sur conteneurs jetables (55442, 55443 ; jamais la base de dev,
+aucune commande vers le VPS ; lecture seule de la Supabase publique, demandée explicitement).
+
+- **Schéma et migrations.** Un volume neuf est initialisé par les quatre fichiers montés dans
+  `docker-entrypoint-initdb.d` (`docker-compose.prod.yml`) au premier démarrage du conteneur
+  `db` : schéma (bloc historique créé, 003 non journalisée), 001, 002, 003 (rien à purger,
+  journalisée sans acceptation) en ≈ 5 s. La séquence de `lib.sh` trouve ensuite 003
+  journalisée : schéma rejoué seul, aucune simulation, aucune question, contrôles OK, app
+  démarrée — code 0 en 17 s (conteneur 55443, mode `interactive` sans terminal : une question
+  aurait rendu 3).
+- **Catalogue.** Ni l'app (`server/src/index.ts` ne charge rien au démarrage, `/api/health`
+  compte la table `cards`) ni l'initialisation ne le remplissent : `/api/health` répond
+  `{"ok":true,"cards":0,"catalog":null}` sur une base neuve. La copie se fait par
+  `server/scripts/migrate-cards.ts` (dans l'image : `server/dist/scripts/migrate-cards.js`,
+  exécuté dans le conteneur `app`, deploy/README.md §8) : PostgREST de la Supabase publique avec
+  la clé anon par défaut, pages de 1 000, upsert par lots de 500, version lue avant et après,
+  estampille `catalog_version`. Mesuré : **14 529 cartes, version source `2026-08-31`, 13 à
+  16 s, base de 22 Mo** ; `Content-Range: 0-0/14529` côté source, `dataset_versions` annonce
+  14 529.
+- **Santé.** Serveur démarré (tsx, port 8791) sur la base jetable remplie :
+  `{"ok":true,"cards":14529,"catalog":{"version":"2026-08-31","migratedAt":"…","cards":14529}}`
+  = nombre du catalogue distant. Inscription par `POST /api/auth/register` avec un code
+  d'invitation : compte créé, `GET /api/decks` = `[]`, `users 1, decks 0`. Rejeu de la séquence
+  sur la base remplie : code 0, « déjà journalisée », empreinte identique.
+- **Compose sans conteneur app** (après `down`) : `docker compose stop app` rend 0 (crochet
+  d'arrêt sans effet), `start app` rend 1 (« no container to start », absorbé par `|| true` dans
+  `hook_start_old_app`). Vérifié sur une pile Compose minimale jetable.
+
+### Manque révélé et correctif validé (point 3)
+
+Sur une base **réellement vide** (base `ygo` recréée sans `initdb`, aucune table), la séquence
+journalisait bien 001 / 002 / 003 sans question (« rien à purger : aucune acceptation requise »,
+« 0 ligne(s) supprimée(s) ») mais le contrôle « tables intactes de bout en bout » rendait KO
+(les huit tables conservées « absentes avant ») et laissait l'app **arrêtée** (code 2). Arrêt et
+question posée à l'utilisateur, qui a retenu **les deux** : runbook sur le volume recréé (aucun
+script requis) **et** correctif du contrôle :
+
+- [deploy/lib.sh](../deploy/lib.sh), `check_after_migration` : si `fingerprint-0.txt` ne porte
+  aucune table (base vide au départ), les tables conservées doivent exister après et être vides
+  — `OK|base vide au départ (aucune table avant le schéma) : tables conservées créées vides par
+  le schéma : …`, sinon KO nominatif (`users (1 ligne(s))`, `cards (absente après)`) ; le contrôle
+  du périmètre de 003 (après 002 → après 003) est inchangé. Les bases non vides suivent
+  exactement l'ancien chemin.
+- [deploy/test-migration-sequence.sh](../deploy/test-migration-sequence.sh) : `begin_case
+  <lettre> empty` ; cas **G** (base vide, mode interactif sans terminal → code 0, journal
+  001 / 002 / 003, 0 ligne purgée, contrôle « base vide au départ » OK, aucun KO, tables
+  conservées vides ; rejeu → code 0, « déjà journalisée », base identique) et **H** (base vide
+  mais `users` remplie après 003 → code 2, app laissée arrêtée, KO nominatif). Cas A–F intouchés.
+- Preuve rejouée après correctif sur base vide (55442) : code 0 en 30 s, ligne OK « base vide au
+  départ », catalogue 13 s, santé conforme.
+
+### Preuves
+
+```powershell
+npm.cmd run typecheck                      # serveur, web, scripts : 0 erreur
+npm.cmd run build                          # avertissement ExcelJS attendu
+node scripts/test-quiet.mjs                # 177 tests web, 7 serveur — inchangés
+bash deploy/test-migration-sequence.sh     # cas A–H, 49 gardes (34 + 15), conteneur 55440
+bash deploy/rehearsal.sh --fixture         # jeu représentatif : RÉPÉTITION CONFORME (séquence 14 lignes, recalcul 4 / 4, e2e, retour arrière ; 229 s)
+# preuve « départ à vide » (scripts de session hors dépôt) : conteneurs 55442 (base vide, séquence
+# lib.sh, migrate-cards, serveur 8791, /api/health, inscription, rejeu) et 55443 (initdb par les
+# quatre fichiers montés, puis séquence) ; résultats ci-dessus
+```
+
+Conteneurs 55440, 55442, 55443 et la pile Compose minimale supprimés ; base de dev 5433 jamais
+touchée ; aucune commande vers le VPS ; Supabase lue seulement (catalogue public).
+
+### Limites
+
+- La partie Compose de `deploy.sh` (`build`, `stop`, `up -d`) et la suppression du volume
+  (`ygo-proba_pgdata`, nom déduit du projet Compose `ygo-proba` et du volume `pgdata`, à confirmer
+  par `docker volume ls`) ne sont prouvées que par lecture et par une pile minimale ; le premier
+  `deploy.sh` réel reste à faire sur le VPS (runbook V4).
+- La durée de la copie du catalogue est mesurée depuis le poste ; le réseau du VPS peut
+  différer, l'ordre de grandeur reste la dizaine de secondes.
+- En mode `--keep`, `backup.sh` exige une base immobile : l'app doit être arrêtée avant la
+  sauvegarde souvenir (V1), sinon « NON vérifiée ».
+
+### Passation vers 8C (révisée)
+
+- Pousser le commit et le tag `etape-8c-ready` (rien n'est poussé par cette session), `git pull`
+  sur le VPS, puis suivre la variante « départ à vide » de docs/deploy-runbook.md : V1 arrêt et
+  sauvegarde souvenir vérifiée, V2 copie hors VPS et `--check-only`, V3 volume supprimé (point de
+  non-retour), V4 `deploy.sh` sans aucune question, V5 catalogue, V6 compte, V7 contrôles.
+- Ensuite l'étape 9 (docs/PLAN.md).

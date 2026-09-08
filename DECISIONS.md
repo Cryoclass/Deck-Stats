@@ -1,5 +1,45 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 8, préparation de 8C (« départ à vide »), 8 septembre 2026
+
+Compte rendu, preuves et passation dans [docs/etape-8.md](docs/etape-8.md) (« Préparation de
+8C : départ à vide ») ; procédure dans [docs/deploy-runbook.md](docs/deploy-runbook.md)
+(variante « départ à vide », V1–V7).
+
+- **La production repart d'une base vide.** Décision de l'utilisateur après 8B : rien n'est
+  conservé (ni decks, ni comptes, ni annotations). L'archive de l'état actuel est prise,
+  vérifiée (`backup.sh --keep souvenir`, app arrêtée) et copiée hors VPS par principe, mais
+  elle n'est plus un chemin de retour à préparer : la répétition sur archive fraîche (§0),
+  l'empreinte attendue `e0efff5c…` et la ressaisie des 185 paires globales n'ont plus d'objet ;
+  §7 (retour arrière) reste valable avec l'archive souvenir. Les decks utiles se réimportent
+  depuis leurs fichiers YDK.
+- **Base vide = volume recréé, initialisé par les fichiers montés.** Chemin principal du
+  runbook : `down`, `docker volume rm ygo-proba_pgdata`, `deploy.sh`. Le premier démarrage du
+  conteneur `db` joue schéma, 001, 002 et 003 (rien à purger, journalisée sans acceptation) ;
+  la séquence de `lib.sh` trouve 003 journalisée et ne pose **aucune question** (prouvé : code 0,
+  17 s). Toute question posée par `deploy.sh`, tout rejeu de 001, tout inventaire à 14 tables
+  ou à paires non nulles signifie que la base n'était pas vide : répondre `NON` (code 3, rien de
+  purgé), arrêter, comprendre. Aucun script n'a eu à changer pour ce chemin.
+- **Le catalogue n'arrive ni à l'initialisation ni au démarrage de l'app.** Il est copié par le
+  script embarqué `migrate-cards.js` depuis le conteneur `app` (Supabase publique, clé anon par
+  défaut, upsert idempotent, estampille `catalog_version`) : 14 529 cartes, version `2026-08-31`,
+  13 à 16 s, 22 Mo. `/api/health` passe de `cards: 0, catalog: null` au nombre annoncé par la
+  source, égal à `catalog.cards`. Le premier remplissage par `pg_dump` local (deploy/README.md §5)
+  est historique.
+- **Le contrôle « tables intactes de bout en bout » traite la base vide au départ comme un cas
+  légitime.** Manque révélé par la preuve : sur une base sans aucune table (base `ygo` recréée
+  sans `initdb`), 001 / 002 / 003 se journalisaient sans question mais le contrôle rendait KO
+  (« absente avant ») et laissait l'app arrêtée (code 2). Question posée, réponse « les deux » :
+  `check_after_migration` reconnaît une empreinte initiale sans table et exige alors que les
+  tables conservées existent et soient vides après (KO nominatif sinon) ; cas G (base vide,
+  code 0 sans question, rejeu) et H (table conservée remplie après 003 → code 2) dans
+  `test-migration-sequence.sh`. Le chemin des bases non vides est inchangé ; `rehearsal.sh
+  --fixture` rejouée. L'alternative `dropdb` / `createdb` du runbook repose sur ce correctif.
+- **Preuve sur conteneurs jetables, jamais sur une base personnelle ni sur le VPS ;** la Supabase
+  publique a été lue (comptage et copie du catalogue) parce que la tâche le demandait
+  explicitement. Les scripts de preuve restent hors dépôt (scratchpad), leurs résultats sont
+  consignés dans docs/etape-8.md.
+
 ## Première mission — étape 8, partie B, 8 septembre 2026
 
 Le [compte rendu 8B](docs/etape-8.md) contient le rapport de répétition sur le dump réel, les

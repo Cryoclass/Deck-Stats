@@ -266,12 +266,28 @@ accept_report() {
 
 # check_after_migration <dossier> → <dossier>/check-migration.txt (lignes OK| / KO|) ; 0 si tout OK.
 check_after_migration() {
-  local out=$1 ko=0 d
+  local out=$1 ko=0 d n t
   if ! db_exec psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -qAt -f - < "$LIB_DIR/check-migration.sql" > "$out/check-migration.txt" 2> "$out/check-migration.err"; then
     echo "KO|check-migration.sql en échec : $(tail -n 2 "$out/check-migration.err" | tr '\n' ' ')" >> "$out/check-migration.txt"
   fi
   if ! db_fingerprint "$DB_NAME" > "$out/fingerprint-3.txt"; then
     echo 'KO|empreinte après migration impossible' >> "$out/check-migration.txt"
+  elif [ "$(grep -vc '^empreinte|' "$out/fingerprint-0.txt")" = 0 ]; then
+    # Base vide au départ (« départ à vide », 8C) : aucune table avant le schéma, donc « absente
+    # avant » n'est pas une altération ; les tables conservées doivent exister après et être vides.
+    d=
+    for t in $KEPT_ACROSS_SEQUENCE; do
+      n=$(sed -n "s/^$t|\([0-9]*\)|.*/\1/p" "$out/fingerprint-3.txt")
+      if [ -z "$n" ]; then d="$d $t (absente après)"; elif [ "$n" != 0 ]; then d="$d $t ($n ligne(s))"; fi
+    done
+    d=${d# }
+    if [ -n "$d" ]; then echo "KO|base vide au départ (aucune table avant le schéma) : tables conservées attendues créées vides, mais : $d" >> "$out/check-migration.txt"
+    else echo "OK|base vide au départ (aucune table avant le schéma) : tables conservées créées vides par le schéma : $KEPT_ACROSS_SEQUENCE" >> "$out/check-migration.txt"; fi
+    if [ -s "$out/fingerprint-2.txt" ]; then
+      d=$(fingerprint_diff "$out/fingerprint-2.txt" "$out/fingerprint-3.txt" --except "$TOUCHED_BY_003" | tr '\n' ' '); d=${d% }
+      if [ -n "$d" ]; then echo "KO|003 a modifié des tables hors de son périmètre : $d" >> "$out/check-migration.txt"
+      else echo "OK|003 n'a touché que ses propres objets (décks, cartes, starters, paires, conditions, drapeaux par deck, profils intacts)" >> "$out/check-migration.txt"; fi
+    fi
   else
     d=$(fingerprint_diff "$out/fingerprint-0.txt" "$out/fingerprint-3.txt" --only "$KEPT_ACROSS_SEQUENCE" | tr '\n' ' '); d=${d% }
     if [ -n "$d" ]; then echo "KO|tables qui devaient rester intactes de bout en bout et qui ont changé : $d" >> "$out/check-migration.txt"

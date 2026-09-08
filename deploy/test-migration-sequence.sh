@@ -13,7 +13,12 @@
 #   E. contrôle après migration en échec (table combo_pairs recréée juste après l'application de
 #      003) → code 2, app laissée ARRÊTÉE, commande de restauration nommant l'archive pré-migration ;
 #   F. --accept avec l'empreinte de la simulation → code 0, 003 journalisée, contrôles OK ; rejeu →
-#      code 0, « déjà appliquée », aucune nouvelle acceptation.
+#      code 0, « déjà appliquée », aucune nouvelle acceptation ;
+#   G. base vide (« départ à vide », 8C) en mode interactif sans terminal → code 0 sans question
+#      (une question aurait rendu 3), 001 / 002 / 003 journalisées, 0 ligne purgée, contrôle
+#      « base vide au départ » OK ; rejeu → code 0, « déjà journalisée », base identique ;
+#   H. base vide mais une table conservée remplie après 003 (users) → code 2, app laissée
+#      ARRÊTÉE, KO nominatif du contrôle « base vide au départ ».
 # Sorties dans deploy/out/test-migration-sequence-<horodatage>/ (ignoré par git). Conteneur
 # supprimé à la fin (--rm), y compris en cas d'échec. Jamais la base de dev (5433).
 set -euo pipefail
@@ -53,7 +58,7 @@ hook_backup() { backup_pre_migration "$1"; }
 # Redéfinition d'une fonction de lib.sh autour de l'originale (copie sous un autre nom).
 keep_original() { eval "orig_$1() $(declare -f "$1" | sed '1d')"; }
 
-begin_case() {  # <lettre> : base réinitialisée (schéma + fixture pré-001), crochets vides, lib.sh rechargée
+begin_case() {  # <lettre> [empty] : base réinitialisée (schéma + fixture pré-001, ou vide), crochets vides, lib.sh rechargée
   . ./lib.sh
   hook_stop_app() { echo stop >> "$HOOKS"; }
   hook_start_app() { echo start-new >> "$HOOKS"; }
@@ -62,8 +67,10 @@ begin_case() {  # <lettre> : base réinitialisée (schéma + fixture pré-001), 
   hook_backup() { backup_pre_migration "$1"; }
   CASE_OUT="$OUT/case-$1"; mkdir -p "$CASE_OUT"; HOOKS="$CASE_OUT/hooks.txt"; : > "$HOOKS"
   db_query 'drop schema public cascade; create schema public;' > /dev/null
-  db_psql < "$ROOT_DIR/db/schema.sql"
-  db_psql < "$ROOT_DIR/server/tests/fixtures/legacy-representative.sql"
+  if [ "${2:-}" != empty ]; then
+    db_psql < "$ROOT_DIR/db/schema.sql"
+    db_psql < "$ROOT_DIR/server/tests/fixtures/legacy-representative.sql"
+  fi
   say "cas $1"
 }
 run_seq() { RC=0; run_migration_sequence "$CASE_OUT" "$1" > "$CASE_OUT/sequence.log" 2>&1 || RC=$?; }
@@ -148,6 +155,37 @@ run_seq interactive
 expect "F rejeu : code 0 sans question" test "$RC" = 0
 expect "F rejeu : « déjà journalisée »" grep_file 'déjà journalisée' "$CASE_OUT/journal.txt"
 expect "F rejeu : base identique" test "$(db_fingerprint | fingerprint_global)" = "$FP_F"
+
+# ─── G. base vide (« départ à vide », 8C) : aucune question, 003 journalisée, contrôles OK ───
+begin_case G empty
+expect "G base vide au départ (aucune table dans public)" test "$(db_query "select count(*) from pg_tables where schemaname = 'public'")" = 0
+run_seq interactive
+expect "G code 0 sans question (aucun terminal : une question aurait rendu 3)" test "$RC" = 0
+expect "G 001, 002 et 003 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy'
+expect "G app démarrée (stop, start-new)" hooks_are "stop start-new"
+expect "G journal : « rien à purger : aucune acceptation requise »" grep_file 'rien à purger : aucune acceptation requise' "$CASE_OUT/journal.txt"
+expect "G purge appliquée : 0 ligne" grep_file 'PURGE APPLIQUÉE : 003-purge-legacy journalisée, 0 ligne' "$CASE_OUT/003-apply.txt"
+expect "G contrôle « base vide au départ » OK" grep_file '^OK\|base vide au départ' "$CASE_OUT/check-migration.txt"
+expect "G aucun KO dans check-migration.txt" not grep_file '^KO\|' "$CASE_OUT/check-migration.txt"
+expect "G tables conservées présentes et vides (users, cards, decks)" test "$(db_query 'select (select count(*) from users) + (select count(*) from cards) + (select count(*) from decks)')" = 0
+FP_G=$(db_fingerprint | fingerprint_global)
+CASE_OUT="$OUT/case-G-rejeu"; mkdir -p "$CASE_OUT"; HOOKS="$CASE_OUT/hooks.txt"; : > "$HOOKS"
+run_seq interactive
+expect "G rejeu : code 0 sans question" test "$RC" = 0
+expect "G rejeu : « déjà journalisée »" grep_file 'déjà journalisée' "$CASE_OUT/journal.txt"
+expect "G rejeu : base identique" test "$(db_fingerprint | fingerprint_global)" = "$FP_G"
+
+# ─── H. base vide mais une table conservée remplie après 003 → code 2, KO nominatif ───
+begin_case H empty
+keep_original apply_003
+apply_003() {
+  orig_apply_003 "$@"
+  db_query "insert into users (email, display_name) values ('h@example.test', 'H')" > /dev/null
+}
+run_seq interactive
+expect "H code 2" test "$RC" = 2
+expect "H app laissée arrêtée, aucun démarrage" bash -c "grep -q '^left-stopped bash ' '$HOOKS' && ! grep -q start '$HOOKS'"
+expect "H KO nominatif : users (1 ligne(s))" grep_file '^KO\|base vide au départ .*users \(1 ligne\(s\)\)' "$CASE_OUT/check-migration.txt"
 
 echo
 if [ "$FAILS" -gt 0 ]; then echo "ÉCHEC : $FAILS garde(s) en échec — journaux dans $OUT"; exit 1; fi

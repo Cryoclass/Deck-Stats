@@ -5,6 +5,14 @@ avec les scripts livrés en 8B (`deploy/deploy.sh`, `backup.sh`, `restore.sh`, `
 été répétée à l'identique sur le dump réel du 8 septembre 2026 et sur le jeu représentatif
 (docs/etape-8.md, « Compte rendu 8B »). Rien ici n'a encore été exécuté sur le VPS.
 
+> **Décision prise après 8B (8 septembre 2026) : la production repart d'une base vide.** Rien
+> n'est conservé (ni decks, ni comptes, ni annotations). L'archive de l'état actuel est prise,
+> vérifiée et copiée hors VPS par principe (souvenir), mais elle n'est plus un chemin de retour
+> à préparer. La procédure à suivre est la **variante « départ à vide »** ci-dessous, qui
+> remplace les §3, §4 et §5 ; §0 (répétition sur archive fraîche) devient inutile, §1 et §2 sont
+> inchangés, §6 est adapté dans la variante, §7 et §8 restent valables. Les §3 à §5 sont
+> conservés pour mémoire : ils décrivent la migration d'une base conservée.
+
 ## Avant de commencer
 
 - **État attendu de la production** : base pré-001 (14 tables, aucun journal `app_migrations`),
@@ -79,7 +87,230 @@ Une mention « (tables modifiées pendant la sauvegarde, non vérifiables : sess
 si quelqu'un est connecté. Une ligne « sauvegarde NON vérifiée » arrête tout : ne pas déployer,
 lire la raison (`ygo_verify` impossible ? restauration en échec ?). Rien n'a été modifié.
 
-## 3. Lancement (T1)
+## Variante « départ à vide » — remplace §3, §4 et §5
+
+Ce que la base neuve reçoit, et comment (vérifié le 8 septembre 2026 sur conteneurs jetables,
+docs/etape-8.md « Préparation de 8C : départ à vide ») :
+
+- **Le schéma et les migrations.** Un volume PostgreSQL neuf est initialisé par les quatre
+  fichiers montés dans `docker-entrypoint-initdb.d` (`docker-compose.prod.yml` : `00-schema`,
+  `01`, `02`, `03`) au premier démarrage du conteneur `db`, en ≈ 5 s. Sur une base neuve, 003
+  n'a rien à purger et se journalise sans acceptation. `deploy.sh` trouve ensuite 003
+  journalisée : schéma rejoué seul, aucune simulation, aucune question, contrôles, app démarrée
+  (code 0, ≈ 20 s hors build).
+- **Le catalogue de cartes.** Il n'est chargé ni au premier démarrage ni par l'app : `/api/health`
+  répond `{"ok":true,"cards":0,"catalog":null}` tant qu'on ne l'a pas copié. La copie se fait par
+  le script de maintenance embarqué dans l'image, `server/dist/scripts/migrate-cards.js`,
+  exécuté dans le conteneur `app` (deploy/README.md §8) : lecture de la Supabase publique par
+  PostgREST avec la clé anon par défaut (aucune clé à mettre dans `.env.prod`), 1 000 cartes par
+  page, upsert par lots de 500, puis estampille `catalog_version` (version annoncée par la
+  source, nombre annoncé, copié, local). Mesuré en local : 14 529 cartes, version source
+  `2026-08-31`, 13 à 16 s, base de 22 Mo. Rejouable sans risque (idempotent).
+- **Le compte** se crée au navigateur (onglet Inscription, code d'invitation de `INVITE_CODES`
+  dans `.env.prod`) ; les catégories intégrées « Handtrap » et « Board breaker » sont posées à la
+  création. Les decks se réimportent depuis leurs fichiers YDK.
+
+Indisponibilité : de V1 (arrêt de l'app) à la fin de V4 (app démarrée), soit la sauvegarde
+souvenir (≈ 1 min), la copie et sa vérification, la suppression du volume, puis `deploy.sh`
+(build de l'image, plusieurs minutes la première fois, puis ≈ 30 s). Le catalogue (V5) se charge
+app en marche.
+
+### V1. Arrêt de l'app et sauvegarde souvenir vérifiée (T1)
+
+```bash
+cd ~/apps/ygo-proba/deploy
+docker compose --env-file .env.prod -f docker-compose.prod.yml stop app
+bash backup.sh --keep souvenir
+```
+
+Attendu :
+
+```text
+<date> sauvegarde ok: keep/ygo-souvenir-<horodatage>.sql.gz (1.5M)
+<date> sauvegarde vérifiée: keep/ygo-souvenir-<horodatage>.sql.gz sha256 <64 hex> empreinte <32 hex>
+```
+
+Mode `keep` : vérification stricte, l'app doit être arrêtée (une table qui bouge pendant
+l'export est un échec, pas une note). Une ligne « sauvegarde NON vérifiée » arrête tout :
+lire la raison, relancer ; ne pas continuer sans archive vérifiée. Noter l'horodatage.
+
+### V2. Copie hors VPS et vérification (T2)
+
+```bash
+mkdir -p ../testhand-dumps
+scp 'ubuntu@137.74.172.32:/var/backups/ygo-proba/keep/ygo-souvenir-<horodatage>.sql.gz*' ../testhand-dumps/
+ls -la ../testhand-dumps/ygo-souvenir-<horodatage>.sql.gz*        # .sql.gz, .sha256, .fingerprint
+docker run --name testhand-verify-db --label purpose=testhand-step8 --rm --tmpfs /var/lib/postgresql/data \
+  -e POSTGRES_USER=ygo -e POSTGRES_PASSWORD=ygo-disposable -e POSTGRES_DB=ygo -p 127.0.0.1:55441:5432 -d postgres:17-alpine
+sleep 8
+TESTHAND_DB_CONTAINER=testhand-verify-db bash deploy/restore.sh ../testhand-dumps/ygo-souvenir-<horodatage>.sql.gz --check-only
+docker stop testhand-verify-db
+```
+
+Attendu : mêmes lignes qu'au §4b (`somme SHA-256 exacte`, `empreinte enregistrée`, restauration
+de contrôle identique, `16 deck(s), 14529 carte(s) au catalogue`, `archive vérifiée: …`). Un
+refus = copie altérée : recopier ; tant que la copie n'est pas vérifiée, ne pas passer à V3.
+
+### V3. Base recréée vide (T1) — point de non-retour
+
+```bash
+cd ~/apps/ygo-proba/deploy
+docker compose --env-file .env.prod -f docker-compose.prod.yml down     # app et db arrêtés et supprimés, volumes conservés
+docker volume ls | grep ygo-proba                                        # attendu : ygo-proba_pgdata
+docker volume rm ygo-proba_pgdata                                        # POINT DE NON-RETOUR
+docker volume ls | grep ygo-proba                                        # attendu : rien
+```
+
+À partir d'ici, seule l'archive souvenir (V1, copiée en V2) porte l'ancien état ; les bases de
+travail `ygo_verify` / `ygo_previous` disparaissent avec le volume, c'est attendu. `down` retire
+aussi le réseau par défaut de la pile (recréé par `deploy.sh`) ; le réseau externe `edge` et le
+Caddy goldfish ne sont pas touchés.
+
+Alternative sans supprimer le volume (conteneur `db` conservé, app arrêtée) : recréer la seule
+base `ygo` — `docker compose … exec -T db dropdb -U ygo ygo` puis `… createdb -U ygo -O ygo ygo`.
+La base est alors vide **sans** passage par `initdb` : `deploy.sh` rejoue schéma, 001, 002, puis
+003 en simulation (« à purger : 0 ligne(s) », « rien à purger : aucune acceptation requise »),
+003 réelle (« 0 ligne(s) supprimée(s) ») et le contrôle « OK|base vide au départ (aucune table
+avant le schéma) » (ajouté pour ce cas, prouvé par le cas G de `test-migration-sequence.sh`).
+Aucune question non plus. Le chemin principal reste la suppression du volume.
+
+### V4. `deploy.sh` — aucune question attendue (T1)
+
+```bash
+bash deploy.sh
+```
+
+Sortie attendue, dans l'ordre (horodatages omis) :
+
+```text
+Already up to date.                         (git pull)
+... build de l'image (plusieurs minutes la première fois)
+==> Attente de la DB...                     (conteneur db recréé : initdb joue 00-schema, 01, 02, 03 ; ≈ 5 s)
+séquence de migration — dossier : .../deploy/out/deploy-<horodatage> — acceptation : OUI au terminal
+arrêt de l'app (aucune écriture pendant la transition)          (aucun conteneur app : sans effet)
+empreinte de la base avant toute modification (fingerprint-0.txt)
+sauvegarde pré-migration vérifiée (obligatoire, hors rétention)
+    <date> sauvegarde ok: keep/ygo-pre-migration-<horodatage>.sql.gz (4.0K)
+    <date> sauvegarde vérifiée: keep/ygo-pre-migration-<horodatage>.sql.gz sha256 <64 hex> empreinte <32 hex>
+archive pré-migration : /var/backups/ygo-proba/keep/ygo-pre-migration-<horodatage>.sql.gz — ...
+inventaire avant migration (inventory-before-*)
+inventaire : 16 table(s), journal « 001-deck-configuration,002-profiles-and-conditions,003-purge-legacy », 0 résumé(s) non nul(s), modèle historique : 0 paire(s) globale(s), 0 exclusion(s) ou prérequis source paire
+003 déjà journalisée : 001 et 002 ne se rejouent plus (001 recréerait deck_requirements), schéma seulement
+rejeu par stdin : db/schema.sql
+003 en simulation (rapport : .../003-simulation.txt)
+003 déjà journalisée : aucun effet, contrôles seulement
+contrôles après migration (check-migration.txt, fingerprint-3.txt)
+    OK|journal 001-deck-configuration : journalisée
+    ... (une trentaine de lignes OK|, aucune KO| ; dont « OK|decks : 0 »)
+    OK|tables intactes de bout en bout (effectif et contenu) : cards catalog_version users user_identities sessions deck_cards deck_starters card_categories
+    OK|003 n'a touché que ses propres objets ...
+démarrage de l'app
+... docker compose up -d, ps : db et app « Up »
+séquence terminée : ok
+==> Rapports : .../deploy/out/deploy-<horodatage>
+==> Déployé. Santé : curl -s https://analysis.scratchrecode.com/api/health
+```
+
+Code 0, **aucune question**. L'archive « pré-migration » de 4 Ko est celle de la base vide déjà
+à 003 : attendue, sans intérêt, laissée dans `keep/`. Points de lecture :
+
+- la ligne `inventaire :` porte `16 table(s)`, les trois migrations au journal, `0 résumé(s)`,
+  `0 paire(s)` ;
+- **si `deploy.sh` pose une question** (`Appliquer la purge … ?`), ou affiche `rejeu par stdin :
+  db/migrations/001…`, une simulation `à purger : N ligne(s)` avec N ≥ 1, un inventaire à
+  `14 table(s)` ou des résumés / paires non nuls : **la base n'était pas vide** (volume non
+  supprimé, mauvais nom, mauvaise pile). Répondre autre chose que `OUI` (`NON`) : code 3, nouvelle
+  app démarrée sans 003 sur l'ancienne donnée, rien de purgé. Arrêter, comprendre (`docker volume
+  ls`, `inventory-before-counts.txt`), ne pas relancer avant d'avoir la cause ;
+- avec l'alternative `dropdb` / `createdb` de V3, la sortie attendue diffère : `inventaire : 0
+  table(s), journal «  »`, rejeu de 001 et 002, `simulation terminée … à purger : 0 ligne(s)`,
+  `rien à purger : aucune acceptation requise`, `PURGE APPLIQUÉE : … 0 ligne(s) supprimée(s)`,
+  `OK|base vide au départ (aucune table avant le schéma)`. Là aussi, toute question = base non
+  vide, répondre `NON`.
+
+Santé juste après : `{"ok":true,"cards":0,"catalog":null}` (catalogue pas encore chargé).
+
+Échecs possibles : ceux de l'annexe A. Sur base vide, un code 1 avant 003 laisse une base vide et
+aucun conteneur app (l'« ancienne app » n'existe plus : `dc start app` échoue, sans effet) :
+lire `journal.txt`, corriger, relancer `deploy.sh`.
+
+### V5. Catalogue de cartes (T1)
+
+```bash
+cd ~/apps/ygo-proba/deploy
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec app node server/dist/scripts/migrate-cards.js
+curl -s https://analysis.scratchrecode.com/api/health
+```
+
+Attendu (≈ 15 s, selon le réseau du VPS) :
+
+```text
+→ Connexion au Postgres local: postgres://ygo:***@db:5432/ygo
+→ Version source: 2026-08-31 (14529 cartes annoncées, empreinte <…>)
+→ Colonnes copiées: id, name, type, race, attribute, atk, def, level, description, image_url, image_url_small, image_url_cropped
+→ 14529 cartes copiées…
+✓ Migration terminée. Table locale cards: 14529 lignes.
+✓ Catalogue estampillé version 2026-08-31.
+{"ok":true,"cards":14529,"catalog":{"version":"2026-08-31","migratedAt":"…","cards":14529}}
+```
+
+Le nombre exact est celui que la source annonce le jour J (14 529 pour la version `2026-08-31`) ;
+`cards`, `catalog.cards` et le nombre annoncé doivent être égaux entre eux. Une ligne
+`⚠ … aucune estampille posée` (source passée à une nouvelle version pendant la copie, ou écart
+entre annoncé et copié) : relancer la commande, elle est idempotente. Une erreur `Supabase 4xx /
+5xx` : la source est injoignable depuis le VPS, réessayer plus tard ; l'app reste utilisable
+sans catalogue (recherche vide).
+
+### V6. Création du compte (navigateur)
+
+Sur https://analysis.scratchrecode.com : onglet **Inscription**, email, mot de passe, nom
+affiché, code d'invitation (un des `INVITE_CODES` de `.env.prod`, à lire sur le VPS :
+`grep INVITE_CODES ~/apps/ygo-proba/deploy/.env.prod`). Connexion Discord possible ensuite ou à
+la place (le code d'invitation est demandé à la première venue). Attendu après connexion :
+« Mes decks » vide, invitation à importer un YDK.
+
+### V7. Contrôles après déploiement (§6 adapté)
+
+```bash
+curl -s https://analysis.scratchrecode.com/api/health       # cards = catalog.cards = nombre annoncé (14529 le 8 sept. 2026)
+docker compose --env-file .env.prod -f docker-compose.prod.yml logs --tail 30 app
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select id, applied_at from app_migrations order by id"
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select (select count(*) from users) as users, (select count(*) from decks) as decks, (select count(*) from cards) as cards"
+```
+
+Attendu : trois lignes `001-deck-configuration`, `002-profiles-and-conditions`,
+`003-purge-legacy` (les `applied_at` des trois à quelques secondes d'intervalle, au premier
+démarrage du conteneur `db`) ; `users 1, decks 0, cards 14529` ; aucune erreur dans les journaux.
+
+Au navigateur :
+
+1. « Mes decks » : 0 deck, aucun aperçu.
+2. Catalogue complet : « + Nouveau deck », puis « Ajouter une carte » : une recherche par nom
+   (par exemple une carte récente de la version `2026-08-31`) renvoie la carte avec son image.
+3. Import YDK : « + Importer un deck » avec un fichier `.ydk` local (un export de l'ancienne
+   base ou un deck de test) ; l'aperçu d'import rapporte les cartes reconnues, les passcodes hors
+   catalogue sont nommés et non réduits ; accepter ; main deck complet, starters posables,
+   statistiques calculées (« départs théoriques »), premier / second.
+4. Enregistrer, puis recharger : la révision s'incrémente, le deck se rouvre identique ;
+   enregistrer sans modification à nouveau : même comportement.
+5. Comparateur : « Dupliquer » le deck depuis l'accueil, ouvrir le comparateur sur les deux :
+   matrices affichées (Δ à « · » partout : decks identiques), export Excel téléchargeable.
+6. Bibliothèque : catégories « Handtrap » et « Board breaker » présentes (intégrées, posées à la
+   création du compte), aucune pertinence ; mode Profil disponible.
+
+Le lendemain : `tail -n 2 ~/ygo-backup.log` montre « sauvegarde ok » puis « sauvegarde
+vérifiée » (première archive quotidienne de la base neuve, ≈ 1,5 Mo avec le catalogue).
+
+### Retour arrière et après coup
+
+- §7 inchangé, avec l'archive souvenir : `bash restore.sh /var/backups/ygo-proba/keep/ygo-souvenir-<horodatage>.sql.gz`
+  (restauration de contrôle dans `ygo_restore` sur le nouveau volume, sauvegarde de sécurité de
+  la base neuve dans `keep/`, bascule), puis le code noté au §1 (la base restaurée est pré-001).
+- §8 : la ressaisie des 185 paires est **sans objet** (aucun deck repris) ; les decks utiles se
+  réimportent depuis leurs fichiers YDK ; l'archive souvenir reste la seule trace de l'ancien
+  état (paires globales lisibles en SQL si besoin).
+
+## 3. Lancement (T1) — base conservée, pour mémoire
 
 ```bash
 bash deploy.sh --expect e0efff5c2ddacc8d27bbd9e9e76694b1

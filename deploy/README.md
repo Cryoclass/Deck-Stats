@@ -93,10 +93,20 @@ premier démarrage (le DNS de l'étape 1 doit déjà pointer).
 
 ```bash
 bash ~/apps/ygo-proba/deploy/deploy.sh
-curl -s https://analysis.scratchrecode.com/api/health   # → {"ok":true,"cards":0}
+curl -s https://analysis.scratchrecode.com/api/health   # → {"ok":true,"cards":0,"catalog":null}
 ```
 
-## 5. Importer les données locales (cartes, comptes, decks)
+Un volume `pgdata` neuf est initialisé par les quatre fichiers montés dans
+`docker-entrypoint-initdb.d` (schéma, 001, 002, 003 : rien à purger, journalisée sans
+acceptation) ; `deploy.sh` trouve alors 003 journalisée et ne pose aucune question. Le
+catalogue n'est chargé ni à l'initialisation ni par l'app : le remplir avec `migrate-cards.js`
+depuis le conteneur `app` (§8, ≈ 15 s pour 14 500 cartes). C'est le chemin retenu pour 8C
+(« départ à vide », [docs/deploy-runbook.md](../docs/deploy-runbook.md), V1–V7).
+
+## 5. Importer les données locales (cartes, comptes, decks) — historique
+
+Procédure du premier déploiement de 2026, conservée pour mémoire ; depuis 8C le catalogue vient
+de la source (§8) et les decks se réimportent depuis leurs fichiers YDK.
 
 Le catalogue (~14 k cartes) et tes decks viennent de ta base locale — pas
 besoin de rejouer la migration Supabase sur le VPS.
@@ -224,7 +234,7 @@ Répétition et tests, en local sur conteneurs jetables (jamais la base de dev 5
 bash deploy/rehearsal.sh <archive.sql.gz> --accept <empreinte>   # dump réel hors dépôt, 55436 + 8790 + 5174
 bash deploy/rehearsal.sh --fixture                                # jeu représentatif
 bash deploy/test-backup-restore.sh                                # backup.sh / restore.sh, 55438 + 55439
-bash deploy/test-migration-sequence.sh                            # cas négatifs de la séquence, 55440
+bash deploy/test-migration-sequence.sh                            # cas A–H de la séquence (négatifs, base vide), 55440
 ```
 
 `rehearsal.sh` restaure l'archive, joue la séquence, restaure l'archive pré-migration dans
