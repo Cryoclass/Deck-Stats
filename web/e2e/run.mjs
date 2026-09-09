@@ -33,7 +33,7 @@ const API_PORT = Number(process.env.E2E_API_PORT ?? 8790);
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5174);
 const LABEL = 'purpose=testhand-e2e';
 const API = `http://localhost:${API_PORT}`;
-const ALL_SCENARIOS = ['setup', 'guards', 'compare', 'mobile', 'home', 'conditions'];
+const ALL_SCENARIOS = ['setup', 'guards', 'compare', 'mobile', 'home', 'conditions', 'nonengine'];
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);

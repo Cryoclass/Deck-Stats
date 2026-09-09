@@ -11,16 +11,20 @@ export interface EditableDeck {
   startConditions: StartCondition[];
   deadFirst: Set<number>; deadSecond: Set<number>;
   importance: number;
-  statsView: string; savedQueries: SavedQuery[]; notes: string | null;
+  savedQueries: SavedQuery[]; notes: string | null;
 }
 
+// Étape 9B : la vue du panneau de stats (`statsView`) est un réglage transitoire comme le
+// contexte — jamais émise dans `params` (changer de vue ne salit pas le deck) ; une configuration
+// ou une archive qui la porte encore reste acceptée en lecture (validateParams) et la valeur est
+// ignorée, comme le contexte.
 export function configurationFromState(s: EditableDeck): Configuration {
   return parseConfiguration({ version: 2, name: s.deckName,
     cards: [...s.main,...s.extra,...s.side].map((c) => ({ card_id: c.cardId,zone: c.zone,copies: c.copies })),
     starters: [...s.starters], pairs: s.pairs.map((p) => ({ ...p,disabled: s.pairExclusions.has(p.id) })),
     conditions: s.startConditions.map((r) => ({ id: r.id,source_card_id: r.sourceCardId,source_pair_id: r.sourcePairId,condition: r.condition })),
     deadFirst: [...s.deadFirst],deadSecond: [...s.deadSecond],notes: s.notes,
-    params: { importance: s.importance,statsView: s.statsView,savedQueries: s.savedQueries },
+    params: { importance: s.importance,savedQueries: s.savedQueries },
   });
 }
 
@@ -32,7 +36,7 @@ export function stateFromConfiguration(c: Configuration): EditableDeck {
     startConditions: c.conditions.map((r) => ({ id: r.id,sourceCardId: r.source_card_id,sourcePairId: r.source_pair_id,condition: r.condition })),
     deadFirst: new Set(c.deadFirst),deadSecond: new Set(c.deadSecond),notes: c.notes,
     importance: Number(c.params.importance ?? 0.5),
-    statsView: String(c.params.statsView ?? 'starts'),savedQueries: (c.params.savedQueries ?? []) as SavedQuery[],
+    savedQueries: (c.params.savedQueries ?? []) as SavedQuery[],
   };
 }
 

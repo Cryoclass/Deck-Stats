@@ -258,10 +258,13 @@ Code **1**, rien d'appliqué par la séquence (le contenu venait de `initdb`, in
 Le second `deploy.sh`, serveur définitif en place, a donné exactement la sortie attendue ci-dessus,
 code 0. Conduite à tenir : ce code 1 sur « shutting down » à l'empreinte initiale se relance sans
 autre action, après avoir constaté `healthy` ; il ne se produit que sur un volume neuf (un volume
-déjà initialisé ne lance pas de serveur temporaire). `deploy.sh` n'est pas corrigé à ce jour :
-report « attente de la DB fondée sur `healthy` » de l'étape 9 (docs/PLAN.md) — la `healthcheck`
-de Compose utilisant elle aussi `pg_isready` par le socket, la correction devra prouver qu'elle
-exclut la fenêtre du serveur temporaire.
+déjà initialisé ne lance pas de serveur temporaire). **Corrigé en 9B** (docs/etape-9.md) :
+`deploy.sh` attend par `db_ready` (lib.sh) — `healthy`, puis dans les journaux du démarrage
+courant le dernier « ready to accept connections » après « PostgreSQL init process complete »
+(ou « Skipping initialization » sur un volume déjà initialisé), puis `select 1` ; prouvé par le
+cas I de `test-migration-sequence.sh` (volume neuf, séquence lancée pendant l'initialisation,
+code 0). La consigne d'attente manuelle ci-dessus reste un rappel sans danger, plus une
+obligation ; ce code 1 ne devrait plus se produire.
 
 ### V5. Catalogue de cartes (T1)
 

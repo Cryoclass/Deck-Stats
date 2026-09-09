@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
 import { assignGroups } from '../lib/colors.js';
 import { leavesOf } from '../lib/conditions.js';
+import { nonEngineEffect, type NonEngineEffect } from '../lib/nonEngine.js';
 import { AVAILABILITY_LABEL, imageSmall, type Availability } from '../types.js';
 import { CardTile } from './CardTile.js';
-import { ModeBar } from './ModeBar.js';
+import { ModeBar, type ModeOption } from './ModeBar.js';
 import { AddCardDialog } from './AddCardDialog.js';
 import { KEY_TO_MODE, MODE_LABEL, type AnnotationMode } from './annotationModes.js';
 
@@ -28,7 +29,8 @@ export function AnnotationGrid({
   const togglePair = useDeck((s) => s.togglePair);
   const toggleHopt = useDeck((s) => s.toggleHopt);
   const toggleStarter = useDeck((s) => s.toggleStarter);
-  const toggleCardCategory = useDeck((s) => s.toggleCardCategory);
+  const profiles = useDeck((s) => s.profiles);
+  const applyNonEngine = useDeck((s) => s.applyNonEngine);
   const setProfile = useDeck((s) => s.setProfile);
   const startConditions = useDeck((s) => s.startConditions);
   const toggleRequirement = useDeck((s) => s.toggleRequirement);
@@ -37,6 +39,9 @@ export function AnnotationGrid({
 
   const [mode, setMode] = useState<AnnotationMode>('select');
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  // Étape 9B : profil posé avec l'étiquette par le mode Non-engine ; `null` = profil inchangé
+  // (valeur par défaut : l'étiquette seule, comportement d'avant 9B — docs/etape-9.md).
+  const [nonEngineProfile, setNonEngineProfile] = useState<Availability | null>(null);
   const [activeProfile, setActiveProfile] = useState<Availability | null>('flexible');
   const [comboPivot, setComboPivot] = useState<number | null>(null);
   const [prereqSource, setPrereqSource] = useState<number | null>(null);
@@ -46,7 +51,7 @@ export function AnnotationGrid({
   const [addOpen, setAddOpen] = useState(false);
 
   const enterMode = useCallback(
-    (next: AnnotationMode, option?: { categoryId?: string; profile?: Availability | null }) => {
+    (next: AnnotationMode, option?: ModeOption) => {
       setMode(next);
       setComboPivot(null);
       setPrereqSource(null);
@@ -54,6 +59,7 @@ export function AnnotationGrid({
       setSkipped(0);
       if (next === 'nonengine') {
         setActiveCategoryId(option?.categoryId ?? activeCategoryId ?? categories[0]?.id ?? null);
+        if (option && 'nonEngineProfile' in option) setNonEngineProfile(option.nonEngineProfile ?? null);
       }
       if (next === 'profile' && option && 'profile' in option) setActiveProfile(option.profile ?? null);
     },
@@ -145,6 +151,14 @@ export function AnnotationGrid({
     return s;
   }, [activeDependent, startConditions]);
 
+  // Étape 9B : effet du prochain clic en mode Non-engine, annoncé sur chaque tuile et dans le
+  // bandeau (carte survolée) — même règle que le store (lib/nonEngine.ts).
+  const effectOf = (cardId: number): NonEngineEffect | null =>
+    mode === 'nonengine' && activeCategoryId
+      ? nonEngineEffect(cardCategories.get(cardId)?.has(activeCategoryId) ?? false, profiles.get(cardId)?.availability ?? null, nonEngineProfile)
+      : null;
+  const hoveredEffect = hoveredCard !== null ? effectOf(hoveredCard) : null;
+
   const dispatch = (cardId: number) => {
     switch (mode) {
       case 'hopt':
@@ -157,7 +171,7 @@ export function AnnotationGrid({
         break;
       case 'nonengine':
         if (activeCategoryId) {
-          toggleCardCategory(cardId, activeCategoryId);
+          applyNonEngine(cardId, activeCategoryId, nonEngineProfile);
           setModCount((c) => c + 1);
         }
         break;
@@ -208,7 +222,7 @@ export function AnnotationGrid({
 
   return (
     <div className="flex h-full flex-col">
-      <ModeBar mode={mode} activeCategoryId={activeCategoryId} activeProfile={activeProfile} onEnter={enterMode} />
+      <ModeBar mode={mode} activeCategoryId={activeCategoryId} nonEngineProfile={nonEngineProfile} activeProfile={activeProfile} onEnter={enterMode} />
 
       {mode !== 'select' && (
         <ModeBanner
@@ -220,6 +234,8 @@ export function AnnotationGrid({
           prereqSource={prereqSource}
           sourceName={prereqSource !== null ? cards[prereqSource]?.name ?? `#${prereqSource}` : null}
           categoryName={categories.find((c) => c.id === activeCategoryId)?.name ?? null}
+          nonEngineProfileName={nonEngineProfile ? AVAILABILITY_LABEL[nonEngineProfile] : null}
+          hovered={hoveredEffect && hoveredCard !== null ? { name: cards[hoveredCard]?.name ?? `#${hoveredCard}`, effect: hoveredEffect } : null}
           profileName={activeProfile ? AVAILABILITY_LABEL[activeProfile] : null}
           onNewPivot={() => setComboPivot(null)}
           onNewSource={() => setPrereqSource(null)}
@@ -243,6 +259,7 @@ export function AnnotationGrid({
               delta={deltas.get(c.cardId)}
               mode={mode}
               activeCategoryId={activeCategoryId}
+              nonEngineEffect={effectOf(c.cardId)}
               comboPivot={comboPivot}
               linkedToPivot={linkedSet.has(c.cardId)}
               onCardClick={dispatch}
@@ -320,6 +337,8 @@ function ModeBanner({
   prereqSource,
   sourceName,
   categoryName,
+  nonEngineProfileName,
+  hovered,
   profileName,
   onNewPivot,
   onNewSource,
@@ -333,6 +352,9 @@ function ModeBanner({
   prereqSource: number | null;
   sourceName: string | null;
   categoryName: string | null;
+  nonEngineProfileName: string | null;
+  /** Mode Non-engine : carte survolée et effet de son prochain clic (9B). */
+  hovered: { name: string; effect: NonEngineEffect } | null;
   profileName: string | null;
   onNewPivot: () => void;
   onNewSource: () => void;
@@ -357,7 +379,11 @@ function ModeBanner({
         ? 'Clique la carte dépendante (son start exige qu’il reste une carte en deck).'
         : `Dépendante : ${sourceName}. Clique les cartes requises EN DECK (clauses ET) ; les alternatives OU se composent dans l’inventaire. Re-clique la dépendante pour en changer.`;
   } else if (mode === 'nonengine') {
-    hint = `Étiquette « ${categoryName ?? '—'} » : clique les cartes à (dé)marquer.`;
+    // 9B : le couple choisi, puis l'effet du prochain clic sur la carte survolée (poser / retirer).
+    const couple = `« ${categoryName ?? '—'} »${nonEngineProfileName ? ` + profil « ${nonEngineProfileName} »` : ''}`;
+    hint = hovered
+      ? `Prochain clic : ${hovered.effect} ${couple} — ${hovered.name}${hovered.effect === 'retirer' ? ' (le profil part avec la dernière étiquette)' : ''}.`
+      : `${couple} : clique une carte pour la rendre conforme ; sur une carte déjà conforme, le clic retire l'étiquette (et le profil s'il ne reste aucune étiquette).`;
   } else if (mode === 'profile') {
     hint = profileName
       ? `Profil « ${profileName} » : clique les cartes étiquetées non-engine (annotation du compte).`

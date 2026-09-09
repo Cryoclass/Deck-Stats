@@ -49,8 +49,11 @@ mkdir -p "$OUT"
 
 dc build
 dc up -d db
-echo '==> Attente de la DB...'
-dc exec -T db sh -c 'until pg_isready -q -U ygo -d ygo; do sleep 1; done'
+# Étape 9B (incident 8C) : jamais `pg_isready` par le socket, qui accepte le serveur temporaire
+# d'initialisation d'un volume neuf ; db_ready (lib.sh) attend `healthy`, le serveur définitif
+# annoncé dans les journaux, puis un `select 1`.
+echo '==> Attente de la DB (healthy, serveur définitif annoncé dans les journaux, select 1)...'
+db_ready || die 'base injoignable après 120 s : docker compose --env-file .env.prod -f docker-compose.prod.yml ps / logs db'
 
 hook_stop_app() { dc stop app; }             # aucune écriture de l'ancienne API pendant la transition
 hook_start_app() { dc up -d; dc ps; }        # nouvelle image (avec ou sans 003 selon l'issue)

@@ -63,11 +63,40 @@ db_exec() {  # db_exec <commande…> : dans le conteneur db, stdin transmis, sor
 db_psql() { db_exec psql -U "$DB_USER" -d "${1:-$DB_NAME}" -v ON_ERROR_STOP=1 -q -c 'set client_min_messages = warning' -f -; }  # SQL sur stdin, sans les NOTICE « already exists »
 db_query() { db_exec psql -U "$DB_USER" -d "${2:-$DB_NAME}" -v ON_ERROR_STOP=1 -qAt -c 'set client_min_messages = warning' -c "$1"; }   # db_query <sql> [base]
 db_fingerprint() { db_exec psql -U "$DB_USER" -d "${1:-$DB_NAME}" -v ON_ERROR_STOP=1 -qAt -f - < "$LIB_DIR/fingerprint.sql"; }
-db_ready() {  # deux `select 1` consécutifs : le serveur redémarre une fois pendant l'initialisation
-  local i ok=0
-  for i in $(seq 1 90); do
-    if db_query 'select 1' >/dev/null 2>&1; then ok=$((ok + 1)); else ok=0; fi
-    [ "$ok" -ge 2 ] && return 0
+# ─── Attente de la base (étape 9B, incident 8C) ───
+# L'entrypoint de l'image PostgreSQL initialise un volume neuf avec un serveur TEMPORAIRE (socket
+# Unix seulement) qui annonce lui aussi « database system is ready to accept connections », joue
+# docker-entrypoint-initdb.d, puis s'arrête (« shutting down ») avant le serveur définitif.
+# `pg_isready` et un `select 1` par le socket l'acceptent ; la healthcheck Compose (même
+# pg_isready) aussi. db_ready exige donc, dans l'ordre : (1) l'état `healthy` du conteneur quand
+# une healthcheck existe ; (2) dans les journaux du démarrage courant, le DERNIER « ready to accept
+# connections » APRÈS le marqueur de l'entrypoint — « PostgreSQL init process complete » (volume
+# neuf) ou « Skipping initialization » (volume déjà initialisé) ; sans marqueur, l'initialisation
+# est en cours et rien n'est définitif ; (3) un `select 1`. Preuve : cas I de
+# test-migration-sequence.sh (volume neuf, séquence lancée pendant l'initialisation).
+db_container_id() {  # nom du conteneur jetable, ou id du service `db` de la pile Compose
+  if [ -n "${TESTHAND_DB_CONTAINER:-}" ]; then printf '%s\n' "$TESTHAND_DB_CONTAINER"
+  else docker compose --env-file .env.prod -f docker-compose.prod.yml ps -q db 2>/dev/null | head -n 1; fi
+}
+db_startup_logs() {  # <conteneur> : journaux depuis le dernier démarrage (bornés ; un démarrage précédent n'y figure pas)
+  local since
+  since=$(docker inspect -f '{{.State.StartedAt}}' "$1" 2>/dev/null) || return 1
+  docker logs --since "$since" "$1" 2>&1
+}
+db_definitive_server_announced() {  # <conteneur> : 0 si le dernier « ready » suit le marqueur de l'entrypoint
+  db_startup_logs "$1" | awk '
+    /PostgreSQL init process complete/ || /Skipping initialization/ { marker = NR }
+    /database system is ready to accept connections/ { ready = NR }
+    END { exit (marker && ready > marker) ? 0 : 1 }'
+}
+db_ready() {  # 120 s au plus ; 1 si la base n'est pas prête (conteneur absent, initialisation, panne)
+  local i id health
+  for i in $(seq 1 120); do
+    id=$(db_container_id)
+    if [ -n "$id" ]; then
+      health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$id" 2>/dev/null || echo unknown)
+      if { [ "$health" = none ] || [ "$health" = healthy ]; } && db_definitive_server_announced "$id" && db_query 'select 1' >/dev/null 2>&1; then return 0; fi
+    fi
     sleep 1
   done
   return 1

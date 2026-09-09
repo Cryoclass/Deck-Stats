@@ -7,6 +7,7 @@ import { CardImage } from './CardImage.js';
 import { CardMenu } from './CardMenu.js';
 import { CardDetailDialog } from './CardDetailDialog.js';
 import type { AnnotationMode } from './annotationModes.js';
+import type { NonEngineEffect } from '../lib/nonEngine.js';
 
 interface Props {
   cardId: number;
@@ -14,6 +15,8 @@ interface Props {
   delta?: { first: number; second: number };
   mode: AnnotationMode;
   activeCategoryId: string | null;
+  /** Mode Non-engine (9B) : effet du prochain clic sur cette carte, annoncé sur la tuile. */
+  nonEngineEffect?: NonEngineEffect | null;
   comboPivot: number | null;
   linkedToPivot: boolean;
   onCardClick: (cardId: number) => void;
@@ -32,6 +35,7 @@ export function CardTile({
   delta,
   mode,
   activeCategoryId,
+  nonEngineEffect = null,
   comboPivot,
   linkedToPivot,
   onCardClick,
@@ -174,6 +178,17 @@ export function CardTile({
         )}
         {highlightCat && (
           <span className="pointer-events-none absolute bottom-1 right-1 h-2.5 w-2.5 rounded-full bg-sky-400 ring-1 ring-black/50" />
+        )}
+        {/* Étape 9B : la tuile annonce l'effet du prochain clic du mode Non-engine combiné. */}
+        {nonEngineEffect && (
+          <span
+            data-nonengine-effect={nonEngineEffect}
+            className={`pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 rounded px-1 text-[9px] font-bold ${
+              nonEngineEffect === 'poser' ? 'bg-sky-500/90 text-black' : 'bg-black/70 text-sky-200 ring-1 ring-sky-400/70'
+            }`}
+          >
+            {nonEngineEffect}
+          </span>
         )}
         {/* Marqueur condition permanent — contour pointillé + icône « deck », coin
             distinct des pastilles de combo (§D). */}

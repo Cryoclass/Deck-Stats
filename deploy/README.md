@@ -214,7 +214,9 @@ DATABASE_URL=postgres://ygo:ygo@localhost:5433/ygo_repet \
 
 ## 9. Migration 003, restauration et répétition (étape 8B)
 
-`deploy.sh` enchaîne : `git pull` → build → db → séquence partagée de `lib.sh`
+`deploy.sh` enchaîne : `git pull` → build → db → attente `db_ready` (étape 9B : `healthy`, puis
+serveur définitif annoncé dans les journaux après le marqueur de l'entrypoint — jamais le seul
+`pg_isready`, qui accepte le serveur temporaire d'initialisation d'un volume neuf) → séquence partagée de `lib.sh`
 (`run_migration_sequence`, la même que `rehearsal.sh`) : arrêt de l'app → sauvegarde
 pré-migration vérifiée dans `keep/` → inventaire (effectifs, journal, résumés, modèle
 historique) → schéma → 001 → 002 (plus rejoués une fois 003 journalisée : 001 recréerait
@@ -234,7 +236,7 @@ Répétition et tests, en local sur conteneurs jetables (jamais la base de dev 5
 bash deploy/rehearsal.sh <archive.sql.gz> --accept <empreinte>   # dump réel hors dépôt, 55436 + 8790 + 5174
 bash deploy/rehearsal.sh --fixture                                # jeu représentatif
 bash deploy/test-backup-restore.sh                                # backup.sh / restore.sh, 55438 + 55439
-bash deploy/test-migration-sequence.sh                            # cas A–H de la séquence (négatifs, base vide), 55440
+bash deploy/test-migration-sequence.sh                            # cas A–I de la séquence (négatifs, base vide, volume neuf), 55440
 ```
 
 `rehearsal.sh` restaure l'archive, joue la séquence, restaure l'archive pré-migration dans

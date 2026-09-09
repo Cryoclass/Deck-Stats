@@ -34,6 +34,9 @@ export function buildDeckJson(configuration: Configuration, library: Library): D
     ...configuration.deadFirst,...configuration.deadSecond]);
   const cardCategories = library.cardCategories.filter((cc) => cardIds.has(cc.card_id));
   const categoryIds = new Set(cardCategories.map((cc) => cc.category_id));
+  // Étape 9B : la vue n'est plus émise par l'éditeur (réglage transitoire) ; un deck enregistré
+  // avant 9B peut encore la porter dans ses params (export depuis l'accueil) — acceptée en lecture,
+  // sa catégorie reste jointe pour que `parseArchive` (remap des références) ne refuse pas l'archive.
   const view = configuration.params.statsView;
   if (typeof view === 'string' && !['starts','nonengine'].includes(view)) categoryIds.add(view);
   for (const q of (configuration.params.savedQueries ?? []) as Array<{ criteria: Array<{ subject: { kind: string; categoryId?: string; categoryIds?: string[] } }> }>) {

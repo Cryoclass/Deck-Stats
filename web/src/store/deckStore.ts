@@ -13,6 +13,7 @@ import { buildEngineModel, type EngineModel } from '../lib/engineModel.js';
 import { configurationFromState, configurationFromDetail, stateFromConfiguration, libraryState } from '../lib/deckConfiguration.js';
 import { addClause, leaf, leavesOf, removeLeavesOfCard } from '../lib/conditions.js';
 import { summaryOfState } from '../lib/summary.js';
+import { nonEngineEffect } from '../lib/nonEngine.js';
 
 interface State {
   revision: number;
@@ -48,7 +49,10 @@ interface State {
   // requêtes et au mur de mains ; il ne modifie pas le modèle (les deux passes sont
   // toujours calculées) et n'est pas enregistré.
   context: AnalysisContext;
-  statsView: string; // itération 6 : vue du panneau de stats ('starts' | 'nonengine' | catId)
+  // Vue du panneau de stats ('starts' | 'nonengine' | catId). Étape 9B : transitoire comme le
+  // contexte — plus un paramètre du deck (changer de vue ne salit pas), jamais émise, une valeur
+  // encore présente dans une configuration enregistrée avant 9B est acceptée et ignorée.
+  statsView: string;
   savedQueries: SavedQuery[]; // itération 7 : requêtes nommées (param du deck)
   // Requête en cours (brouillon de travail, non enregistrée) + filtre du mur de mains
   // unifié avec elle (§D) : les deux sont transitoires, hors params.
@@ -114,6 +118,10 @@ interface State {
   addCategory: (name: string) => void;
   deleteCategory: (id: string) => void;
   toggleCardCategory: (cardId: number, categoryId: string) => void;
+  /** Mode Non-engine combiné (9B) : rend la carte conforme au couple étiquette + profil (`null`
+   *  = profil inchangé) ; si elle le porte déjà exactement, retire l'étiquette puis, s'il ne
+   *  reste aucune étiquette, le profil. Deux requêtes au plus, dans l'ordre, dans la file globale. */
+  applyNonEngine: (cardId: number, categoryId: string, profile: Availability | null) => void;
   setProfile: (cardId: number, availability: Availability | null) => void;
   setCardGroup: (cardId: number, groupId: string | null) => void;
   addGroup: (name: string, capPerTurn: number) => void;
@@ -495,8 +503,7 @@ export const useDeck = create<State>((set, get) => {
     },
 
     setStatsView(view) {
-      set({ statsView: view });
-      markDirty(); // pur affichage, mais mémorisé dans les params du deck (itération 6)
+      set({ statsView: view }); // affichage seul (9B) : ni recalcul, ni « non enregistré », ni brouillon
     },
 
     // ─── Mode requête (itération 7) : la requête en cours est transitoire ; seules les
@@ -622,6 +629,35 @@ export const useDeck = create<State>((set, get) => {
         if (cats.has(categoryId)) { await api.removeCardCategory(cardId,categoryId);cats.delete(categoryId); }
         else { await api.addCardCategory(cardId,categoryId);cats.add(categoryId); }
         cc.set(cardId,cats);set({ cardCategories: cc });recompute();
+      });
+    },
+    // Étape 9B — mode Non-engine combiné. L'effet est décidé au clic sur l'état adopté (acquitté),
+    // puis rejoué dans la file : l'étiquette d'abord (le serveur exige une étiquette avant un
+    // profil, Q1 de 5B), le profil ensuite ; en retrait, l'étiquette puis le profil devenu orphelin.
+    // Chaque écriture est adoptée après son acquittement ; une erreur arrête la paire et laisse
+    // l'état tel qu'acquitté (persistenceError).
+    applyNonEngine(cardId, categoryId, profile) {
+      persist(set, async () => {
+        const has = get().cardCategories.get(cardId)?.has(categoryId) ?? false;
+        const current = get().profiles.get(cardId)?.availability ?? null;
+        const conforming = nonEngineEffect(has,current,profile) === 'retirer';
+        const adoptFlags = (saved: { availability: Availability | null; group_id: string | null }) => {
+          const profiles = new Map(get().profiles);
+          if (saved.availability) profiles.set(cardId,{ availability: saved.availability,groupId: saved.group_id });
+          else profiles.delete(cardId);
+          set({ profiles });
+        };
+        const setCats = (cats: Set<string>) => { const cc = new Map(get().cardCategories); cc.set(cardId,cats); set({ cardCategories: cc }); };
+        if (!conforming) {
+          if (!has) { await api.addCardCategory(cardId,categoryId); setCats(new Set([...(get().cardCategories.get(cardId) ?? []),categoryId])); }
+          if (profile !== null && current !== profile) adoptFlags(await api.setFlags(cardId,{ availability: profile }));
+        } else {
+          await api.removeCardCategory(cardId,categoryId);
+          const remaining = new Set([...(get().cardCategories.get(cardId) ?? [])].filter((id) => id !== categoryId));
+          setCats(remaining);
+          if (remaining.size === 0 && get().profiles.has(cardId)) adoptFlags(await api.setFlags(cardId,{ availability: null }));
+        }
+        recompute();
       });
     },
     // ─── Profils de disponibilité et plafonds partagés (étape 5B, contrat §3) ───

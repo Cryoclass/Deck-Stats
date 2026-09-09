@@ -5,15 +5,26 @@ import { AVAILABILITY_HINT, AVAILABILITY_LABEL, type Availability } from '../typ
 import { AVAILABILITY_PROFILES } from '../../../server/src/domain/deckConfiguration.js';
 import { MODE_KEY, MODE_LABEL, type AnnotationMode } from './annotationModes.js';
 
+export interface ModeOption {
+  categoryId?: string;
+  /** Mode Non-engine combiné (9B) : profil posé avec l'étiquette ; `null` = profil inchangé. */
+  nonEngineProfile?: Availability | null;
+  /** Mode Profil : profil appliqué ; `null` = retirer le profil. */
+  profile?: Availability | null;
+}
+
 interface Props {
   mode: AnnotationMode;
   activeCategoryId: string | null;
-  /** Profil appliqué par le mode Profil ; `null` = retirer le profil. */
+  nonEngineProfile: Availability | null;
   activeProfile: Availability | null;
-  onEnter: (mode: AnnotationMode, option?: { categoryId?: string; profile?: Availability | null }) => void;
+  onEnter: (mode: AnnotationMode, option?: ModeOption) => void;
 }
 
-export function ModeBar({ mode, activeCategoryId, activeProfile, onEnter }: Props) {
+const ITEM = 'flex cursor-pointer items-center justify-between gap-3 rounded px-2 py-1.5 text-xs text-ink-200 outline-none data-[highlighted]:bg-ink-700';
+const SECTION = 'px-2 py-1 text-[10px] uppercase tracking-wide text-ink-500';
+
+export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfile, onEnter }: Props) {
   const categories = useDeck((s) => s.categories);
   const activeCat = categories.find((c) => c.id === activeCategoryId);
 
@@ -45,7 +56,10 @@ export function ModeBar({ mode, activeCategoryId, activeProfile, onEnter }: Prop
         onClick={() => onEnter('starter')}
       />
 
-      {/* Non-engine : la catégorie (étiquette) se choisit dans le déroulant du bouton. */}
+      {/* Non-engine combiné (étape 9B) : le déroulant choisit l'étiquette ET le profil posé avec
+          elle (« profil inchangé » par défaut : l'étiquette seule, comme avant 9B). Les profils
+          sont des éléments radio (rôle menuitemradio) : un profil et une étiquette peuvent porter
+          le même nom (« Board breaker ») sans se confondre. Le chip du bouton rappelle le couple. */}
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button
@@ -54,11 +68,13 @@ export function ModeBar({ mode, activeCategoryId, activeProfile, onEnter }: Prop
                 ? 'bg-sky-500/20 text-sky-200 ring-1 ring-sky-500/40'
                 : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
             }`}
+            title="Non-engine : pose l'étiquette choisie et, si un profil est choisi, ce profil ; sur une carte déjà conforme, retire l'étiquette (et le profil s'il ne reste aucune étiquette)."
           >
             {MODE_LABEL.nonengine}
             {mode === 'nonengine' && activeCat && (
               <span className="rounded bg-sky-500/30 px-1 text-[10px] text-sky-100">
                 {activeCat.name}
+                {nonEngineProfile ? ` + ${AVAILABILITY_LABEL[nonEngineProfile]}` : ''}
               </span>
             )}
             <span className="text-ink-500">▾</span>
@@ -71,25 +87,42 @@ export function ModeBar({ mode, activeCategoryId, activeProfile, onEnter }: Prop
             align="start"
             sideOffset={4}
             collisionPadding={8}
-            className="z-50 min-w-[180px] rounded-lg border border-ink-700 bg-ink-850 p-1 shadow-2xl shadow-black/50"
+            className="z-50 min-w-[220px] rounded-lg border border-ink-700 bg-ink-850 p-1 shadow-2xl shadow-black/50"
           >
-            <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-ink-500">
-              Étiquette à poser
-            </div>
+            <div className={SECTION}>Étiquette à poser</div>
             {categories.map((cat) => (
               <DropdownMenu.Item
                 key={cat.id}
                 onSelect={() => onEnter('nonengine', { categoryId: cat.id })}
-                className="flex cursor-pointer items-center justify-between gap-3 rounded px-2 py-1.5 text-xs text-ink-200 outline-none data-[highlighted]:bg-ink-700"
+                className={ITEM}
               >
                 {cat.name}
+                {cat.id === activeCategoryId && <span className="text-sky-300">✓</span>}
               </DropdownMenu.Item>
             ))}
+            <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
+            <div className={SECTION}>Profil posé avec l'étiquette</div>
+            <DropdownMenu.RadioGroup
+              value={nonEngineProfile ?? 'unchanged'}
+              onValueChange={(v) => onEnter('nonengine', { nonEngineProfile: v === 'unchanged' ? null : (v as Availability) })}
+            >
+              <DropdownMenu.RadioItem value="unchanged" className={`${ITEM} text-ink-400`}>
+                Profil inchangé
+                <DropdownMenu.ItemIndicator className="text-sky-300">✓</DropdownMenu.ItemIndicator>
+              </DropdownMenu.RadioItem>
+              {AVAILABILITY_PROFILES.map((profile) => (
+                <DropdownMenu.RadioItem key={profile} value={profile} title={AVAILABILITY_HINT[profile]} className={ITEM}>
+                  {AVAILABILITY_LABEL[profile]}
+                  <DropdownMenu.ItemIndicator className="text-sky-300">✓</DropdownMenu.ItemIndicator>
+                </DropdownMenu.RadioItem>
+              ))}
+            </DropdownMenu.RadioGroup>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
 
-      {/* Profil de disponibilité (étape 5B, contrat §3) : fenêtres d'une carte étiquetée. */}
+      {/* Profil de disponibilité (étape 5B, contrat §3) : fenêtres d'une carte étiquetée. Conservé
+          à côté du mode combiné (Q4 de l'étape 9). */}
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button
@@ -118,9 +151,7 @@ export function ModeBar({ mode, activeCategoryId, activeProfile, onEnter }: Prop
             collisionPadding={8}
             className="z-50 min-w-[220px] rounded-lg border border-ink-700 bg-ink-850 p-1 shadow-2xl shadow-black/50"
           >
-            <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-ink-500">
-              Profil à poser (cartes étiquetées)
-            </div>
+            <div className={SECTION}>Profil à poser (cartes étiquetées)</div>
             {AVAILABILITY_PROFILES.map((profile) => (
               <DropdownMenu.Item
                 key={profile}

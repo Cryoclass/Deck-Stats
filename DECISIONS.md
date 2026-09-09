@@ -1,5 +1,46 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 9, partie B (attente de la DB, vue transitoire, mode combiné), 9 septembre 2026
+
+Compte rendu, preuves, mutations et questions ouvertes Q9 / Q10 dans
+[docs/etape-9.md](docs/etape-9.md) (« Compte rendu 9B »). Tag `etape-9b-ok`.
+
+- **L'attente de la base exige le marqueur de l'entrypoint PostgreSQL, jamais une simple
+  connexion.** Le serveur temporaire d'initialisation d'un volume neuf annonce lui aussi
+  « ready to accept connections » et répond à `pg_isready` comme à `select 1` par le socket
+  (incident 8C, reproduit sur conteneur jetable). `db_ready` (lib.sh) exige, dans l'ordre :
+  `healthy` si une healthcheck existe ; dans les journaux du démarrage courant, le dernier
+  « ready » **après** « PostgreSQL init process complete » (volume neuf) ou « Skipping
+  initialization » (volume déjà initialisé) ; puis `select 1`. Écart au plan validé (« quand
+  cette ligne existe ») : la règle littérale acceptait la fenêtre du serveur temporaire, dont le
+  « ready » précède le marqueur ; un marqueur est exigé dans tous les cas. Healthcheck Compose
+  intouchée (Q6). `deploy.sh` utilise `db_ready`. Preuve : cas I (témoin du premier `select 1`
+  réussi sans marqueur, séquence lancée aussitôt en code 0).
+- **Journaux lus depuis `StartedAt`** (`docker logs --since`) : bornés sur un conteneur qui
+  tourne depuis des semaines, et un démarrage précédent n'y figure jamais ; sans `--tail`, qui
+  aurait pu couper le marqueur.
+- **La vue du panneau de stats est transitoire comme le contexte.** Retirée des params émis,
+  acceptée en lecture (validateParams, remap d'archive, export de l'accueil qui joint encore la
+  catégorie référencée), ignorée à l'ouverture. Changer de vue ne salit pas (test) ; le curseur
+  d'importance reste enregistré (Q3).
+- **Mode Non-engine combiné : une règle unique `nonEngineEffect`** (lib/nonEngine.ts) pour ce qui
+  est envoyé (store) et ce qui est annoncé (tuile, bandeau). Conforme = étiquette portée et, si
+  un profil est demandé, exactement ce profil ; conforme → retrait de l'étiquette puis du profil
+  devenu orphelin ; sinon pose de ce qui manque, l'étiquette d'abord (le serveur exige une
+  étiquette avant un profil). Deux requêtes au plus, dans la file globale, adoptées après
+  acquittement ; un refus arrête la paire.
+- **Valeur par défaut du déroulant : « profil inchangé »** (étiquette seule, comportement d'avant
+  9B) — la fixture e2e reste intacte et un clic ne pose jamais un profil que personne n'a choisi.
+  Profils en éléments radio (`menuitemradio`) : un profil et une étiquette de même nom (« Board
+  breaker ») ne se confondent pas dans le même déroulant. Mode Profil conservé (Q4).
+- **L'effet du prochain clic est annoncé sur la tuile** (badge « poser » / « retirer ») et dans le
+  bandeau au survol : sur tactile, le survol n'existe pas, la tuile reste lisible seule.
+- **Le retrait de la dernière étiquette retire le profil même en « profil inchangé »** : un profil
+  sans étiquette ne mesure rien (Q1 de 5B) et resterait orphelin — question ouverte Q9.
+- **Aucun test existant modifié** ; moteur, oracles, migrations intacts ; aucune base personnelle
+  ni VPS ; conteneurs jetables supprimés. Un échec non reproduit de l'e2e `setup` sous charge
+  concurrente (test A–I simultané) est consigné : ne pas lancer les deux en même temps.
+
 ## Première mission — étape 9, partie A (aperçus, finitions de 7B), 9 septembre 2026
 
 Plan validé, réponses Q1–Q8, compte rendu et mesures dans [docs/etape-9.md](docs/etape-9.md).
