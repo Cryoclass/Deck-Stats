@@ -301,3 +301,42 @@ test('global annotations persist across decks while cross-account category write
   assert.equal((await app.inject({ method:'DELETE',url:'/library/card-categories/100/'+id })).statusCode,200);
   assert.equal((await app.inject({ method:'DELETE',url:'/library/categories/'+id })).statusCode,200);
 });
+
+// ─── Étape 9, point 1 : aperçu (decks.summary) — cache d'affichage, jamais une source de vérité ───
+test('a summary is stored only with the configuration it describes or for the current revision, and every write invalidates it',async () => {
+  const summary=(mainSize: number, version='0123456789abcdef') => ({ engineVersion:version,mainSize,startRateFirst:0.7,brickRate:0.3,computedAt:'2026-09-09T10:00:00.000Z' });
+  const id=await create(emptyConfiguration('Preview',[{ card_id:501,zone:'main',copies:3 },{ card_id:502,zone:'main',copies:2 }]));
+  const list=async () => (await app.inject({ method:'GET',url:'/decks' })).json().find((d: { id:string }) => d.id===id);
+  const configuration=emptyConfiguration('Preview',[{ card_id:501,zone:'main',copies:3 },{ card_id:502,zone:'main',copies:2 },{ card_id:503,zone:'side',copies:1 }]);
+  // Création : aucun résumé. Enregistrement avec un résumé d'une autre taille : refusé, rien d'écrit.
+  assert.equal((await list()).summary,null);
+  const wrongSize=await app.inject({ method:'PUT',url:`/decks/${id}`,payload:{ configuration,expectedRevision:1,summary:summary(6) } });
+  assert.equal(wrongSize.statusCode,400,wrongSize.body);assert.match(wrongSize.json().message ?? wrongSize.body,/calculé pour 6 cartes, main deck de 5/);
+  assert.equal((await detail(id)).revision,1);
+  // Enregistrement avec un résumé conforme (le side ne compte pas) : écrit dans la même transaction.
+  const saved=await app.inject({ method:'PUT',url:`/decks/${id}`,payload:{ configuration,expectedRevision:1,summary:summary(5) } });
+  assert.equal(saved.statusCode,200,saved.body);
+  assert.deepEqual((await list()).summary,summary(5));
+  assert.equal((await detail(id)).summary,null); // le détail n'en a pas l'usage (Q8)
+  // Enregistrement sans résumé : le cache est effacé (recalculé à l'accueil).
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}`,payload:{ configuration,expectedRevision:2 } })).statusCode,200);
+  assert.equal((await list()).summary,null);
+  // Recalcul à l'accueil : refusé pour une révision qui n'est plus la courante (409), pour une
+  // taille qui n'est pas celle enregistrée (400), pour un résumé malformé (400) ; accepté sinon,
+  // sans changer la révision ni updated_at.
+  const before=await detail(id);
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}/summary`,payload:{ summary:summary(5),expectedRevision:2 } })).statusCode,409);
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}/summary`,payload:{ summary:summary(4),expectedRevision:3 } })).statusCode,400);
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}/summary`,payload:{ summary:{ startRateFirst:1 },expectedRevision:3 } })).statusCode,400);
+  assert.equal((await list()).summary,null);
+  const put=await app.inject({ method:'PUT',url:`/decks/${id}/summary`,payload:{ summary:summary(5,'fedcba9876543210'),expectedRevision:3 } });
+  assert.equal(put.statusCode,200,put.body);assert.equal(put.json().revision,3);
+  assert.deepEqual((await list()).summary,summary(5,'fedcba9876543210'));
+  const after=await detail(id);assert.equal(after.revision,3);assert.equal(after.updated_at,before.updated_at);
+  // Un autre compte ne peut ni lire ni écrire ce résumé (404, jamais 403).
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}/summary`,headers:{ 'x-test-owner':'other' },payload:{ summary:summary(5),expectedRevision:3 } })).statusCode,404);
+  // Une écriture de bibliothèque touchant une carte du deck l'invalide (règle existante).
+  assert.equal((await app.inject({ method:'PUT',url:'/library/flags/501',payload:{ is_hopt:true } })).statusCode,200);
+  assert.equal((await list()).summary,null);
+  await app.inject({ method:'PUT',url:'/library/flags/501',payload:{ is_hopt:false } });
+});

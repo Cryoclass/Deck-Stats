@@ -90,9 +90,10 @@ export function HandWall() {
             ]}
           />
         </span>
+        {/* Étape 9 (réponse 2 de 7B) : action primaire du mur, cible de 32 px comme Enregistrer. */}
         <button
           onClick={resample}
-          className="rounded bg-ink-700 px-2.5 py-1 text-ink-100 hover:bg-ink-600"
+          className="whitespace-nowrap rounded bg-ink-700 px-3 py-2 font-medium text-ink-100 hover:bg-ink-600"
         >
           ↻ Nouvelles mains
         </button>
@@ -168,21 +169,23 @@ export function HandWall() {
           {view.map((h, i) => (
             <div
               key={i}
-              className="flex flex-wrap items-center gap-2 rounded-md border border-ink-800 bg-ink-900 p-1.5"
+              className="flex items-center gap-1 rounded-md border border-ink-800 bg-ink-900 p-1 sm:flex-wrap sm:gap-2 sm:p-1.5"
             >
-              {/* Étape 7B (charte §6.3) : les cartes gardent leur taille (shrink-0) ; sous
-                  640 px le récapitulatif passe à la ligne au lieu d'écraser les cartes. */}
-              <div className="flex shrink-0 items-end gap-1">
+              {/* Étape 7B (charte §6.3) : les cartes gardent leur ratio (shrink-0, jamais déformées).
+                  Étape 9 (réponse 1 de 7B) : sous 640 px, ligne compacte — cartes de 60 px, récapitulatif
+                  « S 3 · U 1 » empilé et note à DROITE des cartes sur la même ligne (huit mains par écran
+                  au lieu de cinq) ; dès 640 px, cartes de 68 px et récapitulatif complet. */}
+              <div className="flex shrink-0 items-end gap-0.5 sm:gap-1">
                 {h.cards.map((id, ci) => {
                   const sixth = context === 'second' && ci === h.cards.length - 1;
                   return (
-                    <span key={ci} className={`relative flex flex-col items-center ${sixth ? 'ml-1.5' : ''}`}>
+                    <span key={ci} className={`relative flex flex-col items-center ${sixth ? 'ml-1 sm:ml-1.5' : ''}`}>
                       <img
                         src={cards[id]?.image_url_small ?? imageSmall(id)}
                         alt={cards[id]?.name ?? String(id)}
                         title={`${cards[id]?.name ?? String(id)}${sixth ? ' — sixième carte (pioche)' : ''}`}
                         loading="lazy"
-                        className={`h-[68px] rounded ${sixth ? 'ring-2 ring-sky-400' : ''}`}
+                        className={`h-[60px] rounded sm:h-[68px] ${sixth ? 'ring-2 ring-sky-400' : ''}`}
                       />
                       {sixth && (
                         <span className="pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded bg-sky-400 px-1 text-[9px] font-bold leading-4 text-black">
@@ -193,7 +196,8 @@ export function HandWall() {
                   );
                 })}
               </div>
-              <div className="ml-auto flex items-center gap-3 pr-1">
+              <div className="ml-auto flex shrink-0 items-center gap-1.5 pr-0.5 sm:gap-3 sm:pr-1">
+                <CompactRecap starts={h.starts} neTotal={h.neTotal} />
                 <Recap label="départs" value={h.starts} tone={h.starts === 0 ? 'bad' : 'good'} title="Départs théoriques S" />
                 <Recap label="non-eng" value={h.neTotal} tone="neutral" title="Potentiel non-engine U (fenêtres et plafonds appliqués)" />
                 <NoteBadge note={h.note} />
@@ -225,9 +229,25 @@ function Recap({
   const color =
     tone === 'bad' ? 'text-red-400' : tone === 'good' ? 'text-emerald-300' : 'text-ink-200';
   return (
-    <div className="text-center" title={title}>
+    <div className="hidden text-center sm:block" title={title}>
       <div className={`tnum text-sm font-semibold ${color}`}>{value}</div>
       <div className="text-[9px] uppercase tracking-wide text-ink-600">{label}</div>
+    </div>
+  );
+}
+
+/** Récapitulatif compact sous 640 px (étape 9) : « S 3 » sur « U 1 », mêmes couleurs et
+ *  infobulles que le récapitulatif complet ; empilé, car six cartes à 360 px ne laissent
+ *  que ~80 px à droite. */
+function CompactRecap({ starts, neTotal }: { starts: number; neTotal: number }) {
+  return (
+    <div className="flex flex-col items-start gap-0.5 text-[11px] leading-none sm:hidden" data-recap="compact">
+      <span className={`tnum whitespace-nowrap ${starts === 0 ? 'text-red-400' : 'text-emerald-300'}`} title="Départs théoriques S">
+        <span className="text-ink-500">S </span>{starts}
+      </span>
+      <span className="tnum whitespace-nowrap text-ink-200" title="Potentiel non-engine U (fenêtres et plafonds appliqués)">
+        <span className="text-ink-500">U </span>{neTotal}
+      </span>
     </div>
   );
 }
@@ -236,7 +256,7 @@ function NoteBadge({ note }: { note: number }) {
   const hue = (note / 10) * 140; // rouge → vert
   return (
     <div
-      className="tnum flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-black"
+      className="tnum flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-black sm:h-9 sm:w-9 sm:text-sm"
       style={{ background: `oklch(0.78 0.15 ${hue})` }}
       title="Note = percentile parmi les mains de ce deck (§4.4)"
     >

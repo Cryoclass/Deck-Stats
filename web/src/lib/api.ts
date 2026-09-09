@@ -1,6 +1,7 @@
 import type { Availability, Card, Library, Zone, ComboPair, NonEngineGroup } from '../types.js';
 import { emptyConfiguration, type Configuration, type StartCondition } from '../../../server/src/domain/deckConfiguration.js';
 import type { DeckArchive } from '../../../server/src/domain/deckArchive.js';
+import type { DeckSummary as DeckPreview } from './summary.js';
 
 const BASE = '/api';
 
@@ -58,17 +59,14 @@ export interface AuthUser {
   has_password?: boolean; // false = compte Discord seul (déliaison refusée)
 }
 
-export interface DeckSummaryStats {
-  startRateFirst?: number;
-  brickRate?: number;
-  mainSize?: number;
-}
+/** Résumé stocké (étape 9) : forme validée par le serveur, mais la VERSION du moteur n'est
+ *  vérifiée qu'à l'affichage (`lib/summary.ts`, `usableSummary`) — d'où `unknown` ici. */
 export interface DeckSummary {
   id: string;
   name: string;
   main_count: number;
   updated_at: string;
-  summary: DeckSummaryStats | null;
+  summary: unknown;
   sample_cards: Array<number | string> | null;
 }
 export interface DeckDetail {
@@ -84,7 +82,7 @@ export interface DeckDetail {
   pair_exclusions: string[];
   conditions?: StartCondition[];
   params?: Record<string, unknown> | null;
-  summary?: DeckSummaryStats | null;
+  summary?: unknown;
   notes?: string | null;
   updated_at?: string;
 }
@@ -126,8 +124,12 @@ export const api = {
   getDeck: (id: string) => j<DeckDetail>(`/decks/${id}`),
   createDeck: (name: string, cards: DeckDetail['cards']) =>
     j<{ id: string }>('/decks', { method: 'POST', body: JSON.stringify(emptyConfiguration(name,cards)) }),
-  saveConfiguration: (id: string, configuration: Configuration, expectedRevision: number) =>
-    j<{ revision: number }>(`/decks/${id}`, { method: 'PUT', body: JSON.stringify({ configuration, expectedRevision }) }),
+  // Étape 9 : le résumé (aperçu) n'est joint que s'il est frais (lib/summary.ts) ; absent, le
+  // serveur laisse `summary` à NULL et l'accueil recalcule.
+  saveConfiguration: (id: string, configuration: Configuration, expectedRevision: number, summary: DeckPreview | null = null) =>
+    j<{ revision: number }>(`/decks/${id}`, { method: 'PUT', body: JSON.stringify({ configuration, expectedRevision, ...(summary ? { summary } : {}) }) }),
+  putSummary: (id: string, summary: DeckPreview, expectedRevision: number) =>
+    j<{ ok: boolean; revision: number }>(`/decks/${id}/summary`, { method: 'PUT', body: JSON.stringify({ summary, expectedRevision }) }),
   importArchive: (archive: DeckArchive) => j<{ id: string }>('/decks/import', { method: 'POST', body: JSON.stringify(archive) }),
   renameDeck: (id: string, name: string) => j(`/decks/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
   duplicateDeck: (id: string) =>

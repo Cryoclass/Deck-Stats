@@ -1,5 +1,53 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 9, partie A (aperçus, finitions de 7B), 9 septembre 2026
+
+Plan validé, réponses Q1–Q8, compte rendu et mesures dans [docs/etape-9.md](docs/etape-9.md).
+Découpage 9A (points 1 et 2) / 9B (attente de la DB, vert intempestif, mode combiné) / 9C
+(extra et side, runbook « déploiement courant », clôture). Tag `etape-9a-ok`.
+
+- **Version du moteur = empreinte des sources du calcul** (`__ENGINE_VERSION__`, SHA-1 tronqué
+  de `engine/*.ts` hors tests et référence, `engineModel.ts`, `conditions.ts`, `summary.ts`,
+  calculé par `vite.config.ts`). Jamais une constante à incrémenter à la main (oubli garanti) :
+  un commentaire changé invalide tous les aperçus, accepté (recalcul de 0,5 à 2 s pour 16 decks).
+  Le serveur stocke la chaîne sans la connaître ; seule `usableSummary` (client) décide.
+- **`decks.summary` reste un cache d'affichage, jamais une source de vérité** (contrat §1). Trois
+  garanties : (1) à l'enregistrement, le résumé n'est joint que si le résultat courant est celui
+  de la version demandée pour cette ouverture (`summaryOfState` : ni périmé, ni en cours, ni
+  d'un autre deck) — sinon il reste absent ; (2) le serveur le refuse s'il ne décrit pas la
+  composition enregistrée (`mainSize`) et le remet à NULL à toute écriture de configuration ou
+  de bibliothèque (règle existante) ; (3) à l'accueil, tout résumé absent, malformé ou d'une
+  autre version est recalculé avec le moteur courant, jamais affiché tel quel.
+- **Recalcul à la demande à l'accueil, passe premier seule** (mode `first` du worker, hors
+  moteur ; `second` rendue indisponible par la convention du moteur, `total === 0` + motif,
+  jamais copiée ni approximée). Client de calcul propre à l'accueil (comme le comparateur),
+  file séquentielle, disposé au démontage ; persistance par `PUT /decks/:id/summary` avec la
+  révision lue, 409 ignoré (le deck a bougé, l'accueil suivant recalculera). Renommer un deck ne
+  relance rien (clé stable des decks à recalculer).
+- **Valeurs de l'aperçu = valeurs du panneau** : `startRateFirst` = cumulé « au moins 1 » de la
+  vue Départs (`cumulativeOf`), `brickRate` = `pass.brick`, même chemin que `dataIdentity` ;
+  arrondi au rendu (0 décimale), valeur fine (2 décimales) dans l'infobulle. Champs conservés
+  tels quels (Q2) malgré leur redondance (l'un vaut 1 moins l'autre).
+- **Mur sous 640 px : récapitulatif compact empilé** (« S n » sur « U n ») plutôt que « S 3 · U 1 »
+  sur une ligne : six cartes à 360 px ne laissent que ~80 px à droite ; cartes de 60 px (68 dès
+  640 px), note de 28 px, ligne de 65 px mesurée → huit mains par écran au lieu de cinq. Cartes
+  jamais déformées (7B).
+- **« ↻ Nouvelles mains » à 32 px en style neutre** : action primaire du mur par la taille, pas
+  par la couleur (un seul bouton émeraude par écran, Enregistrer).
+- **Δ jamais compact** (`MatrixGrid compact={false}`) : en pleine largeur sous 640 px, il a la
+  place des cellules de 32 px à 10 px.
+- **Densité de la grille close à 96 px.** 84 px mesuré à 1440 : les trois cibles de 32 px
+  tiennent mais le delta « −1 : −6.38% » (53 px) est coupé dans 49 px (garde M4) ; ni le format
+  du delta ni les cibles ne bougent → 9 colonnes à 1440, 3 à 360, garde de comptage ajoutée.
+- **Arbre ET/OU profond : mise en page conservée, commandes portées à 24 px.** Validée à 1440 et
+  360 px sur ET > OU > OU (et OU > OU > OU par un premier passage) ; les sélecteurs (23 px), le
+  champ « ≥ n » (18 px) et le ✕ (16 px) étaient sous le minimum « ailleurs » du contrat §6 :
+  `h-6` — considéré comme « cassé » au sens du contrat, seule correction.
+- **Seul test existant modifié** : garde P7 « Nouvelles mains » 24 → 32 px (annoncée dans le
+  plan). Les autres gardes sont ajoutées (`home`, `conditions`, P3 Δ, P7 compact, colonnes).
+- Rappels tenus : moteur, oracles, migrations et deploy/ intacts ; aucune base personnelle ni
+  VPS ; conteneurs jetables supprimés.
+
 ## Première mission — étape 8, partie C (exécution VPS), 8 septembre 2026
 
 Compte rendu et incident dans [docs/etape-8.md](docs/etape-8.md) (« Compte rendu 8C ») ;

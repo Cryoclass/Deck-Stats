@@ -82,3 +82,18 @@ test('archives validate the entire payload before any persistence, profiles and 
   // Archive antérieure sans profils ni plafonds : listes vides, jamais un profil deviné.
   assert.deepEqual(parseArchive({ format:'ygo-proba-deck',version:2,configuration,library:{ hoptCardIds:[],categories:[],cardCategories:[] } }).library.profiles,[]);
 });
+
+// ─── Étape 9, point 1 : aperçu (cache d'affichage) validé par le serveur ───
+test('a deck summary is validated strictly and must describe the saved main deck (étape 9)', async () => {
+  const { parseSummary, checkSummaryMatches } = await import('../src/domain/deckSummary.js');
+  const ok={ engineVersion:'0123456789abcdef',mainSize:40,startRateFirst:0.71,brickRate:0.29,computedAt:'2026-09-09T10:00:00.000Z' };
+  assert.deepEqual(parseSummary(ok),ok);
+  for (const bad of [null,[],'x',{ ...ok,extra:1 },{ ...ok,engineVersion:'' },{ ...ok,engineVersion:'a b' },{ ...ok,mainSize:40.5 },{ ...ok,mainSize:-1 },
+    { ...ok,startRateFirst:1.01 },{ ...ok,brickRate:-0.1 },{ ...ok,brickRate:NaN },{ ...ok,computedAt:'hier' },{ ...ok,computedAt:12 }]) {
+    assert.throws(() => parseSummary(bad),/Résumé invalide/,JSON.stringify(bad));
+  }
+  const { computedAt: _omitted, ...incomplete }=ok;
+  assert.throws(() => parseSummary(incomplete),/Résumé invalide/);
+  checkSummaryMatches(ok,40);
+  assert.throws(() => checkSummaryMatches(ok,41),/calculé pour 40 cartes, main deck de 41/);
+});

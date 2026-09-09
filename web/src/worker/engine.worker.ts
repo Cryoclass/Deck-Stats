@@ -1,12 +1,15 @@
 import { computeAll, computePass } from '../engine/index.js';
 import type { EngineInput, EngineResult } from '../engine/types.js';
+import { notComputedPass } from './computeClient.js';
 
 export interface ComputeRequest {
   id: number;
   input: EngineInput;
   // 'passes' (comparateur, itération 9) : les deux passes SANS les contributions
   // marginales (§3.2), qui coûtent n+1 énumérations et ne servent qu'à l'éditeur.
-  mode?: 'full' | 'passes';
+  // 'first' (accueil, étape 9) : la passe premier seule ; `second` est rendue INDISPONIBLE
+  // (total 0, motif explicite), jamais copiée ni approximée.
+  mode?: 'full' | 'passes' | 'first';
 }
 export interface ComputeResponse {
   id: number;
@@ -34,7 +37,9 @@ ctx.onmessage = (e) => {
     const result: EngineResult =
       mode === 'passes'
         ? { first: computePass(input, 'first'), second: computePass(input, 'second'), deltas: [] }
-        : computeAll(input);
+        : mode === 'first'
+          ? { first: computePass(input, 'first'), second: notComputedPass('second', input.deckSize), deltas: [] }
+          : computeAll(input);
     ctx.postMessage({ id, result, ms: performance.now() - t0 });
   } catch (err) {
     ctx.postMessage({ id, error: err instanceof Error ? err.message : String(err) });

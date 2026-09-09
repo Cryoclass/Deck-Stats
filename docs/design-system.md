@@ -354,10 +354,19 @@ côte à toute largeur** : sous 640 px, `grid grid-cols-2 gap-2` avec Δ en `col
 `border-spacing-px`, `px-px py-1`, `min-w-5` soit 20 px par colonne pour qu'une colonne de
 « · » n'écrase pas son en-tête, coin « S\U »), puis reprennent `text-[10px]`, `w-8`, `p-1`
 comme la matrice du panneau ; le conteneur et les cartes se resserrent (`p-2` / `p-1.5`)
-sous 640 px pour garder quelques pixels de marge quelle que soit la police système. Une
-ligne de main du mur est `flex-wrap` avec une bande de cartes `shrink-0` : les vignettes ne
-sont jamais déformées, le récapitulatif passe à la ligne quand la largeur manque (sous
-640 px) au lieu de comprimer les cartes.
+sous 640 px pour garder quelques pixels de marge quelle que soit la police système. La
+matrice Δ, seule en pleine largeur sous 640 px, n'est jamais compacte (étape 9A :
+`MatrixGrid compact={false}`, `text-[10px]`, `w-8`, `p-1` partout). Une ligne de main du mur
+garde une bande de cartes `shrink-0` : les vignettes ne sont jamais déformées. Étape 9A : sous
+640 px la ligne est compacte (`p-1`, cartes `h-[60px]`, récapitulatif empilé « S n / U n » en
+11 px et note `h-7 w-7` à droite des cartes, sur la même ligne, ligne ≤ 80 px) ; dès 640 px
+(`sm:`), `flex-wrap`, cartes `h-[68px]`, récapitulatif complet (paire valeur / libellé, §3.5)
+et note `h-9 w-9`. « ↻ Nouvelles mains » suit la recette du bouton secondaire à 32 px
+(`px-3 py-2 font-medium`, fond `ink-700`) : action primaire par la taille, pas par la couleur
+(un seul bouton émeraude par écran). L'éditeur de condition ET/OU rend chaque groupe imbriqué
+par un encadré `border-ink-700 bg-ink-900/60` en `flex-wrap` ; ses sélecteurs, champ « ≥ n »
+et ✕ mesurent 24 px (`h-6`). La tuile d'annotation reste à 96 px minimum : à 84 px, les trois
+cibles de 32 px tiennent mais le delta « −1 : −6.38% » est coupé (mesuré en 9A).
 
 ### 6.4 Ascenseurs
 

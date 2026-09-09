@@ -222,3 +222,13 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Incident : « Attente de la DB » (`pg_isready` par le socket) accepte le serveur temporaire d'initialisation d'un volume neuf → empreinte initiale échouée sur « the database system is shutting down », code 1, rien d'appliqué, second `deploy.sh` conforme → `deploy.sh` non corrigé à la clôture (docs seulement) ; runbook V4 : attendre `healthy` et le second « ready to accept connections » sur un volume neuf ; report étape 9 « attente de la DB fondée sur `healthy` », à prouver contre la fenêtre du serveur temporaire (la `healthcheck` Compose utilise le même `pg_isready`).
 - Non vu en local : le conteneur 55443 était initialisé avant la séquence → toute preuve future d'un volume neuf lance la séquence pendant `initdb`.
 - Q11 conservée ; Q12 / Q13 sans objet sans déploiement sur base conservée ; équivalence `--emit-sql` / `--apply` toujours non prouvée.
+
+## Étape 9, partie A — aperçus et finitions de 7B (9 septembre 2026)
+- Plan de l'étape 9 validé (docs/etape-9.md) : 9A = aperçus + finitions 7B ; 9B = attente de la DB `healthy`, vert intempestif, mode Non-engine + profil combiné ; 9C = extra / side, runbook « déploiement courant », clôture. Réponses : hash de build, champs de l'aperçu inchangés, importance enregistrée, mode Profil conservé, avertissement > 15, healthcheck Compose intouchée, `PUT /decks/:id/summary` + 409 ignoré, `GET /decks/:id` sans résumé.
+- Version du moteur = `__ENGINE_VERSION__` (vite.config.ts, SHA-1 des sources du calcul) → jamais une constante manuelle ; un commentaire invalide les aperçus, accepté.
+- `decks.summary` = cache d'affichage : joint à l'enregistrement seulement si le résultat est frais (`summaryOfState`), refusé si `mainSize` ≠ main enregistré, NULL à toute écriture ; à l'accueil, absent / malformé / autre version → recalcul (passe premier seule, mode `first` du worker, `second` explicitement indisponible), persisté avec la révision lue.
+- Valeurs de l'aperçu = panneau (cumulé « au moins 1 », brick) ; arrondi au rendu, valeur fine en infobulle.
+- Mur < 640 px : récapitulatif compact empilé « S n / U n » + note 28 px à droite de cartes de 60 px (ligne 65 px, 8 mains par écran) ; ≥ 640 px inchangé. « ↻ Nouvelles mains » 32 px neutre. Δ jamais compact (10 px / 32 px partout).
+- Grille : 84 px mesuré → delta coupé à 1440 (53 px dans 49) → 96 px conservé (9 colonnes à 1440, 3 à 360), point clos.
+- Arbre ET/OU profond validé (ET > OU > OU à 1440 et 360) ; seule correction : sélecteurs, « ≥ n » et ✕ à 24 px (contrat §6).
+- Seul test existant modifié : garde P7 Nouvelles mains 24 → 32 px ; scénarios e2e `home` et `conditions` ajoutés ; 7 mutations détectées.

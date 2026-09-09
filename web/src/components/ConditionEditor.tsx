@@ -18,6 +18,10 @@ import {
  * ajouter une alternative (« ou… ») à une feuille, ajouter un membre à un groupe,
  * ajouter une clause ET. Aucun geste ne produit un groupe vide : la normalisation
  * retire les groupes vidés, et une racine vidée rend la source inconditionnelle.
+ * Étape 9 (réponse 3 de 7B) : mise en page d'un arbre profond (ET > OU > OU) validée au
+ * navigateur à 360 et 1440 px (scénario e2e `conditions`) ; seule correction : sélecteurs,
+ * champ « ≥ n » et ✕ portés à 24 px (contrat §6, minimum « ailleurs »), ils mesuraient 23,
+ * 18 et 16 px.
  */
 export function ConditionEditor({
   source,
@@ -77,7 +81,7 @@ function Node({
             min={1}
             value={node.at_least}
             onChange={(e) => update(setAtLeast(root, path, Number(e.target.value)))}
-            className="tnum w-9 rounded border border-ink-700 bg-ink-850 px-1 text-center text-[11px] text-ink-100"
+            className="tnum h-6 w-9 rounded border border-ink-700 bg-ink-850 px-1 text-center text-[11px] text-ink-100"
           />
         </label>
         <CardPicker
@@ -89,7 +93,7 @@ function Node({
         />
         <button
           onClick={() => update(removeAt(root, path))}
-          className="text-amber-400/70 hover:text-red-400"
+          className="flex h-6 w-6 items-center justify-center rounded text-amber-400/70 hover:bg-red-500/10 hover:text-red-400"
           title="Retirer cette condition"
         >
           ✕
@@ -146,7 +150,7 @@ function CardPicker({
         const id = Number(e.target.value);
         if (id) onPick(id);
       }}
-      className="rounded border border-ink-700 bg-ink-850 px-1 py-0.5 text-[11px] text-ink-300"
+      className="h-6 rounded border border-ink-700 bg-ink-850 px-1 text-[11px] text-ink-300"
     >
       <option value="">{label}</option>
       {main.map((m) => (

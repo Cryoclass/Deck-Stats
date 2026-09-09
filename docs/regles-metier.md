@@ -329,11 +329,27 @@ couper leurs libellés, les noms A / B se tronquent en dernier ; **32 px** aussi
 Exporter Excel, ⇄ Inverser A/B, le bouton Comparer et le ✕ du dialogue « Comparer deux
 decks » ; la synthèse défile dans son propre conteneur, jamais le corps de page ; les
 avertissements passent à la ligne. Dans le mur de mains, une ligne de main garde ses
-cartes entières et non déformées (ratio 59/86) : sous 640 px, le récapitulatif
-départs / non-engine / note passe à la ligne sous les cartes ; la barre de contrôle et ses
-commandes (Nouvelles mains, contexte, n, filtre, tri) mesurent au moins 24 px ; la sixième
-carte reste marquée « 6ᵉ » et l'état périmé reste annoncé. Ces règles sont gardées par le
-scénario `mobile` de `web/e2e/`.
+cartes entières et non déformées (ratio 59/86) : sous 640 px (étape 9A), les cartes
+mesurent 60 px de haut et le récapitulatif compact « S n / U n » avec la note reste à droite
+des cartes sur la même ligne (ligne ≤ 80 px, huit mains par écran) ; dès 640 px, cartes de
+68 px et récapitulatif complet départs / non-engine / note. « ↻ Nouvelles mains », action
+primaire du mur, mesure **32 px** ; les autres commandes de la barre (contexte, n, filtre,
+tri) au moins 24 px ; la sixième carte reste marquée « 6ᵉ » et l'état périmé reste annoncé.
+La matrice Δ, en pleine largeur sous 640 px, garde ses cellules de 10 px et 32 px à toute
+largeur (jamais compactes). L'éditeur de condition ET/OU (Inventaire, combos) rend un arbre
+plus profond que « ET de clauses, OU de feuilles » par encadrés imbriqués qui passent à la
+ligne sans débordement à 360 px ; ses sélecteurs, son champ « ≥ n » et son ✕ mesurent au
+moins 24 px. La grille d'annotation garde des tuiles de 96 px minimum (9 colonnes à 1440 px,
+3 à 360 px) : une tuile plus étroite couperait le delta. Ces règles sont gardées par les
+scénarios `mobile`, `guards` et `conditions` de `web/e2e/`.
+
+Aperçus de l'accueil (étape 9A) : `decks.summary` est un cache d'affichage recalculé à chaque
+enregistrement à partir du résultat courant, seulement s'il est celui de la version demandée ;
+un résumé absent, malformé ou calculé par une autre version du moteur (empreinte des sources du
+calcul, injectée au build) est recalculé à la demande par l'accueil, avec le moteur courant,
+puis persisté pour la révision lue ; il n'est jamais affiché tel quel. Les valeurs affichées
+sont celles du panneau (P(≥1 départ) et brick, premier · 5 cartes), arrondies au rendu, la
+valeur fine restant dans l'infobulle. Gardé par le scénario `home` de `web/e2e/`.
 
 ### Suppression ciblée, à préparer dans /deploy
 

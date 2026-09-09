@@ -230,6 +230,9 @@ export function AnnotationGrid({
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         <div
           className="grid gap-1.5"
+          // Étape 9 (réponse 3 de 7B) : 84 px essayé et mesuré — les trois cibles de 32 px tiennent
+          // mais le delta « −1 : −6.38% » (53 px) est coupé dans les 49 px restants à 1440 (garde M4).
+          // 96 px conservé : 9 colonnes à 1440 px, point clos.
           style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}
         >
           {main.map((c) => (

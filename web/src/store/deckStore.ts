@@ -12,6 +12,7 @@ import type { DeckJson } from '../lib/exportDeck.js';
 import { buildEngineModel, type EngineModel } from '../lib/engineModel.js';
 import { configurationFromState, configurationFromDetail, stateFromConfiguration, libraryState } from '../lib/deckConfiguration.js';
 import { addClause, leaf, leavesOf, removeLeavesOfCard } from '../lib/conditions.js';
+import { summaryOfState } from '../lib/summary.js';
 
 interface State {
   revision: number;
@@ -378,7 +379,9 @@ export const useDeck = create<State>((set, get) => {
       const sameOpening = () => get().opening === s.opening && get().deckId === s.deckId;
       try {
         const configuration = configurationFromState(s);
-        const saved = await api.saveConfiguration(s.deckId,configuration,s.revision);
+        // Étape 9 : l'aperçu de l'accueil est joint seulement si le résultat courant est celui de la
+        // version demandée (ni périmé, ni en cours) ; sinon il reste absent et l'accueil recalcule.
+        const saved = await api.saveConfiguration(s.deckId,configuration,s.revision,summaryOfState(s));
         if (sameOpening()) {
           const unchanged = get().editRevision === s.editRevision;
           set({ revision: saved.revision,dirty: !unchanged,lastSavedAt: Date.now(),online: true });

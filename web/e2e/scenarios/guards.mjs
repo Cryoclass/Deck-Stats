@@ -53,6 +53,10 @@ export default async function guards() {
     const deltaBox = await box(delta);
     expect('tuile : delta sur une ligne (M4)', deltaBox?.h <= 12, deltaBox);
     expect('tuile : delta non coupé (M4)', await delta.evaluate(fits), await delta.evaluate((el) => [el.scrollWidth, el.clientWidth]));
+    // Étape 9 (réponse 3 de 7B) : densité de la grille mesurée — nombre de colonnes distinctes
+    // (x des tuiles) ; 9 attendues à 1440 px avec des tuiles de 96 px, 3 à 360 px.
+    const columns = await page.locator('div.group').evaluateAll((tiles) => new Set(tiles.map((t) => Math.round(t.getBoundingClientRect().x))).size);
+    expect(`grille : ${cfg.width === 1440 ? 9 : 3} colonnes (mesuré ${columns})`, columns === (cfg.width === 1440 ? 9 : 3), columns);
     await shot(page, `guards-${cfg.width}-annoter`);
     await page.locator('button:has-text("Condition")').first().click();
     await page.waitForTimeout(200);

@@ -1,18 +1,88 @@
-import { configurationFromDetail } from '../lib/deckConfiguration.js';
-import { useCallback, useEffect, useState } from 'react';
+import { configurationFromDetail, sourceFromDetail } from '../lib/deckConfiguration.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useRouter } from '../lib/router.js';
 import { api, type DeckSummary } from '../lib/api.js';
 import { imageSmall } from '../types.js';
 import { buildDeckJson, downloadText, slugify, toYdk } from '../lib/exportDeck.js';
 import { pct } from '../lib/fmt.js';
+import { buildEngineModel } from '../lib/engineModel.js';
+import { summaryFromPass, usableSummary, type DeckSummary as Preview } from '../lib/summary.js';
+import { createEngineClient } from '../worker/client.js';
+import { ComputeCancelled } from '../worker/computeClient.js';
 import { ImportDialog } from './ImportDialog.js';
 import { AccountMenu } from './AccountMenu.js';
 import { CompareDialog } from './ComparePage.js';
 
+// ─── Aperçus (étape 9, point 1) ───
+// Un résumé stocké n'est affiché que s'il est de la version du moteur courant (usableSummary) ;
+// sinon il est recalculé ici, à la demande, par un client de calcul PROPRE à l'accueil (comme
+// le comparateur), deck après deck (passe premier seule, mode `first`), affiché puis persisté
+// par PUT /decks/:id/summary avec la révision lue (un 409 est ignoré : le deck a bougé, l'accueil
+// suivant recalculera). Démontage ou nouvelle liste → client disposé, réponses ignorées.
+type PreviewState =
+  | { kind: 'computing' }
+  | { kind: 'ready'; summary: Preview }
+  | { kind: 'unavailable'; reason: string };
+
+function usePreviews(decks: DeckSummary[] | null): Record<string, PreviewState> {
+  const [previews, setPreviews] = useState<Record<string, PreviewState>>({});
+  const ref = useRef(previews);
+  ref.current = previews;
+  // Clé stable : les decks dont le résumé stocké n'est pas affichable. Renommer un deck ne
+  // relance rien ; une nouvelle liste (duplication, suppression) relance pour les manquants.
+  const pendingKey = useMemo(
+    () => (decks ?? []).filter((d) => usableSummary(d.summary) === null).map((d) => d.id).join(','),
+    [decks],
+  );
+  useEffect(() => {
+    const todo = pendingKey ? pendingKey.split(',').filter((id) => ref.current[id]?.kind !== 'ready') : [];
+    if (todo.length === 0) return;
+    let cancelled = false;
+    const client = createEngineClient();
+    const set = (id: string, state: PreviewState) => {
+      if (!cancelled) setPreviews((p) => ({ ...p, [id]: state }));
+    };
+    for (const id of todo) set(id, { kind: 'computing' });
+    (async () => {
+      const library = await api.getLibrary();
+      for (const id of todo) {
+        if (cancelled) return;
+        try {
+          const detail = await api.getDeck(id);
+          const source = sourceFromDetail(detail, library);
+          const mainSize = source.main.reduce((sum, c) => sum + c.copies, 0);
+          const { result } = await client.compute(buildEngineModel(source).input, 'first').promise;
+          const summary = summaryFromPass(result.first, mainSize);
+          if (!summary) {
+            set(id, { kind: 'unavailable', reason: result.first.unavailableReason ?? 'Analyse indisponible.' });
+            continue;
+          }
+          set(id, { kind: 'ready', summary });
+          void api.putSummary(id, summary, detail.revision).catch(() => {
+            /* 409 ou panne : cache non écrit, recalculé à la prochaine visite. */
+          });
+        } catch (e) {
+          if (cancelled || e instanceof ComputeCancelled) return;
+          set(id, { kind: 'unavailable', reason: e instanceof Error ? e.message : 'Calcul impossible.' });
+        }
+      }
+    })().catch((e: unknown) => {
+      if (cancelled) return;
+      for (const id of todo) set(id, { kind: 'unavailable', reason: e instanceof Error ? e.message : 'Bibliothèque indisponible.' });
+    });
+    return () => {
+      cancelled = true;
+      client.dispose();
+    };
+  }, [pendingKey]);
+  return previews;
+}
+
 export function HomePage() {
   const { navigate } = useRouter();
   const [decks, setDecks] = useState<DeckSummary[] | null>(null);
+  const previews = usePreviews(decks);
   const [newOpen, setNewOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [actionError,setActionError] = useState<string | null>(null);
@@ -132,6 +202,7 @@ export function HomePage() {
             <DeckCard
               key={d.id}
               deck={d}
+              preview={previews[d.id]}
               onOpen={() => open(d.id)}
               onRename={(name) => run(() => rename(d.id, name))}
               onDuplicate={() => run(() => duplicate(d.id))}
@@ -162,6 +233,7 @@ export function HomePage() {
 
 function DeckCard({
   deck,
+  preview,
   onOpen,
   onRename,
   onDuplicate,
@@ -170,6 +242,7 @@ function DeckCard({
   onExportJson,
 }: {
   deck: DeckSummary;
+  preview?: PreviewState;
   onOpen: () => void;
   onRename: (name: string) => void;
   onDuplicate: () => void;
@@ -179,8 +252,14 @@ function DeckCard({
 }) {
   const [name, setName] = useState(deck.name);
   const thumbs = (deck.sample_cards ?? []).map((x) => Number(x)).filter(Number.isFinite);
-  const startRate = deck.summary?.startRateFirst;
-  const brick = deck.summary?.brickRate;
+  // Résumé stocké de la version courante, sinon l'aperçu recalculé ici ; jamais un résumé
+  // d'une autre version.
+  const summary = usableSummary(deck.summary) ?? (preview?.kind === 'ready' ? preview.summary : null);
+  const pending: { text: string; title: string } | null = summary
+    ? null
+    : preview?.kind === 'unavailable'
+      ? { text: 'n/d', title: preview.reason }
+      : { text: '…', title: 'Aperçu en cours de calcul' };
   const updated = new Date(deck.updated_at).toLocaleDateString(undefined, {
     day: '2-digit',
     month: 'short',
@@ -224,9 +303,9 @@ function DeckCard({
         />
       </div>
 
-      <div className="flex items-center gap-4 px-3 py-2 text-xs">
-        <Stat label="départs ≥1 (premier)" value={startRate} good />
-        <Stat label="brick (premier)" value={brick} />
+      <div className="flex items-center gap-4 px-3 py-2 text-xs" data-preview={summary ? 'ready' : preview?.kind ?? 'pending'}>
+        <Stat label="départs ≥1 (premier)" value={summary?.startRateFirst} pending={pending} good />
+        <Stat label="brick (premier)" value={summary?.brickRate} pending={pending} />
         <span className="ml-auto text-[10px] text-ink-600">{updated}</span>
       </div>
 
@@ -240,11 +319,15 @@ function DeckCard({
   );
 }
 
-function Stat({ label, value, good }: { label: string; value?: number; good?: boolean }) {
+function Stat({ label, value, pending, good }: { label: string; value?: number; pending: { text: string; title: string } | null; good?: boolean }) {
+  // Arrondi au rendu seulement : la valeur fine reste dans l'infobulle (même règle que les matrices).
   return (
     <div>
-      <div className={`tnum text-sm font-semibold ${good ? 'text-emerald-300' : 'text-red-400'}`}>
-        {value === undefined ? '—' : pct(value, 0)}
+      <div
+        className={`tnum text-sm font-semibold ${value === undefined ? 'text-ink-400' : good ? 'text-emerald-300' : 'text-red-400'}`}
+        title={value === undefined ? pending?.title : pct(value, 2)}
+      >
+        {value === undefined ? pending?.text ?? '—' : pct(value, 0)}
       </div>
       <div className="text-[9px] uppercase tracking-wide text-ink-600">{label}</div>
     </div>

@@ -132,6 +132,11 @@ export default async function mobile({ out, log }) {
         if (W < 640) point('P3', `${name} : matrice ${nm} garde ≥ 3 px de marge dans sa carte`, await table.evaluate((t) => t.parentElement.clientWidth - t.getBoundingClientRect().width >= 3), await table.evaluate((t) => t.parentElement.clientWidth - t.getBoundingClientRect().width));
       }
       point('P3', `${name} : Δ avec légende`, /pas nécessairement meilleur/.test(await cards.nth(2).innerText()));
+      // Étape 9 (réponse 4 de 7B) : Δ en pleine largeur → cellules de 10 px et ≥ 28 px à toute largeur.
+      const dCells = cards.nth(2).locator('table tbody td[title]');
+      const dMetrics = await dCells.evaluateAll((tds) => tds.map((td) => ({ w: td.getBoundingClientRect().width, h: td.getBoundingClientRect().height, font: parseFloat(getComputedStyle(td).fontSize), clipped: td.scrollWidth > td.clientWidth + 1 })));
+      point('P3', `${name} : Δ cellules de 10 px, ≥ 28 px de large, aucune coupée (étape 9)`, dMetrics.length === 24 && dMetrics.every((m) => m.font >= 10 && m.w >= 28 && !m.clipped), { n: dMetrics.length, minFont: Math.min(...dMetrics.map((m) => m.font)), minW: Math.min(...dMetrics.map((m) => m.w)), clipped: dMetrics.filter((m) => m.clipped).length });
+      point('P3', `${name} : Δ entière (aucun défilement interne)`, await cards.nth(2).locator('table').evaluate((t) => t.parentElement.scrollWidth <= t.parentElement.clientWidth + 1), await cards.nth(2).locator('table').evaluate((t) => [t.parentElement.scrollWidth, t.parentElement.clientWidth]));
       point('P3', `${name} : Δ dans le viewport`, await cards.nth(2).evaluate(inView), rD);
       if (W < 640) point('P3', `${name} : Δ sous A / B en pleine largeur`, rD && rA && rD.y >= rA.y + rA.h && rD.w >= 0.95 * rS.w, { D: rD, section: rS });
       if (W >= 1024) point('P8', `${name} : A, B et Δ sur la même ligne (bureau)`, rA && rD && Math.abs(rA.y - rD.y) <= 1, { A: rA, D: rD });
@@ -187,7 +192,7 @@ export default async function mobile({ out, log }) {
     const bar = wall.locator('div.border-b', { has: page.locator('button:has-text("Nouvelles mains")') }).first();
     point('P7', 'barre de contrôle sans débordement', await bar.evaluate(fits), await bar.evaluate((el) => [el.scrollWidth, el.clientWidth]));
     point('P7', 'body sans défilement horizontal (mur)', await page.evaluate(noBodyScroll));
-    pointGe('P7', 'Nouvelles mains', await box(wall.locator('button:has-text("Nouvelles mains")')), 24);
+    pointGe('P7', 'Nouvelles mains (étape 9 : action primaire, 32 px)', await box(wall.locator('button:has-text("Nouvelles mains")')), 32);
     pointGe('P7', 'contexte Premier', await box(wall.locator('button:has-text("Premier · 5")')), 24);
     pointGe('P7', 'contexte Second', await box(wall.locator('button:has-text("Second · 5 + pioche")')), 24);
     pointGe('P7', 'sélecteur n', await box(wall.locator('select').first()), 24);
@@ -203,6 +208,18 @@ export default async function mobile({ out, log }) {
       point('P7', `${label} : cartes entières, non déformées (ratio 59/86), ≥ 40 px de large`, imgs.every((i) => i.inView && i.w >= 40 && Math.abs(i.w / i.h - CARD_RATIO) <= 0.03), imgs);
       const recap = row.locator('div.ml-auto');
       point('P7', `${label} : départs / non-engine / note dans le viewport`, await recap.evaluate(inView), await rect(recap));
+      // Étape 9 (réponse 1 de 7B) : sous 640 px, récapitulatif compact « S · U » + note à DROITE des
+      // cartes, sur la même ligne (ligne ≤ 80 px : huit mains par écran) ; dès 640 px, récapitulatif complet.
+      const rr = await rect(recap);
+      const lastCard = imgs[imgs.length - 1];
+      const cardsRight = await row.locator('img').last().evaluate((e) => e.getBoundingClientRect().right);
+      if (W < 640) {
+        point('P7', `${label} : récapitulatif compact visible (S · U empilés)`, await row.locator('[data-recap="compact"]').isVisible() && /S\s*\d+\s*U\s*\d+/.test((await recap.innerText()).replace(/\s+/g, ' ')), await recap.innerText());
+        point('P7', `${label} : récapitulatif à droite des cartes, même ligne`, rr && r && rr.x >= cardsRight - 0.5 && rr.y >= r.y - 0.5 && rr.y + rr.h <= r.y + r.h + 0.5, { recap: rr, row: r, cardsRight, lastCard });
+        point('P7', `${label} : ligne de main ≤ 80 px (compacte)`, r && r.h <= 80, r);
+      } else {
+        point('P7', `${label} : récapitulatif complet (départs / non-eng)`, /départs/i.test(await recap.innerText()) && /non-eng/i.test(await recap.innerText()), await recap.innerText());
+      }
     };
     await rowCheck('premier', 5);
     await shot(page, `mobile-${W}-mains-premier`);

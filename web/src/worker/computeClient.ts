@@ -1,5 +1,12 @@
-import type { EngineInput, EngineResult } from '../engine/types.js';
+import type { AnalysisContext, EngineInput, EngineResult, PassResult } from '../engine/types.js';
 import type { ComputeRequest, ComputeResponse } from './engine.worker.js';
+
+/** Passe volontairement non calculée (mode `first`) : même convention que le moteur pour une
+ *  passe indisponible (`total === 0` + motif explicite) ; jamais copiée ni approximée. Partagée
+ *  par le worker réel et le faux worker de test. */
+export function notComputedPass(context: AnalysisContext, deckSize: number): PassResult {
+  return { unavailableReason: 'Passe non calculée : aperçu de l’accueil (passe premier seule).', context, handSize: context === 'first' ? 5 : 6, deckSize, total: 0, outcomes: 0, buckets: [], startsBuckets: [0, 0, 0, 0], startsExact: [], brick: 0, meanStarts: 0, redundancy: [], nonEngine: [], meanNonEngine: 0, perCategory: [], crossMatrix: [], neSignatures: [] };
+}
 
 // ─── Client de calcul (étape 4) — propriété des tâches, annulation, erreurs ───
 // Module PUR (aucun import Vite/DOM) : `spawn` fournit le worker, ce qui permet un
@@ -23,7 +30,9 @@ export interface WorkerLike {
   onerror: ((e: { message?: string }) => void) | null;
 }
 
-export type ComputeMode = 'full' | 'passes';
+/** 'full' : éditeur (deux passes + contributions marginales) · 'passes' : comparateur ·
+ *  'first' : aperçu de l'accueil (étape 9), passe premier seule, `second` rendue indisponible. */
+export type ComputeMode = 'full' | 'passes' | 'first';
 
 export interface ComputeOutput {
   result: EngineResult;

@@ -6,6 +6,7 @@ import { requireUser } from '../auth/session.js';
 import { ConfigurationError, parseConfiguration, uuidPattern, type Configuration } from '../domain/deckConfiguration.js';
 import { parseArchive, remapCategoryReferences, type DeckArchive } from '../domain/deckArchive.js';
 import { readConfiguration, writeConfiguration } from '../domain/deckRepository.js';
+import { checkSummaryMatches, parseSummary, type DeckSummary } from '../domain/deckSummary.js';
 import { invalidateOwnerSummaries } from './library.js';
 
 function error(statusCode: number, message: string): never {
@@ -20,6 +21,15 @@ async function lockDeck(c: PoolClient, id: string, owner: string, shared = false
 async function validateReferences(c: PoolClient, uid: string, data: Configuration) {
   const cats = await c.query('select id from nonengine_categories where owner_id=$1', [uid]);
   remapCategoryReferences(data.params, new Map(cats.rows.map((r) => [r.id,r.id])));
+}
+const mainSizeOf = (data: Configuration): number => data.cards.filter((card) => card.zone === 'main').reduce((sum, card) => sum + card.copies, 0);
+/** Aperçu (étape 9) : cache d'affichage écrit avec la configuration qu'il décrit, dans la même
+ *  transaction ; `writeConfiguration` l'a mis à NULL juste avant. Absent = recalculé à l'accueil. */
+async function writeSummary(c: PoolClient, id: string, summary: DeckSummary | null): Promise<void> {
+  if (summary) await c.query('update decks set summary=$2::jsonb where id=$1', [id, JSON.stringify(summary)]);
+}
+function optionalSummary(value: unknown): DeckSummary | null {
+  return value === undefined || value === null ? null : parseSummary(value);
 }
 async function insertDeck(c: PoolClient, owner: string, data: Configuration) {
   const { rows: [row] } = await c.query('insert into decks (owner_id,name) values ($1,$2) returning id', [owner,data.name]);
@@ -73,7 +83,7 @@ async function mergeLibrary(c: PoolClient, uid: string, archive: DeckArchive): P
 export async function decksRoutes(app: FastifyInstance) {
   app.get('/', async (req) => {
     const { rows } = await query(
-      `select d.id,d.name,d.created_at,d.updated_at,d.revision,null as summary,
+      `select d.id,d.name,d.created_at,d.updated_at,d.revision,d.summary,
        coalesce(sum(dc.copies) filter (where dc.zone='main'),0)::int as main_count,
        coalesce((select array_agg(card_id) from (select card_id from deck_cards where deck_id=d.id and zone='main' order by card_id limit 8) t),'{}') as sample_cards
        from decks d left join deck_cards dc on dc.deck_id=d.id where d.owner_id=$1 group by d.id order by d.updated_at desc`, [requireUser(req).id]);
@@ -102,10 +112,12 @@ export async function decksRoutes(app: FastifyInstance) {
     });
     return reply.code(201).send({ id, revision: 1 });
   });
-  app.put<{ Params: { id: string }; Body: { configuration: unknown; expectedRevision: number } }>('/:id', async (req) => {
+  app.put<{ Params: { id: string }; Body: { configuration: unknown; expectedRevision: number; summary?: unknown } }>('/:id', async (req) => {
     const data = parseConfiguration(req.body?.configuration);
     const revision = req.body?.expectedRevision;
     if (!Number.isSafeInteger(revision) || revision < 0) throw new ConfigurationError('Révision requise. Rechargez ce deck.');
+    const summary = optionalSummary(req.body?.summary);
+    if (summary) checkSummaryMatches(summary, mainSizeOf(data));
     return tx(async (c) => {
       const deck = await lockDeck(c,req.params.id,requireUser(req).id);
       if (deck.revision !== revision) error(409,'Ce deck a été modifié ailleurs. Rechargez-le avant d’enregistrer ; votre brouillon est conservé.');
@@ -116,7 +128,24 @@ export async function decksRoutes(app: FastifyInstance) {
         if (previous && (previous.card_a_id !== pair.card_a_id || previous.card_b_id !== pair.card_b_id)) throw new ConfigurationError('Une identité de paire ne peut pas changer de cartes.');
       }
       await writeConfiguration(c,deck.id,data);
+      await writeSummary(c,deck.id,summary);
       return { revision: revision+1 };
+    });
+  });
+  // Aperçu recalculé à l'accueil (étape 9, Q7) : accepté seulement pour la révision courante
+  // (409 sinon, ignoré par le client) et pour la composition enregistrée ; ne change ni la
+  // révision ni `updated_at` (ce n'est pas une édition du deck).
+  app.put<{ Params: { id: string }; Body: { summary: unknown; expectedRevision: number } }>('/:id/summary', async (req) => {
+    const revision = req.body?.expectedRevision;
+    if (!Number.isSafeInteger(revision) || revision < 0) throw new ConfigurationError('Révision requise.');
+    const summary = parseSummary(req.body?.summary);
+    return tx(async (c) => {
+      const deck = await lockDeck(c,req.params.id,requireUser(req).id);
+      if (deck.revision !== revision) error(409,'Ce deck a été modifié depuis le calcul de son aperçu.');
+      const { rows: [{ n }] } = await c.query<{ n: number }>("select coalesce(sum(copies),0)::int as n from deck_cards where deck_id=$1 and zone='main'", [deck.id]);
+      checkSummaryMatches(summary,n);
+      await writeSummary(c,deck.id,summary);
+      return { ok: true, revision: deck.revision };
     });
   });
   app.patch<{ Params: { id: string }; Body: { name: string } }>('/:id', async (req) => tx(async (c) => {

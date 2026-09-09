@@ -1,7 +1,7 @@
 import { computeAll, computePass } from '../engine/index.js';
 import type { EngineResult } from '../engine/types.js';
 import type { ComputeRequest, ComputeResponse } from './engine.worker.js';
-import type { WorkerLike } from './computeClient.js';
+import { notComputedPass, type WorkerLike } from './computeClient.js';
 
 // ─── Faux worker contrôlable — RÉSERVÉ AUX TESTS (étape 4) ───
 // Il ne calcule rien de lui-même : le test décide QUAND une requête reçoit sa réponse
@@ -47,7 +47,9 @@ export function createFakeWorker(): FakeWorker {
       const result: EngineResult =
         mode === 'passes'
           ? { first: computePass(input, 'first'), second: computePass(input, 'second'), deltas: [] }
-          : computeAll(input);
+          : mode === 'first'
+            ? { first: computePass(input, 'first'), second: notComputedPass('second', input.deckSize), deltas: [] }
+            : computeAll(input);
       worker.onmessage?.({ data: { id, result, ms } satisfies ComputeResponse });
     },
     fail(id, message) {

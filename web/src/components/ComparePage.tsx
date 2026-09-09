@@ -254,6 +254,8 @@ function DeltaCard({ cmp, scenario }: { cmp: DeckComparison; scenario: Scenario 
   return (
     <div className="col-span-2 rounded-lg border border-ink-800 bg-ink-900 p-1.5 sm:p-3">
       <div className="mb-2 text-xs font-semibold text-ink-100">Δ (B − A), en points de %</div>
+      {/* Étape 9 (réponse 4 de 7B) : Δ occupe toute la largeur sous 640 px, donc cellules de
+          10 px et 32 px à toute largeur (jamais compactes). */}
       <MatrixGrid
         rowLabels={A.rowLabels}
         colLabels={A.colLabels}
@@ -261,6 +263,7 @@ function DeltaCard({ cmp, scenario }: { cmp: DeckComparison; scenario: Scenario 
         cellStyle={style}
         format={deltaPoints}
         cellTitle={(v) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)} pt`}
+        compact={false}
       />
       {/* Légende OBLIGATOIRE (§5) : le signe n'est pas un jugement de valeur. */}
       <div className="mt-2 max-w-[240px] text-[10px] leading-snug text-ink-500">
@@ -279,6 +282,7 @@ function MatrixGrid({
   cellStyle,
   format,
   cellTitle,
+  compact = true,
 }: {
   rowLabels: string[];
   colLabels: string[];
@@ -286,21 +290,27 @@ function MatrixGrid({
   cellStyle: (v: number) => React.CSSProperties;
   format: (v: number) => string;
   cellTitle: (v: number) => string;
+  /** Cellules compactes sous 640 px (A et B côte à côte) ; `false` = taille bureau partout (Δ). */
+  compact?: boolean;
 }) {
+  // Cellules compactes sous 640 px (Q3) : police 9 px, espacement 1 px, largeur au
+  // contenu avec un minimum de 20 px par colonne (sinon une colonne de « · » écrase son
+  // en-tête) ; à partir de 640 px, cellules de 32 px à 10 px comme le panneau.
+  const table = compact ? 'border-spacing-px text-[9px] sm:border-spacing-0.5 sm:text-[10px]' : 'border-spacing-0.5 text-[10px]';
+  const corner = compact ? 'px-px py-1 sm:p-1' : 'p-1';
+  const head = compact ? 'min-w-5 px-px py-1 sm:w-8 sm:p-1' : 'w-8 p-1';
+  const label = compact ? 'px-px py-1 sm:p-1' : 'p-1';
   return (
-    // Cellules compactes sous 640 px (Q3) : police 9 px, espacement 1 px, largeur au
-    // contenu avec un minimum de 20 px par colonne (sinon une colonne de « · » écrase son
-    // en-tête) ; à partir de 640 px, cellules de 32 px à 10 px comme le panneau.
     <div className="overflow-x-auto">
-      <table className="border-separate border-spacing-px text-[9px] sm:border-spacing-0.5 sm:text-[10px]">
+      <table className={`border-separate ${table}`}>
         <thead>
           <tr>
-            <th className="px-px py-1 text-ink-600 sm:p-1" title={STARTS_HINT}>
-              <span className="sm:hidden">S\U</span>
-              <span className="hidden sm:inline">↓S \ U→</span>
+            <th className={`${corner} text-ink-600`} title={STARTS_HINT}>
+              <span className={compact ? 'sm:hidden' : 'hidden'}>S\U</span>
+              <span className={compact ? 'hidden sm:inline' : ''}>↓S \ U→</span>
             </th>
             {colLabels.map((c) => (
-              <th key={c} className="tnum min-w-5 px-px py-1 text-right text-ink-500 sm:w-8 sm:p-1">
+              <th key={c} className={`tnum ${head} text-right text-ink-500`}>
                 {c}
               </th>
             ))}
@@ -309,12 +319,12 @@ function MatrixGrid({
         <tbody>
           {cells.map((row, i) => (
             <tr key={i}>
-              <td className="tnum px-px py-1 text-right text-ink-500 sm:p-1">{rowLabels[i]}</td>
+              <td className={`tnum ${label} text-right text-ink-500`}>{rowLabels[i]}</td>
               {row.map((v, j) => (
                 <td
                   key={j}
                   title={cellTitle(v)}
-                  className="tnum min-w-5 rounded px-px py-1 text-right text-ink-100 sm:w-8 sm:p-1"
+                  className={`tnum ${head} rounded text-right text-ink-100`}
                   style={cellStyle(v)}
                 >
                   {format(v)}
