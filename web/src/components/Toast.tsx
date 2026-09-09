@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useDeck } from '../store/deckStore.js';
+import { ZONE_LABEL } from '../lib/zones.js';
 
 /**
  * Toast d'annulation d'un retrait de carte (itération 3, B). « Annuler » restaure la
  * carte à sa position — et, comme aucune annotation n'est effacée au retrait (C1),
  * l'annulation ne coûte jamais de travail d'annotation. Auto-dismiss après 6 s.
+ * Étape 9C : le toast nomme la zone quittée (extra / side) et l'annulation y restaure la carte.
  */
 export function Toast() {
   const toast = useDeck((s) => s.removalToast);
@@ -23,9 +25,9 @@ export function Toast() {
   if (!toast) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-ink-100 shadow-2xl shadow-black/60">
+    <div data-removal-zone={toast.card.zone} className="fixed bottom-4 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-ink-100 shadow-2xl shadow-black/60">
       <span>
-        <span className="text-ink-400">Retirée :</span> {name}
+        <span className="text-ink-400">Retirée{toast.card.zone !== 'main' ? ` du ${ZONE_LABEL[toast.card.zone]}` : ''} :</span> {name}
       </span>
       <button
         onClick={undoRemove}

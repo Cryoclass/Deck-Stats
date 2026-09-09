@@ -228,7 +228,11 @@ succès = code 0 **et** ligne « SIMULATION TERMINÉE », jamais le seul code) �
 avant 003 (ancienne app relancée, base intacte) ou 003 en échec (nouvelle app sans 003) ;
 2 contrôle après migration en échec (app **arrêtée**, commande de restauration affichée) ;
 3 rapport refusé (nouvelle app sans 003). Procédure complète, sorties attendues et retours
-arrière : [docs/deploy-runbook.md](../docs/deploy-runbook.md).
+arrière : [docs/deploy-runbook.md](../docs/deploy-runbook.md) — depuis 8C la production est à
+003 : tout déploiement suit la variante **« déploiement courant »** (C0–C6 : base non vide, 003
+journalisée, schéma seul rejoué, aucune question ; toute question = `NON`), l'archive
+pré-migration prise par `deploy.sh` restant le retour arrière des données et `git checkout` +
+build + up celui du code.
 
 Répétition et tests, en local sur conteneurs jetables (jamais la base de dev 5433) :
 

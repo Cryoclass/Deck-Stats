@@ -1,17 +1,233 @@
-# Runbook 8C — déploiement de l'étape 8 sur le VPS
+# Runbook — déploiement sur le VPS
 
-Procédure d'exécution, commande par commande, de la migration 001 → 002 → 003 en production
-avec les scripts livrés en 8B (`deploy/deploy.sh`, `backup.sh`, `restore.sh`, `lib.sh`). Elle a
-été répétée à l'identique sur le dump réel du 8 septembre 2026 et sur le jeu représentatif
-(docs/etape-8.md, « Compte rendu 8B »). **Exécutée sur le VPS le 8 septembre 2026** (variante
-« départ à vide », code `9d281cf`, docs/etape-8.md « Compte rendu 8C ») : la production est à
-003 sur une base neuve. Conservée telle quelle pour un prochain déploiement ; l'incident rencontré
-au premier `deploy.sh` est consigné en V4 (« Attente de la DB »).
+Procédure d'exécution, commande par commande, avec les scripts de `deploy/` (`deploy.sh`,
+`backup.sh`, `restore.sh`, `lib.sh`). Trois variantes, selon l'état de la production :
 
-> **Décision prise après 8B (8 septembre 2026) : la production repart d'une base vide.** Rien
-> n'est conservé (ni decks, ni comptes, ni annotations). L'archive de l'état actuel est prise,
-> vérifiée et copiée hors VPS par principe (souvenir), mais elle n'est plus un chemin de retour
-> à préparer. La procédure à suivre est la **variante « départ à vide »** ci-dessous, qui
+- **« Déploiement courant »** (étape 9C, ci-dessous) : base **non vide**, 003 **déjà
+  journalisée**, aucune migration nouvelle — c'est le cas de tout déploiement depuis 8C, et celui
+  de l'étape 9. Aucune question n'est attendue ; l'archive pré-migration réelle prise par
+  `deploy.sh` est le retour arrière des données.
+- **« Départ à vide »** (8C, exécutée sur le VPS le 8 septembre 2026, code `9d281cf`,
+  docs/etape-8.md « Compte rendu 8C ») : volume recréé, 001–003 jouées par `initdb`, catalogue
+  rechargé. Conservée telle quelle ; l'incident du premier `deploy.sh` est consigné en V4.
+- **« Base conservée »** (§3 à §5, pour mémoire) : migration 001 → 002 → 003 d'une base pré-001
+  avec simulation, rapport et acceptation `OUI` ; répétée sur le dump réel en 8B, jamais jouée
+  en production (décision « départ à vide »).
+
+## Variante « déploiement courant » — étape 9 (base non vide, 003 journalisée)
+
+État attendu de la production avant de commencer : code `9d281cf` (8C), base v2 purgée avec
+`app_migrations` = 001, 002, 003, comptes et decks ressaisis depuis 8C, catalogue chargé, cron
+`backup.sh` à 03:17. Ce que l'étape 9 change **sur le VPS** : l'image (web et serveur : aperçus
+versionnés, endpoint `PUT /decks/:id/summary`, vue transitoire, mode Non-engine combiné, extra /
+side éditables), `deploy/lib.sh` (`db_ready`) et `deploy/deploy.sh` (attente par `db_ready`).
+**Rien dans `db/`** : `git diff --stat 9d281cf..etape-9-ok -- db` est vide. La séquence de
+`deploy.sh` rejoue donc le schéma (idempotent, sans effet), constate 003 journalisée et ne pose
+aucune question — c'est exactement le cas « F, rejeu » de `deploy/test-migration-sequence.sh`
+(base non vide, 003 journalisée → code 0, « déjà journalisée », empreinte identique).
+
+Indisponibilité : de « arrêt de l'app » à « démarrage de l'app » dans la séquence, soit la
+sauvegarde pré-migration vérifiée (≈ 1 min) et les contrôles (quelques secondes) ; le build de
+l'image se fait **avant** l'arrêt, app en service. Choisir un créneau calme.
+
+Règles : ne jamais taper Ctrl-C pendant `deploy.sh` ; ne jamais modifier un script de `deploy/`
+pendant qu'il tourne ; **toute question de `deploy.sh` signifie que l'état n'est pas celui
+attendu** — répondre `NON` (code 3, nouvelle app démarrée sans effet sur la donnée) et comprendre
+avant de relancer.
+
+### C0. La veille, en local (T2)
+
+```bash
+git status --short && git log -1 --oneline && git tag --points-at HEAD     # propre, etape-9-ok
+git diff --stat 9d281cf..HEAD -- db                                          # vide : aucune migration
+bash deploy/test-migration-sequence.sh                                       # cas A–I, dont « F rejeu » = ce déploiement
+bash deploy/rehearsal.sh --fixture                                           # séquence complète + e2e sur la pile migrée + retour arrière
+git push --follow-tags                                                       # commits et tags etape-9a-ok, etape-9b-ok, etape-9-ok
+```
+
+Attendu : `test-migration-sequence.sh` termine sur `OK` sans garde en échec (« F rejeu : code 0
+sans question », « déjà journalisée », « base identique ») ; `rehearsal.sh --fixture` sur
+`RÉPÉTITION CONFORME`. Ne pas lancer les deux en même temps que `npm run e2e -w web` (échec non
+reproduit de `setup` sous charge, 9B). La répétition sur une archive **réelle** déjà à 003 n'est
+pas prévue par `rehearsal.sh` (son contrôle de recalcul attend l'ancien modèle dans `ygo_old`) :
+pour vérifier la dernière archive du cron, utiliser `restore.sh --check-only` (§4b, conteneur
+55441), pas `rehearsal.sh`.
+
+### C1. Code à jour sur le VPS (T1)
+
+```bash
+cd ~/apps/ygo-proba
+git rev-parse --short HEAD          # NOTER ce commit (attendu : 9d281cf) : c'est le retour arrière du code (C5)
+git pull --ff-only
+git log -1 --oneline                # attendu : le commit de l'étape 9C
+git tag --points-at HEAD            # attendu : etape-9-ok
+```
+
+L'app en service n'est pas touchée (elle tourne dans son image). Retour arrière à ce stade :
+`git checkout <commit noté>`.
+
+### C2. État des lieux, effectifs et sauvegarde quotidienne vérifiée (T1)
+
+```bash
+cd ~/apps/ygo-proba/deploy
+docker compose --env-file .env.prod -f docker-compose.prod.yml ps        # db (healthy) et app « Up »
+tail -n 2 ~/ygo-backup.log                                               # « sauvegarde ok » puis « sauvegarde vérifiée »
+df -h /var/backups                                                       # place : ≈ 1,5 Mo par archive, keep/ hors rétention
+curl -s https://analysis.scratchrecode.com/api/health                    # {"ok":true,"cards":14529,"catalog":{...}}
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select id from app_migrations order by id"
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select (select count(*) from users) as users, (select count(*) from decks) as decks, (select count(*) from deck_cards where zone <> 'main') as extra_side, (select count(*) from decks where summary is not null) as summaries"
+bash backup.sh
+```
+
+Attendu : trois lignes `001-deck-configuration`, `002-profiles-and-conditions`,
+`003-purge-legacy` ; **noter** `users`, `decks`, `extra_side` (ils doivent être identiques après
+C3) et `summaries` (0 attendu : rien n'écrivait le cache avant 9A) ; `backup.sh` :
+
+```text
+<date> sauvegarde ok: ygo-<horodatage>.sql.gz (1.5M)
+<date> sauvegarde vérifiée: ygo-<horodatage>.sql.gz sha256 <64 hex> empreinte <32 hex>
+```
+
+Une ligne « sauvegarde NON vérifiée » arrête tout : ne pas déployer, lire la raison.
+
+### C3. `deploy.sh` — aucune question attendue (T1)
+
+```bash
+cd ~/apps/ygo-proba/deploy
+bash deploy.sh
+```
+
+Sortie attendue, dans l'ordre (horodatages omis, sorties de Compose résumées) :
+
+```text
+Already up to date.                         (git pull, déjà fait en C1)
+... build de l'image (plusieurs minutes : web et serveur ont changé)
+... up -d db : « Running » (conteneur déjà en service, non recréé)
+==> Attente de la DB (healthy, serveur définitif annoncé dans les journaux, select 1)...
+séquence de migration — dossier : .../deploy/out/deploy-<horodatage> — acceptation : OUI au terminal
+arrêt de l'app (aucune écriture pendant la transition)
+    ... Container ygo-proba-app-1 Stopped
+empreinte de la base avant toute modification (fingerprint-0.txt)
+sauvegarde pré-migration vérifiée (obligatoire, hors rétention)
+    <date> sauvegarde ok: keep/ygo-pre-migration-<horodatage>.sql.gz (1.5M)
+    <date> sauvegarde vérifiée: keep/ygo-pre-migration-<horodatage>.sql.gz sha256 <64 hex> empreinte <32 hex>
+archive pré-migration : /var/backups/ygo-proba/keep/ygo-pre-migration-<horodatage>.sql.gz — sha256 <64 hex> — empreinte <32 hex>
+inventaire avant migration (inventory-before-*)
+inventaire : 16 table(s), journal « 001-deck-configuration,002-profiles-and-conditions,003-purge-legacy », 0 résumé(s) non nul(s), modèle historique : 0 paire(s) globale(s), 0 exclusion(s) ou prérequis source paire
+003 déjà journalisée : 001 et 002 ne se rejouent plus (001 recréerait deck_requirements), schéma seulement
+rejeu par stdin : db/schema.sql
+003 en simulation (rapport : .../003-simulation.txt)
+003 déjà journalisée : aucun effet, contrôles seulement
+contrôles après migration (check-migration.txt, fingerprint-3.txt)
+    OK|journal 001-deck-configuration : journalisée
+    ... (une trentaine de lignes OK|, aucune KO| ; dont « OK|decks : <decks noté en C2> » et « OK|résumés non nuls … : 0 »)
+    OK|tables intactes de bout en bout (effectif et contenu) : cards catalog_version users user_identities sessions deck_cards deck_starters card_categories
+    OK|003 n'a touché que ses propres objets ...
+démarrage de l'app
+    ... docker compose up -d, ps : db et app « Up »
+séquence terminée : ok
+==> Rapports : .../deploy/out/deploy-<horodatage>
+==> Déployé. Santé : curl -s https://analysis.scratchrecode.com/api/health
+```
+
+Code **0**, **aucune question**. Points de lecture :
+
+- `==> Attente de la DB` rend la main en quelques secondes : le conteneur `db` tourne déjà
+  (volume initialisé, marqueur « Skipping initialization » présent dans les journaux du
+  démarrage courant) — c'est l'attente corrigée en 9B, plus aucun « shutting down » possible ;
+- la ligne `inventaire :` porte `16 table(s)`, les trois migrations au journal, `0 résumé(s)`
+  (ou le nombre noté en C2 lors d'un déploiement ultérieur), `0 paire(s)`, `0 exclusion(s)` ;
+- **`rejeu par stdin : db/schema.sql` seulement** — jamais `001…` ni `002…` ;
+- **si `deploy.sh` pose une question** (`Appliquer la purge … ?`), affiche `rejeu par stdin :
+  db/migrations/001…`, une simulation `à purger : N ligne(s)` avec N ≥ 1, un inventaire à
+  `14 table(s)` ou un journal vide : la base n'est pas celle attendue (mauvaise pile, mauvais
+  volume, base antérieure à 8C). Répondre `NON` : code 3, nouvelle app démarrée, rien de purgé.
+  Arrêter, comprendre (`docker volume ls`, `inventory-before-*`), ne pas relancer avant d'avoir
+  la cause ;
+- l'archive `keep/ygo-pre-migration-<horodatage>.sql.gz` (≈ 1,5 Mo, avec le catalogue) est
+  l'état exact d'avant ce déploiement : **noter son horodatage** (C5).
+
+Échecs possibles : annexe A. Un code 1 avant les contrôles (sauvegarde en échec, schéma en échec)
+relance l'ancienne app sur une base intacte ; un code 2 laisse l'app arrêtée avec la commande de
+restauration affichée (C5).
+
+### C4. Contrôles après déploiement (T1, puis navigateur)
+
+```bash
+curl -s https://analysis.scratchrecode.com/api/health       # cards = catalog.cards = 14529 (ou le nombre du dernier chargement)
+docker compose --env-file .env.prod -f docker-compose.prod.yml logs --tail 30 app
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select id from app_migrations order by id"
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select (select count(*) from users) as users, (select count(*) from decks) as decks, (select count(*) from deck_cards where zone <> 'main') as extra_side, (select count(*) from decks where summary is not null) as summaries"
+```
+
+Attendu : trois lignes au journal ; `users`, `decks`, `extra_side` **identiques** à C2 ;
+`summaries` encore 0 (il monte dès la première visite de l'accueil) ; aucune erreur dans les
+journaux.
+
+Au navigateur, sur https://analysis.scratchrecode.com :
+
+1. **Accueil** : chaque deck affiche « … » puis ses deux valeurs (départs ≥1, brick) — recalcul à
+   la demande (9A) ; recharger la page : les valeurs s'affichent directement, sans « … ».
+   Contrôle SQL : `summaries` = nombre de decks, `engineVersion` à 16 hexadécimaux :
+   `select count(*), min(summary->>'engineVersion') from decks where summary is not null`.
+2. **Éditeur** : ouvrir un deck ; changer la vue du panneau (Départs → une catégorie) : le bouton
+   Enregistrer reste grisé (vue transitoire, 9B) ; le mode **Non-engine** propose « Étiquette à
+   poser » et « Profil posé avec l'étiquette » (« Profil inchangé » coché) ; le mode Profil est
+   toujours là.
+3. **Extra / side** (9C) : sous la grille, blocs « Extra deck » et « Side deck » avec
+   « + Ajouter » ; ajouter une carte au side : la tuile apparaît avec son stepper, Enregistrer
+   s'active, le panneau ne repasse **pas** en « Recalcul… » ; Enregistrer, recharger : la carte est
+   là ; la retirer (− jusqu'à 0, toast « Retirée du side deck »), Enregistrer. Contrôle SQL :
+   `extra_side` revenu à la valeur de C2.
+4. **Enregistrer sans modification** impossible (bouton grisé) ; après une modification du main,
+   Enregistrer puis recharger : révision +1, deck identique.
+5. **Comparateur** sur deux decks : matrices, Δ, export Excel.
+
+Le lendemain : `tail -n 2 ~/ygo-backup.log` montre « sauvegarde ok » puis « sauvegarde
+vérifiée ».
+
+### C5. Retour arrière
+
+Deux niveaux, indépendants :
+
+1. **Code seul** (la base est lisible par l'ancienne app : aucune migration, colonnes et
+   configuration v2 inchangées ; les résumés écrits par l'étape 9 sont ignorés par `9d281cf`,
+   qui renvoie `summary: null`, et effacés à son prochain enregistrement ; les cartes extra / side
+   enregistrées se relisent) — remettre le commit noté en C1 **sans** passer par `deploy.sh`
+   (il ferait `git pull`) :
+
+   ```bash
+   cd ~/apps/ygo-proba && git checkout <commit noté en C1>
+   cd deploy
+   docker compose --env-file .env.prod -f docker-compose.prod.yml build
+   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+   curl -s https://analysis.scratchrecode.com/api/health
+   ```
+
+2. **Données** (seulement si l'état d'avant le déploiement doit revenir — tout ce qui a été
+   enregistré depuis est perdu) : l'archive pré-migration réelle de C3, vérifiée par
+   `restore.sh` (somme, empreinte, restauration de contrôle, sauvegarde de sécurité de l'état
+   courant dans `keep/ygo-pre-restauration-*`, bascule, `ygo_previous`, conteneur app redémarré) :
+
+   ```bash
+   bash ~/apps/ygo-proba/deploy/restore.sh /var/backups/ygo-proba/keep/ygo-pre-migration-<horodatage>.sql.gz
+   ```
+
+   Puis, si le code doit aussi revenir, le niveau 1. Pour retenter plus tard : `git checkout main`
+   et reprendre en C1.
+
+### C6. Après coup
+
+- Les rapports restent dans `~/apps/ygo-proba/deploy/out/deploy-<horodatage>/` (annexe B) ;
+  `keep/` garde une archive pré-migration **par déploiement**, hors rétention : les supprimer à
+  la main quand elles ne servent plus de retour arrière (≈ 1,5 Mo chacune).
+- Copier l'archive pré-migration hors VPS n'est pas obligatoire pour ce déploiement (aucune
+  purge) ; la vérifier hors VPS reste possible par §4b (`restore.sh --check-only`).
+
+> **Historique — décision prise après 8B (8 septembre 2026) : la production repart d'une base
+> vide.** Rien n'est conservé (ni decks, ni comptes, ni annotations). L'archive de l'état actuel
+> est prise, vérifiée et copiée hors VPS par principe (souvenir), mais elle n'est plus un chemin
+> de retour à préparer. La procédure suivie est la **variante « départ à vide »** ci-dessous, qui
 > remplace les §3, §4 et §5 ; §0 (répétition sur archive fraîche) devient inutile, §1 et §2 sont
 > inchangés, §6 est adapté dans la variante, §7 et §8 restent valables. Les §3 à §5 sont
 > conservés pour mémoire : ils décrivent la migration d'une base conservée.

@@ -7,7 +7,7 @@ import { buildDeckJson, parseDeckJson, toYdk } from './exportDeck.js';
 import { parseYdk } from './ydk.js';
 import { computeAll } from '../engine/enumerate.js';
 import { emptyConfiguration, parseConfiguration } from '../../../server/src/domain/deckConfiguration.js';
-import type { Card, Library } from '../types.js';
+import type { Card, DeckCard, Library } from '../types.js';
 
 // ─── Étape 6 (6A) — même deck métier depuis la création manuelle, l'import YDK et
 // l'import JSON v2 : modèle moteur identique (contrat §1 « Import et création manuelle
@@ -141,5 +141,66 @@ describe('Étape 6 — équivalence création / import', () => {
     expectApprox(byCard(unsorted, ru.deltas), byCard(sorted, rs.deltas), 'deltas');
     expect(rs.first.brick).toBeGreaterThan(0);
     expect(rs.first.brick).toBeLessThan(1);
+  });
+
+  // Étape 9C : l'équivalence couvre les trois zones. Le modèle moteur ne dépend que du main
+  // deck (contrat §2, `buildEngineModel` ne lit que `main`) : extra et side saisis, importés ou
+  // relus doivent être identiques entre les trois chemins ET laisser le modèle strictement égal
+  // au modèle « main seul ».
+  it('les trois zones sont équivalentes depuis la création, le YDK et le JSON v2 ; le modèle moteur ne dépend ni de l’extra ni du side', async () => {
+    const X = card(7, 'Extra Pi');
+    const Y = card(8, 'Side Rho');
+    const zonesOf = (src: { main: DeckCard[]; extra: DeckCard[]; side: DeckCard[] }) =>
+      [...src.main, ...src.extra, ...src.side].map((c) => [c.zone, c.cardId, c.copies] as const).sort((p, q) => p[0].localeCompare(q[0]) || p[1] - q[1]);
+
+    // 1. Création manuelle : main d'abord, modèle de référence pris AVANT l'extra et le side.
+    const s = useDeck.getState();
+    for (const c of [F, F, F, E, D, C, C, B, A, A, A]) expect(s.addCard(c)).toBe(true);
+    expect(s.setCopies(B.id, 2)).toBe(true);
+    annotate();
+    const mainOnly = buildEngineModel(canonical({ ...useDeck.getState() }));
+    expect(s.addCard(X, 1, 'extra')).toBe(true);
+    expect(s.addCard(X, 1, 'extra')).toBe(true);
+    expect(s.addCard(Y, 1, 'side')).toBe(true);
+    expect(s.addCard(A, 1, 'side')).toBe(true); // A est aussi en main : la convention 1–3 est par zone
+    const manual = { ...useDeck.getState() };
+    const manualConfig = configurationFromState(manual);
+    expect(manualConfig.cards.filter((c) => c.zone !== 'main')).toEqual([
+      { card_id: 7, zone: 'extra', copies: 2 }, { card_id: 8, zone: 'side', copies: 1 }, { card_id: 1, zone: 'side', copies: 1 },
+    ]);
+    expect(buildEngineModel(canonical(manual))).toEqual(mainOnly);
+
+    // 2. Import YDK avec les sections #extra et !side, par le chemin réel.
+    const ydk = ['#main', '1', '1', '1', '2', '2', '3', '3', '4', '5', '6', '6', '6', '#extra', '7', '7', '!side', '8', '1', ''].join('\n');
+    const report = parseYdk(ydk);
+    expect(report).toMatchObject({ ignored: [], unknownHeaders: [], overLimit: [] });
+    vi.mocked(api.createDeck).mockResolvedValue({ id: deckId });
+    expect(await useDeck.getState().createDeckFromParsed('Import', report.deck, [])).toBe(deckId);
+    const [name, cards] = vi.mocked(api.createDeck).mock.calls[0];
+    const importedConfig = parseConfiguration(emptyConfiguration(name, cards));
+    useDeck.setState({ ...useDeck.getInitialState(), ...libraryState(library), ...stateFromConfiguration(importedConfig), deckId, revision: 1 }, true);
+    annotate();
+    const fromYdk = { ...useDeck.getState() };
+
+    // 3. Import JSON v2 relu depuis l'archive du deck manuel.
+    const archive = parseDeckJson(JSON.stringify(buildDeckJson(manualConfig, library)));
+    const fromJson = {
+      ...stateFromConfiguration(archive.configuration),
+      ...libraryState({ ...archive.library, categories: archive.library.categories.map((c) => ({ ...c, is_builtin: false })) }),
+    };
+
+    expect(zonesOf(fromYdk)).toEqual(zonesOf(manual));
+    expect(zonesOf(fromJson)).toEqual(zonesOf(manual));
+    expect(zonesOf(manual).filter(([zone]) => zone !== 'main')).toEqual([['extra', 7, 2], ['side', 1, 1], ['side', 8, 1]]);
+    expect(buildEngineModel(canonical(fromYdk))).toEqual(mainOnly);
+    expect(buildEngineModel(canonical(fromJson))).toEqual(mainOnly);
+    expect(mainOnly.input.deckSize).toBe(12);
+    expect(mainOnly.typeCardIds).not.toContain(7);
+    expect(mainOnly.typeCardIds).not.toContain(8);
+
+    // YDK réexporté puis relu : les trois sections reviennent identiques.
+    const roundTrip = parseYdk(toYdk(manualConfig.cards.map((c) => ({ cardId: c.card_id, zone: c.zone, copies: c.copies }))));
+    expect([...roundTrip.deck.extra]).toEqual([[7, 2]]);
+    expect([...roundTrip.deck.side]).toEqual([[8, 1], [1, 1]]);
   });
 });

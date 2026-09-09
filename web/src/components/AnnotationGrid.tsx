@@ -3,8 +3,10 @@ import { useDeck } from '../store/deckStore.js';
 import { assignGroups } from '../lib/colors.js';
 import { leavesOf } from '../lib/conditions.js';
 import { nonEngineEffect, type NonEngineEffect } from '../lib/nonEngine.js';
-import { AVAILABILITY_LABEL, imageSmall, type Availability } from '../types.js';
+import { AVAILABILITY_LABEL, type Availability, type DeckCard, type Zone } from '../types.js';
+import { EXTRA_SIDE_SOFT_LIMIT, ZONE_LABEL, overSoftLimit, zoneCount } from '../lib/zones.js';
 import { CardTile } from './CardTile.js';
+import { ZoneCardTile } from './ZoneCardTile.js';
 import { ModeBar, type ModeOption } from './ModeBar.js';
 import { AddCardDialog } from './AddCardDialog.js';
 import { KEY_TO_MODE, MODE_LABEL, type AnnotationMode } from './annotationModes.js';
@@ -48,7 +50,8 @@ export function AnnotationGrid({
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [modCount, setModCount] = useState(0);
   const [skipped, setSkipped] = useState(0); // mode Profil : cartes sans étiquette ignorées (Q1)
-  const [addOpen, setAddOpen] = useState(false);
+  // Étape 9C : le dialogue d'ajout porte la zone visée (main, extra ou side), `null` = fermé.
+  const [addOpen, setAddOpen] = useState<Zone | null>(null);
 
   const enterMode = useCallback(
     (next: AnnotationMode, option?: ModeOption) => {
@@ -205,17 +208,41 @@ export function AnnotationGrid({
     }
   };
 
+  // Étape 9C : extra et side éditables, un bloc par zone (« + Ajouter », tuiles de 80 px,
+  // stepper de 32 px), toujours rendus — même sans main deck, même vides — pour qu'un ajout
+  // reste possible ; le repli (▸ / ▾) masque les deux blocs ensemble.
+  const zoneSection = (
+    <div className="mt-4" data-zone-section>
+      <button
+        onClick={() => setExtraSideHidden(!extraSideHidden)}
+        className="mb-2 flex h-6 items-center text-[11px] uppercase tracking-wide text-ink-500 hover:text-ink-300"
+      >
+        {extraSideHidden ? '▸' : '▾'} Extra / Side — éditables, exclus des calculs (contrat §2)
+      </button>
+      {!extraSideHidden && (
+        <div className="flex flex-col gap-4">
+          <ZoneBlock zone="extra" cards={extra} onAdd={() => setAddOpen('extra')} />
+          <ZoneBlock zone="side" cards={side} onAdd={() => setAddOpen('side')} />
+        </div>
+      )}
+    </div>
+  );
+  const addDialog = addOpen && <AddCardDialog zone={addOpen} onClose={() => setAddOpen(null)} />;
+
   if (main.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-sm text-ink-400">
-        <p>Importe un deck (fichier YDK ou liste collée) pour commencer à annoter.</p>
-        <button
-          onClick={() => setAddOpen(true)}
-          className="rounded border border-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-800"
-        >
-          + Ajouter une carte
-        </button>
-        {addOpen && <AddCardDialog onClose={() => setAddOpen(false)} />}
+      <div className="flex h-full flex-col overflow-y-auto p-2">
+        <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-sm text-ink-400">
+          <p>Importe un deck (fichier YDK ou liste collée) pour commencer à annoter.</p>
+          <button
+            onClick={() => setAddOpen('main')}
+            className="rounded border border-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-800"
+          >
+            + Ajouter une carte
+          </button>
+        </div>
+        {zoneSection}
+        {addDialog}
       </div>
     );
   }
@@ -285,7 +312,7 @@ export function AnnotationGrid({
           ))}
           {/* Ajout d'une carte en fin de grille (itération 3, A). */}
           <button
-            onClick={() => setAddOpen(true)}
+            onClick={() => setAddOpen('main')}
             title="Ajouter une carte"
             className="flex aspect-[59/86] flex-col items-center justify-center rounded-md border border-dashed border-ink-600 text-ink-500 transition-colors hover:border-emerald-500/60 hover:text-emerald-300"
           >
@@ -294,37 +321,50 @@ export function AnnotationGrid({
           </button>
         </div>
 
-        {(extra.length > 0 || side.length > 0) && (
-          <div className="mt-4">
-            <button
-              onClick={() => setExtraSideHidden(!extraSideHidden)}
-              className="mb-2 text-[11px] uppercase tracking-wide text-ink-500 hover:text-ink-300"
-            >
-              {extraSideHidden ? '▸' : '▾'} Extra / Side — exclus des calculs (§4.1)
-            </button>
-            {!extraSideHidden && (
-              <div
-                className="grid gap-1 opacity-60"
-                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))' }}
-              >
-                {[...extra, ...side].map((c) => (
-                  <img
-                    key={`${c.zone}-${c.cardId}`}
-                    src={cards[c.cardId]?.image_url_small ?? imageSmall(c.cardId)}
-                    alt={cards[c.cardId]?.name ?? String(c.cardId)}
-                    title={`${cards[c.cardId]?.name ?? c.cardId} (${c.zone})`}
-                    loading="lazy"
-                    className="w-full rounded"
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {zoneSection}
       </div>
 
-      {addOpen && <AddCardDialog onClose={() => setAddOpen(false)} />}
+      {addDialog}
     </div>
+  );
+}
+
+/** Bloc d'une zone hors calcul (étape 9C) : compteur (repère 15, avertissement seulement — Q5),
+ *  « + Ajouter » à 32 px, tuiles de 80 px (image + stepper). */
+function ZoneBlock({ zone, cards, onAdd }: { zone: Zone; cards: DeckCard[]; onAdd: () => void }) {
+  const count = zoneCount(cards);
+  const over = overSoftLimit(zone, count);
+  return (
+    <section data-zone-block={zone} aria-label={ZONE_LABEL[zone]}>
+      <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-semibold text-ink-200">{ZONE_LABEL[zone].charAt(0).toUpperCase() + ZONE_LABEL[zone].slice(1)}</span>
+        <span
+          data-zone-count={zone}
+          className={`tnum rounded px-1.5 py-0.5 ${over ? 'bg-amber-500/15 text-amber-300' : 'bg-ink-800 text-ink-400'}`}
+          title={over ? `Au-delà de ${EXTRA_SIDE_SOFT_LIMIT} cartes : repère seulement, rien n'est refusé.` : `${count} carte${count > 1 ? 's' : ''}`}
+        >
+          {count}
+        </span>
+        {over && <span className="text-[11px] text-amber-300">au-delà de {EXTRA_SIDE_SOFT_LIMIT} (repère)</span>}
+        <button
+          onClick={onAdd}
+          data-zone-add={zone}
+          title={`Ajouter une carte au ${ZONE_LABEL[zone]}`}
+          className="ml-auto h-8 rounded border border-ink-700 px-2.5 text-[11px] text-ink-200 hover:bg-ink-800"
+        >
+          + Ajouter
+        </button>
+      </div>
+      {cards.length === 0 ? (
+        <p className="text-[11px] text-ink-600">Aucune carte.</p>
+      ) : (
+        <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))' }}>
+          {cards.map((c) => (
+            <ZoneCardTile key={`${zone}-${c.cardId}`} cardId={c.cardId} zone={zone} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

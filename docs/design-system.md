@@ -368,6 +368,14 @@ par un encadré `border-ink-700 bg-ink-900/60` en `flex-wrap` ; ses sélecteurs,
 et ✕ mesurent 24 px (`h-6`). La tuile d'annotation reste à 96 px minimum : à 84 px, les trois
 cibles de 32 px tiennent mais le delta « −1 : −6.38% » est coupé (mesuré en 9A).
 
+Extra et side (étape 9C, `ZoneCardTile`, `ZoneBlock` dans la grille d'annotation) : un bloc par
+zone sous un seul repli, en-tête `flex-wrap` (nom de la zone, compteur en puce `tnum` — ambre
+au-delà de 15, repère sans refus —, « + Ajouter » à 32 px `h-8` aligné à droite), puis
+`repeat(auto-fill, minmax(80px, 1fr))` : la tuile de zone n'a que l'image (ratio 59/86) et le
+stepper de la recette §7.6 à 32 px (`h-8 w-8`), aucun delta ni menu ⋯, d'où 80 px et non 96
+(4 colonnes à 360 px, 10 à 1440 px avec le panneau). Le toast de retrait (§7.13) nomme la zone
+quittée (« Retirée du side deck : … ») et son « Annuler » restaure dans cette zone.
+
 ### 6.4 Ascenseurs
 
 Discrets et cohérents avec le chrome — à reprendre tel quel :

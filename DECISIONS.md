@@ -1,5 +1,42 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 9, partie C (extra / side éditables, runbook « déploiement courant », clôture), 9 septembre 2026
+
+Compte rendu, preuves, mutations, questions ouvertes Q14–Q18 et compte rendu final de la mission
+dans [docs/etape-9.md](docs/etape-9.md) (« Compte rendu 9C », « Clôture »). Tag `etape-9-ok`.
+
+- **La zone est un paramètre des mutations de composition, `main` par défaut** (`addCard(carte,
+  copies, zone)`, `setCopies(carte, copies, zone)`, `removeCard(carte, zone)`) : tous les appels
+  existants restent valides ; le dialogue d'ajout et la tuile de zone passent leur zone. Le toast
+  porte la carte **avec sa zone** ; « Annuler » la restaure dans cette zone, à la même place.
+- **Extra et side ne recalculent jamais** (`zoneMutation` : main → `localCalc`, sinon `markDirty`
+  seul). Le modèle moteur ne lit que `main` (contrat §2, `buildEngineModel` intouché) : le
+  résultat reste frais et l'aperçu joint à l'enregistrement aussi (prouvé par la garde Z4 :
+  résumé écrit malgré une mutation side). Brouillon et configuration transportent déjà les trois
+  zones depuis l'étape 3 ; rien à changer côté serveur.
+- **Convention 1–3 par carte ET par zone** (la même carte peut être en main et en side) ; le refus
+  nomme la zone. Repère de **15** en extra / side (Q5) = avertissement seulement (compteur ambre
+  du bloc, bandeau du dialogue), jamais un refus, aucun repère bas ; le main garde 40–60.
+- **Un bloc par zone, toujours rendu** — même sans main deck, même vide, sinon aucun ajout n'est
+  possible — sous un seul repli « Extra / Side » (état `extraSideHidden` conservé). Tuile de
+  **80 px** = image + stepper à 32 px, rien d'autre : aucune annotation, aucun delta, aucun
+  menu ⋯ (ces zones n'ont ni rôle ni statistique). « + Ajouter » à 32 px ouvre le dialogue **sur
+  la zone** (titre, compteur, plafond et repère de la zone).
+- **Le test d'équivalence de 6A n'est pas modifié ; un cas « trois zones » lui est ajouté** :
+  création manuelle, YDK (`#extra` / `!side`) et JSON v2 donnent les mêmes cartes par zone, et
+  le modèle moteur est strictement égal au modèle « main seul » pris **avant** la saisie de
+  l'extra et du side. Dit explicitement : le modèle moteur ne dépend pas de ces zones.
+- **Runbook : variante « déploiement courant » en tête** (C0–C6), pour toute base non vide à 003
+  sans migration : sortie attendue commande par commande (schéma seul rejoué, « 003 déjà
+  journalisée », aucune question), effectifs notés avant / après, retour arrière à deux niveaux
+  (code seul par `git checkout` + build + up ; données par l'archive pré-migration réelle de
+  `deploy.sh` via `restore.sh`), toute question = `NON`. Preuve locale = cas « F, rejeu » de
+  test-migration-sequence.sh. `rehearsal.sh` n'est pas prévu pour une archive déjà à 003 (son
+  recalcul attend l'ancien modèle) : question ouverte, `restore.sh --check-only` à la place.
+- **Aucun test existant modifié** ; moteur, oracles, migrations et `engineModel.ts` intacts
+  (`__ENGINE_VERSION__` inchangé : 9C n'invalide aucun aperçu) ; aucune base personnelle ni VPS ;
+  conteneurs jetables supprimés.
+
 ## Première mission — étape 9, partie B (attente de la DB, vue transitoire, mode combiné), 9 septembre 2026
 
 Compte rendu, preuves, mutations et questions ouvertes Q9 / Q10 dans

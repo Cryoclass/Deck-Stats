@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
 import { api } from '../lib/api.js';
-import type { Card } from '../types.js';
+import type { Card, Zone } from '../types.js';
 import { MAX_COPIES } from '../lib/ydk.js';
+import { EXTRA_SIDE_SOFT_LIMIT, ZONE_LABEL, overSoftLimit, zoneCount } from '../lib/zones.js';
 import { CardImage } from './CardImage.js';
 
 /**
@@ -10,12 +11,14 @@ import { CardImage } from './CardImage.js';
  * pour en enchaîner plusieurs (même logique que la barre de modes). Recherche par
  * nom (Postgres local) ou par passcode collé. `Entrée` ajoute le premier résultat,
  * `Échap` ferme. Ajout à 1 copie ; carte déjà présente → incrément.
+ * Étape 9C : le dialogue porte la zone visée (main par défaut) ; compteur, plafond 1–3 et
+ * repère de taille sont ceux de cette zone (extra / side : avertissement au-delà de 15, Q5).
  */
-export function AddCardDialog({ onClose }: { onClose: () => void }) {
+export function AddCardDialog({ zone = 'main', onClose }: { zone?: Zone; onClose: () => void }) {
   const addCard = useDeck((s) => s.addCard);
-  const main = useDeck((s) => s.main);
-  const deckSize = main.reduce((a, c) => a + c.copies, 0);
-  const copiesOf = (id: number) => main.find((m) => m.cardId === id)?.copies ?? 0;
+  const list = useDeck((s) => s[zone]);
+  const deckSize = zoneCount(list);
+  const copiesOf = (id: number) => list.find((m) => m.cardId === id)?.copies ?? 0;
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Card[]>([]);
@@ -56,7 +59,7 @@ export function AddCardDialog({ onClose }: { onClose: () => void }) {
   const atMax = (card: Card) => copiesOf(card.id) >= MAX_COPIES;
   const add = (card: Card) => {
     if (atMax(card)) return;
-    addCard(card);
+    addCard(card, 1, zone);
     inputRef.current?.focus(); // rester au clavier pour enchaîner
   };
 
@@ -70,7 +73,9 @@ export function AddCardDialog({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
-          <h2 className="text-base font-semibold text-ink-100">Ajouter une carte</h2>
+          <h2 className="text-base font-semibold text-ink-100" data-add-zone={zone}>
+            Ajouter une carte{zone !== 'main' ? ` — ${ZONE_LABEL[zone]}` : ''}
+          </h2>
           <button
             onClick={onClose}
             title="Fermer"
@@ -80,9 +85,14 @@ export function AddCardDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {deckSize >= 60 && (
+        {zone === 'main' && deckSize >= 60 && (
           <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-[11px] text-amber-300">
             Main deck à {deckSize} cartes — au-delà de 60 (§D). Ajout autorisé quand même.
+          </div>
+        )}
+        {overSoftLimit(zone, deckSize) && (
+          <div role="status" className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-[11px] text-amber-300">
+            {ZONE_LABEL[zone].charAt(0).toUpperCase() + ZONE_LABEL[zone].slice(1)} à {deckSize} cartes — au-delà de {EXTRA_SIDE_SOFT_LIMIT} (repère, étape 9C). Ajout autorisé quand même.
           </div>
         )}
 
@@ -103,7 +113,7 @@ export function AddCardDialog({ onClose }: { onClose: () => void }) {
           />
           <div className="mt-1 flex justify-between text-[10px] text-ink-600">
             <span>Entrée ajoute le premier résultat · Échap ferme</span>
-            <span className="tnum">main : {deckSize}</span>
+            <span className="tnum">{zone} : {deckSize}</span>
           </div>
         </div>
 

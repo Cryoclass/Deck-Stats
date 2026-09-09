@@ -204,15 +204,15 @@ reste, jamais touchée.
 
 ### Contrôle par mutation
 
-| Mutation                                                                          | Garde qui casse                                                     |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| M1 `usableSummary` ignore la version du moteur                                    | `summary.test.ts` (« refuse … d'une autre version »)                |
-| M2 `summaryOfState` accepte un résultat périmé ou en cours                        | `summary.test.ts` (« n'envoie rien d'un résultat périmé … »)        |
-| M3 `checkSummaryMatches` sans effet (serveur)                                     | `configuration.test.ts` (« Missing expected exception »)            |
-| M4 « ↻ Nouvelles mains » en `py-1` (24 px)                                        | `mobile` P7 aux quatre largeurs (`h: 24`)                           |
-| M5 récapitulatif compact masqué (récapitulatif complet sous 640 px)               | `mobile` P7 à 360 / 390 (compact absent, ligne 344 > 341, débordement) |
-| M6 Δ en cellules compactes                                                        | `mobile` P3 à 360 / 390 (police 9, largeur 20)                      |
-| M7 sélecteurs ET/OU sans `h-6` (23 px)                                            | `conditions` (9 sélecteurs à 23 px)                                 |
+| Mutation                                                            | Garde qui casse                                                        |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| M1 `usableSummary` ignore la version du moteur                      | `summary.test.ts` (« refuse … d'une autre version »)                   |
+| M2 `summaryOfState` accepte un résultat périmé ou en cours          | `summary.test.ts` (« n'envoie rien d'un résultat périmé … »)           |
+| M3 `checkSummaryMatches` sans effet (serveur)                       | `configuration.test.ts` (« Missing expected exception »)               |
+| M4 « ↻ Nouvelles mains » en `py-1` (24 px)                          | `mobile` P7 aux quatre largeurs (`h: 24`)                              |
+| M5 récapitulatif compact masqué (récapitulatif complet sous 640 px) | `mobile` P7 à 360 / 390 (compact absent, ligne 344 > 341, débordement) |
+| M6 Δ en cellules compactes                                          | `mobile` P3 à 360 / 390 (police 9, largeur 20)                         |
+| M7 sélecteurs ET/OU sans `h-6` (23 px)                              | `conditions` (9 sélecteurs à 23 px)                                    |
 
 Fichiers restaurés par copie après chaque mutation, vérifiés par `grep` ; la suite complète a
 été rejouée ensuite depuis une pile neuve.
@@ -265,7 +265,7 @@ Fichiers restaurés par copie après chaque mutation, vérifiés par `grep` ; la
 - [deploy/deploy.sh](../deploy/deploy.sh) : la boucle `pg_isready` par le socket est remplacée
   par `db_ready || die`, message nommant `ps` / `logs db`.
 - **Écart au plan, consigné** : le plan disait « le dernier « ready » après « init process
-  complete » *quand cette ligne existe* ». Vérifié sur conteneur jetable : le serveur temporaire
+  complete » _quand cette ligne existe_ ». Vérifié sur conteneur jetable : le serveur temporaire
   annonce lui aussi « ready to accept connections » **avant** que le marqueur n'existe ; la règle
   littérale aurait donc accepté la fenêtre qu'elle devait exclure. Le marqueur « Skipping
   initialization » (volume déjà initialisé, présent à chaque redémarrage) permet d'exiger un
@@ -303,7 +303,7 @@ Fichiers restaurés par copie après chaque mutation, vérifiés par `grep` ; la
 ### Livré — mode Non-engine et profil combinés
 
 - [web/src/lib/nonEngine.ts](../web/src/lib/nonEngine.ts) (pur) : `nonEngineEffect(étiquette
-  portée, profil courant, profil voulu)` → `poser` / `retirer` ; règle unique partagée par le
+portée, profil courant, profil voulu)` → `poser` / `retirer` ; règle unique partagée par le
   store (ce qui est envoyé) et la grille (ce qui est annoncé).
 - Store : `applyNonEngine(carte, étiquette, profil | null)` dans la file globale existante — pas
   conforme : `POST card-categories` si l'étiquette manque, puis `PUT flags` si le profil demandé
@@ -358,12 +358,12 @@ concurrente sont conformes — non reproduit, à surveiller.
 
 ### Contrôle par mutation
 
-| Mutation                                                                    | Garde qui casse                                                                                   |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| M1 `db_ready` à un seul `select 1` (ni healthy, ni journaux)                | cas I : « à la sortie de db_ready : init process complete suivi du second ready » (rendue pendant la fenêtre) ; la séquence lancée ensuite a pu passer — la garde déterministe sur les journaux est la preuve, pas le code de la séquence |
-| M2 `setStatsView` marque « non enregistré » (`markDirty`)                    | `statsView.test.ts` (« changer de vue ne salit pas » : `editRevision` 1, `dirty` true)             |
-| M3 `applyNonEngine` envoie le profil avant l'étiquette                       | `nonengine.test.ts` (ordre des requêtes ; refus de l'étiquette n'arrête plus la paire) — 2 tests    |
-| M4 badge « poser / retirer » retiré de la tuile                              | e2e `nonengine` (`[data-nonengine-effect]` introuvable sur Combo Gamma, aucun clic joué)            |
+| Mutation                                                     | Garde qui casse                                                                                                                                                                                                                           |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1 `db_ready` à un seul `select 1` (ni healthy, ni journaux) | cas I : « à la sortie de db_ready : init process complete suivi du second ready » (rendue pendant la fenêtre) ; la séquence lancée ensuite a pu passer — la garde déterministe sur les journaux est la preuve, pas le code de la séquence |
+| M2 `setStatsView` marque « non enregistré » (`markDirty`)    | `statsView.test.ts` (« changer de vue ne salit pas » : `editRevision` 1, `dirty` true)                                                                                                                                                    |
+| M3 `applyNonEngine` envoie le profil avant l'étiquette       | `nonengine.test.ts` (ordre des requêtes ; refus de l'étiquette n'arrête plus la paire) — 2 tests                                                                                                                                          |
+| M4 badge « poser / retirer » retiré de la tuile              | e2e `nonengine` (`[data-nonengine-effect]` introuvable sur Combo Gamma, aucun clic joué)                                                                                                                                                  |
 
 Fichiers restaurés par copie après chaque mutation, vérifiés par `diff` (lib.sh par SHA-256) ;
 la suite complète a été rejouée ensuite.
@@ -393,6 +393,15 @@ la suite complète a été rejouée ensuite.
 - Les questions de 8 restent : Q11 (`ygo_previous`), Q12 / Q13 sans objet, équivalence
   `--emit-sql` / `--apply`.
 
+### Réponses (9B)
+
+- **Q9 — Confirmé.** Un profil sans étiquette ne mesure rien (Q1 de 5B) ; retirer la
+  dernière étiquette retire le profil orphelin. Le bandeau l'annonce dans le libellé
+  du prochain clic (« retirer l'étiquette et le profil »).
+- **Q10 — Confirmé, sans rétablissement.** La vue du panneau est transitoire depuis 9B ;
+  un deck s'ouvre sur la vue par défaut. La valeur héritée reste lue sans effet, elle
+  disparaît à la prochaine écriture des paramètres.
+
 ### Passation vers 9C
 
 - Extra et side éditables (`addCard`, `setCopies`, `removeCard` avec zone ; marquage « non
@@ -405,3 +414,181 @@ la suite complète a été rejouée ensuite.
   inscrit le mode combiné), tag `etape-9-ok`.
 - Ne jamais modifier un script de deploy/ pendant qu'un test ou une répétition tourne ; ne pas
   lancer l'e2e en même temps qu'un test A–I (échec non reproduit de `setup` sous charge).
+
+## Compte rendu 9C (9 septembre 2026)
+
+Périmètre validé (plan, point 4 « Extra et side », Q5) : extra et side éditables, variante
+« déploiement courant » du runbook, clôture de l'étape 9 et de la mission. Décisions prises en
+cours de tâche numérotées D1–D7 (DECISIONS.md, « étape 9, partie C ») ; questions non tranchées
+Q14–Q18 ci-dessous.
+
+### Livré — extra et side éditables
+
+- [web/src/store/deckStore.ts](../web/src/store/deckStore.ts) : `addCard(carte, copies, zone)`,
+  `setCopies(carte, copies, zone)`, `removeCard(carte, zone)` — zone `main` par défaut, tous les
+  appels existants inchangés (D1). `zoneMutation(zone)` : main → `localCalc` (recalcul + « non
+  enregistré » + brouillon), extra / side → `markDirty` seul (D2). Le refus 1–3 nomme la zone
+  (« déjà 3 copies en side deck », « Quantité 4 refusée en side deck ») ; la même carte peut être
+  en main et en side (D3). Le toast porte la carte avec sa zone ; `undoRemove` restaure dans
+  cette zone, à la même place.
+- [web/src/lib/zones.ts](../web/src/lib/zones.ts) (pur) : `ZONE_LABEL`, `EXTRA_SIDE_SOFT_LIMIT`
+  = 15, `overSoftLimit` (jamais le main), `zoneCount`.
+- [AddCardDialog.tsx](../web/src/components/AddCardDialog.tsx) : propriété `zone` — titre
+  (« Ajouter une carte — side deck », `data-add-zone`), compteur `side : n`, plafond 1–3 lu
+  dans la zone, bandeau ambre au-delà de 15 en extra / side (le bandeau « ≥ 60 » du main est
+  inchangé) ; ajout par `addCard(carte, 1, zone)`.
+- [AnnotationGrid.tsx](../web/src/components/AnnotationGrid.tsx) : section « Extra / Side —
+  éditables, exclus des calculs (contrat §2) » **toujours rendue** — même sans main deck (état
+  vide) et même vide, sinon aucun ajout n'est possible (D4) — sous le repli existant
+  (`extraSideHidden`, commun aux deux zones, D5) ; `ZoneBlock` par zone (`data-zone-block`) :
+  en-tête nom + compteur (`data-zone-count`, ambre et mention « au-delà de 15 (repère) » sans
+  refus) + « + Ajouter » à 32 px (`data-zone-add`) qui ouvre le dialogue sur la zone ; grille
+  `minmax(80px, 1fr)`.
+- [ZoneCardTile.tsx](../web/src/components/ZoneCardTile.tsx) : image 59/86 + stepper à 32 px
+  (`data-zone-tile`, `data-card-id`), rien d'autre — ni annotation, ni delta, ni menu ⋯ (ces
+  zones n'ont ni rôle ni statistique, D6) ; « − » à 1 copie = « Retirer du side (0 copie) ».
+- [Toast.tsx](../web/src/components/Toast.tsx) : « Retirée du side deck : X » (`data-removal-zone`),
+  libellé du main inchangé.
+- **Modèle moteur intact** : [engineModel.ts](../web/src/lib/engineModel.ts) ne lit que `main`
+  et n'est pas modifié ; `__ENGINE_VERSION__` est donc inchangé et 9C n'invalide aucun aperçu.
+  Le résultat courant reste frais après une mutation extra / side, l'aperçu est joint à
+  l'enregistrement (garde Z4).
+- Tests : [store/zones.test.ts](../web/src/store/zones.test.ts) (5 : zones distinctes et
+  convention par zone, « non enregistré » + brouillon sans recalcul et modèle moteur identique,
+  retrait / toast / annulation dans la zone, enregistrement des trois zones, repère 15 sans
+  refus) ; **équivalence 6A** ([deckEquivalence.test.ts](../web/src/lib/deckEquivalence.test.ts)) :
+  les deux tests existants sont **intacts**, un troisième cas « trois zones » est ajouté —
+  création manuelle (extra et side saisis après le main), YDK avec `#extra` / `!side` par le
+  chemin réel, JSON v2 relu : mêmes cartes par zone, et modèle moteur strictement égal au modèle
+  « main seul » pris avant la saisie de l'extra et du side. **Dit explicitement : le modèle
+  moteur ne dépend pas de l'extra ni du side** (`buildEngineModel` ne lit que `main`), donc
+  l'équivalence sur les trois zones porte sur la configuration enregistrée, le modèle étant
+  invariant par construction.
+- Scénario e2e [`extraside`](../web/e2e/scenarios/extraside.mjs) (Deck A) : Z1 bloc side vide,
+  « + Ajouter » 32 px, dialogue ouvert sur le side ; Z2 tuile ≥ 80 px, stepper 32 px, compteur,
+  Enregistrer activé, grille du main inchangée (15 identités), **aucun recalcul** (durée de
+  calcul du panneau inchangée, aucun « Recalcul… ») ; Z3 stepper + / −, retrait à 0 copie, toast
+  « Retirée du side deck : Side Rho », « Annuler » restaure dans le side, toujours sans recalcul ;
+  Z4 enregistrement vérifié par l'API (side = [Side Rho ×1], main 40, révision +1, **aperçu
+  joint** : le résultat est resté frais), rechargement (tuile présente, rien à enregistrer) ; Z5 à
+  360 px : stepper et « + Ajouter » 32 px, section sans débordement, body sans défilement ; puis
+  fixture restaurée (side vide, main 40, vérifié par l'API). Captures `extraside-1440-ajout`,
+  `-toast`, `-recharge`, `extraside-360`.
+
+### Livré — runbook « déploiement courant »
+
+[docs/deploy-runbook.md](deploy-runbook.md) : nouveau titre (« Runbook — déploiement sur le
+VPS »), trois variantes nommées, et la variante **« déploiement courant »** en tête (C0–C6) pour
+l'état réel de la production (base non vide, 003 journalisée, `9d281cf`, aucune migration :
+`git diff --stat 9d281cf..HEAD -- db` vide) — c'est celle à jouer pour déployer l'étape 9 :
+
+- C0 la veille : propreté, tag, diff `db/` vide, `test-migration-sequence.sh` (le cas « F,
+  rejeu » est exactement ce déploiement : base non vide, 003 journalisée → code 0, « déjà
+  journalisée », empreinte identique), `rehearsal.sh --fixture`, push ; `rehearsal.sh` n'est pas
+  prévu pour une archive réelle déjà à 003 (Q17) → `restore.sh --check-only` ;
+- C1 code (commit noté = retour du code) ; C2 état des lieux, **effectifs notés** (`users`,
+  `decks`, `extra_side`, `summaries` = 0 attendu), `backup.sh` ;
+- C3 `deploy.sh` sans option : sortie attendue commande par commande (attente rendue en quelques
+  secondes, archive pré-migration réelle, `inventaire : 16 table(s), journal « 001…,002…,003… »`,
+  « 003 déjà journalisée : … schéma seulement », `rejeu par stdin : db/schema.sql` **seul**,
+  « 003 déjà journalisée : aucun effet, contrôles seulement », contrôles OK|, app démarrée, code
+  0) ; **toute question = `NON`** ;
+- C4 contrôles : API, journal, effectifs identiques, puis au navigateur les cinq points de
+  l'étape 9 (aperçus « … » puis valeurs et persistés, vue transitoire, mode combiné, extra / side,
+  enregistrement) ;
+- C5 retour arrière à deux niveaux : code seul (`git checkout` + build + up — l'ancienne app lit
+  la même base : aucune migration, `summary` ignoré, cartes side relues), données (archive
+  pré-migration réelle de C3 par `restore.sh`, pertes explicites) ;
+- C6 après coup (rapports, `keep/` à purger à la main).
+
+La variante « départ à vide » (V1–V7) et les §3–§5 sont conservés ; l'ancien préambule
+(« décision après 8B ») devient un encart d'historique. deploy/README.md §9 renvoie à la
+variante.
+
+### Preuves
+
+```powershell
+npm.cmd run typecheck                      # serveur, web, scripts : 0 erreur
+npm.cmd run build                          # avertissement ExcelJS attendu seulement
+node scripts/test-quiet.mjs                # 206 tests web (21 fichiers), 8 serveur
+# PostgreSQL jetable 55433 (deploy/configuration-v2.md), puis TEST_DATABASE_URL=… npm run test:integration -w server
+#   → persistence 12 tests, purge 10 tests (inchangés)
+npm.cmd run e2e -w web                     # setup, guards, compare, mobile, home, conditions, nonengine, extraside : OK
+bash deploy/test-migration-sequence.sh     # cas A–I, 61 gardes (deploy/ intouché en 9C)
+bash deploy/rehearsal.sh --fixture         # conforme (séquence, recalcul 4 / 4, 8 scénarios e2e sur la pile migrée, retour arrière)
+```
+
+Chaîne jouée **en série** (jamais l'e2e en même temps que A–I ou la répétition). Conteneurs
+jetables arrêtés (55433, 55434, 55436, 55440) ; seule la base de dev `ygo-proba-db` (5433)
+reste, jamais touchée. Le scénario `extraside` a d'abord été joué seul sur une pile conservée
+(`--keep` / `--attach`), avec `guards` et `mobile` (conformes aux quatre largeurs) avant la
+suite complète.
+
+### Contrôle par mutation
+
+Fichiers sauvegardés hors dépôt avant chaque mutation, restaurés par copie (ou `git checkout`
+pour `engineModel.ts`) et vérifiés par SHA-256 après chacune.
+
+| Mutation                                                                          | Garde qui casse                                                                                                                                                  |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1 `zoneMutation` recalcule pour toute zone (mutation side → recalcul)            | `zones.test.ts` (« sans recalcul » : `modelVersion` 1 au lieu de 0 ; « Annuler » : 4 au lieu de 2) ; e2e `extraside` Z2 et Z3 (durée 602 ms → 235 ms / 325 ms) |
+| M2 `buildEngineModel` lit aussi `side` (une copie side fuit dans le modèle)        | `zones.test.ts` (`deckSize` 7 au lieu de 6) ; équivalence « trois zones » (`deckSize` 14 au lieu de 12, copies 1 au lieu de 3)                                    |
+| M3 `AddCardDialog` ignore la zone (`addCard(carte, 1)`)                           | e2e `extraside` avorté en Z2 : tuile Side Rho absente du bloc side (`boundingBox` expiré, ligne 71) — la carte est allée au main, rien n'a été enregistré         |
+| M4 `undoRemove` restaure toujours dans le main                                    | `zones.test.ts` (« Annuler restaure la carte dans la même zone »)                                                                                                |
+| M5 convention 1–3 lue dans le main au lieu de la zone                             | `zones.test.ts` (« les zones sont distinctes »)                                                                                                                  |
+| M6 stepper de la tuile de zone à 28 px (`h-7`)                                    | e2e `extraside` Z2 et Z5 (`h: 28`)                                                                                                                               |
+
+### Limites
+
+- La garde « aucun recalcul » de l'e2e s'appuie sur la durée de calcul affichée par le panneau
+  et sur l'absence de « Recalcul… » pendant 400 ms ; le test store (`modelVersion` inchangé)
+  est la garde exacte, l'e2e la garde d'intégration.
+- Les tuiles d'extra et de side n'ouvrent ni détail de carte ni menu : seul le stepper est
+  offert (D6, Q15).
+- L'Inventaire affiche toujours « Extra n » / « Side n » sans ambre au-delà de 15 (Q14).
+- Le repère 15 n'a pas de garde navigateur (seize ajouts réels par le dialogue) : il est gardé
+  par `zones.test.ts` (`overSoftLimit`) et par la composante pure ; l'affichage ambre du bloc et
+  du dialogue a été vérifié à la main dans le code, pas par capture.
+- La variante « déploiement courant » du runbook a été **écrite, pas jouée** sur le VPS ; sa
+  preuve locale est le cas « F, rejeu » de test-migration-sequence.sh et `rehearsal.sh
+  --fixture` (séquence complète depuis pré-001). Les effectifs attendus (`16 table(s)`, `0
+  résumé(s)`) viennent de 8C et du code de 9A ; les valeurs réelles seront celles notées en C2.
+
+### Questions ouvertes (non tranchées)
+
+- **Q14** — Faut-il passer les puces « Extra n » / « Side n » de l'Inventaire en ambre au-delà
+  de 15, comme le bloc de la grille ? 9C ne touche pas l'Inventaire.
+- **Q15** — Les tuiles d'extra et de side doivent-elles offrir « Détails de la carte » (menu ⋯
+  ou clic sur l'image) ? 9C ne donne que le stepper (aucune annotation possible).
+- **Q16** — Le repli « Extra / Side » reste commun aux deux zones (état `extraSideHidden`
+  existant) ; un repli par zone est-il souhaité ?
+- **Q17** — `rehearsal.sh` sur une archive réelle déjà à 003 : le contrôle de recalcul attend
+  l'ancien modèle dans `ygo_old` ; faut-il un mode « sans recalcul » (séquence + e2e + retour
+  arrière seulement) pour répéter un déploiement courant sur le dump du cron ?
+- **Q18** — `keep/` reçoit une archive pré-migration (≈ 1,5 Mo) à chaque `deploy.sh`, hors
+  rétention : purge manuelle (C6) ou rétention dédiée ?
+- Les questions de 9B restent : Q9 et Q10 confirmées (« Réponses (9B) ») ; celles de 8 : Q11
+  (`ygo_previous`), Q12 / Q13 sans objet, équivalence `--emit-sql` / `--apply`.
+
+## Clôture de l'étape 9 — compte rendu final de la mission (9 septembre 2026)
+
+- **Étape 9 terminée** : 9A (aperçus sans cache faisant autorité, finitions de 7B), 9B (attente
+  de la DB par `db_ready`, vue transitoire, mode Non-engine combiné), 9C (extra / side
+  éditables, runbook « déploiement courant », clôture). Tags `etape-9a-ok`, `etape-9b-ok`,
+  `etape-9-ok` ; rien poussé.
+- **Mission de fiabilisation (9 étapes, 7–9 septembre 2026)** : contrat métier et cas de
+  référence à oracle indépendant (1) ; corrections des calculs défectueux (2) ; configuration v2
+  par deck, transaction unique, révision (3) ; recalcul versionné, annulation, état périmé (4) ;
+  contexte unique premier / second, profils, plafonds partagés, conditions ET/OU (5) ; création /
+  import équivalents, validation navigateur et mobile (6) ; comparateur et Excel à données
+  identiques, gardes visuelles versionnées (7) ; migrations 001–003, purge exacte, sauvegarde
+  vérifiée, restauration, répétition, déploiement 8C sur le VPS (8) ; finitions et reports (9).
+  État final : 206 tests web, 8 serveur, 12 + 10 PostgreSQL, 8 scénarios e2e, 61 gardes A–I,
+  répétition conforme ; moteur et oracles jamais modifiés pour faire passer un test ; valeurs de
+  contrôle historiques intactes.
+- **Production** : `9d281cf` (8C) sur base v2 purgée. Le déploiement de l'étape 9 se joue par la
+  variante « déploiement courant » (runbook C0–C6) après le push des commits et des tags — c'est
+  la prochaine action, à la main de l'utilisateur.
+- **Reports hors mission** : Q9–Q18 ci-dessus, Q11 (`ygo_previous`), équivalence `--emit-sql` /
+  `--apply` de prune-stale-cards, healthcheck Compose (Q6), catégorie / profil à réexaminer
+  (modèle jugé redondant, hors étape 9).

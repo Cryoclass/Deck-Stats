@@ -351,6 +351,26 @@ puis persisté pour la révision lue ; il n'est jamais affiché tel quel. Les va
 sont celles du panneau (P(≥1 départ) et brick, premier · 5 cartes), arrondies au rendu, la
 valeur fine restant dans l'infobulle. Gardé par le scénario `home` de `web/e2e/`.
 
+Vue et mode combiné (étape 9B) : la vue du panneau de statistiques est un réglage transitoire,
+comme le contexte premier / second — jamais enregistrée, changer de vue ne marque pas le deck
+« non enregistré » ; le curseur d'importance reste un paramètre enregistré. Le mode Non-engine
+pose une étiquette et, si un profil est choisi, ce profil (l'étiquette d'abord, le serveur
+exigeant une étiquette avant un profil) ; sur une carte déjà conforme au couple, le clic retire
+l'étiquette puis, s'il ne reste aucune étiquette, le profil devenu orphelin. La tuile annonce
+l'effet du prochain clic. Gardé par le scénario `nonengine` de `web/e2e/` (chaque clic vérifié
+par l'API).
+
+Extra et side (étape 9C) : les deux zones sont éditables dans l'éditeur (ajout, copies, retrait
+avec annulation dans la même zone) et enregistrées avec le main dans la même configuration ;
+elles n'entrent jamais dans le modèle moteur (§2) : une modification d'extra ou de side marque le
+deck « non enregistré » **sans recalcul**, le résultat courant et l'aperçu joint à
+l'enregistrement restent valables. La convention de 1 à 3 copies s'applique par carte **et par
+zone** (une carte peut être en main et en side) ; au-delà de 15 cartes en extra ou en side,
+l'interface avertit sans refuser, aucun repère bas. Les tuiles de ces zones mesurent 80 px
+minimum (image et stepper de copies à 32 px, aucune annotation), « + Ajouter » 32 px. Gardé par
+`store/zones.test.ts`, l'équivalence création / YDK / JSON v2 sur les trois zones et le scénario
+`extraside` de `web/e2e/`.
+
 ### Suppression ciblée, à préparer dans /deploy
 
 La remise à zéro des anciennes paires concerne les `combo_pairs` du périmètre de

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Availability, Card, CardProfile, Category, ComboPair, ConditionNode, DeckCard, NonEngineGroup, StartCondition } from '../types.js';
+import type { Availability, Card, CardProfile, Category, ComboPair, ConditionNode, DeckCard, NonEngineGroup, StartCondition, Zone } from '../types.js';
 import { pairKey } from '../types.js';
 import type { AnalysisContext, EngineResult } from '../engine/types.js';
 import type { QueryCriterion, SavedQuery } from '../engine/query.js';
@@ -14,6 +14,7 @@ import { configurationFromState, configurationFromDetail, stateFromConfiguration
 import { addClause, leaf, leavesOf, removeLeavesOfCard } from '../lib/conditions.js';
 import { summaryOfState } from '../lib/summary.js';
 import { nonEngineEffect } from '../lib/nonEngine.js';
+import { ZONE_LABEL } from '../lib/zones.js';
 
 interface State {
   revision: number;
@@ -95,12 +96,14 @@ interface State {
   recompute: () => void; // relance explicite (après une erreur de calcul)
   resumeDraft: () => void;
   discardDraft: () => Promise<void>;
-  /** `false` = refusé (convention 1–3), motif dans `persistenceError`. */
-  addCard: (card: Card, copies?: number) => boolean;
-  setCopies: (cardId: number, copies: number) => boolean;
+  /** `false` = refusé (convention 1–3 par carte et par zone), motif dans `persistenceError`.
+   *  Étape 9C : la zone (défaut `main`) désigne la liste éditée ; extra et side marquent « non
+   *  enregistré » sans recalcul (jamais dans le modèle moteur, contrat §2). */
+  addCard: (card: Card, copies?: number, zone?: Zone) => boolean;
+  setCopies: (cardId: number, copies: number, zone?: Zone) => boolean;
   undoRemove: () => void;
   dismissRemovalToast: () => void;
-  removeCard: (cardId: number) => void;
+  removeCard: (cardId: number, zone?: Zone) => void;
   toggleStarter: (cardId: number) => void;
   toggleHopt: (cardId: number) => void;
   toggleDeadFirst: (cardId: number) => void;
@@ -242,6 +245,12 @@ export const useDeck = create<State>((set, get) => {
   const localCalc = () => {
     recompute();
     markDirty();
+  };
+  // Étape 9C : une mutation de composition ne recalcule que si elle touche le main deck ;
+  // extra et side ne sont jamais dans le modèle moteur (contrat §2) — « non enregistré » seul.
+  const zoneMutation = (zone: Zone) => {
+    if (zone === 'main') localCalc();
+    else markDirty();
   };
 
   return {
@@ -425,56 +434,61 @@ export const useDeck = create<State>((set, get) => {
     // Étape 6 (C1, C2) : la convention 1–3 copies (contrat §2) est REFUSÉE, jamais
     // appliquée par réduction silencieuse ; le refus est dit dans `persistenceError`
     // et la mutation retourne `false`. 0 copie = retrait, documenté (§D).
-    addCard(card, copies = 1) {
-      const existing = get().main.find((m) => m.cardId === card.id);
+    // Étape 9C : chaque mutation porte sa zone. Seul le main deck entre dans le modèle
+    // moteur (contrat §2) : une mutation de l'extra ou du side marque « non enregistré »
+    // (brouillon compris) SANS recalcul — le résultat courant reste frais et l'aperçu joint à
+    // l'enregistrement le reste aussi.
+    addCard(card, copies = 1, zone = 'main') {
+      const existing = get()[zone].find((m) => m.cardId === card.id);
       const requested = existing ? existing.copies + 1 : copies;
       if (!Number.isInteger(requested) || requested < 1 || requested > MAX_COPIES) {
-        set({ persistenceError: `${card.name} : déjà ${existing?.copies ?? 0} copie${(existing?.copies ?? 0) > 1 ? 's' : ''} — convention 1 à ${MAX_COPIES} par carte et par zone, aucune réduction appliquée.` });
+        set({ persistenceError: `${card.name} : déjà ${existing?.copies ?? 0} copie${(existing?.copies ?? 0) > 1 ? 's' : ''} en ${ZONE_LABEL[zone]} — convention 1 à ${MAX_COPIES} par carte et par zone, aucune réduction appliquée.` });
         return false;
       }
       const cards = { ...get().cards, [card.id]: card };
-      const main = existing
-        ? get().main.map((m) => (m.cardId === card.id ? { ...m, copies: requested } : m))
-        : [...get().main, { cardId: card.id, copies: requested, zone: 'main' as const }];
-      set({ cards, main, persistenceError: null });
-      localCalc();
+      const list = existing
+        ? get()[zone].map((m) => (m.cardId === card.id ? { ...m, copies: requested } : m))
+        : [...get()[zone], { cardId: card.id, copies: requested, zone }];
+      set({ cards, [zone]: list, persistenceError: null });
+      zoneMutation(zone);
       return true;
     },
 
-    setCopies(cardId, copies) {
+    setCopies(cardId, copies, zone = 'main') {
       if (copies <= 0) {
-        get().removeCard(cardId); // 0 copie = retrait (§D)
+        get().removeCard(cardId, zone); // 0 copie = retrait (§D)
         return true;
       }
       if (!Number.isInteger(copies) || copies > MAX_COPIES) {
-        set({ persistenceError: `Quantité ${copies} refusée : convention 1 à ${MAX_COPIES} copies par carte et par zone, aucune réduction appliquée.` });
+        set({ persistenceError: `Quantité ${copies} refusée en ${ZONE_LABEL[zone]} : convention 1 à ${MAX_COPIES} copies par carte et par zone, aucune réduction appliquée.` });
         return false;
       }
-      set({ main: get().main.map((m) => (m.cardId === cardId ? { ...m, copies } : m)), persistenceError: null });
-      localCalc();
+      set({ [zone]: get()[zone].map((m) => (m.cardId === cardId ? { ...m, copies } : m)), persistenceError: null });
+      zoneMutation(zone);
       return true;
     },
 
     // Retrait : uniquement deck_cards. Annotations CONSERVÉES, inertes, restaurées au
-    // ré-ajout (§4C1). Toast d'annulation.
-    removeCard(cardId) {
-      const index = get().main.findIndex((m) => m.cardId === cardId);
+    // ré-ajout (§4C1). Toast d'annulation ; la carte retirée porte sa zone (9C).
+    removeCard(cardId, zone = 'main') {
+      const index = get()[zone].findIndex((m) => m.cardId === cardId);
       if (index < 0) return;
-      const card = get().main[index];
+      const card = get()[zone][index];
       set({
-        main: get().main.filter((m) => m.cardId !== cardId),
+        [zone]: get()[zone].filter((m) => m.cardId !== cardId),
         removalToast: { card, index, ts: Date.now() },
       });
-      localCalc();
+      zoneMutation(zone);
     },
 
     undoRemove() {
       const t = get().removalToast;
       if (!t) return;
-      const main = get().main.filter((c) => c.cardId !== t.card.cardId);
-      main.splice(Math.min(t.index, main.length), 0, t.card);
-      set({ main, removalToast: null });
-      localCalc();
+      const zone = t.card.zone;
+      const list = get()[zone].filter((c) => c.cardId !== t.card.cardId);
+      list.splice(Math.min(t.index, list.length), 0, t.card);
+      set({ [zone]: list, removalToast: null });
+      zoneMutation(zone);
     },
 
     dismissRemovalToast() {
