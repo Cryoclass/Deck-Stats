@@ -3,7 +3,10 @@
 Procédure d'exécution, commande par commande, de la migration 001 → 002 → 003 en production
 avec les scripts livrés en 8B (`deploy/deploy.sh`, `backup.sh`, `restore.sh`, `lib.sh`). Elle a
 été répétée à l'identique sur le dump réel du 8 septembre 2026 et sur le jeu représentatif
-(docs/etape-8.md, « Compte rendu 8B »). Rien ici n'a encore été exécuté sur le VPS.
+(docs/etape-8.md, « Compte rendu 8B »). **Exécutée sur le VPS le 8 septembre 2026** (variante
+« départ à vide », code `9d281cf`, docs/etape-8.md « Compte rendu 8C ») : la production est à
+003 sur une base neuve. Conservée telle quelle pour un prochain déploiement ; l'incident rencontré
+au premier `deploy.sh` est consigné en V4 (« Attente de la DB »).
 
 > **Décision prise après 8B (8 septembre 2026) : la production repart d'une base vide.** Rien
 > n'est conservé (ni decks, ni comptes, ni annotations). L'archive de l'état actuel est prise,
@@ -176,6 +179,13 @@ Aucune question non plus. Le chemin principal reste la suppression du volume.
 
 ### V4. `deploy.sh` — aucune question attendue (T1)
 
+> **Sur un volume neuf, attendre l'état `healthy` du conteneur `db` avant `deploy.sh`, pas une
+> simple connexion réussie** (incident du 8 septembre 2026, ci-dessous). Si le conteneur `db`
+> n'est pas déjà démarré : `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d db`,
+> puis `… ps` jusqu'à `db … (healthy)` et, dans `… logs db`, le **second** « database system is
+> ready to accept connections » précédé de « PostgreSQL init process complete; ready for start
+> up. ». Seulement ensuite :
+
 ```bash
 bash deploy.sh
 ```
@@ -233,6 +243,25 @@ Santé juste après : `{"ok":true,"cards":0,"catalog":null}` (catalogue pas enco
 Échecs possibles : ceux de l'annexe A. Sur base vide, un code 1 avant 003 laisse une base vide et
 aucun conteneur app (l'« ancienne app » n'existe plus : `dc start app` échoue, sans effet) :
 lire `journal.txt`, corriger, relancer `deploy.sh`.
+
+**Incident rencontré le 8 septembre 2026 (premier `deploy.sh` sur le volume neuf).** L'entrypoint
+de l'image PostgreSQL initialise un volume vierge avec un **serveur temporaire** (socket Unix
+seulement) qui joue les fichiers montés, puis l'arrête et démarre le serveur définitif. L'attente
+de `deploy.sh` (`until pg_isready -q -U ygo -d ygo`, par le socket) a accepté ce serveur
+temporaire ; l'empreinte initiale (`fingerprint-0.txt`) a alors échoué pendant son extinction :
+
+```text
+FATAL:  the database system is shutting down
+```
+
+Code **1**, rien d'appliqué par la séquence (le contenu venait de `initdb`, intact), aucune app.
+Le second `deploy.sh`, serveur définitif en place, a donné exactement la sortie attendue ci-dessus,
+code 0. Conduite à tenir : ce code 1 sur « shutting down » à l'empreinte initiale se relance sans
+autre action, après avoir constaté `healthy` ; il ne se produit que sur un volume neuf (un volume
+déjà initialisé ne lance pas de serveur temporaire). `deploy.sh` n'est pas corrigé à ce jour :
+report « attente de la DB fondée sur `healthy` » de l'étape 9 (docs/PLAN.md) — la `healthcheck`
+de Compose utilisant elle aussi `pg_isready` par le socket, la correction devra prouver qu'elle
+exclut la fenêtre du serveur temporaire.
 
 ### V5. Catalogue de cartes (T1)
 

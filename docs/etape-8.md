@@ -12,7 +12,8 @@ Découpage validé le 8 septembre 2026 :
   simulation produit sur le dump réel de production.
 - **8B** (nouvelle session) : points 3, 4 et 5 — sauvegarde et restauration vérifiées,
   répétition complète sur le dump réel avec recalcul, `deploy.sh` et runbook.
-- **8C** : exécution sur le VPS avec le runbook, pilotée par l'utilisateur.
+- **8C** : exécution sur le VPS avec le runbook, pilotée par l'utilisateur — faite le
+  8 septembre 2026, variante « départ à vide » (« Compte rendu 8C »).
 
 Règle absolue : aucune commande vers le VPS, aucune connexion SSH, aucune base
 personnelle ; tout se joue sur des conteneurs jetables. Le dump de production n'est jamais
@@ -836,3 +837,81 @@ touchée ; aucune commande vers le VPS ; Supabase lue seulement (catalogue publi
   sauvegarde souvenir vérifiée, V2 copie hors VPS et `--check-only`, V3 volume supprimé (point de
   non-retour), V4 `deploy.sh` sans aucune question, V5 catalogue, V6 compte, V7 contrôles.
 - Ensuite l'étape 9 (docs/PLAN.md).
+
+## Compte rendu 8C (8 septembre 2026)
+
+Exécution sur le VPS par l'utilisateur, variante « départ à vide » du runbook, code `9d281cf`
+(tag `etape-8c-ready`). Aucune commande n'a été lancée depuis le poste ni par une session
+d'agent ; cette section consigne ce que l'utilisateur a rapporté.
+
+### Réalisé
+
+- V1–V3 : app arrêtée, archive souvenir prise et vérifiée, copiée hors VPS, volume `pgdata`
+  supprimé (point de non-retour franchi) ; rien n'est conservé, conformément à la décision.
+- V4 : base recréée sur volume neuf ; `initdb` a joué le schéma, puis 001, 002 et 003 **à vide**
+  (rien à purger, aucune acceptation). `deploy.sh` conforme au second lancement (voir l'incident
+  ci-dessous) : aucune question, code 0.
+- V5 : catalogue chargé par `migrate-cards.js` depuis le conteneur `app`.
+- V6–V7 : compte créé, contrôles passés, **app en service**.
+
+L'étape 8 est terminée : les cinq points du plan validé (inventaire, migration 003 et prune v2,
+sauvegarde et restauration vérifiées, répétition, `deploy.sh` et runbook) sont livrés et la
+production tourne sur le modèle v2 purgé. Tag `etape-8-ok`, rien poussé par la session de
+clôture.
+
+### Incident — « Attente de la DB » satisfaite par le serveur temporaire d'initialisation
+
+Au **premier** `deploy.sh` sur le volume neuf :
+
+1. `dc up -d db` recrée le conteneur ; l'entrypoint de l'image PostgreSQL démarre un **serveur
+   temporaire** (socket Unix seulement) pour exécuter les fichiers de `docker-entrypoint-initdb.d`,
+   puis l'arrête et démarre le serveur définitif.
+2. L'attente de `deploy.sh` (`until pg_isready -q -U ygo -d ygo`, sans `-h`, donc par le socket)
+   a **accepté ce serveur temporaire** dès que le schéma et les migrations étaient en cours ou
+   finis.
+3. La séquence a enchaîné sur l'empreinte initiale (`fingerprint-0.txt`) pendant l'extinction du
+   serveur temporaire : `psql` a échoué avec « the database system is shutting down ».
+4. Échec avant 003 → **code 1**, conforme à l'annexe A du runbook : **rien d'appliqué** par la
+   séquence (le contenu de la base venait de `initdb`, intact), aucun conteneur `app` à relancer
+   (« ancienne app » inexistante après `down`, absorbé par `hook_start_old_app`).
+5. Second `deploy.sh`, serveur définitif déjà en place : sortie conforme à V4 (003 déjà
+   journalisée, aucune question, contrôles OK, app démarrée), code 0.
+
+Lecture : la garde « base vide = aucune question » et les codes de retour ont tenu ; l'attente
+de la base, elle, ne distingue pas le serveur d'initialisation du serveur définitif. Le cas ne
+s'est pas présenté en local (55443) parce que le conteneur jetable y était démarré et initialisé
+**avant** l'appel de la séquence. Il ne concerne que le tout premier démarrage d'un volume neuf :
+sur un volume déjà initialisé, l'entrypoint ne lance aucun serveur temporaire.
+
+Décision (clôture de 8) : **`deploy.sh` n'est pas corrigé dans cette session** (aucun code).
+Consigné :
+
+- dans le runbook (V4) : sur un volume neuf, attendre l'état **`healthy`** du conteneur `db`
+  (`docker compose … ps`) avant `deploy.sh`, pas une simple connexion réussie ; un code 1 sur
+  « shutting down » à l'empreinte initiale se relance sans autre action ;
+- dans docs/PLAN.md, reports de l'étape 9 : **« attente de la DB fondée sur `healthy` »** dans
+  `deploy.sh`. Point d'attention pour cette correction : la `healthcheck` de
+  `docker-compose.prod.yml` utilise elle aussi `pg_isready -U ygo -d ygo` (socket), donc `healthy`
+  peut en principe être atteint pendant la fenêtre du serveur temporaire ; la correction devra
+  vérifier ce point (par exemple attente sur `127.0.0.1` / TCP, que le serveur temporaire n'écoute
+  pas, ou lecture du « database system is ready to accept connections » définitif) et se prouver
+  sur un volume neuf, conteneur jetable, cas ajouté à `test-migration-sequence.sh` si la
+  séquence est concernée.
+
+### Questions ouvertes après 8C
+
+- **Q11** (`ygo_previous`) : inchangée, conservée ; sur le volume neuf, aucune base de travail
+  n'existe encore.
+- **Q12**, **Q13** : sans objet en 8C (base vide, aucune question posée) ; restent ouvertes pour
+  un futur déploiement sur base conservée.
+- Non prouvé depuis 8A : équivalence complète `--emit-sql` / `--apply` de `prune-stale-cards`.
+
+### Passation vers l'étape 9
+
+- Étape 9 (docs/PLAN.md) : finitions d'interface tranchées en 7B (docs/etape-7.md,
+  « Réponses »), recalcul des aperçus de l'accueil sans cache faisant autorité, et le nouveau
+  point issu de 8C : attente de la DB fondée sur `healthy` dans `deploy.sh`.
+- La production est sur `9d281cf` : toute correction de `deploy.sh` se rejoue avec
+  `rehearsal.sh --fixture` et `test-migration-sequence.sh` avant d'être poussée, puis se déploie
+  par le runbook (base conservée cette fois : §1, §2, puis `deploy.sh`, qui ne trouvera rien à
+  migrer).

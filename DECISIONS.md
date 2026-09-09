@@ -1,5 +1,35 @@
 # Décisions & écarts vs. document de référence
 
+## Première mission — étape 8, partie C (exécution VPS), 8 septembre 2026
+
+Compte rendu et incident dans [docs/etape-8.md](docs/etape-8.md) (« Compte rendu 8C ») ;
+procédure dans [docs/deploy-runbook.md](docs/deploy-runbook.md) (variante « départ à vide »,
+V4 complété). Clôture consignée le 9 septembre 2026, documentation seule, tag `etape-8-ok`.
+
+- **L'étape 8 est terminée.** 8C exécutée sur le VPS par l'utilisateur le 8 septembre 2026,
+  variante « départ à vide », code `9d281cf` : archive souvenir vérifiée et copiée hors VPS,
+  volume recréé, 001–003 jouées à vide par `initdb`, `deploy.sh` sans aucune question, catalogue
+  par `migrate-cards.js`, compte, contrôles V7, app en service. La production est sur le modèle
+  v2 purgé, base neuve ; l'archive souvenir est la seule trace de l'ancien état.
+- **Incident consigné, `deploy.sh` non corrigé dans cette session.** Au premier `deploy.sh` sur
+  le volume neuf, l'attente `until pg_isready -q -U ygo -d ygo` (socket Unix) a accepté le serveur
+  temporaire que l'entrypoint PostgreSQL lance pour jouer `docker-entrypoint-initdb.d` ;
+  l'empreinte initiale (`fingerprint-0.txt`) a échoué pendant son extinction (« the database
+  system is shutting down »), code 1, rien d'appliqué par la séquence, aucune app ; le second
+  `deploy.sh` a été conforme (code 0). Décision : consigne manuelle dans le runbook (V4 : sur un
+  volume neuf, attendre l'état `healthy` du conteneur `db` et le second « ready to accept
+  connections », pas une simple connexion) et report « attente de la DB fondée sur `healthy` »
+  dans l'étape 9 ; aucun code touché à la clôture de 8. Point d'attention transmis : la
+  `healthcheck` de Compose utilise le même `pg_isready` par le socket, la correction devra prouver
+  qu'elle exclut la fenêtre du serveur temporaire (volume neuf, conteneur jetable).
+- **Le cas n'avait pas été vu en local** parce que le conteneur jetable 55443 était démarré et
+  initialisé avant l'appel de la séquence ; la preuve « initdb puis séquence » ne couvrait pas
+  « séquence lancée pendant initdb ». Les codes de retour (annexe A) et la garde « base vide =
+  aucune question » ont tenu.
+- **Questions ouvertes après 8** : Q11 (`ygo_previous`) conservée ; Q12 / Q13 sans objet tant
+  qu'aucun déploiement sur base conservée n'est prévu ; équivalence `--emit-sql` / `--apply` de
+  `prune-stale-cards` non prouvée depuis 8A.
+
 ## Première mission — étape 8, préparation de 8C (« départ à vide »), 8 septembre 2026
 
 Compte rendu, preuves et passation dans [docs/etape-8.md](docs/etape-8.md) (« Préparation de
