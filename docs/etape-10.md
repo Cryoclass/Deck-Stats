@@ -1,8 +1,8 @@
 # Étape 10 — Plans de side
 
-> **Plan validé le 10 septembre 2026. Partie A livrée le même jour** (compte rendu en §10).
+> **Plan validé le 10 septembre 2026. Partie A livrée le même jour** (compte rendu en §10), **partie B le 11 septembre** (§11).
 > Cadrage mené en trois tours de questions ; les décisions sont consignées en §2 (D1–D18),
-> les questions ouvertes tranchées en §9. Reste à faire : 10B, 10C, 10D (§6).
+> les questions ouvertes tranchées en §9. Reste à faire : 10C, 10D (§6).
 
 ## 1. Intention
 
@@ -361,3 +361,73 @@ Le contrat, la table `deck_side_plans.summary` et la clé naturelle `(deck, adve
 sont en place : 10B n'a plus qu'à écrire `applyPlan`, `planIndicators` (sur `queryProbability`),
 l'empreinte du cache et la route `PUT /api/decks/:id/matchups/:matchupId/plans/:position/summary`,
 calquée sur `PUT /decks/:id/summary` (révision, 409 ignoré). Rien de l'interface n'est commencé.
+
+## 11. Compte rendu 10B (11 septembre 2026)
+
+**Périmètre** : le deck sidé devient calculable, ses trois chiffres ont un cache honnête. Tout est
+pur côté client ; aucune interface — le calcul n'est encore lancé par personne (10C l'orchestrera).
+
+### Livré
+
+- **`web/src/lib/sidePlan.ts`** (hors `__ENGINE_VERSION__`) :
+  - `applyPlan(main, side, plan)` → statut (`ready` / `incomplete` / `review`), écarts nommés
+    (`outgoing-missing`, `incoming-missing`, `over-limit`), copies sortantes et entrantes, taille
+    après échange, et main dérivé **seulement** si le plan est prêt, dans l'ordre d'une édition à
+    la main ;
+  - `sidedSource(source, applied)` : toutes les annotations du deck sur le main dérivé (R6), `null`
+    si le plan n'est pas prêt ;
+  - `indicatorCriteria(position)` / `planIndicators(pass, position)` : I1, I2, I3 comme requêtes du
+    mode Requête (R8), passe de la position du plan exigée (R7) ; `planComputeMode(position)` ;
+  - `planFingerprint`, `planSummaryFromPass`, `usablePlanSummary` : empreinte FNV-1a 64 de la
+    version du moteur, de la position, des critères et de l'entrée complète du moteur (R9).
+- **Serveur** : `PlanSummary`, `parsePlanSummary`, `checkPlanSummaryMatches` (domaine pur) ; route
+  `PUT /decks/:id/matchups/:matchupId/plans/:position/summary` (révision 409, taille après échange
+  400, plan inconnu 404, révision et `updated_at` intacts) ; `plan_summaries` dans `GET /decks/:id`.
+- **Client API** : `api.putPlanSummary`, `DeckDetail.plan_summaries`.
+
+### Vérifications exécutées
+
+`npm run typecheck` · `npm run build` · `node scripts/test-quiet.mjs` (226 web, 12 serveur) ·
+`npm run test:integration -w server` (persistence 14, purge 11). Ni la séquence de migration ni la
+répétition : 10B ne touche ni `deploy/`, ni migration, ni schéma. Pas d'e2e : aucune interface
+touchée (`GET /decks/:id` gagne un champ, aucun consommateur existant ne le lit).
+
+Tests ajoutés : `lib/sidePlan.test.ts` (17) — application du plan et ses trois statuts ; **deck sidé
+= main édité à la main** (modèle moteur strictement égal) avec la carte de side annotée starter qui
+s'active en entrant et la condition dont la carte requise sort, devenue fausse ; **égalité stricte
+avec le mode Requête** en premier et en second ; R7 ; cache périmé par le moteur, la position, le
+plan, la bibliothèque et la définition des critères, pas par un échange neutre ; formes altérées.
+Contrat serveur (1), intégration de la route (1).
+
+### Contrôle par mutation (7 posées, 7 détectées)
+
+| # | Mutation | Garde qui tombe |
+| --- | --- | --- |
+| W1 | `applyPlan` ignore les cartes sortantes | main dérivé ≠ édition à la main |
+| W2 | R7 retirée : la passe de l'autre position est acceptée | « refuse la passe de l'autre position » |
+| W3 | Main forte en second avec U ≥ 1 | égalité stricte avec le mode Requête (second) |
+| W4 | Empreinte sans la définition des critères | « une nouvelle définition change l'empreinte » |
+| W5 | Cache affiché sans vérifier l'empreinte | « périmé dès que … changent » |
+| W6 | Plan déséquilibré considéré prêt | « un plan déséquilibré est incomplet » |
+| S1 | Route des chiffres sans garde de révision | intégration, 409 attendu sur révision périmée |
+
+Les mutations web ont été jouées par script sur le vrai fichier avec restauration en `finally`
+(vérifiée à l'identique) ; S1 sur une base jetable neuve.
+
+### Non fait / reporté
+
+Rien de 10B. Aucun test existant modifié ; moteur, oracles, worker, `engineModel.ts`,
+`conditions.ts`, `summary.ts` intacts (`__ENGINE_VERSION__` inchangé). Les « sources de start
+neutralisées par le plan » (Q3) restent en 10C, comme prévu au §6 — le test R6 montre déjà la
+mécanique (feuille `type: null`).
+
+### Passation vers 10C
+
+Tout ce que la vue Side doit calculer existe : pour un adversaire et une position,
+`applyPlan(state.main, state.side, plan)` → si `ready`, `buildEngineModel(sidedSource(state, applied))`
+→ `client.compute(model.input, planComputeMode(position))` → `result[position]` →
+`planSummaryFromPass` → affichage, puis `api.putPlanSummary(deckId, matchupId, position, summary,
+revision)` (409 ignoré). À l'ouverture, `usablePlanSummary(detail.plan_summaries…, model.input,
+position)` dit si un chiffre stocké est affichable. Restent à 10C : les mutations du store sur
+`matchups` (ajout d'adversaire, échange, retrait, note), le bloc side annotable sans recalcul hors
+main, la vue elle-même, et la liste des sources neutralisées.

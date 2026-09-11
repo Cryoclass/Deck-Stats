@@ -259,3 +259,10 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - `prune-stale-cards` reporte `deck_side_plan_cards` : cumul des copies au plafond 3 dans une même liste (comme `deck_cards`), annulation totale et plan nommé si le report ferait entrer ET sortir la même carte (configuration refusée par le contrat → deck non enregistrable).
 - Garde « base à 003 sans 004 » (cas F de test-migration-sequence.sh) = état réel de la prod ; sans elle, « 004 non rejouée sur base purgée » passait inaperçue. Mutations sur `deploy/` jouées sur une copie du dossier, jamais sur le vrai `lib.sh`.
 - Runbook C0–C6 valable avec 10A : `deploy.sh` fait `git pull`, donc 004 part avec ; additive, sans question, trois sorties attendues notées en tête de la variante ; retour arrière du code seul toujours sûr.
+
+## Étape 10, partie B — deck sidé calculable, cache des chiffres (11 septembre 2026)
+- `applyPlan` ne rend un main dérivé que si le plan est prêt (`sidedSource` → `null` sinon) : R4 / R5 tiennent par construction ; « à revoir » l'emporte sur « incomplet » ; plan vide = prêt = chiffres du deck de base dans sa position.
+- Les 3 indicateurs sont des `QueryCriterion` évalués par `queryProbability` (égalité stricte avec le mode Requête) ; passe de l'autre position = erreur (R7), jamais un chiffre.
+- Empreinte d'un plan = FNV-1a 64 de (version du moteur, position, critères sérialisés, entrée complète du moteur) : une modification de bibliothèque périme sans invalidation serveur ; un échange neutre ↔ neutre ne périme rien (moteur identique).
+- `sidePlan.ts` hors `__ENGINE_VERSION__` (aucun aperçu périmé) ; plan second en mode `passes`, worker inchangé.
+- `PUT /decks/:id/matchups/:matchupId/plans/:position/summary` : révision (409), taille après échange (400), plan inconnu (404), révision et `updated_at` intacts ; `plan_summaries` dans `GET /decks/:id`, hors configuration, jamais effacés par un enregistrement.

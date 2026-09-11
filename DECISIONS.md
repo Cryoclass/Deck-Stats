@@ -1,5 +1,39 @@
 # Décisions & écarts vs. document de référence
 
+## Plans de side — étape 10, partie B (deck sidé calculable, cache des chiffres), 11 septembre 2026
+
+Compte rendu, vérifications et mutations dans [docs/etape-10.md](docs/etape-10.md) (§11). Partie B :
+tout est pur côté client (`web/src/lib/sidePlan.ts`), seule la route des chiffres touche au serveur.
+
+- **Un plan qui n'est pas prêt n'a pas de main.** `applyPlan` rend le statut (`ready`, `incomplete`,
+  `review`), les écarts nommés et la taille après échange, mais le main dérivé **seulement** si le
+  plan est prêt ; `sidedSource` rend `null` sinon. R4 et R5 (« jamais analysé ni imprimé ») tiennent
+  par construction, pas par une vérification qu'un appelant pourrait oublier. « À revoir » l'emporte
+  sur « incomplet » : c'est la cohérence avec les zones qu'il faut rétablir d'abord.
+- **Un plan vide est prêt** : ses chiffres sont ceux du deck de base dans la position du plan — c'est
+  précisément ce que la fiche doit montrer pour un adversaire contre lequel on ne side pas.
+- **Les trois indicateurs sont des requêtes du mode Requête**, pas une formule à part :
+  `indicatorCriteria(position)` rend des `QueryCriterion` évalués par `queryProbability`. L'égalité
+  avec le mode Requête est donc stricte (`toBe`), et R7 est une garde dure : une passe de l'autre
+  position lève une erreur de programmation, jamais un chiffre.
+- **Clé du cache = l'entrée complète du moteur du deck sidé** (+ version du moteur, position et
+  définition sérialisée des critères), hachée en FNV-1a 64 bits. Cette entrée contient déjà la
+  composition, les annotations du deck, les profils, plafonds, étiquettes et HOPT du compte : une
+  modification de bibliothèque périme les chiffres **sans aucune invalidation côté serveur**, à
+  la différence de `decks.summary` (9A). Corollaire assumé et testé : échanger une carte neutre
+  contre une autre ne périme rien, le moteur ne les distingue pas. Hachage non cryptographique :
+  c'est une clé de cache, pas une signature.
+- **`sidePlan.ts` est hors de `__ENGINE_VERSION__`** : l'étape ne périme aucun aperçu d'accueil.
+  En contrepartie la définition des critères entre dans l'empreinte de chaque plan (paramètre
+  exposé pour le prouver par test) : changer un indicateur périme ses chiffres tout seul.
+- **Un plan second calcule les deux passes** (mode `passes`) : le worker n'a pas de mode « second
+  seul » et n'en reçoit pas — coût ×2 sur 14 plans au plus, contre une modification du worker.
+- **Route des chiffres calquée sur l'aperçu 9A** : révision courante exigée (409), taille du main
+  APRÈS échange recalculée en SQL depuis le plan enregistré (400), plan inconnu 404, ni `revision`
+  ni `updated_at` touchés. Les chiffres reviennent par `GET /decks/:id` dans `plan_summaries`, hors
+  configuration ; aucun enregistrement ne les efface — c'est l'empreinte, calculée par le client,
+  qui juge, et un plan retiré emporte sa ligne.
+
 ## Plans de side — étape 10, partie A (contrat, migration 004, persistance), 10 septembre 2026
 
 Plan validé, décisions du cadrage (D1–D18) et découpage 10A–10D dans

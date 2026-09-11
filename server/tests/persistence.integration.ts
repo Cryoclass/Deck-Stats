@@ -397,3 +397,41 @@ test('side plans are saved, ordered, reloaded and duplicated; a matchup keeps it
   assert.equal((await query('select count(*)::int as n from deck_matchups where deck_id=$1',[id])).rows[0].n,0);
   assert.equal((await query('select count(*)::int as n from deck_side_plan_cards where deck_id=$1',[id])).rows[0].n,0);
 });
+
+// ─── Étape 10B : chiffres d'un plan de side ───
+test('a side plan summary is written only for the current revision and the saved plan, survives an unrelated save, and never touches the revision',async () => {
+  const m=randomUUID();
+  const c=emptyConfiguration('Plan chiffré',[{ card_id:601,zone:'main',copies:3 },{ card_id:602,zone:'main',copies:2 },{ card_id:603,zone:'side',copies:2 }]);
+  c.matchups=[{ id:m,name:'Kewl Tune',sort_index:0,plans:[{ position:'second',note:null,outgoing:[{ card_id:602,copies:2 }],incoming:[{ card_id:603,copies:2 }] }] }];
+  const id=await create(c);
+  const url=(position='second',matchup=m) => `/decks/${id}/matchups/${matchup}/plans/${position}/summary`;
+  const s=(mainSize=5) => ({ engineVersion:'v1',fingerprint:'0123456789abcdef',mainSize,startOne:0.8,nonEngineTwo:0.3,strongHand:0.2,computedAt:'2026-09-11T10:00:00.000Z' });
+  const put=(payload: unknown, target=url(), headers={}) => app.inject({ method:'PUT',url:target,payload:payload as never,headers });
+  const before=await detail(id);
+  assert.deepEqual(before.plan_summaries,[]);
+  // Révision périmée → 409 ; taille du main après échange différente → 400 ; forme invalide → 400 ;
+  // position ou adversaire inconnus → 404 ; deck d'autrui → 404, jamais 403. Rien n'est écrit.
+  assert.equal((await put({ summary:s(),expectedRevision:0 })).statusCode,409);
+  const wrong=await put({ summary:s(6),expectedRevision:1 });
+  assert.equal(wrong.statusCode,400,wrong.body);assert.match(wrong.body,/6 cartes, 5 après échange/);
+  assert.equal((await put({ summary:{ ...s(),fingerprint:'xyz' },expectedRevision:1 })).statusCode,400);
+  assert.equal((await put({ summary:s(),expectedRevision:1 },url('first'))).statusCode,404);
+  assert.equal((await put({ summary:s(),expectedRevision:1 },url('third'))).statusCode,404);
+  assert.equal((await put({ summary:s(),expectedRevision:1 },url('second',randomUUID()))).statusCode,404);
+  assert.equal((await put({ summary:s(),expectedRevision:1 },url(),{ 'x-test-owner':'other' })).statusCode,404);
+  assert.deepEqual((await detail(id)).plan_summaries,[]);
+  // Conforme : écrit, sans changer la révision ni updated_at.
+  const ok=await put({ summary:s(),expectedRevision:1 });
+  assert.equal(ok.statusCode,200,ok.body);assert.equal(ok.json().revision,1);
+  const after=await detail(id);
+  assert.equal(after.revision,1);assert.equal(after.updated_at,before.updated_at);
+  assert.deepEqual(after.plan_summaries,[{ matchup_id:m,position:'second',summary:s() }]);
+  // Enregistrement sans rapport (renommage) : le cache survit, c'est le client qui le juge.
+  c.name='Plan chiffré (renommé)';
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}`,payload:{ configuration:c,expectedRevision:1 } })).statusCode,200);
+  assert.deepEqual((await detail(id)).plan_summaries,[{ matchup_id:m,position:'second',summary:s() }]);
+  // Volet retiré : son cache part avec lui.
+  c.matchups=[{ ...c.matchups[0],plans:[] }];
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}`,payload:{ configuration:c,expectedRevision:2 } })).statusCode,200);
+  assert.deepEqual((await detail(id)).plan_summaries,[]);
+});

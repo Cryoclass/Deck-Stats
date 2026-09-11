@@ -3,10 +3,10 @@ import type { FastifyInstance } from 'fastify';
 import type { PoolClient } from 'pg';
 import { query, tx } from '../db.js';
 import { requireUser } from '../auth/session.js';
-import { ConfigurationError, parseConfiguration, uuidPattern, type Configuration } from '../domain/deckConfiguration.js';
+import { ConfigurationError, parseConfiguration, SIDE_PLAN_POSITIONS, uuidPattern, type Configuration } from '../domain/deckConfiguration.js';
 import { parseArchive, remapCategoryReferences, type DeckArchive } from '../domain/deckArchive.js';
 import { readConfiguration, writeConfiguration } from '../domain/deckRepository.js';
-import { checkSummaryMatches, parseSummary, type DeckSummary } from '../domain/deckSummary.js';
+import { checkPlanSummaryMatches, checkSummaryMatches, parsePlanSummary, parseSummary, type DeckSummary } from '../domain/deckSummary.js';
 import { invalidateOwnerSummaries } from './library.js';
 
 function error(statusCode: number, message: string): never {
@@ -92,7 +92,10 @@ export async function decksRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/:id', async (req) => tx(async (c) => {
     const deck = await lockDeck(c,req.params.id,requireUser(req).id,true);
     const data = await readConfiguration(c,deck.id);
-    return { ...deck, summary: null, configuration_version: 2, cards: data.cards, starters: data.starters,
+    // Étape 10B : chiffres des plans de side, caches d'affichage hors configuration ; le client ne
+    // les affiche que s'ils portent l'empreinte du deck sidé courant (usablePlanSummary).
+    const planSummaries = await c.query('select matchup_id,position,summary from deck_side_plans where deck_id=$1 and summary is not null order by matchup_id,position', [deck.id]);
+    return { ...deck, summary: null, plan_summaries: planSummaries.rows, configuration_version: 2, cards: data.cards, starters: data.starters,
       pairs: data.pairs, pair_exclusions: data.pairs.filter((p) => p.disabled).map((p) => p.id),
       conditions: data.conditions, deadFirst: data.deadFirst, deadSecond: data.deadSecond, matchups: data.matchups };
   }));
@@ -145,6 +148,30 @@ export async function decksRoutes(app: FastifyInstance) {
       const { rows: [{ n }] } = await c.query<{ n: number }>("select coalesce(sum(copies),0)::int as n from deck_cards where deck_id=$1 and zone='main'", [deck.id]);
       checkSummaryMatches(summary,n);
       await writeSummary(c,deck.id,summary);
+      return { ok: true, revision: deck.revision };
+    });
+  });
+  // Chiffres d'un plan de side (étape 10B), calqué sur l'aperçu du deck : accepté seulement pour la
+  // révision courante (409 sinon, ignoré par le client) et pour la taille du main APRÈS échange du
+  // plan enregistré ; ne change ni la révision ni `updated_at`. Plan inconnu = 404, comme un deck.
+  app.put<{ Params: { id: string; matchupId: string; position: string }; Body: { summary: unknown; expectedRevision: number } }>('/:id/matchups/:matchupId/plans/:position/summary', async (req) => {
+    const { matchupId, position } = req.params;
+    if (!uuidPattern.test(matchupId) || !(SIDE_PLAN_POSITIONS as readonly string[]).includes(position)) error(404, 'Plan de side introuvable.');
+    const revision = req.body?.expectedRevision;
+    if (!Number.isSafeInteger(revision) || revision < 0) throw new ConfigurationError('Révision requise.');
+    const summary = parsePlanSummary(req.body?.summary);
+    return tx(async (c) => {
+      const deck = await lockDeck(c,req.params.id,requireUser(req).id);
+      if (deck.revision !== revision) error(409,'Ce deck a été modifié depuis le calcul de ce plan.');
+      const plan = await c.query('select 1 from deck_side_plans where deck_id=$1 and matchup_id=$2 and position=$3 for update', [deck.id,matchupId,position]);
+      if (!plan.rowCount) error(404,'Plan de side introuvable.');
+      const { rows: [size] } = await c.query<{ main: number; outgoing: number; incoming: number }>(
+        `select (select coalesce(sum(copies),0)::int from deck_cards where deck_id=$1 and zone='main') as main,
+                coalesce(sum(copies) filter (where direction='out'),0)::int as outgoing,
+                coalesce(sum(copies) filter (where direction='in'),0)::int as incoming
+           from deck_side_plan_cards where deck_id=$1 and matchup_id=$2 and position=$3`, [deck.id,matchupId,position]);
+      checkPlanSummaryMatches(summary,size.main - size.outgoing + size.incoming);
+      await c.query('update deck_side_plans set summary=$4::jsonb where deck_id=$1 and matchup_id=$2 and position=$3', [deck.id,matchupId,position,JSON.stringify(summary)]);
       return { ok: true, revision: deck.revision };
     });
   });

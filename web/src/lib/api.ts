@@ -1,4 +1,5 @@
-import type { Availability, Card, Library, Zone, ComboPair, Matchup, NonEngineGroup } from '../types.js';
+import type { Availability, Card, Library, Zone, ComboPair, Matchup, NonEngineGroup, SidePlanPosition } from '../types.js';
+import type { PlanSummary } from '../../../server/src/domain/deckSummary.js';
 import { emptyConfiguration, type Configuration, type StartCondition } from '../../../server/src/domain/deckConfiguration.js';
 import type { DeckArchive } from '../../../server/src/domain/deckArchive.js';
 import type { DeckSummary as DeckPreview } from './summary.js';
@@ -83,6 +84,8 @@ export interface DeckDetail {
   conditions?: StartCondition[];
   /** Étape 10 ; absent d'une réponse antérieure = aucun adversaire. */
   matchups?: Matchup[];
+  /** Étape 10B : chiffres stockés des plans, caches à valider par `usablePlanSummary`. */
+  plan_summaries?: Array<{ matchup_id: string; position: SidePlanPosition; summary: unknown }>;
   params?: Record<string, unknown> | null;
   summary?: unknown;
   notes?: string | null;
@@ -132,6 +135,9 @@ export const api = {
     j<{ revision: number }>(`/decks/${id}`, { method: 'PUT', body: JSON.stringify({ configuration, expectedRevision, ...(summary ? { summary } : {}) }) }),
   putSummary: (id: string, summary: DeckPreview, expectedRevision: number) =>
     j<{ ok: boolean; revision: number }>(`/decks/${id}/summary`, { method: 'PUT', body: JSON.stringify({ summary, expectedRevision }) }),
+  // Étape 10B : chiffres d'un plan de side, pour la révision lue (409 ignoré : le deck a bougé).
+  putPlanSummary: (id: string, matchupId: string, position: SidePlanPosition, summary: PlanSummary, expectedRevision: number) =>
+    j<{ ok: boolean; revision: number }>(`/decks/${id}/matchups/${matchupId}/plans/${position}/summary`, { method: 'PUT', body: JSON.stringify({ summary, expectedRevision }) }),
   importArchive: (archive: DeckArchive) => j<{ id: string }>('/decks/import', { method: 'POST', body: JSON.stringify(archive) }),
   renameDeck: (id: string, name: string) => j(`/decks/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
   duplicateDeck: (id: string) =>

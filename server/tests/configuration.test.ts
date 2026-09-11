@@ -161,3 +161,18 @@ test('side plans: structural refusals are named and nothing is silently clamped 
   full.matchups=Array.from({ length:MATCHUPS_MAX },() => ({ ...full.matchups[0],id:crypto.randomUUID() }));
   assert.equal(parseConfiguration(full).matchups.length,MATCHUPS_MAX);
 });
+
+// ─── Étape 10B : chiffres d'un plan de side, validés par le serveur ───
+test('a side plan summary is validated strictly and must describe the main deck after the swap (étape 10B)', async () => {
+  const { parsePlanSummary, checkPlanSummaryMatches } = await import('../src/domain/deckSummary.js');
+  const ok={ engineVersion:'0123456789abcdef',fingerprint:'00ff00ff00ff00ff',mainSize:40,startOne:0.9,nonEngineTwo:0.4,strongHand:0.3,computedAt:'2026-09-11T10:00:00.000Z' };
+  assert.deepEqual(parsePlanSummary(ok),ok);
+  for (const bad of [null,[],'x',{ ...ok,extra:1 },{ ...ok,fingerprint:'00FF00FF00FF00FF' },{ ...ok,fingerprint:'abc' },{ ...ok,fingerprint:12 },
+    { ...ok,engineVersion:'a b' },{ ...ok,mainSize:-1 },{ ...ok,mainSize:40.5 },{ ...ok,startOne:1.2 },{ ...ok,nonEngineTwo:-0.1 },{ ...ok,strongHand:NaN },{ ...ok,computedAt:'hier' }]) {
+    assert.throws(() => parsePlanSummary(bad),/Chiffres de plan invalides/,JSON.stringify(bad));
+  }
+  const { strongHand: _omitted, ...incomplete }=ok;
+  assert.throws(() => parsePlanSummary(incomplete),/Chiffres de plan invalides/);
+  checkPlanSummaryMatches(ok,40);
+  assert.throws(() => checkPlanSummaryMatches(ok,41),/calculés pour un main de 40 cartes, 41 après échange/);
+});
