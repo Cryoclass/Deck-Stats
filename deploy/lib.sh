@@ -380,10 +380,13 @@ run_migration_sequence() {  # <dossier de sortie> <interactive | auto | empreint
   # `deck_requirements` (intermédiaire v2 que 003 supprime), et 003 refuse alors tout rejeu
   # (« objet historique réapparu »). Après 003, leurs objets sont définitifs ; seul le schéma
   # (bloc historique conditionnel, D1) se rejoue à chaque déploiement.
-  local files='db/schema.sql db/migrations/001-deck-configuration.sql db/migrations/002-profiles-and-conditions.sql'
+  # 004 (étape 10) est additive et indépendante de 003 : elle se rejoue dans les DEUX cas, avant
+  # l'empreinte-2 pour que le contrôle « 003 n'a touché que ses propres objets » compare deux
+  # empreintes portant déjà ses tables (sinon elles seraient vues « absentes avant »).
+  local files='db/schema.sql db/migrations/001-deck-configuration.sql db/migrations/002-profiles-and-conditions.sql db/migrations/004-side-plans.sql'
   if grep -q '003-purge-legacy' "$out/inventory-before-journal.txt"; then
-    seq_log "003 déjà journalisée : 001 et 002 ne se rejouent plus (001 recréerait deck_requirements), schéma seulement"
-    files='db/schema.sql'
+    seq_log "003 déjà journalisée : 001 et 002 ne se rejouent plus (001 recréerait deck_requirements), schéma et migrations additives postérieures seulement"
+    files='db/schema.sql db/migrations/004-side-plans.sql'
   fi
   for f in $files; do
     seq_log "rejeu par stdin : $f"

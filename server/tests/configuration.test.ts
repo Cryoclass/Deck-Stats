@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyConfiguration, parseConfiguration, upgradeConfiguration, validateCondition, type ConditionNode } from '../src/domain/deckConfiguration.js';
+import { emptyConfiguration, MATCHUPS_MAX, parseConfiguration, upgradeConfiguration, validateCondition, type Configuration, type ConditionNode } from '../src/domain/deckConfiguration.js';
 import { parseArchive, remapCategoryReferences } from '../src/domain/deckArchive.js';
 import { parseCardIdList } from '../src/domain/cardIds.js';
 
@@ -96,4 +96,68 @@ test('a deck summary is validated strictly and must describe the saved main deck
   assert.throws(() => parseSummary(incomplete),/Résumé invalide/);
   checkSummaryMatches(ok,40);
   assert.throws(() => checkSummaryMatches(ok,41),/calculé pour 40 cartes, main deck de 41/);
+});
+
+// ─── Étape 10 : adversaires et plans de side ───
+const MID='00000000-0000-4000-8000-00000000000d';
+/** Deck de référence : 3 copies de la carte 1 en main, 2 de la carte 2 en side, un plan second
+ *  équilibré qui échange les deux. */
+function withMatchup(): Configuration {
+  const c=emptyConfiguration('Side',[{ card_id:1,zone:'main',copies:3 },{ card_id:2,zone:'side',copies:2 }]);
+  c.matchups=[{ id:MID,name:'  Kewl Tune  ',sort_index:0,plans:[
+    { position:'second',note:'Attention au Droll',outgoing:[{ card_id:1,copies:2 }],incoming:[{ card_id:2,copies:2 }] },
+  ] }];
+  return c;
+}
+
+test('side plans: a document without matchups stays valid, names are trimmed, plans are kept verbatim (étape 10)', () => {
+  const old: Record<string,unknown>={ ...emptyConfiguration('Old') };
+  delete old.matchups;
+  assert.deepEqual(parseConfiguration(old).matchups,[]);
+  const parsed=parseConfiguration(withMatchup());
+  assert.equal(parsed.matchups[0].name,'Kewl Tune');
+  assert.deepEqual(parsed.matchups[0].plans[0].outgoing,[{ card_id:1,copies:2 }]);
+  assert.equal(parsed.matchups[0].plans[0].note,'Attention au Droll');
+  // Une note absente vaut `null`, jamais `undefined` (le document est canonique).
+  const noNote=withMatchup();delete (noNote.matchups[0].plans[0] as { note?: unknown }).note;
+  assert.equal(parseConfiguration(noNote).matchups[0].plans[0].note,null);
+});
+
+test('side plans: the contract validates STRUCTURE only — zone coherence and balance are the editor’s job (étape 10, R1/R4/R5)', () => {
+  // Carte sortante absente du main : ACCEPTÉE. Refuser ici rendrait le deck non enregistrable
+  // dès qu'une carte quitte sa zone, alors qu'un plan devenu incohérent doit être conservé et
+  // signalé « à revoir » par l'éditeur.
+  const absent=withMatchup();absent.matchups[0].plans[0].outgoing=[{ card_id:999,copies:1 }];
+  assert.equal(parseConfiguration(absent).matchups[0].plans[0].outgoing[0].card_id,999);
+  // Plan déséquilibré (2 sortent, 1 entre) : ACCEPTÉ, c'est l'état « incomplet » d'une retouche.
+  const unbalanced=withMatchup();unbalanced.matchups[0].plans[0].incoming=[{ card_id:2,copies:1 }];
+  assert.equal(parseConfiguration(unbalanced).matchups[0].plans[0].incoming[0].copies,1);
+  // Une carte entrante absente du side, un plan vide, un adversaire sans plan : acceptés aussi.
+  const emptyPlans=withMatchup();emptyPlans.matchups[0].plans=[];
+  assert.deepEqual(parseConfiguration(emptyPlans).matchups[0].plans,[]);
+});
+
+test('side plans: structural refusals are named and nothing is silently clamped (étape 10)', () => {
+  const bad=(mutate: (c: Configuration) => void, pattern?: RegExp) => {
+    const c=withMatchup();mutate(c);
+    assert.throws(() => parseConfiguration(c),pattern);
+  };
+  bad((c) => { c.matchups[0].id='pas-un-uuid'; });
+  bad((c) => { c.matchups.push({ ...c.matchups[0],plans:[] }); },/dupliqué/);
+  bad((c) => { c.matchups[0].name='   '; });
+  bad((c) => { c.matchups[0].name='x'.repeat(201); });
+  for (const sortIndex of [-1,1.5,NaN]) bad((c) => { c.matchups[0].sort_index=sortIndex; });
+  bad((c) => { c.matchups[0].plans.push({ ...c.matchups[0].plans[0] }); },/au plus un plan par position/);
+  bad((c) => { (c.matchups[0].plans[0] as unknown as { position: string }).position='third'; });
+  for (const copies of [0,4,1.5,NaN]) bad((c) => { c.matchups[0].plans[0].incoming[0].copies=copies; });
+  for (const cardId of [0,-1,1.5]) bad((c) => { c.matchups[0].plans[0].incoming[0].card_id=cardId; });
+  bad((c) => { c.matchups[0].plans[0].incoming.push({ card_id:2,copies:1 }); },/répétée/);
+  bad((c) => { c.matchups[0].plans[0].incoming.push({ card_id:1,copies:1 }); },/entrer et sortir/);
+  bad((c) => { (c.matchups[0] as unknown as Record<string,unknown>).archetype=true; });
+  bad((c) => { (c.matchups[0].plans[0] as unknown as Record<string,unknown>).swaps=[]; });
+  bad((c) => { c.matchups=Array.from({ length:MATCHUPS_MAX+1 },() => ({ ...c.matchups[0],id:crypto.randomUUID() })); },/Trop d/);
+  // 32 adversaires exactement : la borne est de représentation, pas une règle métier.
+  const full=withMatchup();
+  full.matchups=Array.from({ length:MATCHUPS_MAX },() => ({ ...full.matchups[0],id:crypto.randomUUID() }));
+  assert.equal(parseConfiguration(full).matchups.length,MATCHUPS_MAX);
 });

@@ -1,5 +1,69 @@
 # Décisions & écarts vs. document de référence
 
+## Plans de side — étape 10, partie A (contrat, migration 004, persistance), 10 septembre 2026
+
+Plan validé, décisions du cadrage (D1–D18) et découpage 10A–10D dans
+[docs/etape-10.md](docs/etape-10.md). Partie A : modèle et persistance seulement, aucune interface.
+
+- **Le contrat valide la STRUCTURE d'un plan, jamais sa cohérence avec les zones ni son
+  équilibre.** C'est la décision centrale de 10A, et elle est contre-intuitive : inscrire « une
+  carte entrante vient du side » dans `parseConfiguration` rendrait le deck **non enregistrable**
+  dès qu'une carte quitte le side, alors que la règle retenue (D12) est de **conserver** le plan
+  et de le signaler « à revoir ». Même raisonnement pour l'équilibre (D11) : une retouche laisse
+  le plan « incomplet », et un état incomplet doit pouvoir être enregistré. Sont donc refusés ici,
+  et là seulement : identifiant, nom, ordre, position connue et unique par adversaire, quantités
+  1–3, carte répétée dans une liste, carte à la fois entrante et sortante, clés inconnues, plus de
+  32 adversaires. Deux tests nomment explicitement les non-refus (carte absente du main, plan
+  déséquilibré) : ce sont eux qui tiennent la décision dans le temps.
+- **Clé naturelle plutôt qu'identifiant de substitution** (écart au plan, §4 de docs/etape-10.md) :
+  un plan est identifié par `(deck_id, matchup_id, position)`, pas par un uuid propre. Le couple
+  adversaire + position est déjà unique, et c'est ainsi que l'API d'aperçu de 10B l'adressera —
+  un identifiant de plus n'aurait fait que circuler sans jamais servir. Les adversaires, eux,
+  gardent l'identifiant du client sous clé `(deck_id, id)`, comme `deck_combo_pairs` : un
+  identifiant venu d'un autre deck crée une ligne dans CE deck au lieu d'en détourner une autre.
+- **Les lignes d'adversaire et de plan ne sont pas remplacées en bloc** (upsert, comme
+  `deck_combo_pairs`, à la différence des cartes, starters, conditions et drapeaux) : le cache
+  `summary` d'un plan (étape 10B) doit survivre à un enregistrement qui ne le concerne pas —
+  renommer le deck, par exemple. Un `summary` devenu faux n'est pas un risque : le client ne
+  l'affichera jamais s'il ne porte pas l'empreinte courante (règle R9, mécanisme de 9A).
+- **`matchups` absent = aucun adversaire, jamais une erreur** : les exports JSON et les brouillons
+  antérieurs à l'étape 10 restent importables sans conversion. Le document rendu est canonique
+  (nom élagué, `note` absente rendue `null`).
+- **004 est rejouée dans les DEUX branches de la séquence de migration, AVANT 003.** Elle est
+  additive et indépendante de la purge, donc l'ordre est libre ; le placer avant l'empreinte
+  intermédiaire est ce qui garde le contrôle « 003 n'a touché que ses propres objets » exact —
+  après, ses trois tables seraient vues « absentes avant » et signalées comme une altération de
+  003. La branche « 003 déjà journalisée » ne rejoue donc plus le schéma seul, mais le schéma et
+  les migrations additives postérieures.
+- **Une carte nommée par un plan entre dans le périmètre de l'archive JSON** même si elle a quitté
+  sa zone (plan « à revoir ») : elle emporte ses annotations de bibliothèque, sinon l'archive
+  décrirait un plan dont les cartes n'ont plus ni profil ni étiquette après import.
+- **Duplication : adversaires d'identité neuve, aucun cache repris** — la copie recalcule ses
+  chiffres, comme elle recalcule son aperçu de deck.
+- **Aucun fichier du calcul touché** : moteur, oracles, `engineModel.ts`, `conditions.ts`,
+  `summary.ts` intacts → `__ENGINE_VERSION__` inchangé, aucun aperçu d'accueil invalidé. Le
+  modèle moteur ignore structurellement les plans, ce qu'un test affirme explicitement (le deck
+  de base se calcule à l'identique avec et sans adversaires).
+- **`prune-stale-cards` reporte aussi les cartes des plans** (hors plan initial, ajouté après
+  vérification). Le script énumère tous les emplacements de passcode ; sans ce report, une purge de
+  catalogue pouvait faire entrer ET sortir la même carte d'un plan — une configuration que le
+  contrat refuse, donc un deck qui ne s'enregistre plus. Aucune règle inventée : dans une même liste,
+  les copies se cumulent au plafond 3 comme pour `deck_cards` (somme préservée, sauf plafonnement,
+  qui rend le plan « incomplet », visible) ; dans les deux sens du même plan, **tout est annulé** et
+  le plan est nommé, comme pour deux conditions à fusionner.
+- **Garde « base à 003 sans 004 » ajoutée à la séquence** (cas F). Aucun cas existant ne partait de
+  l'état réel de la production (003 journalisée, 004 absente) : `initdb` applique 004 dans le cas I,
+  la première séquence dans F et G. La mutation « 004 non rejouée sur une base purgée » passait donc
+  inaperçue alors qu'elle vise la ligne dont dépend le prochain déploiement. Les mutations sur
+  `deploy/` se jouent désormais sur une **copie** du dossier : une session coupée pendant une
+  mutation posée sur le vrai `lib.sh` l'avait laissé muté (restauré depuis sa sauvegarde, vérifié
+  octet pour octet).
+- **Le runbook « déploiement courant » reste valable avec 10A** : `deploy.sh` faisant `git pull`,
+  un déploiement depuis `main` emporte 004. Elle est additive et sans question ; seules trois
+  sorties attendues changent (liste de `git diff -- db`, deux lignes de rejeu, quatre lignes de
+  contrôle), notées en tête de la variante. Le retour arrière du code seul reste sûr : `9d281cf`
+  ignore les trois tables.
+
 ## Première mission — étape 9, partie C (extra / side éditables, runbook « déploiement courant », clôture), 9 septembre 2026
 
 Compte rendu, preuves, mutations, questions ouvertes Q14–Q18 et compte rendu final de la mission

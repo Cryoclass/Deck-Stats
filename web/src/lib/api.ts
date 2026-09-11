@@ -1,4 +1,4 @@
-import type { Availability, Card, Library, Zone, ComboPair, NonEngineGroup } from '../types.js';
+import type { Availability, Card, Library, Zone, ComboPair, Matchup, NonEngineGroup } from '../types.js';
 import { emptyConfiguration, type Configuration, type StartCondition } from '../../../server/src/domain/deckConfiguration.js';
 import type { DeckArchive } from '../../../server/src/domain/deckArchive.js';
 import type { DeckSummary as DeckPreview } from './summary.js';
@@ -81,6 +81,8 @@ export interface DeckDetail {
   starters: number[];
   pair_exclusions: string[];
   conditions?: StartCondition[];
+  /** Étape 10 ; absent d'une réponse antérieure = aucun adversaire. */
+  matchups?: Matchup[];
   params?: Record<string, unknown> | null;
   summary?: unknown;
   notes?: string | null;

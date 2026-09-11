@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Availability, Card, CardProfile, Category, ComboPair, ConditionNode, DeckCard, NonEngineGroup, StartCondition, Zone } from '../types.js';
+import type { Availability, Card, CardProfile, Category, ComboPair, ConditionNode, DeckCard, Matchup, NonEngineGroup, StartCondition, Zone } from '../types.js';
 import { pairKey } from '../types.js';
 import type { AnalysisContext, EngineResult } from '../engine/types.js';
 import type { QueryCriterion, SavedQuery } from '../engine/query.js';
@@ -44,6 +44,9 @@ interface State {
   starters: Set<number>;
   pairExclusions: Set<string>;
   startConditions: StartCondition[]; // étape 5 : conditions ET/OU par source de start
+  // Étape 10 : adversaires et plans de side. Donnée du deck (enregistrée, exportée, dupliquée),
+  // jamais du modèle moteur — le deck sidé est un modèle DÉRIVÉ, calculé à part.
+  matchups: Matchup[];
   importance: number;
   // Contexte d'analyse unique (contrat §3) : premier · 5 cartes / second · 5 + pioche.
   // Réglage d'affichage transitoire, commun à la grille (deltas), à la matrice, aux
@@ -272,6 +275,7 @@ export const useDeck = create<State>((set, get) => {
     starters: new Set(),
     pairExclusions: new Set(),
     startConditions: [],
+    matchups: [],
     importance: 0.5,
     context: 'first',
     statsView: 'starts',

@@ -22,7 +22,8 @@
  * script REFUSE de tourner tant qu'elle n'est pas journalisée, et ne connaît que les
  * emplacements v2 : deck_cards, deck_starters, card_flags (profil et plafond compris),
  * card_categories, deck_combo_pairs (paires par deck), deck_conditions (source carte,
- * source paire, feuilles `card_id` de l'arbre JSON) et deck_flags.
+ * source paire, feuilles `card_id` de l'arbre JSON), deck_flags et, depuis l'étape 10,
+ * deck_side_plan_cards (cartes entrantes et sortantes des plans de side).
  *
  * Règles de sûreté : un orphelin RÉFÉRENCÉ mais SANS cible sûre n'est jamais
  * supprimé — perdre la ligne changerait silencieusement les probabilités d'un
@@ -64,6 +65,7 @@ const REFS: Ref[] = [
   { table: 'deck_combo_pairs', column: 'card_b_id' },
   { table: 'deck_conditions', column: 'source_card_id', where: 'source_card_id is not null' },
   { table: 'deck_flags', column: 'card_id' },
+  { table: 'deck_side_plan_cards', column: 'card_id' },
 ];
 // Feuilles `{ kind: 'remaining', card_id, at_least }` de l'arbre ET/OU, à toute profondeur.
 // Mode strict obligatoire : en mode lax, `.**` rend chaque élément de tableau deux fois.
@@ -336,6 +338,50 @@ async function remap(c: pg.PoolClient, oldId: number, newId: number): Promise<vo
     p,
   );
   await run(c, 'deck_flags (reportée)', `update deck_flags set card_id = $2 where card_id = $1`, p);
+
+  // ── deck_side_plan_cards (étape 10) ── PK (deck, adversaire, position, carte, direction).
+  // Dans la MÊME liste, on cumule les copies comme deck_cards (plafond 3) : la somme du plan
+  // est préservée, sauf plafonnement, qui le rend « incomplet » — visible, jamais corrompu.
+  // Dans les DEUX sens du même plan, aucune fusion n'est possible : le contrat interdit qu'une
+  // carte entre et sorte du même plan, donc le report produirait une configuration que l'API
+  // refuserait ensuite d'enregistrer. Rien n'est deviné : tout est annulé, le plan est nommé.
+  const planConflict = await c.query<{ deck_id: string; position: string }>(
+    `select x.deck_id, x.position from deck_side_plan_cards x
+      where x.card_id = $1
+        and exists (select 1 from deck_side_plan_cards y
+                     where y.deck_id = x.deck_id and y.matchup_id = x.matchup_id
+                       and y.position = x.position and y.card_id = $2 and y.direction <> x.direction)
+      limit 1`,
+    p,
+  );
+  if (planConflict.rowCount) {
+    const { deck_id, position } = planConflict.rows[0];
+    throw new Error(
+      `Report ${oldId} → ${newId} : dans le deck ${deck_id}, un plan de side « ${position} » ferait entrer ET sortir la même carte. ` +
+        `Corriger ce plan à la main dans l'application, puis relancer. Tout est annulé.`,
+    );
+  }
+  await run(
+    c,
+    'deck_side_plan_cards (copies cumulées)',
+    `update deck_side_plan_cards d set copies = least(3, d.copies + s.copies)
+       from deck_side_plan_cards s
+      where s.card_id = $1 and d.card_id = $2
+        and d.deck_id = s.deck_id and d.matchup_id = s.matchup_id
+        and d.position = s.position and d.direction = s.direction`,
+    p,
+  );
+  await run(
+    c,
+    'deck_side_plan_cards (doublon fusionné)',
+    `delete from deck_side_plan_cards s
+      where s.card_id = $1
+        and exists (select 1 from deck_side_plan_cards d
+                     where d.deck_id = s.deck_id and d.matchup_id = s.matchup_id
+                       and d.position = s.position and d.direction = s.direction and d.card_id = $2)`,
+    p,
+  );
+  await run(c, 'deck_side_plan_cards (reportée)', `update deck_side_plan_cards set card_id = $2 where card_id = $1`, p);
 
   // ── card_flags ── PK (owner_id, card_id). HOPT fusionné par OU ; profil et plafond
   // repris s'ils manquent sur la cible ; contradictoires = refus (l'outil ne tranche pas

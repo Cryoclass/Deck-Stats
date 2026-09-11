@@ -94,7 +94,7 @@ export async function decksRoutes(app: FastifyInstance) {
     const data = await readConfiguration(c,deck.id);
     return { ...deck, summary: null, configuration_version: 2, cards: data.cards, starters: data.starters,
       pairs: data.pairs, pair_exclusions: data.pairs.filter((p) => p.disabled).map((p) => p.id),
-      conditions: data.conditions, deadFirst: data.deadFirst, deadSecond: data.deadSecond };
+      conditions: data.conditions, deadFirst: data.deadFirst, deadSecond: data.deadSecond, matchups: data.matchups };
   }));
   app.post('/', async (req,reply) => {
     const data = parseConfiguration(req.body);
@@ -163,6 +163,10 @@ export async function decksRoutes(app: FastifyInstance) {
       data.name = `${data.name.slice(0,192)} (copie)`;
       data.pairs = data.pairs.map((p) => ({ ...p,id: mapping.get(p.id)! }));
       data.conditions = data.conditions.map((r) => ({ ...r,id: randomUUID(),source_pair_id: r.source_pair_id ? mapping.get(r.source_pair_id)! : null }));
+      // Les adversaires de la copie sont des adversaires distincts : identités neuves, comme les
+      // paires. Leurs plans suivent (clé naturelle adversaire + position) ; aucun cache d'aperçu
+      // n'est copié, la copie recalcule ses chiffres.
+      data.matchups = data.matchups.map((m) => ({ ...m,id: randomUUID() }));
       return insertDeck(c,requireUser(req).id,data);
     });
     return reply.code(201).send({ id, revision: 1 });

@@ -26,6 +26,22 @@ side éditables), `deploy/lib.sh` (`db_ready`) et `deploy/deploy.sh` (attente pa
 aucune question — c'est exactement le cas « F, rejeu » de `deploy/test-migration-sequence.sh`
 (base non vide, 003 journalisée → code 0, « déjà journalisée », empreinte identique).
 
+> **Si `main` contient l'étape 10A** (poussée le 11 septembre 2026) : `deploy.sh` faisant lui-même
+> `git pull`, déployer l'étape 9 depuis `main` déploie aussi 10A, donc la migration additive
+> `004-side-plans.sql` (trois tables vides, aucune donnée migrée, rien de visible dans l'app). La
+> procédure reste la même, **toujours sans question** ; seules ces sorties diffèrent :
+> - C0 : `git diff --stat 9d281cf..HEAD -- db` n'est plus vide, il liste
+>   `db/migrations/004-side-plans.sql` et rien d'autre ;
+> - C4 : la ligne « 003 déjà journalisée : … » se termine par « schéma et migrations additives
+>   postérieures seulement », suivie de `rejeu par stdin : db/schema.sql` **puis**
+>   `rejeu par stdin : db/migrations/004-side-plans.sql` ; les contrôles ajoutent
+>   `OK|journal 004-side-plans : journalisée` et trois `OK|table v2 deck_matchups / deck_side_plans
+>   / deck_side_plan_cards : présente` ; aucune `KO|` ;
+> - C5, retour arrière du code seul : toujours valable — `9d281cf` ignore les trois tables.
+>
+> Preuve locale : cas « F sans 004 » de `deploy/test-migration-sequence.sh` (base à 003 sans 004 →
+> code 0 sans question, 004 rejouée, journal 001 à 004). Toute autre différence : `NON` et stop.
+
 Indisponibilité : de « arrêt de l'app » à « démarrage de l'app » dans la séquence, soit la
 sauvegarde pré-migration vérifiée (≈ 1 min) et les contrôles (quelques secondes) ; le build de
 l'image se fait **avant** l'arrêt, app en service. Choisir un créneau calme.

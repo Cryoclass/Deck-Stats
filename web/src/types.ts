@@ -1,7 +1,9 @@
-import type { Availability, ConditionNode } from '../../server/src/domain/deckConfiguration.js';
+import type { Availability, ConditionNode, Matchup, SidePlan, SidePlanCard, SidePlanPosition } from '../../server/src/domain/deckConfiguration.js';
 
 export type Zone = 'main' | 'extra' | 'side';
 export type { Availability, ConditionNode };
+/** Adversaires et plans de side (étape 10) : mêmes types que le contrat, aucune traduction. */
+export type { Matchup, SidePlan, SidePlanCard, SidePlanPosition };
 
 export interface Card {
   id: number;

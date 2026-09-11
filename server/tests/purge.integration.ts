@@ -25,6 +25,9 @@ const schema=await sql('../../db/schema.sql');
 const m1=await sql('../../db/migrations/001-deck-configuration.sql');
 const m2=await sql('../../db/migrations/002-profiles-and-conditions.sql');
 const m3=await sql('../../db/migrations/003-purge-legacy.sql');
+// Étape 10 : additive et indépendante de 003, appliquée AVANT elle comme dans la séquence de
+// deploy/lib.sh — la base de cette suite est celle que l'API sert après migration.
+const m4=await sql('../../db/migrations/004-side-plans.sql');
 const fixture=await sql('./fixtures/legacy-representative.sql');
 const SERVER_DIR=fileURLToPath(new URL('..',import.meta.url));
 
@@ -107,7 +110,7 @@ function runPrune(args: string[]): Promise<{ status: number | null; stdout: stri
     child.on('close',(status) => resolve({ status,stdout,stderr }));
   });
 }
-const SNAPSHOT_TABLES=['cards','catalog_version','deck_cards','deck_starters','deck_combo_pairs','deck_conditions','deck_flags','card_flags','card_categories','nonengine_groups'];
+const SNAPSHOT_TABLES=['cards','catalog_version','deck_cards','deck_starters','deck_combo_pairs','deck_conditions','deck_flags','card_flags','card_categories','nonengine_groups','deck_matchups','deck_side_plans','deck_side_plan_cards'];
 async function snapshot(): Promise<string> {
   const parts: string[]=[];
   for (const t of SNAPSHOT_TABLES) parts.push((await query(`select md5(coalesce(string_agg(t::text,'|' order by t::text),'')) as h from ${t} t`)).rows[0].h);
@@ -116,7 +119,7 @@ async function snapshot(): Promise<string> {
 
 before(async () => {
   await reset();
-  await query(schema);await query(fixture);await query(m1);await query(m2);
+  await query(schema);await query(fixture);await query(m1);await query(m2);await query(m4);
   await app.ready();
 });
 after(async () => { await app.close();await pool.end();stub.close(); });
@@ -317,4 +320,31 @@ test('prune-stale-cards rolls back everything when a remap would merge two condi
   assert.equal((await query('select source_pair_id from deck_conditions where id=$1',[uid('0f106')])).rows[0].source_pair_id,uid('0f005'));
   assert.equal((await query('select count(*)::int as n from cards where id=90000107')).rows[0].n,0);
   assert.equal((await query('select availability from card_flags where owner_id=$1 and card_id=90000003',[A])).rows[0].availability,'early');
+});
+
+// ─── Étape 10 : les plans de side sont un emplacement de passcode comme les autres ───
+test('prune-stale-cards reports side plan cards, cumulates copies inside a list, and cancels everything when a plan would take and bring the same card',async () => {
+  // Carte périmée (absente de la source) homonyme d'une seule carte conservée : cible sûre.
+  await query(`insert into cards (id,name,type) values (90000109,'Starter Alpha','Effect Monster')`);
+  await query('insert into deck_matchups (deck_id,id,name,sort_index) values ($1,$2,$3,0)',[D3,uid('0f201'),'Kewl Tune']);
+  // « first » : la périmée et sa cible sont dans la MÊME liste → copies cumulées au report.
+  // « second » : la périmée sort, sa cible entre → le report la ferait entrer ET sortir : refus.
+  await query(`insert into deck_side_plans (deck_id,matchup_id,position,note) values ($1,$2,'first',null),($1,$2,'second',null)`,[D3,uid('0f201')]);
+  await query(`insert into deck_side_plan_cards (deck_id,matchup_id,position,card_id,direction,copies) values
+    ($1,$2,'first',90000109,'out',1),($1,$2,'first',90000001,'out',1),($1,$2,'first',90000003,'in',2),
+    ($1,$2,'second',90000109,'out',1),($1,$2,'second',90000001,'in',1)`,[D3,uid('0f201')]);
+  const before=await snapshot();
+
+  const conflict=await runPrune(['--apply']);
+  assert.equal(conflict.status,1,conflict.stdout);
+  assert.match(conflict.stderr,new RegExp(`deck ${D3}, un plan de side « second » ferait entrer ET sortir la même carte`));
+  assert.equal(await snapshot(),before,'rien ne change en cas de conflit, les plans compris');
+
+  await query(`delete from deck_side_plans where deck_id=$1 and matchup_id=$2 and position='second'`,[D3,uid('0f201')]);
+  const ok=await runPrune(['--apply']);
+  assert.equal(ok.status,0,ok.stdout+ok.stderr);
+  assert.match(ok.stdout,/deck_side_plan_cards \(copies cumulées\)/);
+  assert.deepEqual((await query(`select card_id,direction,copies from deck_side_plan_cards where deck_id=$1 order by direction,card_id`,[D3])).rows,
+    [{ card_id:90000003,direction:'in',copies:2 },{ card_id:90000001,direction:'out',copies:2 }]);
+  assert.equal((await query('select count(*)::int as n from cards where id=90000109')).rows[0].n,0);
 });

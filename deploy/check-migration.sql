@@ -12,7 +12,7 @@ declare
   names text[];
 begin
   -- Journal : 001, 002 et 003 journalisées.
-  foreach t in array array['001-deck-configuration', '002-profiles-and-conditions', '003-purge-legacy'] loop
+  foreach t in array array['001-deck-configuration', '002-profiles-and-conditions', '003-purge-legacy', '004-side-plans'] loop
     if to_regclass('public.app_migrations') is null then ok := false;
     else execute 'select exists (select 1 from app_migrations where id = $1)' into ok using t; end if;
     insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|journal ' || t || (case when ok then ' : journalisée' else ' : ABSENTE du journal' end));
@@ -29,7 +29,7 @@ begin
   insert into check_rows (line) values ((case when n = 0 then 'OK' else 'KO' end) || '|colonnes historiques (relevance, dead_first, dead_second) : ' || n || ' présente(s), 0 attendue');
 
   -- Objets v2 : tables et colonnes que la nouvelle app lit.
-  foreach t in array array['deck_combo_pairs', 'deck_conditions', 'deck_flags', 'nonengine_groups', 'deck_cards', 'deck_starters', 'card_flags', 'nonengine_categories', 'card_categories'] loop
+  foreach t in array array['deck_combo_pairs', 'deck_conditions', 'deck_flags', 'nonengine_groups', 'deck_cards', 'deck_starters', 'card_flags', 'nonengine_categories', 'card_categories', 'deck_matchups', 'deck_side_plans', 'deck_side_plan_cards'] loop
     ok := to_regclass('public.' || t) is not null;
     insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|table v2 ' || t || (case when ok then ' : présente' else ' : ABSENTE' end));
   end loop;

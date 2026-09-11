@@ -21,6 +21,39 @@ export interface StartCondition {
   condition: ConditionNode;
 }
 
+/**
+ * Plan de side (étape 10, contrat « Plans de side »). Un adversaire porte au plus deux plans,
+ * un par position ; un plan est DEUX LISTES AGRÉGÉES, sans appariement (D6) : ce qui quitte le
+ * main, ce qui entre depuis le side.
+ *
+ * Le contrat valide la STRUCTURE seulement — jamais l'appartenance d'une carte à une zone (R1),
+ * ni l'équilibre des deux listes (R4), ni la convention 1–3 du main dérivé (R3). Ce sont des
+ * règles de l'éditeur : les inscrire ici rendrait un deck NON ENREGISTRABLE dès qu'une carte
+ * quitte le side, alors qu'un plan devenu incohérent doit être conservé tel quel et signalé
+ * « à revoir » (R5), jamais réparé en silence.
+ */
+export const SIDE_PLAN_POSITIONS = ['first', 'second'] as const;
+export type SidePlanPosition = (typeof SIDE_PLAN_POSITIONS)[number];
+export interface SidePlanCard { card_id: number; copies: number }
+export interface SidePlan {
+  position: SidePlanPosition;
+  note: string | null;
+  /** Copies qui quittent le main deck. */
+  outgoing: SidePlanCard[];
+  /** Copies qui entrent depuis le side deck. */
+  incoming: SidePlanCard[];
+}
+export interface Matchup {
+  id: string;
+  name: string;
+  sort_index: number;
+  /** Deux volets au plus, une position au plus chacun ; volet absent = pas de plan pour elle. */
+  plans: SidePlan[];
+}
+/** Borne de REPRÉSENTATION, pas une règle métier (même esprit que `CONDITION_MAX_*`) : l'usage
+ *  réel compte 6 à 7 adversaires par deck (D15). */
+export const MATCHUPS_MAX = 32;
+
 export interface Configuration {
   version: 2;
   name: string;
@@ -31,6 +64,8 @@ export interface Configuration {
   conditions: StartCondition[];
   deadFirst: number[];
   deadSecond: number[];
+  /** Adversaires et leurs plans de side (étape 10) ; absent d'un document antérieur = aucun. */
+  matchups: Matchup[];
   params: Record<string, unknown>;
   notes: string | null;
 }
@@ -84,6 +119,69 @@ export function validateCondition(value: unknown, depth = 0, budget = { leaves: 
   }
 }
 
+/** Une liste d'un plan : cartes distinctes, 1 à 3 copies chacune. Les exemplaires d'une même
+ *  carte sont REGROUPÉS (« 2 copies »), jamais répétés — comme `cards`. */
+function sidePlanCards(value: unknown, what: string): SidePlanCard[] {
+  requireThat(Array.isArray(value), `Plan de side invalide : liste des cartes ${what} attendue.`);
+  const seen = new Set<number>();
+  const cards: SidePlanCard[] = [];
+  for (const entry of value as unknown[]) {
+    requireThat(record(entry), `Plan de side invalide : carte ${what} invalide.`);
+    knownKeys(entry, ['card_id', 'copies']);
+    const cardId = entry.card_id;
+    const copies = entry.copies;
+    requireThat(cardIdValid(cardId), `Plan de side : carte ${what} invalide.`);
+    requireThat(Number.isInteger(copies) && Number(copies) >= 1 && Number(copies) <= 3, `Plan de side : quantité ${what} invalide (1 à 3 copies).`);
+    requireThat(!seen.has(cardId), `Plan de side : carte ${what} répétée, regrouper les exemplaires.`);
+    seen.add(cardId);
+    cards.push({ card_id: cardId, copies: Number(copies) });
+  }
+  return cards;
+}
+
+/** Valide et canonise les adversaires (nom élagué). `undefined` = document antérieur à
+ *  l'étape 10 : aucun adversaire, jamais une erreur (les archives JSON existantes restent
+ *  importables). */
+export function validateMatchups(value: unknown): Matchup[] {
+  if (value === undefined) return [];
+  requireThat(Array.isArray(value), 'Adversaires invalides.');
+  requireThat(value.length <= MATCHUPS_MAX, `Trop d’adversaires pour un deck (${MATCHUPS_MAX} au plus).`);
+  const ids = new Set<string>();
+  const matchups: Matchup[] = [];
+  for (const entry of value as unknown[]) {
+    requireThat(record(entry), 'Adversaire invalide.');
+    knownKeys(entry, ['id', 'name', 'sort_index', 'plans']);
+    const id = entry.id;
+    const name = entry.name;
+    const sortIndex = entry.sort_index;
+    requireThat(typeof id === 'string' && uuidPattern.test(id), 'Adversaire invalide : identifiant.');
+    requireThat(!ids.has(id), 'Adversaire dupliqué.');
+    ids.add(id);
+    requireThat(typeof name === 'string' && name.trim().length > 0 && name.length <= 200, 'Nom d’adversaire requis (200 caractères maximum).');
+    requireThat(Number.isInteger(sortIndex) && Number(sortIndex) >= 0 && Number(sortIndex) <= 32767, 'Ordre d’adversaire invalide.');
+    requireThat(Array.isArray(entry.plans) && entry.plans.length <= SIDE_PLAN_POSITIONS.length, 'Plans de side invalides.');
+    const positions = new Set<string>();
+    const plans: SidePlan[] = [];
+    for (const p of entry.plans as unknown[]) {
+      requireThat(record(p), 'Plan de side invalide.');
+      knownKeys(p, ['position', 'note', 'outgoing', 'incoming']);
+      const position = p.position;
+      const note = p.note;
+      requireThat(typeof position === 'string' && (SIDE_PLAN_POSITIONS as readonly string[]).includes(position), 'Plan de side : position « first » ou « second » attendue.');
+      requireThat(!positions.has(position), 'Un adversaire porte au plus un plan par position.');
+      positions.add(position);
+      requireThat(note === null || note === undefined || typeof note === 'string', 'Note de plan de side invalide.');
+      const outgoing = sidePlanCards(p.outgoing, 'sortantes');
+      const incoming = sidePlanCards(p.incoming, 'entrantes');
+      const shared = incoming.find((c) => outgoing.some((o) => o.card_id === c.card_id));
+      requireThat(shared === undefined, 'Plan de side : une carte ne peut pas entrer et sortir dans le même plan.');
+      plans.push({ position: position as SidePlanPosition, note: note ?? null, outgoing, incoming });
+    }
+    matchups.push({ id, name: name.trim(), sort_index: Number(sortIndex), plans });
+  }
+  return matchups;
+}
+
 /** Query category references are validated/remapped by the library boundary. */
 export function validateParams(value: unknown): asserts value is Record<string, unknown> {
   requireThat(record(value), 'Paramètres invalides.');
@@ -110,7 +208,7 @@ export function validateParams(value: unknown): asserts value is Record<string, 
 export function parseConfiguration(value: unknown): Configuration {
   requireThat(record(value) && value.version === 2, 'Configuration version 2 requise.');
   requireThat(!('requirements' in value), 'Conditions de start au format antérieur (prérequis ET). Rechargez l’application ; un export JSON antérieur est converti à l’import.');
-  knownKeys(value,['version','name','cards','starters','pairs','conditions','deadFirst','deadSecond','params','notes']);
+  knownKeys(value,['version','name','cards','starters','pairs','conditions','deadFirst','deadSecond','matchups','params','notes']);
   requireThat(typeof value.name === 'string' && value.name.trim().length > 0 && value.name.length <= 200, 'Nom requis (200 caractères maximum).');
   requireThat(Array.isArray(value.cards), 'Cartes requises.');
   const seenCards = new Set<string>();
@@ -148,10 +246,12 @@ export function parseConfiguration(value: unknown): Configuration {
     requireThat(!conditionIds.has(r.id), 'Identifiant de condition dupliqué.');
     conditionIds.add(r.id);
   }
+  const matchups = validateMatchups(value.matchups);
   validateParams(value.params);
   requireThat(value.notes === null || typeof value.notes === 'string', 'Notes invalides.');
-  // Detach the validated document from caller-owned mutable objects.
-  return { ...structuredClone(value), name: value.name.trim() } as unknown as Configuration;
+  // Detach the validated document from caller-owned mutable objects. `matchups` est déjà
+  // canonisé et détaché par validateMatchups (noms élagués, plans reconstruits).
+  return { ...structuredClone(value), name: value.name.trim(), matchups } as unknown as Configuration;
 }
 
 /**
@@ -186,5 +286,5 @@ export function upgradeConfiguration(value: unknown): unknown {
 }
 
 export function emptyConfiguration(name: string, cards: Configuration['cards'] = []): Configuration {
-  return { version: 2, name, cards, starters: [], pairs: [], conditions: [], deadFirst: [], deadSecond: [], params: {}, notes: null };
+  return { version: 2, name, cards, starters: [], pairs: [], conditions: [], deadFirst: [], deadSecond: [], matchups: [], params: {}, notes: null };
 }

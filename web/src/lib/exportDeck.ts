@@ -31,7 +31,10 @@ export function buildDeckJson(configuration: Configuration, library: Library): D
   const cardIds = new Set([...configuration.cards.map((c) => c.card_id),...configuration.starters,
     ...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),
     ...configuration.conditions.flatMap((r) => [...requiredCardIds(r.condition),...(r.source_card_id ? [r.source_card_id] : [])]),
-    ...configuration.deadFirst,...configuration.deadSecond]);
+    ...configuration.deadFirst,...configuration.deadSecond,
+    // Étape 10 : une carte nommée par un plan de side emporte ses annotations de bibliothèque,
+    // y compris si elle a quitté sa zone (plan « à revoir ») et n'est donc plus dans `cards`.
+    ...configuration.matchups.flatMap((m) => m.plans.flatMap((p) => [...p.outgoing,...p.incoming].map((c) => c.card_id)))]);
   const cardCategories = library.cardCategories.filter((cc) => cardIds.has(cc.card_id));
   const categoryIds = new Set(cardCategories.map((cc) => cc.category_id));
   // Étape 9B : la vue n'est plus émise par l'éditeur (réglage transitoire) ; un deck enregistré

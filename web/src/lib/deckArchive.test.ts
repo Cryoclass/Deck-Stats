@@ -71,3 +71,30 @@ describe('Étape 3 — formats et références',() => {
     expect(computePass(buildEngineModel(sourceFromDetail(detail,emptyLibrary)).input,5).brick).toBe(1);
   });
 });
+
+describe('Étape 10 — adversaires et plans de side',() => {
+  const withPlan=() => {
+    const c=emptyConfiguration('Side',[{ card_id:1,zone:'main',copies:3 },{ card_id:2,zone:'side',copies:2 }]);
+    c.matchups=[{ id:crypto.randomUUID(),name:'Kewl Tune',sort_index:0,plans:[
+      { position:'second',note:'Garder Nibiru',outgoing:[{ card_id:1,copies:2 }],incoming:[{ card_id:2,copies:2 }] },
+    ] }];
+    return c;
+  };
+  it('un enregistrement ne perd jamais les plans : ils font l’aller-retour par l’état de l’éditeur et par le JSON',() => {
+    const c=withPlan();
+    expect(configurationFromState(stateFromConfiguration(c)).matchups).toEqual(c.matchups);
+    const json=buildDeckJson(c,emptyLibrary);
+    expect(parseDeckJson(JSON.stringify(json)).configuration.matchups).toEqual(c.matchups);
+  });
+  it('les plans ne touchent pas au modèle moteur : le deck de base se calcule comme s’ils n’existaient pas',() => {
+    const c=withPlan();
+    const source=(x: typeof c) => ({ ...stateFromConfiguration(x),hopt:new Set<number>(),categories:[],cardCategories:new Map(),profiles:new Map(),groups:[] });
+    expect(buildEngineModel(source(c))).toEqual(buildEngineModel(source({ ...c,matchups:[] })));
+  });
+  it('une carte nommée par un plan mais absente des zones (plan « à revoir ») garde ses annotations dans l’archive',() => {
+    const c=withPlan();
+    const orphan={ ...c,matchups:[{ ...c.matchups[0],plans:[{ ...c.matchups[0].plans[0],outgoing:[{ card_id:404,copies:1 }] }] }] };
+    const library: Library={ ...emptyLibrary,profiles:[{ card_id:404,availability:'early',group_id:null }] };
+    expect(buildDeckJson(orphan,library).library.profiles.map((p) => p.card_id)).toContain(404);
+  });
+});

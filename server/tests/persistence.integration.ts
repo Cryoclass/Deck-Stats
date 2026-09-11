@@ -19,6 +19,7 @@ const v2Deck=randomUUID(),v2Pair=randomUUID();
 const reqA='00000000-0000-4000-8000-00000000000a',reqB='00000000-0000-4000-8000-00000000000b',reqC='00000000-0000-4000-8000-00000000000c';
 const migration=await readFile(new URL('../../db/migrations/001-deck-configuration.sql',import.meta.url),'utf8');
 const migration2=await readFile(new URL('../../db/migrations/002-profiles-and-conditions.sql',import.meta.url),'utf8');
+const migration4=await readFile(new URL('../../db/migrations/004-side-plans.sql',import.meta.url),'utf8');
 const leaf=(card_id: number, at_least=1): ConditionNode => ({ kind:'remaining',card_id,at_least });
 app.decorateRequest('user',null);
 app.addHook('onRequest',async (req) => { req.user={ id: req.headers['x-test-owner'] === 'other' ? other : owner,email:'test@example.invalid',display_name:'Test' }; });
@@ -77,6 +78,10 @@ before(async () => {
   await query('update deck_requirements set min_in_deck=1 where id=$1',[reqC]);
   await query('alter table deck_requirements add constraint deck_requirements_min_in_deck_check check (min_in_deck >= 1)');
   await query(migration2);
+  // Étape 10 : additive, indépendante de 003, appliquée deux fois — le rejeu est sans effet.
+  await query(migration4);
+  await query(migration4);
+  assert.equal((await query("select count(*)::int as n from app_migrations where id='004-side-plans'")).rows[0].n,1);
   await app.ready();
 });
 after(async () => { await app.close();await pool.end(); });
@@ -339,4 +344,56 @@ test('a summary is stored only with the configuration it describes or for the cu
   assert.equal((await app.inject({ method:'PUT',url:'/library/flags/501',payload:{ is_hopt:true } })).statusCode,200);
   assert.equal((await list()).summary,null);
   await app.inject({ method:'PUT',url:'/library/flags/501',payload:{ is_hopt:false } });
+});
+
+// ─── Étape 10 : adversaires et plans de side ───
+test('side plans are saved, ordered, reloaded and duplicated; a matchup keeps its row so a plan summary survives an unrelated save',async () => {
+  const mA=randomUUID(),mB=randomUUID();
+  const first={ position:'first' as const,note:null,outgoing:[{ card_id:1,copies:1 }],incoming:[{ card_id:2,copies:1 }] };
+  const second={ position:'second' as const,note:'Garder Nibiru',outgoing:[{ card_id:1,copies:2 }],incoming:[{ card_id:2,copies:2 }] };
+  const kewl={ id:mA,name:'Kewl Tune',sort_index:0,plans:[first,second] };
+  const snake={ id:mB,name:'Snake-Eye',sort_index:1,plans:[] };
+  const c=emptyConfiguration('Plans',[{ card_id:1,zone:'main',copies:3 },{ card_id:2,zone:'side',copies:2 }]);
+  c.matchups=[snake,kewl]; // ordre d'émission indifférent : l'ordre rendu est celui de sort_index
+  const id=await create(c);
+  let d=await detail(id);
+  assert.deepEqual(d.matchups.map((m: { id:string }) => m.id),[mA,mB]);
+  assert.deepEqual(d.matchups[0].plans,[first,second]);
+  assert.deepEqual(d.matchups[1],snake);
+
+  // Cache d'aperçu d'un plan (étape 10B), écrit hors API : il doit SURVIVRE à un enregistrement
+  // qui ne concerne pas ce plan. C'est ce que garantit la stabilité des lignes (identifiants du
+  // client, upsert), et non un remplacement en bloc comme pour les cartes ou les starters.
+  await query('update deck_side_plans set summary=$4::jsonb where deck_id=$1 and matchup_id=$2 and position=$3',[id,mA,'second',JSON.stringify({ engineVersion:'x' })]);
+  c.name='Plans (renommé)';
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}`,payload:{ configuration:c,expectedRevision:d.revision } })).statusCode,200);
+  assert.equal((await query("select summary->>'engineVersion' as v from deck_side_plans where deck_id=$1 and matchup_id=$2 and position='second'",[id,mA])).rows[0].v,'x');
+
+  // Retrait d'un adversaire et d'un volet : les lignes concernées disparaissent (cache compris),
+  // les autres restent en place.
+  c.matchups=[{ ...kewl,name:'Kewl Tune (2026)',plans:[second] }];
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}`,payload:{ configuration:c,expectedRevision:2 } })).statusCode,200);
+  d=await detail(id);
+  assert.deepEqual(d.matchups,[{ id:mA,name:'Kewl Tune (2026)',sort_index:0,plans:[second] }]);
+  assert.equal((await query('select count(*)::int as n from deck_side_plans where deck_id=$1',[id])).rows[0].n,1);
+  assert.equal((await query('select count(*)::int as n from deck_side_plan_cards where deck_id=$1',[id])).rows[0].n,2);
+
+  // Duplication : adversaires d'identité neuve, plans copiés à l'identique, aucun cache repris.
+  const dup=await app.inject({ method:'POST',url:`/decks/${id}/duplicate` });
+  assert.equal(dup.statusCode,201,dup.body);
+  const copy=await detail(dup.json().id);
+  assert.notEqual(copy.matchups[0].id,mA);
+  assert.equal(copy.matchups[0].name,'Kewl Tune (2026)');
+  assert.deepEqual(copy.matchups[0].plans,[second]);
+  assert.equal((await query('select count(*)::int as n from deck_side_plans where deck_id=$1 and summary is not null',[dup.json().id])).rows[0].n,0);
+
+  // Structure refusée = rien d'écrit (le contrat s'applique avant la transaction).
+  const twice={ ...c,matchups:[{ ...c.matchups[0],plans:[second,{ ...second,note:'doublon' }] }] };
+  assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}`,payload:{ configuration:twice,expectedRevision:3 } })).statusCode,400);
+  assert.equal((await detail(id)).revision,3);
+
+  // Suppression du deck : adversaires, plans et cartes de plan tombent avec lui (cascade).
+  assert.equal((await app.inject({ method:'DELETE',url:`/decks/${id}` })).statusCode,200);
+  assert.equal((await query('select count(*)::int as n from deck_matchups where deck_id=$1',[id])).rows[0].n,0);
+  assert.equal((await query('select count(*)::int as n from deck_side_plan_cards where deck_id=$1',[id])).rows[0].n,0);
 });
