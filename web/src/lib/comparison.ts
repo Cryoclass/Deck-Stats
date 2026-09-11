@@ -1,4 +1,10 @@
 import type { EngineInput, PassResult } from '../engine/types.js';
+import type { Library, SidePlanPosition } from '../types.js';
+import type { DeckDetail } from './api.js';
+import type { EngineModelSource } from './engineModel.js';
+import { configurationFromDetail, libraryState, stateFromConfiguration } from './deckConfiguration.js';
+import { applyPlan, sidedSource } from './sidePlan.js';
+import { planOf } from './matchups.js';
 import {
   scenarioCounts,
   toComparisonMatrix,
@@ -39,5 +45,60 @@ export function unprofiledWarning(name: string, unprofiledCardIds: number[]): Co
     severity: 'warning',
     code: 'unprofiled',
     message: `« ${name} » : ${n} carte${s} non-engine sans profil, non comptée${s} dans le potentiel.`,
+  };
+}
+
+// ─── Étape 10D : comparer un deck à son deck sidé ───
+// Un côté du comparateur peut être un deck avec le plan d'un adversaire appliqué : segment d'URL
+// `deck~adversaire~position`. Seul un plan prêt se compare (R4, R5) ; le deck sidé porte toutes les
+// annotations du deck (R6) et un nom qui le dit. Le moteur et `compare.ts` ne changent pas.
+
+export interface CompareTarget {
+  deckId: string;
+  plan: { matchupId: string; position: SidePlanPosition } | null;
+}
+
+export const compareSegment = (deckId: string, matchupId: string, position: SidePlanPosition): string => `${deckId}~${matchupId}~${position}`;
+
+export function parseCompareTarget(segment: string): CompareTarget {
+  const [deckId, matchupId, position, ...rest] = segment.split('~');
+  if (matchupId === undefined) return { deckId, plan: null };
+  if (!matchupId || (position !== 'first' && position !== 'second') || rest.length > 0) {
+    throw new Error('Adresse de comparaison invalide : deck~adversaire~position attendu.');
+  }
+  return { deckId, plan: { matchupId, position } };
+}
+
+export interface CompareSide {
+  name: string;
+  source: EngineModelSource;
+  plan: { matchupName: string; position: SidePlanPosition } | null;
+}
+
+const POSITION_WORD: Record<SidePlanPosition, string> = { first: 'premier', second: 'second' };
+
+export function compareSideOf(detail: DeckDetail, library: Library, target: CompareTarget): CompareSide {
+  const state = { ...stateFromConfiguration(configurationFromDetail(detail)), ...libraryState(library) };
+  if (!target.plan) return { name: detail.name, source: state, plan: null };
+  const { matchupId, position } = target.plan;
+  const matchup = state.matchups.find((m) => m.id === matchupId);
+  if (!matchup) throw new Error(`« ${detail.name} » : adversaire introuvable (supprimé depuis ?).`);
+  const applied = applyPlan(state.main, state.side, planOf(matchup, position));
+  const sided = sidedSource(state, applied);
+  if (!sided) {
+    throw new Error(`Plan ${POSITION_WORD[position]} contre « ${matchup.name} » ${applied.status === 'incomplete' ? 'incomplet' : 'à revoir'} : rien à comparer tant qu’il n’est pas prêt.`);
+  }
+  return { name: `${detail.name} — ${matchup.name} (${POSITION_WORD[position]})`, source: sided, plan: { matchupName: matchup.name, position } };
+}
+
+/** Note d'information d'un côté sidé : son plan ne vaut que dans sa position (R7). */
+export function sidedNotice(side: CompareSide): ComparisonWarning | null {
+  if (!side.plan) return null;
+  const pos = POSITION_WORD[side.plan.position];
+  const other = POSITION_WORD[side.plan.position === 'first' ? 'second' : 'first'];
+  return {
+    severity: 'info',
+    code: 'sided',
+    message: `« ${side.name} » : deck après le plan ${pos} contre « ${side.plan.matchupName} » — seul le scénario ${pos} correspond à ce plan, le scénario ${other} est donné pour information.`,
   };
 }

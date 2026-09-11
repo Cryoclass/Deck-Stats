@@ -1,5 +1,32 @@
 # Décisions & écarts vs. document de référence
 
+## Plans de side — étape 10, partie D (fiche imprimable, comparateur sur un deck sidé), 11 septembre 2026
+
+Compte rendu, vérifications, mutations et clôture de l'étape 10 dans [docs/etape-10.md](docs/etape-10.md)
+(§13, §14).
+
+- **La fiche et le comparateur lisent le deck ENREGISTRÉ.** Ce sont des pages à part (adresses
+  partageables, pas d'état d'éditeur) ; les boutons de l'onglet « Plans de side » sont désactivés
+  tant que quelque chose n'est pas enregistré, avec la raison en infobulle. Sinon la fiche
+  imprimerait un deck que le serveur ne connaît pas, ou perdrait les modifications en cours.
+- **Fiche conforme à D4, rien de plus** : échanges avec vignettes, trois indicateurs, note. Ni écart
+  avec le deck de base, ni sources neutralisées (elles restent dans l'onglet). Un plan vide imprime
+  « Aucun échange (deck de base) » et ses chiffres ; un plan incomplet ou à revoir est signalé, sans
+  chiffre ; un chiffre sans l'empreinte courante s'imprime « — ».
+- **« Tout calculer » en série, dédoublonné par empreinte** : deux plans au même deck sidé ne se
+  calculent qu'une fois ; chaque chiffre est persisté pour la révision lue ; au premier refus (409 :
+  le deck a changé depuis l'ouverture de la fiche), on s'arrête et on demande de recharger — les
+  chiffres affichés restent justes pour la version lue.
+- **L'impression est la seule exception au thème sombre** : `@media print` en clair, A4, marges de
+  10 mm. Imprimer du noir en aplat n'aurait aucun sens ; l'écran, lui, ne change pas.
+- **La cible « une page pour 6 à 7 adversaires » est prouvée, pas supposée** : l'e2e imprime une
+  vraie fiche de sept adversaires en PDF A4 et compte les pages.
+- **Comparateur : un segment `deck~adversaire~position`** dans l'adresse existante, sans nouvelle
+  route ; ⇄ Inverser et l'export Excel fonctionnent tels quels. Le côté sidé porte un nom explicite
+  et une note d'information (code `sided`, sévérité `info`) : ses deux scénarios sont calculés, seul
+  celui de sa position correspond au plan. Le type des avertissements étant une chaîne libre, rien
+  n'a changé dans le moteur (`__ENGINE_VERSION__` intact).
+
 ## Plans de side — étape 10, partie C (annotation du side, onglet « Plans de side »), 11 septembre 2026
 
 Compte rendu, vérifications et mutations dans [docs/etape-10.md](docs/etape-10.md) (§12). Disposition

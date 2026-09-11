@@ -444,3 +444,10 @@ main, copies qui entrent depuis le side.
   de la version du moteur, de la position et de la définition des indicateurs ; une empreinte
   différente = pas affichés, recalculés. Ils ne sont persistés que pour un deck sans modification non
   enregistrée.
+- **Fiche imprimable.** Le deck **enregistré** : un bloc par adversaire (ordre d'ajout), volets
+  premier et second, cartes qui sortent et qui entrent, trois indicateurs, note. Un indicateur sans
+  l'empreinte courante s'imprime « — », jamais un ancien chiffre ; un plan incomplet ou à revoir n'a
+  pas d'indicateur. Cible : les 6 à 7 adversaires d'un deck sur une page A4.
+- **Comparateur.** Un côté peut être le deck sidé d'un plan prêt (adresse `deck~adversaire~position`) ;
+  ses deux scénarios sont calculés, seul celui de la position du plan correspond au plan — c'est
+  dit par une note d'information. Un plan incomplet ou à revoir ne se compare pas.

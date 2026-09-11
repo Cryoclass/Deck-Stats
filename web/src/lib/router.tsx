@@ -7,17 +7,22 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 export type Route =
   | { name: 'home' }
   | { name: 'editor'; id: string; tab?: 'side' }
+  | { name: 'sideSheet'; id: string }
   | { name: 'compare'; a: string; b: string };
 
 function parse(pathname: string): Route {
   const c = pathname.match(/^\/compare\/([^/?#]+)\/([^/?#]+)/);
   if (c) return { name: 'compare', a: decodeURIComponent(c[1]), b: decodeURIComponent(c[2]) };
+  // Étape 10D : fiche imprimable des plans de side, avant la règle de l'éditeur.
+  const f = pathname.match(/^\/decks\/([^/?#]+)\/side\/fiche/);
+  if (f) return { name: 'sideSheet', id: decodeURIComponent(f[1]) };
   const m = pathname.match(/^\/decks\/([^/?#]+)(\/side)?/);
   return m ? { name: 'editor', id: decodeURIComponent(m[1]), ...(m[2] ? { tab: 'side' as const } : {}) } : { name: 'home' };
 }
 
 function toPath(route: Route): string {
   if (route.name === 'editor') return `/decks/${route.id}${route.tab === 'side' ? '/side' : ''}`;
+  if (route.name === 'sideSheet') return `/decks/${route.id}/side/fiche`;
   if (route.name === 'compare') return `/compare/${route.a}/${route.b}`;
   return '/decks';
 }

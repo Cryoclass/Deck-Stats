@@ -13,6 +13,8 @@ import {
   type PlanIndicators,
 } from '../lib/sidePlan.js';
 import { describeIssue, planOf, type PlanDirection } from '../lib/matchups.js';
+import { compareSegment } from '../lib/comparison.js';
+import { useRouter } from '../lib/router.js';
 import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled, type ComputeClient, type ComputeTask } from '../worker/computeClient.js';
 import { deltaPoints, pct } from '../lib/fmt.js';
@@ -55,6 +57,7 @@ function picked(selection: Set<string>, zone: Side): SidePlanCard[] {
 const countOf = (list: readonly SidePlanCard[]) => list.reduce((n, c) => n + c.copies, 0);
 
 export function SidePlanner() {
+  const { navigate } = useRouter();
   const matchups = useDeck((s) => s.matchups);
   const main = useDeck((s) => s.main);
   const side = useDeck((s) => s.side);
@@ -304,6 +307,16 @@ export function SidePlanner() {
           </button>
         ))}
         {addForm}
+        {/* Étape 10D : la fiche et le comparateur lisent le deck ENREGISTRÉ. */}
+        <button
+          data-open-sheet
+          onClick={() => deckId && navigate({ name: 'sideSheet', id: deckId })}
+          disabled={dirty || !deckId}
+          title={dirty ? 'Enregistre le deck : la fiche montre le deck enregistré.' : 'Fiche imprimable de tous les adversaires'}
+          className="ml-auto h-8 rounded border border-ink-700 px-2.5 text-[11px] text-ink-200 hover:bg-ink-800 disabled:opacity-40"
+        >
+          Fiche imprimable
+        </button>
       </div>
 
       {/* Adversaire ouvert : nom, volet, suppression. */}
@@ -422,6 +435,15 @@ export function SidePlanner() {
             className="h-8 shrink-0 rounded border border-ink-700 px-2.5 text-[11px] text-ink-200 hover:bg-ink-800"
           >
             Recopier depuis {POSITION_LABEL[other].toLowerCase()}
+          </button>
+          <button
+            data-compare-plan
+            onClick={() => deckId && navigate({ name: 'compare', a: deckId, b: compareSegment(deckId, current.id, position) })}
+            disabled={applied.status !== 'ready' || dirty || !deckId}
+            title={dirty ? 'Enregistre le deck : le comparateur lit le deck enregistré.' : applied.status !== 'ready' ? 'Seul un plan prêt se compare.' : 'Comparer le deck de base au deck après ce plan'}
+            className="h-8 shrink-0 rounded border border-ink-700 px-2.5 text-[11px] text-ink-200 hover:bg-ink-800 disabled:opacity-40"
+          >
+            Comparer au deck de base
           </button>
         </div>
       </section>

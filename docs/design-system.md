@@ -394,6 +394,19 @@ Enregistrer. Listes du plan en puces de 24 px avec ✕ de 24 px ; écarts et sou
 bandeau ambre (§7.12) ; chiffres en paires libellé / valeur (§3.5), écart signé en émeraude / rouge
 par signe exact, « · » pour zéro.
 
+Fiche imprimable (étape 10D, `/decks/:id/side/fiche`) : page autonome, sombre à l'écran ; barre
+d'outils `print:hidden` (retour, « Tout calculer (n) » en bouton secondaire à 32 px avec progression
+`tnum`, « Imprimer » émeraude — la seule action émeraude de la page). Un bloc par adversaire
+(`break-inside-avoid`, `rounded-md border-ink-800 bg-ink-900 p-2`), deux colonnes `sm:grid-cols-2`
+(toujours deux à l'impression) : libellé de volet en étiquette de section (§3.4), lignes « − » et
+« + » (rouge / émeraude à l'écran, noir à l'impression) de vignettes au ratio 59/86 de 28 px de haut
+(24 px à l'impression) + nom tronqué + « ×n » en `tnum`, trois paires libellé / valeur en 11 px
+(« — » pour un chiffre à calculer), note en italique. **L'impression est la seule exception au
+thème sombre** : `@media print` (index.css) passe `html`, `body` et `#root` en fond blanc et texte
+noir, A4, marges de 10 mm ; les classes `print:` éclaircissent bordures et textes. Cible prouvée
+par l'e2e `sidesheet` : sept adversaires sur une page. Comparateur sur un deck sidé : même page,
+nom « Deck — Adversaire (position) » et note d'information bleue (§7.12, `info`).
+
 ### 6.4 Ascenseurs
 
 Discrets et cohérents avec le chrome — à reprendre tel quel :

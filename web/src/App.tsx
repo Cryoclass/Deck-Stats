@@ -6,6 +6,7 @@ import { HomePage } from './components/HomePage.js';
 import { EditorPage } from './components/EditorPage.js';
 import { LoginPage } from './components/LoginPage.js';
 import { ComparePage } from './components/ComparePage.js';
+import { SideSheet } from './components/SideSheet.js';
 
 function Routed() {
   const { route } = useRouter();
@@ -20,6 +21,7 @@ function Routed() {
 
   if (route.name === 'editor') return <EditorPage id={route.id} initialTab={route.tab} />;
   if (route.name === 'compare') return <ComparePage a={route.a} b={route.b} />;
+  if (route.name === 'sideSheet') return <SideSheet id={route.id} />;
   return <HomePage />;
 }
 

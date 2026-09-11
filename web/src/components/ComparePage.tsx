@@ -13,11 +13,10 @@ import {
   type AggregateRow,
   type Scenario,
 } from '../engine/compare.js';
-import { comparisonDeckOf, unprofiledWarning } from '../lib/comparison.js';
+import { compareSideOf, comparisonDeckOf, parseCompareTarget, sidedNotice, unprofiledWarning } from '../lib/comparison.js';
 import { downloadComparisonXlsx } from '../lib/exportComparison.js';
 import { slugify } from '../lib/exportDeck.js';
 import { pct, num, matrixCell, deltaPoints, deltaCount } from '../lib/fmt.js';
-import { sourceFromDetail } from '../lib/deckConfiguration.js';
 import { STARTS_HINT } from './StatsPanel.js';
 
 // ─── Comparateur de decks (itération 9) — matrice départs théoriques × non-engine, A vs B ───
@@ -49,29 +48,35 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
     const client = createEngineClient();
     setState({ status: 'loading' });
     (async () => {
-      const [da, db, lib] = await Promise.all([api.getDeck(a), api.getDeck(b), api.getLibrary()]);
-      const decks = [da, db].map((d) => ({ detail: d, source: sourceFromDetail(d, lib) }));
-      for (const { detail, source } of decks) {
+      // Étape 10D : un côté peut être un deck sidé (segment `deck~adversaire~position`).
+      const targets = [parseCompareTarget(a), parseCompareTarget(b)];
+      const [da, db, lib] = await Promise.all([api.getDeck(targets[0].deckId), api.getDeck(targets[1].deckId), api.getLibrary()]);
+      const decks = [da, db].map((d, i) => compareSideOf(d, lib, targets[i]));
+      for (const { name, source } of decks) {
         const size = source.main.reduce((s, c) => s + c.copies, 0);
         if (size < 6) {
           throw new Error(
-            `« ${detail.name} » n'a que ${size} carte(s) en main deck — impossible de tirer une main de 6.`,
+            `« ${name} » n'a que ${size} carte(s) en main deck — impossible de tirer une main de 6.`,
           );
         }
       }
       const unprofiled: ComparisonWarning[] = [];
       const results = await Promise.all(
-        decks.map(async ({ detail, source }) => {
+        decks.map(async ({ name, source }) => {
           const { input, unprofiledCardIds } = buildEngineModel(source);
-          const warning = unprofiledWarning(detail.name, unprofiledCardIds);
+          const warning = unprofiledWarning(name, unprofiledCardIds);
           if (warning) unprofiled.push(warning);
           const { result } = await client.compute(input, 'passes').promise;
-          return comparisonDeckOf(detail.name, input, result);
+          return comparisonDeckOf(name, input, result);
         }),
       );
       const cmp = compareDecks(results[0], results[1]);
       // Q5 : signalé par deck (lib/comparison.ts), après les garde-fous du comparateur.
       cmp.warnings.push(...unprofiled);
+      for (const side of decks) {
+        const notice = sidedNotice(side);
+        if (notice) cmp.warnings.push(notice);
+      }
       return { cmp };
     })().then(
       (loaded) => !cancelled && setState({ status: 'ready', ...loaded }),

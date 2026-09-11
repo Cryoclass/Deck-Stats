@@ -26,10 +26,11 @@ side éditables), `deploy/lib.sh` (`db_ready`) et `deploy/deploy.sh` (attente pa
 aucune question — c'est exactement le cas « F, rejeu » de `deploy/test-migration-sequence.sh`
 (base non vide, 003 journalisée → code 0, « déjà journalisée », empreinte identique).
 
-> **Si `main` contient l'étape 10A** (poussée le 11 septembre 2026) : `deploy.sh` faisant lui-même
-> `git pull`, déployer l'étape 9 depuis `main` déploie aussi 10A, donc la migration additive
-> `004-side-plans.sql` (trois tables vides, aucune donnée migrée, rien de visible dans l'app). La
-> procédure reste la même, **toujours sans question** ; seules ces sorties diffèrent :
+> **Si `main` contient l'étape 10** (plans de side, 10A–10D) : `deploy.sh` faisant lui-même
+> `git pull`, déployer l'étape 9 depuis `main` déploie aussi l'étape 10 — la migration additive
+> `004-side-plans.sql` (trois tables vides, aucune donnée migrée), l'onglet « Plans de side », la
+> fiche imprimable et le comparateur sur un deck sidé. La procédure reste la même, **toujours sans
+> question** ; seules ces sorties diffèrent :
 > - C0 : `git diff --stat 9d281cf..HEAD -- db` n'est plus vide, il liste
 >   `db/migrations/004-side-plans.sql` et rien d'autre ;
 > - C4 : la ligne « 003 déjà journalisée : … » se termine par « schéma et migrations additives

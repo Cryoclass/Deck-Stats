@@ -49,3 +49,19 @@ body {
     transform: scaleX(1);
   }
 }
+
+/* Étape 10D : la fiche des plans de side s'imprime en clair (encre), A4, marges de 10 mm.
+   L'écran reste sombre (§E) ; seule l'impression bascule, et seule la fiche y est destinée. */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  html,
+  body,
+  #root {
+    height: auto;
+    background: #fff;
+    color: #000;
+  }
+}

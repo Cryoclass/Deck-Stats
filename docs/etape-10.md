@@ -1,8 +1,8 @@
 # Étape 10 — Plans de side
 
-> **Plan validé le 10 septembre 2026. Partie A livrée le même jour** (compte rendu en §10), **partie B le 11 septembre** (§11), **partie C le même jour** (§12).
+> **Plan validé le 10 septembre 2026. Partie A livrée le même jour** (compte rendu en §10), **partie B le 11 septembre** (§11), **parties C et D le même jour** (§12, §13) ; étape close (§14).
 > Cadrage mené en trois tours de questions ; les décisions sont consignées en §2 (D1–D18),
-> les questions ouvertes tranchées en §9. Reste à faire : 10D (§6).
+> les questions ouvertes tranchées en §9. Rien ne reste à faire dans l'étape ; reports en §14.
 
 ## 1. Intention
 
@@ -514,3 +514,81 @@ le résultat du deck de base pour l'écart, `neutralizedSources`, la note de cha
 calculer », reprendre l'orchestration de `SidePlanner` (client propre, `planComputeMode`, persistance
 seulement hors « non enregistré »), en série sur les 14 plans au plus. Le comparateur doit accepter
 un segment `<deckId>~<matchupId>~<position>` et appliquer le plan avant `comparisonDeckOf`.
+
+## 13. Compte rendu 10D (11 septembre 2026)
+
+**Périmètre** : la fiche imprimable et le comparateur sur un deck sidé — les deux sorties de D3 / D4.
+
+### Livré
+
+- **`lib/sideSheet.ts`** (pur) : `sheetOf` — un bloc par adversaire dans l'ordre d'ajout, deux volets,
+  plan appliqué, entrée du moteur si le plan est prêt, chiffre seulement s'il porte l'empreinte
+  courante ; `plansToCompute` — les plans prêts sans chiffre.
+- **`SideSheet.tsx`** et route `/decks/:id/side/fiche` : page autonome sur le deck enregistré,
+  vignettes, notes, « — » avant calcul, plan incomplet ou à revoir signalé sans chiffre ; « Tout
+  calculer (n) » en série, dédoublonné par empreinte, avec progression, persistance pour la révision
+  lue et arrêt au premier refus ; « Imprimer ». Impression en clair (`@media print`, A4, 10 mm).
+- **Comparateur** : segment `deck~adversaire~position` (`parseCompareTarget`, `compareSideOf`,
+  `sidedNotice` dans `lib/comparison.ts`) ; nom « Deck — Adversaire (position) », note d'information,
+  refus explicite d'un plan pas prêt ; moteur et export inchangés.
+- **Onglet « Plans de side »** : boutons « Fiche imprimable » et « Comparer au deck de base »,
+  désactivés tant que quelque chose n'est pas enregistré.
+- **Docs** : contrat métier §8 (fiche, comparateur), charte §6.3 (fiche, impression), AGENTS.md,
+  note « étape 10 » en tête de la variante « déploiement courant » du runbook, DECISIONS.md,
+  décisions compressées.
+
+### Vérifications exécutées
+
+`npm run typecheck` · `npm run build` · `node scripts/test-quiet.mjs` (249 web, 12 serveur) ·
+`npm run e2e -w web` (10 scénarios, dont `sidesheet` : F1–F5, **PDF A4 d'une page pour sept
+adversaires**). Premier passage : deux gardes F2 du **scénario** en échec, aucune de l'application —
+l'onglet ouvert en F1 avait déjà calculé et persisté le volet qu'il affichait (deck enregistré,
+comportement voulu), la garde attendait 13 « — » au lieu de 12 ; elle compte désormais les plans
+restants, et `sidesheet` a été rejoué avec `setup`. Ni PostgreSQL, ni séquence, ni répétition pour la partie D elle-même (aucun
+changement serveur, migration ou `deploy/`) ; la répétition complète est rejouée en clôture de
+l'étape, sur le code final, avant le déploiement (§14).
+
+Tests ajoutés : `lib/sideSheet.test.ts` (6 : fiche et comparateur sidé) ; scénario e2e `sidesheet`.
+
+### Contrôle par mutation (4 posées, 4 détectées)
+
+| # | Mutation | Garde qui tombe |
+| --- | --- | --- |
+| D1 | Fiche : chiffre stocké imprimé sans vérifier l'empreinte | « imprimé que s'il porte l'empreinte courante » |
+| D2 | Fiche : plan pas prêt proposé au calcul | « jamais à calculer » |
+| D3 | Comparateur : plan pas prêt comparé quand même | « refus explicite, rien n'est comparé » |
+| D4 | Comparateur : position inconnue acceptée | « refuse une adresse tronquée » |
+
+L'impression en clair, la barre d'outils masquée et la page unique sont gardées par l'e2e (F4).
+
+## 14. Clôture de l'étape 10 (11 septembre 2026)
+
+Étape 10 « plans de side » livrée en quatre parties, chacune close par typecheck, build, tests,
+contrôle par mutation, docs et tag :
+
+| Partie | Livré | Mutations |
+| --- | --- | --- |
+| 10A | Contrat (structure seulement), migration additive 004, persistance en upsert, `prune-stale-cards`, cas « base à 003 sans 004 » | 7 / 7 |
+| 10B | Deck sidé calculable, trois indicateurs = requêtes du mode Requête, empreinte et cache, route des chiffres | 7 / 7 |
+| 10C | Side annotable sans recalcul (règle exacte), onglet « Plans de side », échanges, états, chiffres et écart | 5 / 5 |
+| 10D | Fiche imprimable (une page pour sept adversaires), comparateur sur un deck sidé | 4 / 4 |
+
+État final : 249 tests web, 12 serveur, 14 + 11 PostgreSQL, 10 scénarios e2e, 68 gardes A–I ;
+moteur, oracles, `engineModel.ts`, `conditions.ts`, `summary.ts` jamais modifiés
+(`__ENGINE_VERSION__` inchangé depuis 9C : aucun aperçu d'accueil n'a été périmé par l'étape 10).
+
+**Déploiement** (à la main de l'utilisateur, VPS) : variante « déploiement courant » C0–C6 du
+runbook, avec la note « étape 10 » en tête — une seule migration, 004, additive, sans question ;
+retour arrière du code seul toujours sûr. La production est encore à `9d281cf` : ce déploiement
+emporte l'étape 9 et l'étape 10.
+
+**Reports et questions ouvertes** :
+- Q5 — archétypes connus avec icône en tête des plans (catalogue, source des icônes, rattachement
+  des adversaires existants) : à cadrer séparément.
+- À 360 px, les copies du main repoussent « Échanger » loin sous la ligne de flottaison ; l'onglet
+  « Plans de side » demande de faire défiler la barre d'onglets (comme « Inventaire »).
+- Le retrait « du side » depuis le menu ⋯ d'une tuile de side n'a pas de garde automatique (aucun
+  test React dans le dépôt) ; vérifié à la lecture.
+- Par choix (D4), la fiche n'imprime ni l'écart avec le deck de base ni les sources neutralisées :
+  à ajouter si l'usage en tournoi le demande.
+- Reports antérieurs conservés : Q9–Q18, Q11 (`ygo_previous`), réexamen catégorie / profil.

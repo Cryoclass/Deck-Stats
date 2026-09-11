@@ -275,3 +275,10 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Adversaire créé avec ses deux volets vides ; échange refusé s'il CRÉE un écart (un plan « à revoir » accepte un échange qui n'aggrave rien) ; refus nommé.
 - Chiffres du plan : client propre à la vue, différé 150 ms et annulé, cache par empreinte ; persistés seulement si rien n'est « non enregistré » ; écart jamais contre un résultat périmé.
 - Sources neutralisées = condition devenue impossible dans le deck sidé et possible dans la base ; « Échanger » en bouton secondaire (un seul émeraude par écran).
+
+## Étape 10, partie D — fiche imprimable, comparateur sur un deck sidé (11 septembre 2026)
+- Fiche (`/decks/:id/side/fiche`) et comparateur lisent le deck ENREGISTRÉ ; boutons de l'onglet désactivés tant que rien n'est enregistré.
+- Fiche conforme à D4 : échanges + vignettes, trois indicateurs, note ; « — » pour un chiffre sans l'empreinte courante ; plan incomplet / à revoir signalé sans chiffre ; ni écart ni sources neutralisées.
+- « Tout calculer » en série, dédoublonné par empreinte, persisté pour la révision lue ; arrêt au premier 409.
+- Impression = seule exception au thème sombre (`@media print`, A4, marges 10 mm) ; « une page pour 7 adversaires » prouvée par l'e2e (PDF compté).
+- Comparateur : segment `deck~adversaire~position` dans l'adresse existante, nom explicite, note `info` (seul le scénario de la position correspond au plan) ; moteur intact.
