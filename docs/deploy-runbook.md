@@ -48,6 +48,10 @@ aucune question — c'est exactement le cas « F, rejeu » de `deploy/test-migra
 >   secondes avant son propre arrêt. Un `FATAL: terminating autovacuum process due to
 >   administrator command` pendant la sauvegarde pré-migration est la suppression normale de la base
 >   de vérification, pas un incident.
+> - Déploiement de code seul (compose inchangé ; retouche de la fiche, 11 septembre 2026,
+>   `bc5a004` → `4cf9493`) : `db` reste « Running », non recréé ; app coupée ≈ 20 s.
+> - Piloté par `ssh goldfish bash -s <<'EOF'` : `docker compose exec -T` lit l'entrée standard et
+>   avale la suite du script — `< /dev/null` sur chaque `exec -T` (et sur `backup.sh`).
 >
 > Preuve locale : cas « F sans 004 » de `deploy/test-migration-sequence.sh` (base à 003 sans 004 →
 > code 0 sans question, 004 rejouée, journal 001 à 004). Toute autre différence : `NON` et stop.

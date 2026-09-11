@@ -672,8 +672,38 @@ A4, 4 si on est à l'étroit » au lieu de sept, et un PDF téléchargé plutôt
 - Le relais n'est pas exercé de bout en bout par l'e2e (cartes synthétiques en `data:`, passcodes
   absents du CDN) : il est prouvé par `cardImage.test.ts` avec un faux amont ; premier essai réel
   après déploiement, sur une fiche aux vraies cartes.
-- La production (`bc5a004`) garde « Imprimer » tant que ce code n'est pas déployé : code seul, aucune
-  migration, variante C0–C6 ; le conteneur de l'app doit joindre `images.ygoprodeck.com` en sortie
-  (à vérifier en C4 : télécharger une fiche et voir les illustrations).
+- Vulnérabilités signalées par `npm install` au build de l'image (12 : 7 modérées, 4 hautes,
+  1 critique) : toutes antérieures à cette retouche (jsPDF et ses dépendances n'y figurent pas).
+  Côté serveur en production, `fastify` et `fast-uri` ont un correctif sans version majeure, à
+  traiter à part ; la critique (`vitest`) ne concerne que le développement.
 - Seul test existant modifié : le scénario e2e `sidesheet`, réécrit pour la nouvelle mise en page et
   la nouvelle cible (demande de l'utilisateur) ; moteur, oracles et `__ENGINE_VERSION__` intacts.
+
+### Déploiement exécuté (11 septembre 2026)
+
+À la demande explicite de l'utilisateur, par l'agent, via `ssh goldfish`, variante « déploiement
+courant » C0–C6 :
+
+- **C0** : arbre propre ; `git diff bc5a004..HEAD -- db deploy` vide (aucune migration, aucun script
+  de déploiement modifié), donc `test-migration-sequence.sh` et `rehearsal.sh` non relancés : rien de
+  ce qu'ils couvrent n'a changé depuis la répétition conforme de `bc5a004`, et l'e2e complet venait
+  de passer sur ce code. `main` poussé (`efbc690..4cf9493`).
+- **C1** : VPS à `bc5a004` (retour arrière du code), dépôt propre, `git pull --ff-only` → `4cf9493`.
+- **C2** : app et DB `healthy`, sauvegarde de la nuit vérifiée, API saine (14 529 cartes), journal
+  001 à 004 ; effectifs 1 utilisateur / 5 decks / 90 cartes en extra ou side / 5 résumés /
+  3 adversaires / 6 plans / 43 cartes de plan / 5 chiffres de plan ; `backup.sh` vérifiée.
+- **C3** : `deploy.sh` lancé détaché (`nohup`, entrée `/dev/null`) — **code 0, aucune question** ;
+  conteneur `db` **non recréé** (« Running » : compose inchangé) ; app arrêtée de 15:45:14 à
+  15:45:35 UTC (≈ 21 s) ; archive pré-migration vérifiée
+  `keep/ygo-pre-migration-20260911-154526.sql.gz` ; inventaire à 19 tables ; rejeu du schéma puis
+  de 004, sans effet ; tous les contrôles `OK`.
+- **C4** : app et DB `healthy`, API saine, journal 001 à 004, journaux de l'app sans avertissement ni
+  erreur ; effectifs identiques à C2, sauf **6 chiffres de plan au lieu de 5** : écrit par l'ancienne
+  app entre C2 (sauvegarde de 15:43:11 : 5) et l'arrêt (archive de 15:45:26 : 6), donc une
+  utilisation du site pendant le déploiement, contenue dans l'archive de retour arrière. Relais sans
+  session → 401 ; conteneur de l'app → CDN 200 (JPEG) ; interface servie : « Télécharger le PDF »,
+  « Noms des cartes », chunk jsPDF servi (200, 390 767 octets).
+- **Retour arrière** : code `bc5a004` (C5, niveau 1) ; données
+  `keep/ygo-pre-migration-20260911-154526.sql.gz`.
+- **Reste à l'utilisateur** : télécharger la fiche d'un vrai deck et vérifier que les illustrations
+  figurent dans le PDF (premier essai réel du relais), puis l'imprimer.

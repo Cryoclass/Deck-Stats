@@ -47,8 +47,8 @@ cette étape ajoute une fonctionnalité, elle ne la rouvre pas.
 - **Vérifications exécutées** : `npm run typecheck`, `npm run build`, `node scripts/test-quiet.mjs` (254 web, 14 serveur), `npm run e2e -w web` (10 scénarios) ; 6 mutations détectées (P1–P6, docs/etape-10.md §15).
 - **Non fait / reporté** : relais non exercé de bout en bout par l'e2e (cartes synthétiques) ; Q5 (archétypes avec icône), ergonomie à 360 px de la vue Side, garde du retrait du side par le menu ⋯, écart et sources neutralisées sur la fiche (hors D4). Moteur et oracles intacts ; aucune commande vers le VPS ni la base de dev.
 - **Décisions ajoutées** : DECISIONS.md, section « Plans de side — retouche de la fiche » ; résumé dans docs/decisions-compressees.md.
-- **Déploiement** : non fait. La production reste à `bc5a004` (étape 10, déployée le 11 septembre : « Imprimer », une page visée) ; la retouche se déploie par la variante C0–C6 (code seul, aucune migration).
-- **Prochaine action** (utilisateur) : décider du push et du déploiement ; après déploiement, télécharger la fiche d'un vrai deck et vérifier que les illustrations y figurent (relais).
+- **Déploiement** : exécuté le 11 septembre 2026 par l'agent à la demande de l'utilisateur (`ssh goldfish`, C0–C6) — prod `bc5a004` → `4cf9493`, `deploy.sh` code 0 sans question, `db` non recréé, app coupée ≈ 21 s, contrôles OK ; retour arrière : code `bc5a004`, données `keep/ygo-pre-migration-20260911-154526.sql.gz` (docs/etape-10.md §15).
+- **Prochaine action** (utilisateur) : télécharger la fiche d'un vrai deck et vérifier que les illustrations figurent dans le PDF (premier essai réel du relais) ; mise à jour de `fastify` / `fast-uri` (vulnérabilités signalées au build) à planifier à part.
 
 ## Compte rendu final de la mission (9 septembre 2026)
 
