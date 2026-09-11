@@ -401,3 +401,46 @@ précise des groupes ET/OU, stratégie de calcul et d'annulation, schéma de
 persistance, traitement explicite des anciennes annotations ambiguës et limite de
 coût des très grands decks. Toute découverte modifiant les règles ci-dessus devra
 être annoncée avant de les changer.
+
+## 8. Plans de side (étape 10)
+
+Source : docs/etape-10.md (décisions D1–D18, règles R1–R9). Un **adversaire** porte deux volets,
+premier et second ; un **plan** est deux listes agrégées, sans appariement : copies qui quittent le
+main, copies qui entrent depuis le side.
+
+- **Structure contre cohérence.** Le contrat de configuration valide la structure d'un plan (copies
+  1–3, carte non répétée dans une liste, jamais entrante et sortante à la fois, une position au plus
+  par adversaire, 32 adversaires au plus). Il ne valide **ni** l'appartenance des cartes à leur zone,
+  **ni** l'équilibre des listes, **ni** la convention 1–3 du main dérivé : un plan devenu incohérent
+  reste enregistrable.
+- **États d'un plan.** *Prêt* : cartes dans leur zone, listes équilibrées, main dérivé conforme.
+  *Incomplet* : listes déséquilibrées (une retouche l'a produit). *À revoir* : une carte a quitté sa
+  zone, ou le main dérivé dépasserait 3 exemplaires ; prime sur *incomplet*. Seul un plan prêt est
+  analysé ou imprimé ; un plan vide est prêt et vaut le deck de base.
+- **Échange.** N'accepte qu'une sélection équilibrée ; refusé s'il ferait entrer et sortir la même
+  carte, ou s'il **crée** un écart avec les zones (un écart déjà présent ne bloque pas un échange qui
+  ne l'aggrave pas). Retirer une copie d'un plan ne rééquilibre jamais rien en silence.
+- **Deck sidé.** Main dérivé + toutes les annotations du deck, inchangées : une carte de side
+  annotée (starter, paire, condition, mortes) s'active en entrant ; une condition dont une carte
+  requise sort, ou n'y reste plus en assez d'exemplaires, devient impossible — la source est dite
+  **neutralisée par le plan** (pas si elle l'était déjà dans le deck de base).
+- **Annoter le side.** Une annotation ne relance le calcul du deck de base que si elle change
+  l'entrée du moteur ; une annotation portée par une carte hors main ne la change pas. La règle est
+  exacte : une condition de carte de side qui exige une carte du main promeut celle-ci en type
+  suivi, l'entrée change, le calcul repart.
+- **Indicateurs d'un plan**, calculés dans le contexte de sa position (un plan premier en premier ·
+  5 cartes, un plan second en second · 5 cartes + pioche) :
+
+  | | Définition |
+  | --- | --- |
+  | I1 | P(S ≥ 1) |
+  | I2 | P(U ≥ 2) |
+  | I3 « main forte » | premier : P(S ≥ 2 et U ≥ 1) · second : P(S ≥ 2 et U ≥ 2) |
+
+  S et U sont ceux du §5 ; les indicateurs sont des requêtes du mode Requête, au bit près. L'écart
+  affiché est celui du deck sidé moins le deck de base dans la même position, jamais contre un
+  résultat périmé.
+- **Cache.** Les chiffres d'un plan portent l'empreinte de l'entrée complète du moteur du deck sidé,
+  de la version du moteur, de la position et de la définition des indicateurs ; une empreinte
+  différente = pas affichés, recalculés. Ils ne sont persistés que pour un deck sans modification non
+  enregistrée.

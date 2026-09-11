@@ -1,7 +1,7 @@
 import type { EngineInput, PassResult } from '../engine/types.js';
 import { queryProbability, type QueryCriterion } from '../engine/query.js';
 import type { ComputeMode } from '../worker/computeClient.js';
-import type { DeckCard, SidePlan, SidePlanPosition } from '../types.js';
+import type { ComboPair, ConditionNode, DeckCard, SidePlan, SidePlanPosition, StartCondition } from '../types.js';
 import type { EngineModelSource } from './engineModel.js';
 import type { PlanSummary } from '../../../server/src/domain/deckSummary.js';
 import { ENGINE_VERSION } from './summary.js';
@@ -160,4 +160,44 @@ export function usablePlanSummary(value: unknown, input: EngineInput, position: 
   if (s.engineVersion !== engineVersion || s.fingerprint !== planFingerprint(input, position, engineVersion)) return null;
   if (s.mainSize !== input.deckSize || !rate(s.startOne) || !rate(s.nonEngineTwo) || !rate(s.strongHand) || typeof s.computedAt !== 'string') return null;
   return { engineVersion, fingerprint: s.fingerprint, mainSize: s.mainSize, startOne: s.startOne, nonEngineTwo: s.nonEngineTwo, strongHand: s.strongHand, computedAt: s.computedAt };
+}
+
+/** Source de start que le plan rend inconditionnellement fausse (Q3). */
+export type NeutralizedSource =
+  | { kind: 'starter'; cardId: number }
+  | { kind: 'pair'; pairId: string; cardA: number; cardB: number };
+
+interface SourceState {
+  starters: Set<number>;
+  pairs: ComboPair[];
+  pairExclusions: Set<string>;
+  startConditions: StartCondition[];
+}
+
+/** Une condition ne peut JAMAIS être vraie : une feuille « il reste ≥ n copies » d'une carte qui en
+ *  a moins de n dans le deck est fausse quel que soit le tirage ; ET faux dès qu'un enfant l'est,
+ *  OU faux si tous le sont. */
+function alwaysFalse(node: ConditionNode, copies: Map<number, number>): boolean {
+  if (node.kind === 'remaining') return (copies.get(node.card_id) ?? 0) < node.at_least;
+  return node.kind === 'and' ? node.all.some((c) => alwaysFalse(c, copies)) : node.any.every((c) => alwaysFalse(c, copies));
+}
+
+/** Sources de start qu'un plan neutralise (Q3) : actives dans le deck sidé, leur condition pouvait
+ *  être vraie dans le deck de base et ne le peut plus après échange — une carte requise sort, ou
+ *  n'y reste plus en assez d'exemplaires. Première cause d'un chiffre qui s'effondre ; une source
+ *  déjà impossible dans le deck de base n'est pas imputée au plan. */
+export function neutralizedSources(state: SourceState, baseMain: readonly DeckCard[], sidedMain: readonly DeckCard[]): NeutralizedSource[] {
+  const base = copiesOf(baseMain);
+  const sided = copiesOf(sidedMain);
+  const out: NeutralizedSource[] = [];
+  for (const r of state.startConditions) {
+    if (!alwaysFalse(r.condition, sided) || alwaysFalse(r.condition, base)) continue;
+    if (r.sourceCardId !== null) {
+      if (state.starters.has(r.sourceCardId) && sided.has(r.sourceCardId)) out.push({ kind: 'starter', cardId: r.sourceCardId });
+      continue;
+    }
+    const p = state.pairs.find((x) => x.id === r.sourcePairId);
+    if (p && !state.pairExclusions.has(p.id) && sided.has(p.card_a_id) && sided.has(p.card_b_id)) out.push({ kind: 'pair', pairId: p.id, cardA: p.card_a_id, cardB: p.card_b_id });
+  }
+  return out;
 }

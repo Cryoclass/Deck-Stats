@@ -2,21 +2,22 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 /** Routeur minimal (§4C) : accueil `/decks`, éditeur `/decks/:id`, comparateur
  *  `/compare/:a/:b` (itération 9). Pas de dépendance externe — on contrôle toute la
- *  navigation via l'API History. */
+ *  navigation via l'API History. Étape 10C : `/decks/:id/side` ouvre l'éditeur sur l'onglet
+ *  « Plans de side » (lien profond ; changer d'onglet ne réécrit pas l'URL). */
 export type Route =
   | { name: 'home' }
-  | { name: 'editor'; id: string }
+  | { name: 'editor'; id: string; tab?: 'side' }
   | { name: 'compare'; a: string; b: string };
 
 function parse(pathname: string): Route {
   const c = pathname.match(/^\/compare\/([^/?#]+)\/([^/?#]+)/);
   if (c) return { name: 'compare', a: decodeURIComponent(c[1]), b: decodeURIComponent(c[2]) };
-  const m = pathname.match(/^\/decks\/([^/?#]+)/);
-  return m ? { name: 'editor', id: decodeURIComponent(m[1]) } : { name: 'home' };
+  const m = pathname.match(/^\/decks\/([^/?#]+)(\/side)?/);
+  return m ? { name: 'editor', id: decodeURIComponent(m[1]), ...(m[2] ? { tab: 'side' as const } : {}) } : { name: 'home' };
 }
 
 function toPath(route: Route): string {
-  if (route.name === 'editor') return `/decks/${route.id}`;
+  if (route.name === 'editor') return `/decks/${route.id}${route.tab === 'side' ? '/side' : ''}`;
   if (route.name === 'compare') return `/compare/${route.a}/${route.b}`;
   return '/decks';
 }

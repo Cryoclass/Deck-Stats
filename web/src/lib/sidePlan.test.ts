@@ -8,6 +8,7 @@ import { parseConfiguration } from '../../../server/src/domain/deckConfiguration
 import {
   applyPlan,
   indicatorCriteria,
+  neutralizedSources,
   planComputeMode,
   planFingerprint,
   planIndicators,
@@ -198,5 +199,28 @@ describe('cache des chiffres d’un plan : jamais affiché périmé (R9)', () =>
     }
     const { strongHand: _omitted, ...incomplete } = summary;
     expect(usablePlanSummary(incomplete, input, 'second', 'v1')).toBeNull();
+  });
+});
+
+describe('sources de start neutralisées par un plan (Q3)', () => {
+  const src = source();
+  const sided = applyPlan(src.main, src.side, SECOND).main!;
+
+  it('nomme le starter dont la carte requise sort, pas celui qu’une autre branche OU garde vivant', () => {
+    expect(neutralizedSources(src, src.main, sided)).toEqual([{ kind: 'starter', cardId: STARTER }]);
+    const alive = { ...src, startConditions: [{ ...src.startConditions[0], condition: { kind: 'or' as const, any: [{ kind: 'remaining' as const, card_id: TARGET, at_least: 1 }, { kind: 'remaining' as const, card_id: 11, at_least: 1 }] } }] };
+    expect(neutralizedSources(alive, src.main, sided)).toEqual([]);
+    const untouched = applyPlan(src.main, src.side, { ...SECOND, outgoing: [{ card_id: 10, copies: 3 }] }).main!;
+    expect(neutralizedSources(src, src.main, untouched)).toEqual([]);
+  });
+
+  it('une paire active dont la condition tombe est nommée ; exclue, elle ne l’est pas ; déjà impossible, non imputée', () => {
+    const P = '00000000-0000-4000-8000-0000000000p1'.replace('p', 'a');
+    const withPair = { ...src, pairs: [{ id: P, card_a_id: STARTER, card_b_id: HT }], pairExclusions: new Set<string>(),
+      startConditions: [{ id: 'c', sourceCardId: null, sourcePairId: P, condition: { kind: 'remaining' as const, card_id: TARGET, at_least: 1 } }] };
+    expect(neutralizedSources(withPair, src.main, sided)).toEqual([{ kind: 'pair', pairId: P, cardA: STARTER, cardB: HT }]);
+    expect(neutralizedSources({ ...withPair, pairExclusions: new Set([P]) }, src.main, sided)).toEqual([]);
+    const impossible = { ...src, startConditions: [{ ...src.startConditions[0], condition: { kind: 'remaining' as const, card_id: TARGET, at_least: 2 } }] };
+    expect(neutralizedSources(impossible, src.main, sided)).toEqual([]);
   });
 });

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useDeck } from '../store/deckStore.js';
-import { AVAILABILITY_HINT, AVAILABILITY_LABEL } from '../types.js';
+import { AVAILABILITY_HINT, AVAILABILITY_LABEL, type Zone } from '../types.js';
+import { ZONE_LABEL } from '../lib/zones.js';
 import { AVAILABILITY_PROFILES } from '../../../server/src/domain/deckConfiguration.js';
 
 /**
@@ -13,9 +14,12 @@ import { AVAILABILITY_PROFILES } from '../../../server/src/domain/deckConfigurat
  */
 export function CardMenu({
   cardId,
+  zone = 'main',
   onOpenDetail,
 }: {
   cardId: number;
+  /** Étape 10C : une tuile du side retire du side, jamais du main. */
+  zone?: Zone;
   onOpenDetail: () => void;
 }) {
   const cards = useDeck((s) => s.cards);
@@ -63,8 +67,8 @@ export function CardMenu({
           </div>
 
           <Item onSelect={onOpenDetail}>Détails de la carte</Item>
-          <Item onSelect={() => removeCard(cardId)} danger>
-            Retirer du deck
+          <Item onSelect={() => removeCard(cardId, zone)} danger>
+            {zone === 'main' ? 'Retirer du deck' : `Retirer du ${ZONE_LABEL[zone]}`}
           </Item>
 
           <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />

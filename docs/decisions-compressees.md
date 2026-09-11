@@ -266,3 +266,12 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Empreinte d'un plan = FNV-1a 64 de (version du moteur, position, critères sérialisés, entrée complète du moteur) : une modification de bibliothèque périme sans invalidation serveur ; un échange neutre ↔ neutre ne périme rien (moteur identique).
 - `sidePlan.ts` hors `__ENGINE_VERSION__` (aucun aperçu périmé) ; plan second en mode `passes`, worker inchangé.
 - `PUT /decks/:id/matchups/:matchupId/plans/:position/summary` : révision (409), taille après échange (400), plan inconnu (404), révision et `updated_at` intacts ; `plan_summaries` dans `GET /decks/:id`, hors configuration, jamais effacés par un enregistrement.
+
+## Étape 10, partie C — annotation du side, onglet « Plans de side » (11 septembre 2026)
+- Onglet « Plans de side » de l'éditeur (même store, Enregistrer, brouillons) ; `/decks/:id/side` = lien profond vers l'onglet, l'URL ne suit pas les onglets.
+- Deck de base à copies marquées : une tuile par exemplaire, premières copies = engagées (« sort » / « entre », estompées), clic dessus = retrait d'une copie du plan ; clic gauche = clic droit.
+- `annotationCalc` : recalcul seulement si l'entrée du moteur change (comparaison au résultat frais ; dans le doute, recalcul) — règle exacte, une condition de carte de side exigeant une carte du main recalcule ; `libraryCalc` pour les annotations du compte.
+- Bloc side = vraies `CardTile zone="side"` (96 px, « hors calcul », menu ⋯ qui retire du side) ; extra inchangé (D17).
+- Adversaire créé avec ses deux volets vides ; échange refusé s'il CRÉE un écart (un plan « à revoir » accepte un échange qui n'aggrave rien) ; refus nommé.
+- Chiffres du plan : client propre à la vue, différé 150 ms et annulé, cache par empreinte ; persistés seulement si rien n'est « non enregistré » ; écart jamais contre un résultat périmé.
+- Sources neutralisées = condition devenue impossible dans le deck sidé et possible dans la base ; « Échanger » en bouton secondaire (un seul émeraude par écran).

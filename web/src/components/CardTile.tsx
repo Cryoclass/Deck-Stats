@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
-import { AVAILABILITY_LABEL, AVAILABILITY_SHORT, type Card } from '../types.js';
+import { AVAILABILITY_LABEL, AVAILABILITY_SHORT, type Card, type Zone } from '../types.js';
+import { ZONE_LABEL } from '../lib/zones.js';
 import { comboColor, comboVeil, type GroupAssignment } from '../lib/colors.js';
 import { signedPct } from '../lib/fmt.js';
 import { CardImage } from './CardImage.js';
@@ -11,6 +12,9 @@ import type { NonEngineEffect } from '../lib/nonEngine.js';
 
 interface Props {
   cardId: number;
+  /** Étape 10C : `side` = tuile annotable du side (tous les modes, menu ⋯, stepper du side), sans
+   *  delta ni couleur de groupe — ses annotations servent aux plans de side, jamais au calcul. */
+  zone?: Zone;
   groups: GroupAssignment;
   delta?: { first: number; second: number };
   mode: AnnotationMode;
@@ -31,6 +35,7 @@ interface Props {
 
 export function CardTile({
   cardId,
+  zone = 'main',
   groups,
   delta,
   mode,
@@ -46,7 +51,7 @@ export function CardTile({
   onHoverChange,
 }: Props) {
   const card = useDeck((s) => s.cards[cardId]) as Card | undefined;
-  const copies = useDeck((s) => s.main.find((m) => m.cardId === cardId)?.copies ?? 1);
+  const copies = useDeck((s) => s[zone].find((m) => m.cardId === cardId)?.copies ?? 1);
   const isStarter = useDeck((s) => s.starters.has(cardId));
   const isHopt = useDeck((s) => s.hopt.has(cardId));
   const deadFirst = useDeck((s) => s.deadFirst.has(cardId));
@@ -104,6 +109,8 @@ export function CardTile({
   return (
     <div
       ref={rootRef}
+      data-zone-tile={zone === 'main' ? undefined : zone}
+      data-card-id={zone === 'main' ? undefined : cardId}
       onMouseEnter={() => onHoverChange?.(true)}
       onMouseLeave={() => onHoverChange?.(false)}
       className={`group relative flex flex-col rounded-md border bg-ink-900 transition-opacity ${border} ${
@@ -214,15 +221,15 @@ export function CardTile({
       <div className="flex items-center justify-center pt-1">
         <div className="flex shrink-0 items-center rounded border border-ink-700 bg-ink-850">
           <button
-            onClick={() => setCopies(cardId, copies - 1)}
+            onClick={() => setCopies(cardId, copies - 1, zone)}
             className="flex h-8 w-8 items-center justify-center text-sm text-ink-300 hover:text-ink-100"
-            title={copies <= 1 ? 'Retirer du deck (0 copie)' : 'Moins de copies'}
+            title={copies <= 1 ? (zone === 'main' ? 'Retirer du deck (0 copie)' : `Retirer du ${ZONE_LABEL[zone]} (0 copie)`) : 'Moins de copies'}
           >
             −
           </button>
           <span className="tnum w-3 text-center text-[11px] text-ink-100">{copies}</span>
           <button
-            onClick={() => setCopies(cardId, copies + 1)}
+            onClick={() => setCopies(cardId, copies + 1, zone)}
             disabled={copies >= 3}
             className="flex h-8 w-8 items-center justify-center text-sm text-ink-300 hover:text-ink-100 disabled:opacity-30"
             title="Plus de copies"
@@ -234,6 +241,15 @@ export function CardTile({
 
       {/* Delta permanent : contribution marginale (§3.2) du contexte d'analyse courant. */}
       <div className="flex items-center gap-0.5 pb-0.5 pl-0.5">
+        {zone !== 'main' ? (
+          <div
+            data-off-calc
+            className="min-w-0 flex-1 whitespace-nowrap text-center text-[10px] leading-none text-ink-600"
+            title="Carte du side : ses annotations servent aux plans de side, jamais au calcul du deck de base."
+          >
+            hors calcul
+          </div>
+        ) : (
         <div
           className={`tnum min-w-0 flex-1 whitespace-nowrap text-center text-[10px] leading-none text-ink-500 transition-opacity ${
             stale ? 'opacity-45' : ''
@@ -244,7 +260,8 @@ export function CardTile({
         >
           {delta && Math.abs(contextDelta) > 1e-9 ? `−1 : ${signedPct(-contextDelta)}` : ' '}
         </div>
-        <CardMenu cardId={cardId} onOpenDetail={() => setDetailOpen(true)} />
+        )}
+        <CardMenu cardId={cardId} zone={zone} onOpenDetail={() => setDetailOpen(true)} />
       </div>
 
       {detailOpen && <CardDetailDialog cardId={cardId} onClose={() => setDetailOpen(false)} />}

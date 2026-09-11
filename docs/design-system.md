@@ -376,6 +376,24 @@ stepper de la recette §7.6 à 32 px (`h-8 w-8`), aucun delta ni menu ⋯, d'où
 (4 colonnes à 360 px, 10 à 1440 px avec le panneau). Le toast de retrait (§7.13) nomme la zone
 quittée (« Retirée du side deck : … ») et son « Annuler » restaure dans cette zone.
 
+Plans de side (étape 10C). Dans la grille d'annotation, le bloc **side** rend de vraies tuiles
+(`CardTile zone="side"`, 96 px comme le main : tous les modes, badges, menu ⋯ qui retire **du side**) ;
+à la place du delta, « hors calcul » en `text-ink-600` (ni delta ni couleur de groupe : ces cartes ne
+sont pas dans le calcul du deck de base). L'extra garde `ZoneCardTile` (80 px, nu). L'onglet
+« Plans de side » de l'éditeur : puces d'adversaire à 32 px (`h-8`, active `bg-ink-700`) en
+`flex-wrap`, champ d'ajout et « + Ajouter » à 32 px ; ligne de l'adversaire en `flex-wrap` (nom en
+champ transparent, contrôle segmenté Premier / Second, puce d'état en triplet — émeraude « Prêt »,
+ambre « Incomplet » / « À revoir » —, taille « main 40 → 40 » en `tnum`, « Supprimer l'adversaire »
+fantôme). Main et side en `md:grid-cols-[2fr_1fr]`, empilés sous 768 px ; une tuile **par
+exemplaire** (`repeat(auto-fill, minmax(56px, 1fr))`, image seule au ratio 59/86) : sélectionnée =
+`ring-2 ring-emerald-300` + voile `emerald-500/20` et ✓ ; engagée dans le plan = `opacity-45` et
+marqueur « sort » / « entre » en bas à droite (`bg-black/75`, 10 px, §7.15) ; clic gauche et clic
+droit ont le même effet (menu natif neutralisé dans cette vue). « Échanger » est le bouton
+secondaire à 32 px (`bg-ink-700`, `font-medium`) : un seul bouton émeraude par écran, et c'est
+Enregistrer. Listes du plan en puces de 24 px avec ✕ de 24 px ; écarts et sources neutralisées en
+bandeau ambre (§7.12) ; chiffres en paires libellé / valeur (§3.5), écart signé en émeraude / rouge
+par signe exact, « · » pour zéro.
+
 ### 6.4 Ascenseurs
 
 Discrets et cohérents avec le chrome — à reprendre tel quel :

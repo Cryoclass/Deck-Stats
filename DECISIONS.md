@@ -1,5 +1,42 @@
 # Décisions & écarts vs. document de référence
 
+## Plans de side — étape 10, partie C (annotation du side, onglet « Plans de side »), 11 septembre 2026
+
+Compte rendu, vérifications et mutations dans [docs/etape-10.md](docs/etape-10.md) (§12). Disposition
+tranchée par l'utilisateur au lancement de 10C : onglet de l'éditeur, deck de base à copies marquées.
+
+- **Un onglet, pas une page** (précise le §6 du plan, qui disait « vue /decks/:id/side ») : même
+  store, même Enregistrer, mêmes brouillons et garde « non enregistré » ; le panneau de stats reste
+  celui du deck de base, référence de l'écart. `/decks/:id/side` est un **lien profond** vers
+  l'onglet ; changer d'onglet ne réécrit pas l'URL.
+- **Le deck de base, copies marquées** : main et side tels qu'enregistrés, une tuile par exemplaire ;
+  les premières copies d'une carte sont celles que le plan engage (estompées « sort » / « entre »), un
+  clic sur l'une d'elles retire une copie du plan. Le geste reste symétrique et colle aux deux listes.
+- **Recalcul exact plutôt que règle par carte.** `annotationCalc` compare l'entrée du moteur à celle du
+  résultat frais : identique → « non enregistré » seul ; différente, ou calcul en cours, résultat
+  périmé ou absent → recalcul. Une règle « la carte est-elle dans le main ? » aurait été fausse : une
+  condition portée par une carte de side mais exigeant une carte du main promeut celle-ci en type
+  suivi, l'entrée change. Même règle, sans « non enregistré », pour les annotations du compte
+  (`libraryCalc`).
+- **Le bloc side rend de vraies tuiles** (`CardTile zone="side"`, 96 px) ; le menu ⋯ retire **du
+  side** (piège : il retirait du main par défaut). L'extra garde sa tuile nue (D17).
+- **Un adversaire naît avec ses deux volets vides** ; volet affiché par défaut : Premier.
+- **Un échange est refusé s'il CRÉE un écart** avec les zones ; un plan déjà « à revoir » accepte un
+  échange qui n'aggrave rien, sinon l'utilisateur serait bloqué sans pouvoir avancer. Le refus est
+  nommé dans l'en-tête (`persistenceError`) et sous la barre d'échange.
+- **Chiffres du plan ouvert** : client de calcul propre à la vue (comme le comparateur), calcul
+  différé de 150 ms et annulé à chaque changement, cache mémoire par empreinte, chiffres stockés
+  réutilisés s'ils portent l'empreinte courante. **Persistés seulement si rien n'est « non
+  enregistré »** : le plan calculé est alors celui du serveur (sinon la route vérifierait la taille
+  d'un plan qui n'est pas celui calculé). Écart jamais calculé contre un résultat périmé.
+- **Sources neutralisées** = condition devenue impossible dans le deck sidé (feuille exigeant plus
+  d'exemplaires qu'il n'en reste, ET dont un enfant l'est, OU dont tous le sont), non imputées au plan
+  si elles l'étaient déjà dans le deck de base.
+- **« Échanger » est un bouton secondaire à 32 px**, pas émeraude : la charte réserve l'émeraude à une
+  seule action par écran, Enregistrer.
+- **Non couvert par une garde automatique** : le retrait « du side » depuis le menu ⋯ (aucun test
+  React dans le dépôt, et l'e2e n'ouvre pas ce menu) — vérifié à la lecture du code.
+
 ## Plans de side — étape 10, partie B (deck sidé calculable, cache des chiffres), 11 septembre 2026
 
 Compte rendu, vérifications et mutations dans [docs/etape-10.md](docs/etape-10.md) (§11). Partie B :

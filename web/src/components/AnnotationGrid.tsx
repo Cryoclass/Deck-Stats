@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDeck } from '../store/deckStore.js';
 import { assignGroups } from '../lib/colors.js';
 import { leavesOf } from '../lib/conditions.js';
@@ -124,14 +124,15 @@ export function AnnotationGrid({
   const linkedSet = useMemo(() => {
     const s = new Set<number>();
     if (comboPivot === null) return s;
-    const inMain = new Set(main.map((c) => c.cardId));
+    // Étape 10C : le side s'annote aussi (paire entre une carte de side et une carte du main).
+    const inDeck = new Set([...main, ...side].map((c) => c.cardId));
     for (const p of pairs) {
       if (excl.has(p.id)) continue;
-      if (p.card_a_id === comboPivot && inMain.has(p.card_b_id)) s.add(p.card_b_id);
-      if (p.card_b_id === comboPivot && inMain.has(p.card_a_id)) s.add(p.card_a_id);
+      if (p.card_a_id === comboPivot && inDeck.has(p.card_b_id)) s.add(p.card_b_id);
+      if (p.card_b_id === comboPivot && inDeck.has(p.card_a_id)) s.add(p.card_a_id);
     }
     return s;
-  }, [comboPivot, pairs, excl, main]);
+  }, [comboPivot, pairs, excl, main, side]);
 
   // Cartes dépendantes (sources de condition carte) → marqueur permanent (§D).
   const dependents = useMemo(
@@ -208,6 +209,23 @@ export function AnnotationGrid({
     }
   };
 
+  // Props communes d'une tuile annotable, main ou side (étape 10C) : mêmes modes, mêmes marqueurs.
+  const tileProps = (cardId: number) => ({
+    cardId,
+    groups,
+    mode,
+    activeCategoryId,
+    nonEngineEffect: effectOf(cardId),
+    comboPivot,
+    linkedToPivot: linkedSet.has(cardId),
+    onCardClick: dispatch,
+    highlighted: highlightCardId === cardId,
+    showPrereqMarker: dependents.has(cardId),
+    prereqHighlight: activeDependent === cardId ? ('source' as const) : requiredByActive.has(cardId) ? ('required' as const) : null,
+    prereqDim: mode === 'prereq' && prereqSource !== null && prereqSource !== cardId && !requiredByActive.has(cardId),
+    onHoverChange: (h: boolean) => setHoveredCard((prev) => (h ? cardId : prev === cardId ? null : prev)),
+  });
+
   // Étape 9C : extra et side éditables, un bloc par zone (« + Ajouter », tuiles de 80 px,
   // stepper de 32 px), toujours rendus — même sans main deck, même vides — pour qu'un ajout
   // reste possible ; le repli (▸ / ▾) masque les deux blocs ensemble.
@@ -222,7 +240,8 @@ export function AnnotationGrid({
       {!extraSideHidden && (
         <div className="flex flex-col gap-4">
           <ZoneBlock zone="extra" cards={extra} onAdd={() => setAddOpen('extra')} />
-          <ZoneBlock zone="side" cards={side} onAdd={() => setAddOpen('side')} />
+          {/* Étape 10C : le side s'annote (vraies tuiles, tous les modes) pour les plans de side ; l'extra reste nu (D17). */}
+          <ZoneBlock zone="side" cards={side} onAdd={() => setAddOpen('side')} renderTile={(c) => <CardTile key={`side-${c.cardId}`} zone="side" {...tileProps(c.cardId)} />} />
         </div>
       )}
     </div>
@@ -279,36 +298,7 @@ export function AnnotationGrid({
           style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}
         >
           {main.map((c) => (
-            <CardTile
-              key={c.cardId}
-              cardId={c.cardId}
-              groups={groups}
-              delta={deltas.get(c.cardId)}
-              mode={mode}
-              activeCategoryId={activeCategoryId}
-              nonEngineEffect={effectOf(c.cardId)}
-              comboPivot={comboPivot}
-              linkedToPivot={linkedSet.has(c.cardId)}
-              onCardClick={dispatch}
-              highlighted={highlightCardId === c.cardId}
-              showPrereqMarker={dependents.has(c.cardId)}
-              prereqHighlight={
-                activeDependent === c.cardId
-                  ? 'source'
-                  : requiredByActive.has(c.cardId)
-                    ? 'required'
-                    : null
-              }
-              prereqDim={
-                mode === 'prereq' &&
-                prereqSource !== null &&
-                prereqSource !== c.cardId &&
-                !requiredByActive.has(c.cardId)
-              }
-              onHoverChange={(h) =>
-                setHoveredCard((prev) => (h ? c.cardId : prev === c.cardId ? null : prev))
-              }
-            />
+            <CardTile key={c.cardId} {...tileProps(c.cardId)} delta={deltas.get(c.cardId)} />
           ))}
           {/* Ajout d'une carte en fin de grille (itération 3, A). */}
           <button
@@ -330,8 +320,9 @@ export function AnnotationGrid({
 }
 
 /** Bloc d'une zone hors calcul (étape 9C) : compteur (repère 15, avertissement seulement — Q5),
- *  « + Ajouter » à 32 px, tuiles de 80 px (image + stepper). */
-function ZoneBlock({ zone, cards, onAdd }: { zone: Zone; cards: DeckCard[]; onAdd: () => void }) {
+ *  « + Ajouter » à 32 px, tuiles de 80 px (image + stepper). Étape 10C : `renderTile` rend de vraies
+ *  tuiles annotables (side), à 96 px comme la grille du main. */
+function ZoneBlock({ zone, cards, onAdd, renderTile }: { zone: Zone; cards: DeckCard[]; onAdd: () => void; renderTile?: (c: DeckCard) => ReactNode }) {
   const count = zoneCount(cards);
   const over = overSoftLimit(zone, count);
   return (
@@ -358,10 +349,8 @@ function ZoneBlock({ zone, cards, onAdd }: { zone: Zone; cards: DeckCard[]; onAd
       {cards.length === 0 ? (
         <p className="text-[11px] text-ink-600">Aucune carte.</p>
       ) : (
-        <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))' }}>
-          {cards.map((c) => (
-            <ZoneCardTile key={`${zone}-${c.cardId}`} cardId={c.cardId} zone={zone} />
-          ))}
+        <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${renderTile ? 96 : 80}px, 1fr))` }}>
+          {cards.map((c) => (renderTile ? renderTile(c) : <ZoneCardTile key={`${zone}-${c.cardId}`} cardId={c.cardId} zone={zone} />))}
         </div>
       )}
     </section>

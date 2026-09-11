@@ -1,8 +1,8 @@
 # Étape 10 — Plans de side
 
-> **Plan validé le 10 septembre 2026. Partie A livrée le même jour** (compte rendu en §10), **partie B le 11 septembre** (§11).
+> **Plan validé le 10 septembre 2026. Partie A livrée le même jour** (compte rendu en §10), **partie B le 11 septembre** (§11), **partie C le même jour** (§12).
 > Cadrage mené en trois tours de questions ; les décisions sont consignées en §2 (D1–D18),
-> les questions ouvertes tranchées en §9. Reste à faire : 10C, 10D (§6).
+> les questions ouvertes tranchées en §9. Reste à faire : 10D (§6).
 
 ## 1. Intention
 
@@ -431,3 +431,86 @@ revision)` (409 ignoré). À l'ouverture, `usablePlanSummary(detail.plan_summari
 position)` dit si un chiffre stocké est affichable. Restent à 10C : les mutations du store sur
 `matchups` (ajout d'adversaire, échange, retrait, note), le bloc side annotable sans recalcul hors
 main, la vue elle-même, et la liste des sources neutralisées.
+
+## 12. Compte rendu 10C (11 septembre 2026)
+
+**Périmètre** : la partie visible. Le side s'annote dans la grille sans relancer le calcul du deck de
+base ; l'onglet « Plans de side » permet de créer les adversaires, de faire les échanges et de lire
+les chiffres du deck sidé.
+
+Disposition tranchée au lancement (deux questions, réponses de l'utilisateur) : **onglet** de
+l'éditeur plutôt que page séparée ; **deck de base à copies marquées** plutôt que deck après échange.
+
+### Livré
+
+- **Store** (`deckStore.ts`) : `annotationCalc` — une annotation ne recalcule que si l'entrée du
+  moteur change (comparaison au résultat frais ; dans le doute, recalcul) — pour starter, paires,
+  exclusions, conditions, mortes ; `libraryCalc` pour HOPT, étiquettes, profils et plafonds d'une
+  carte ; actions `addMatchup`, `renameMatchup`, `removeMatchup`, `swapInPlan`, `removeFromPlan`,
+  `setPlanNote`, `copyPlan` (« non enregistré » + brouillon, jamais de recalcul) ; `planSummaries`
+  chargés avec le deck, `setPlanSummary` (cache seul).
+- **`lib/matchups.ts`** (pur) : adversaire créé avec ses deux volets vides, échange refusé s'il est
+  déséquilibré, fait entrer et sortir la même carte ou **crée** un écart avec les zones, retrait
+  d'une copie sans rééquilibrage, note, recopie d'un volet sur l'autre, messages d'écart.
+- **`lib/sidePlan.ts`** : `neutralizedSources` — starters et paires rendus impossibles par le plan.
+- **Grille** : bloc side en vraies `CardTile zone="side"` (96 px, tous les modes, badges, « hors
+  calcul », menu ⋯ qui retire du side) ; combos entre une carte de side et une du main ; l'extra ne
+  change pas.
+- **Onglet « Plans de side »** (`SidePlanner.tsx`) et lien profond `/decks/:id/side` : puces
+  d'adversaire, ajout, nom, volet Premier / Second, état et taille du main dérivé, copies dépliées du
+  main et du side, sélection au clic gauche et droit, « Échanger », retrait d'une copie engagée,
+  listes −/+ avec ✕, écarts nommés, sources neutralisées, trois chiffres et écart avec le deck de
+  base, note, recopie, suppression ; chiffres calculés par un client propre à la vue et persistés
+  quand rien n'est « non enregistré ».
+- **Docs** : contrat métier §8 « Plans de side » (les règles R1–R9 que le §5 du plan demandait
+  d'inscrire), charte §6.3, AGENTS.md, DECISIONS.md, décisions compressées.
+
+### Vérifications exécutées
+
+`npm run typecheck` · `npm run build` · `node scripts/test-quiet.mjs` (243 web, 12 serveur) ·
+`npm run e2e -w web` (9 scénarios : les 8 existants verts sur le code de 10C, dont `extraside` sur les
+nouvelles tuiles de side ; `side` vert après correction du scénario, rejoué avec `setup`). Ni suite
+PostgreSQL, ni séquence de migration, ni répétition : 10C ne touche ni serveur, ni migration, ni
+`deploy/`.
+
+Tests ajoutés : `lib/matchups.test.ts` (9), `store/sidePlans.test.ts` (6) — dont la preuve que la
+règle de recalcul est exacte et non par carte —, `lib/sidePlan.test.ts` (+2, sources neutralisées) ;
+scénario e2e `side` (P1–P6, fixture restaurée).
+
+**Premier passage de l'e2e** : deux gardes du **scénario** en échec, aucune de l'application — l'écart
+était affiché mais l'en-tête, en majuscules CSS, ne correspondait pas à une expression sensible à la
+casse (la garde vérifie désormais les trois cellules d'écart) ; la relecture finale de la fixture
+était faite après la fermeture du navigateur, dont le contexte porte les requêtes (elle est
+désormais faite avant). La pile jetable étant démontée à chaque passage, aucune donnée n'a subsisté.
+
+### Contrôle par mutation (5 posées, 5 détectées)
+
+| # | Mutation | Garde qui tombe |
+| --- | --- | --- |
+| C1 | Une annotation ne recalcule jamais, même sur une carte du main | store, « la même annotation sur une carte du main recalcule » |
+| C2 | Une annotation recalcule toujours, même hors main | store, « aucun recalcul, résultat frais » |
+| C3 | Échange déséquilibré accepté | matchups, « refuse une sélection déséquilibrée » |
+| C4 | Échange qui crée un écart avec les zones accepté | matchups, « refuse un échange qui crée un écart » |
+| C5 | Source déjà impossible dans le deck de base imputée au plan | sidePlan, « déjà impossible, non imputée » |
+
+La sélection au clic droit, le refus d'« Échanger » à −2 / +1, l'absence de recalcul à l'écran et la
+persistance des chiffres après enregistrement sont gardés par l'e2e `side` (P1–P4).
+
+### Non couvert par une garde automatique
+
+Le retrait « du side » depuis le menu ⋯ d'une tuile de side : le dépôt n'a aucun test React et l'e2e
+n'ouvre pas ce menu. Vérifié à la lecture (`CardMenu` reçoit la zone de la tuile).
+
+### Non fait / reporté
+
+10D (fiche imprimable, comparateur sur un deck sidé). Aucun test existant modifié ; moteur, oracles,
+worker, `engineModel.ts`, `conditions.ts`, `summary.ts` intacts (`__ENGINE_VERSION__` inchangé).
+
+### Passation vers 10D
+
+Tout ce que la fiche doit lire existe : `matchups` et `planSummaries` dans le store, `applyPlan`
+(statut, listes, taille), `usablePlanSummary` (un chiffre affichable ou rien), `planIndicators` sur
+le résultat du deck de base pour l'écart, `neutralizedSources`, la note de chaque plan. Pour « tout
+calculer », reprendre l'orchestration de `SidePlanner` (client propre, `planComputeMode`, persistance
+seulement hors « non enregistré »), en série sur les 14 plans au plus. Le comparateur doit accepter
+un segment `<deckId>~<matchupId>~<position>` et appliquer le plan avant `comparisonDeckOf`.

@@ -18,7 +18,7 @@ function Routed() {
     void bootstrap();
   }, [bootstrap]);
 
-  if (route.name === 'editor') return <EditorPage id={route.id} />;
+  if (route.name === 'editor') return <EditorPage id={route.id} initialTab={route.tab} />;
   if (route.name === 'compare') return <ComparePage a={route.a} b={route.b} />;
   return <HomePage />;
 }

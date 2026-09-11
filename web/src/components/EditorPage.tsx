@@ -7,11 +7,12 @@ import { ComboList } from './ComboList.js';
 import { HandWall } from './HandWall.js';
 import { Inventory } from './Inventory.js';
 import { StatsPanel } from './StatsPanel.js';
+import { SidePlanner } from './SidePlanner.js';
 import { Toast } from './Toast.js';
 
-type Tab = 'annotate' | 'combos' | 'hands' | 'inventory' | 'stats';
+type Tab = 'annotate' | 'combos' | 'hands' | 'inventory' | 'side' | 'stats';
 
-export function EditorPage({ id }: { id: string }) {
+export function EditorPage({ id, initialTab }: { id: string; initialTab?: 'side' }) {
   const { navigate } = useRouter();
   const loadDeck = useDeck((s) => s.loadDeck);
   const saveDeck = useDeck((s) => s.saveDeck);
@@ -22,7 +23,7 @@ export function EditorPage({ id }: { id: string }) {
   const draftAvailable = useDeck((s) => s.draftAvailable);
   const persistenceError = useDeck((s) => s.persistenceError);
 
-  const [tab, setTab] = useState<Tab>('annotate');
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'annotate');
   const [highlightCardId, setHighlightCardId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -139,6 +140,9 @@ export function EditorPage({ id }: { id: string }) {
             <TabButton active={tab === 'inventory'} onClick={() => setTab('inventory')}>
               Inventaire
             </TabButton>
+            <TabButton active={tab === 'side'} onClick={() => setTab('side')}>
+              Plans de side
+            </TabButton>
             <TabButton active={tab === 'stats'} onClick={() => setTab('stats')} className="lg:hidden">
               Stats
             </TabButton>
@@ -153,6 +157,7 @@ export function EditorPage({ id }: { id: string }) {
             {tab === 'combos' && <ComboList />}
             {tab === 'hands' && <HandWall />}
             {tab === 'inventory' && <Inventory onFocusCard={focusCard} />}
+            {tab === 'side' && <SidePlanner />}
             {tab === 'stats' && <StatsPanel onShowHands={() => setTab('hands')} />}
           </div>
         </main>
