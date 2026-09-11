@@ -1,5 +1,38 @@
 # Décisions & écarts vs. document de référence
 
+## Plans de side — retouche de la fiche (lisibilité, PDF téléchargé), 11 septembre 2026
+
+Demande de l'utilisateur après le déploiement de l'étape 10 ; « la fiche seulement » (ni l'onglet
+« Plans de side » ni le comparateur). Compte rendu dans [docs/etape-10.md](docs/etape-10.md) (§15).
+
+- **Deux cadres titrés par volet, SORT et ENTRE, côte à côte** : SORT en bordure pointillée rouge,
+  ENTRE en bordure pleine verte, libellés « − Sort » / « + Entre ». Le sens ne repose jamais sur la
+  couleur seule (libellé et style de bordure) : lisible en noir et blanc et par un daltonien.
+- **Gros badge « ×n »** sur l'illustration d'une carte en plusieurs copies (disque noir cerclé de
+  blanc, 32 px à l'écran, 7 mm sur papier) ; rien pour une copie unique : l'absence de badge vaut 1.
+- **Noms masqués par défaut** : les illustrations suffisent. Case « Noms des cartes », retenue sur
+  le navigateur (localStorage ; préférence de confort : sans stockage, elle vaut pour la session).
+- **Cible révisée : 3 adversaires par page A4, 4 si les plans sont petits** (remplace « une page
+  pour 6 à 7 adversaires », D15) : des illustrations lisibles valent mieux qu'une page unique.
+- **« Télécharger le PDF » remplace « Imprimer »** : le PDF est construit dans le navigateur par
+  jsPDF (licence MIT, chargé à la demande comme ExcelJS), mis en page en millimètres
+  (`lib/sideSheetPdf.ts`), puis téléchargé ; l'utilisateur imprime ce fichier. Même rendu partout,
+  indépendant des réglages d'impression du navigateur (fonds, marges, en-têtes). La page reste
+  imprimable par Ctrl+P : `@media print` est conservé, badges et cadres en couleurs forcées
+  (`print-exact`, Chrome n'imprimant pas les fonds par défaut).
+- **Pagination à blocs entiers** : un adversaire n'est jamais coupé entre deux pages ; un bloc plus
+  haut qu'une page reste seul sur la sienne.
+- **Relais des vignettes `GET /api/cards/:id/image`** : le CDN YGOProDeck n'envoie aucun en-tête
+  CORS ; une page peut afficher ses images mais pas les lire pour en faire un PDF. Le serveur les
+  relaie depuis une adresse FIXE (hôte et chemin constants, passcode strictement numérique : jamais
+  un relais ouvert vers une adresse fournie par le client), derrière l'authentification comme toute
+  l'API ; 400 sans appel sortant pour un id invalide, 404 si l'image n'existe pas, 502 pour tout le
+  reste (panne, délai de 8 s, autre chose qu'une image, plus de 2 Mo). Une image illisible devient
+  dans le PDF un cadre portant le nom de la carte, jamais un échec du téléchargement.
+- **Texte du PDF ramené au Latin-1** (polices standard du PDF) : « ≥ » devient « >= », tirets et
+  guillemets typographiques leurs équivalents simples, tout autre caractère « ? » plutôt qu'un
+  glyphe illisible. Embarquer une police aurait alourdi chaque fichier pour trois symboles.
+
 ## Plans de side — étape 10, partie D (fiche imprimable, comparateur sur un deck sidé), 11 septembre 2026
 
 Compte rendu, vérifications, mutations et clôture de l'étape 10 dans [docs/etape-10.md](docs/etape-10.md)

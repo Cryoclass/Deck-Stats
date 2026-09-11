@@ -37,7 +37,7 @@ Complète AGENTS.md (commandes, règles, pièges). Sémantique métier : regles-
 ## API (préfixe `/api`, JSON, cookie de session sauf mention)
 
 - Public : `GET /health` ; `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /auth/providers` ; `GET /auth/discord/start`, `GET /auth/discord/callback`, `DELETE /auth/discord` (déliaison, en session).
-- Catalogue : `GET /cards?ids=`, `GET /cards/search?q=&limit=`.
+- Catalogue : `GET /cards?ids=`, `GET /cards/search?q=&limit=`, `GET /cards/:id/image` (étape 10D : vignette relayée depuis une adresse fixe du CDN, qui n'envoie pas de CORS, pour le PDF de la fiche des plans de side).
 - Decks : `GET /decks`, `POST /decks`, `POST /decks/import`, `GET /decks/:id`, `PUT /decks/:id` (configuration complète + `expectedRevision`, 409 si périmée), `PATCH /decks/:id` (nom), `POST /decks/:id/duplicate`, `DELETE /decks/:id`. `PUT /decks/:id/{starters,pair-exclusions,start-requirements}` → 410.
 - Bibliothèque : `GET /library` (HOPT, catégories, affectations, `profiles`, `groups`), `PUT /library/flags/:cardId` (`is_hopt`, `availability`, `group_id`, champs absents inchangés ; profil sans étiquette ou plafond sans profil → 400), `POST /library/categories`, `DELETE /library/categories/:id`, `POST /library/card-categories`, `DELETE /library/card-categories/:cardId/:categoryId`, `POST /library/groups`, `PATCH /library/groups/:id`, `DELETE /library/groups/:id`. `POST /library/pairs`, `DELETE /library/pairs/:id` → 410.
 - Erreurs : 400 `ConfigurationError`, 401 non authentifié, 404 ressource absente ou d'autrui, 409 révision, 410 endpoint retiré.

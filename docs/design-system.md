@@ -394,18 +394,27 @@ Enregistrer. Listes du plan en puces de 24 px avec ✕ de 24 px ; écarts et sou
 bandeau ambre (§7.12) ; chiffres en paires libellé / valeur (§3.5), écart signé en émeraude / rouge
 par signe exact, « · » pour zéro.
 
-Fiche imprimable (étape 10D, `/decks/:id/side/fiche`) : page autonome, sombre à l'écran ; barre
-d'outils `print:hidden` (retour, « Tout calculer (n) » en bouton secondaire à 32 px avec progression
-`tnum`, « Imprimer » émeraude — la seule action émeraude de la page). Un bloc par adversaire
-(`break-inside-avoid`, `rounded-md border-ink-800 bg-ink-900 p-2`), deux colonnes `sm:grid-cols-2`
-(toujours deux à l'impression) : libellé de volet en étiquette de section (§3.4), lignes « − » et
-« + » (rouge / émeraude à l'écran, noir à l'impression) de vignettes au ratio 59/86 de 28 px de haut
-(24 px à l'impression) + nom tronqué + « ×n » en `tnum`, trois paires libellé / valeur en 11 px
-(« — » pour un chiffre à calculer), note en italique. **L'impression est la seule exception au
-thème sombre** : `@media print` (index.css) passe `html`, `body` et `#root` en fond blanc et texte
-noir, A4, marges de 10 mm ; les classes `print:` éclaircissent bordures et textes. Cible prouvée
-par l'e2e `sidesheet` : sept adversaires sur une page. Comparateur sur un deck sidé : même page,
-nom « Deck — Adversaire (position) » et note d'information bleue (§7.12, `info`).
+Fiche imprimable (étape 10D, retouchée le 11 septembre 2026, `/decks/:id/side/fiche`) : page
+autonome, sombre à l'écran ; barre d'outils `print:hidden` (retour, case « Noms des cartes »,
+« Tout calculer (n) » en bouton secondaire à 32 px avec progression `tnum`, « Télécharger le PDF »
+émeraude — la seule action émeraude de la page). Un bloc par adversaire (`break-inside-avoid`,
+`rounded-md border-ink-800 bg-ink-900 p-2.5`), deux colonnes `sm:grid-cols-2` (toujours deux à
+l'impression) : libellé de volet en étiquette de section (§3.4), puis deux cadres côte à côte —
+**SORT** (`border-2 border-dashed`, rouge, « − Sort ») et **ENTRE** (`border-2 border-solid`,
+émeraude, « + Entre ») : le sens tient au libellé et au style de bordure, jamais à la couleur
+seule. Vignettes au ratio 59/86 de 56 px de large (14 mm à l'impression), nom masqué par défaut ;
+une carte en plusieurs copies porte un **gros badge « ×n »** (disque noir cerclé de blanc, 32 px,
+texte blanc extra-gras, 7 mm à l'impression) qu'on ne peut pas rater. Trois paires libellé / valeur en 11 px (« — » pour
+un chiffre à calculer), note en italique. Badges et cadres portent `print-exact`
+(`print-color-adjust: exact`) : Chrome n'imprime pas les fonds par défaut. **L'impression est la
+seule exception au thème sombre** : `@media print` (index.css) passe `html`, `body` et `#root` en
+fond blanc et texte noir, A4, marges de 10 mm ; les classes `print:` éclaircissent bordures et
+textes. Le PDF téléchargé (`lib/sideSheetPdf.ts`) reprend la même grammaire en millimètres : fond
+blanc, cadres pointillé rouge / plein vert sur fond pâle, vignettes de 14 mm, badge de 7,2 mm,
+pagination à blocs entiers. Cible prouvée par l'e2e `sidesheet` : au moins 3 adversaires par page
+A4 (sept en trois pages au plus), 4 si les plans sont petits (`lib/sideSheetPdf.test.ts`).
+Comparateur sur un deck sidé : même page, nom « Deck — Adversaire (position) » et note
+d'information bleue (§7.12, `info`).
 
 ### 6.4 Ascenseurs
 

@@ -1,26 +1,37 @@
-// Étape 10D : fiche imprimable et comparateur sur un deck sidé (Deck A, 1440 px) :
+// Étape 10D, fiche retouchée le 11 septembre 2026 : fiche imprimable et comparateur sur un deck
+// sidé (Deck A, 1440 px) :
 //   F1 onglet « Plans de side » : « Fiche imprimable » actif (deck enregistré), mène à
 //      /decks/:id/side/fiche ;
-//   F2 fiche : 7 adversaires dans l'ordre d'ajout, volets Premier / Second, vignettes chargées,
-//      notes ; le plan incomplet est signalé sans chiffre ; « — » partout avant calcul ;
+//   F2 fiche : 7 adversaires dans l'ordre d'ajout, volets Premier / Second ; dans chaque volet prêt,
+//      un cadre SORT (pointillé) et un cadre ENTRE (plein) ; vignettes chargées, GROS badge « ×n »
+//      (≥ 28 px) sur une carte en plusieurs copies ; noms masqués par défaut, case « Noms des
+//      cartes » qui les affiche et se retient au rechargement ; notes ; plan incomplet signalé
+//      sans chiffre ; « — » avant calcul ;
 //   F3 « Tout calculer » : 13 plans prêts chiffrés, persistés (API), « Chiffres à jour » ;
 //      rechargement : chiffres relus depuis le cache, rien à calculer ;
-//   F4 impression : fond blanc, barre d'outils masquée, PDF A4 d'UNE page pour 7 adversaires (D15) ;
+//   F4 impression : fond blanc, barre d'outils masquée, badges et cadres en couleurs forcées
+//      (`print-color-adjust: exact`), PDF A4 (fonds non imprimés, comme par défaut dans Chrome)
+//      de 3 pages au plus pour 7 adversaires, soit au moins 3 adversaires par page ; puis
+//      « Télécharger le PDF » (plus de bouton « Imprimer ») : fichier nommé, 3 pages au plus,
+//      adversaires, cadres SORT / ENTRE et notes en texte, illustrations intégrées ;
 //   F5 comparateur Deck A vs Deck A sidé (plan second de « Kewl Tune ») : trois sections, nom du deck
-//      sidé, note d'information ; plan incomplet : refus explicite ;
-//   puis la fixture est restaurée (aucun adversaire, side vide), vérifiée par l'API.
+//      sidé, note d'information, matrices différentes ; plan incomplet : refus explicite ;
+//   puis la fixture est restaurée (aucun adversaire, side vide, starters d'origine), vérifiée par l'API.
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { launch, login, shot, deckId, checker } from '../lib.mjs';
+import { launch, login, shot, deckId, box, checker } from '../lib.mjs';
 import { DECK_A } from './setup.mjs';
 
 const RHO = 90000017; // Side Rho : side seulement
+const OMICRON = 90000015; // Filler Omicron : 1 en main, 2 en side
+const IOTA = 90000009; // Quick-Play Iota : 2 en main, 1 en side
+const LAMBDA = 90000011; // Filler Lambda : 3 en main
 const MU = 90000012; // Filler Mu : 3 en main
 const NU = 90000013; // Filler Nu : 3 en main
 const NAMES = ['Kewl Tune', 'Snake-Eye', 'Yubel', 'Tenpai', 'Branded', 'Ryzeal', 'Maliss'];
 
 export default async function sidesheet({ out }) {
-  const { expect, done } = checker('fiche de side');
+  const { expect, ge, done } = checker('fiche de side');
   const { browser, context, page } = await launch();
   await login(context);
   const id = await deckId(context, DECK_A);
@@ -38,18 +49,28 @@ export default async function sidesheet({ out }) {
   const original = configurationOf(before);
   expect('fixture : side vide, aucun adversaire', before.cards.every((c) => c.zone !== 'side') && (before.matchups ?? []).length === 0);
 
-  // Sept adversaires ; « Snake-Eye » a un plan second incomplet (2 sortent, 1 entre).
+  // Sept adversaires aux plans réalistes (trois cartes par liste en premier) ; « Snake-Eye » a un
+  // plan second incomplet (3 sortent, 2 entrent).
   const ids = NAMES.map(() => randomUUID());
   const matchups = NAMES.map((name, i) => ({
     id: ids[i], name, sort_index: i, plans: [
-      { position: 'first', note: `${name} : garder un Rho pour leur tour 1`, outgoing: [{ card_id: MU, copies: 1 }, { card_id: NU, copies: 1 }], incoming: [{ card_id: RHO, copies: 2 }] },
-      { position: 'second', note: `${name} : tout sur le board breaker`, outgoing: [{ card_id: MU, copies: 2 }], incoming: [{ card_id: RHO, copies: name === 'Snake-Eye' ? 1 : 2 }] },
+      { position: 'first', note: `${name} : garder un Rho pour leur tour 1`,
+        outgoing: [{ card_id: MU, copies: 1 }, { card_id: NU, copies: 1 }, { card_id: LAMBDA, copies: 1 }],
+        incoming: [{ card_id: RHO, copies: 1 }, { card_id: OMICRON, copies: 1 }, { card_id: IOTA, copies: 1 }] },
+      { position: 'second', note: `${name} : tout sur le board breaker`,
+        outgoing: [{ card_id: MU, copies: 2 }, { card_id: NU, copies: 1 }],
+        incoming: name === 'Snake-Eye' ? [{ card_id: RHO, copies: 2 }] : [{ card_id: RHO, copies: 2 }, { card_id: OMICRON, copies: 1 }] },
     ],
   }));
-  await put({ ...original, cards: [...original.cards, { card_id: RHO, zone: 'side', copies: 3 }], matchups });
+  await put({
+    ...original,
+    cards: [...original.cards, { card_id: RHO, zone: 'side', copies: 3 }, { card_id: OMICRON, zone: 'side', copies: 2 }, { card_id: IOTA, zone: 'side', copies: 1 }],
+    matchups,
+  });
   const kewl = ids[0];
   const snake = ids[1];
   const ready = () => page.locator('[data-sheet-figures="ready"]').count();
+  const captions = () => page.locator('[data-sheet-card] figcaption').count();
 
   try {
     // ─── F1 : depuis l'onglet ───
@@ -66,16 +87,32 @@ export default async function sidesheet({ out }) {
     const order = await page.locator('[data-sheet-matchup]').evaluateAll((els) => els.map((e) => e.getAttribute('data-sheet-matchup')));
     expect('F2 sept adversaires dans l’ordre d’ajout', JSON.stringify(order) === JSON.stringify(NAMES), order);
     expect('F2 deux volets par adversaire', (await page.locator('[data-sheet-plan]').count()) === 14);
+    expect('F2 chaque volet a un cadre SORT et un cadre ENTRE', (await page.locator('[data-swap-box="out"]').count()) === 14 && (await page.locator('[data-swap-box="in"]').count()) === 14);
+    const styles = await page.locator('[data-swap-box]').first().evaluate((el) => getComputedStyle(el).borderStyle);
+    const stylesIn = await page.locator('[data-swap-box="in"]').first().evaluate((el) => getComputedStyle(el).borderStyle);
+    expect('F2 SORT en pointillé, ENTRE en trait plein (lisible en noir et blanc)', styles === 'dashed' && stylesIn === 'solid', { styles, stylesIn });
     expect('F2 plan incomplet signalé, sans chiffre', (await page.locator('[data-sheet-plan][data-status="incomplete"]').count()) === 1
       && (await page.locator('[data-sheet-plan][data-status="incomplete"] [data-sheet-figures]').count()) === 0);
     // L'onglet ouvert en F1 a pu calculer et PERSISTER le volet qu'il affichait (Kewl Tune, premier :
-    // deck enregistré, comportement voulu) avant le clic sur « Fiche imprimable ». Tous les autres
-    // plans prêts sont « — » ; « Tout calculer » annonce exactement ceux qui restent.
+    // deck enregistré, comportement voulu) avant le clic sur « Fiche imprimable ».
     const missing = await page.locator('[data-sheet-figures="missing"]').count();
     const readyBefore = await ready();
     expect('F2 13 plans prêts, « — » sauf au plus le volet déjà calculé dans l’onglet', missing + readyBefore === 13 && missing >= 12, { missing, readyBefore });
     const images = await page.locator('[data-sheet-matchup] img').evaluateAll((els) => els.map((e) => e.complete && e.naturalWidth > 0));
     expect('F2 vignettes chargées', images.length > 0 && images.every(Boolean), { n: images.length, ko: images.filter((x) => !x).length });
+    ge('F2 vignette assez grande pour se passer du nom (≥ 56 px de large)', await box(page.locator('[data-sheet-card] img').first()), 56);
+    const badge = page.locator('[data-copies-badge]').first();
+    ge('F2 badge « ×n » bien gros (≥ 28 px)', await box(badge), 28);
+    expect('F2 badge « ×2 » sur Filler Mu en second', /×2/.test(await page.locator(`[data-sheet-matchup="Kewl Tune"] [data-sheet-plan="second"] [data-sheet-card="${MU}"] [data-copies-badge]`).innerText()));
+    expect('F2 aucune pastille pour une seule copie', (await page.locator(`[data-sheet-matchup="Kewl Tune"] [data-sheet-plan="first"] [data-copies-badge]`).count()) === 0);
+    expect('F2 noms masqués par défaut', (await captions()) === 0 && !(await page.locator('[data-toggle-names]').isChecked()));
+    await page.locator('[data-toggle-names]').check();
+    expect('F2 case cochée : les noms s’affichent', (await captions()) > 0 && /Filler Mu/.test(await page.locator('[data-sheet-matchup="Kewl Tune"]').innerText()));
+    await page.reload();
+    await page.waitForSelector('[data-sheet-matchup]');
+    expect('F2 préférence retenue au rechargement', (await page.locator('[data-toggle-names]').isChecked()) && (await captions()) > 0);
+    await page.locator('[data-toggle-names]').uncheck();
+    expect('F2 case décochée : noms masqués', (await captions()) === 0);
     expect('F2 notes imprimées', /Kewl Tune : tout sur le board breaker/.test(await page.locator('[data-sheet-matchup="Kewl Tune"]').innerText()));
     const label = await page.locator('[data-compute-all]').innerText();
     expect('F2 « Tout calculer » annonce les plans restants', label.includes(`Tout calculer (${missing})`), label);
@@ -99,12 +136,38 @@ export default async function sidesheet({ out }) {
     await page.emulateMedia({ media: 'print' });
     const background = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect('F4 impression sur fond blanc', background === 'rgb(255, 255, 255)', background);
-    expect('F4 barre d’outils masquée à l’impression', !(await page.locator('[data-compute-all]').isVisible()));
+    expect('F4 barre d’outils masquée à l’impression', !(await page.locator('[data-compute-all]').isVisible()) && !(await page.locator('[data-toggle-names]').isVisible()));
+    const exact = await page.locator('[data-copies-badge]').first().evaluate((el) => {
+      const s = getComputedStyle(el);
+      return s.printColorAdjust || s.webkitPrintColorAdjust;
+    });
+    const exactBox = await page.locator('[data-swap-box]').first().evaluate((el) => {
+      const s = getComputedStyle(el);
+      return s.printColorAdjust || s.webkitPrintColorAdjust;
+    });
+    expect('F4 badges et cadres impriment leurs couleurs (fonds non imprimés par défaut dans Chrome)', exact === 'exact' && exactBox === 'exact', { exact, exactBox });
     await shot(page, 'sidesheet-print', { fullPage: true });
-    const pdf = await page.pdf({ path: path.join(out, 'sidesheet.pdf'), format: 'A4', preferCSSPageSize: true, printBackground: true });
+    const pdf = await page.pdf({ path: path.join(out, 'sidesheet.pdf'), format: 'A4', preferCSSPageSize: true, printBackground: false });
     const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page(?![a-z])/g) ?? []).length;
-    expect('F4 sept adversaires tiennent sur une page A4', pages === 1, pages);
+    expect('F4 impression du navigateur : au moins 3 adversaires par page A4 (7 en 3 pages au plus)', pages >= 1 && pages <= 3, pages);
     await page.emulateMedia({ media: 'screen' });
+
+    // ─── F4 bis : « Télécharger le PDF » (remplace « Imprimer ») ───
+    expect('F4 plus de bouton « Imprimer »', (await page.locator('[data-print]').count()) === 0);
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 60000 }),
+      page.click('[data-download-pdf]'),
+    ]);
+    const file = path.join(out, 'sidesheet-download.pdf');
+    await download.saveAs(file);
+    expect('F4 nom du fichier', /^plans-de-side_Deck_A_\d{4}-\d{2}-\d{2}\.pdf$/.test(download.suggestedFilename()), download.suggestedFilename());
+    const bytes = (await (await import('node:fs/promises')).readFile(file)).toString('latin1');
+    const downloadedPages = (bytes.match(/\/Type\s*\/Page(?![a-z])/g) ?? []).length;
+    expect('F4 PDF téléchargé : au moins 3 adversaires par page A4 (7 en 3 pages au plus)', downloadedPages >= 1 && downloadedPages <= 3, downloadedPages);
+    const words = ['Kewl Tune', 'Maliss', '- SORT', '+ ENTRE', 'tout sur le board breaker'];
+    expect('F4 PDF : adversaires, cadres SORT / ENTRE et notes', words.every((w) => bytes.includes(w)), words.filter((w) => !bytes.includes(w)));
+    const embedded = (bytes.match(/\/Subtype\s*\/Image/g) ?? []).length;
+    expect('F4 PDF : les illustrations sont intégrées (6 cartes distinctes)', embedded >= 6, embedded);
 
     // ─── F5 : comparateur sur un deck sidé ───
     // Side Rho devient starter : l'échange Filler Mu ↔ Side Rho change alors le deck. Deux cartes
@@ -129,7 +192,9 @@ export default async function sidesheet({ out }) {
   } finally {
     await put(original).catch((e) => expect('restauration de la fixture', false, String(e)));
     const after = await detail().catch(() => null);
-    expect('fixture restaurée (side vide, aucun adversaire)', !!after && after.cards.every((c) => c.zone !== 'side') && (after.matchups ?? []).length === 0,
+    expect('fixture restaurée (side vide, aucun adversaire, starters d’origine)',
+      !!after && after.cards.every((c) => c.zone !== 'side') && (after.matchups ?? []).length === 0
+        && JSON.stringify([...after.starters].sort()) === JSON.stringify([...original.starters].sort()),
       after && { side: after.cards.filter((c) => c.zone === 'side'), matchups: (after.matchups ?? []).length });
     await browser.close();
   }

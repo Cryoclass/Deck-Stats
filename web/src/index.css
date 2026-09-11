@@ -65,3 +65,11 @@ body {
     color: #000;
   }
 }
+
+/* Fiche des plans de side : Chrome n'imprime pas les couleurs de fond par défaut (« graphiques
+   d'arrière-plan » décoché) — un badge noir à texte blanc sortirait invisible, les cadres SORT /
+   ENTRE perdraient leur teinte. Ces éléments impriment leurs couleurs quoi qu'il arrive. */
+.print-exact {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}

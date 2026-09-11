@@ -282,3 +282,10 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - « Tout calculer » en série, dédoublonné par empreinte, persisté pour la révision lue ; arrêt au premier 409.
 - Impression = seule exception au thème sombre (`@media print`, A4, marges 10 mm) ; « une page pour 7 adversaires » prouvée par l'e2e (PDF compté).
 - Comparateur : segment `deck~adversaire~position` dans l'adresse existante, nom explicite, note `info` (seul le scénario de la position correspond au plan) ; moteur intact.
+
+## Étape 10, retouche de la fiche — lisibilité et PDF téléchargé (11 septembre 2026)
+- Par volet, cadres SORT (pointillé rouge) et ENTRE (plein vert) titrés ; le sens n'est jamais porté par la couleur seule.
+- Gros badge « ×n » (32 px, 7 mm sur papier) sur l'illustration si copies > 1 ; noms masqués par défaut, case « Noms des cartes » retenue sur le navigateur.
+- Cible : 3 adversaires par page A4, 4 si les plans sont petits (remplace « 7 sur une page », D15) ; un bloc n'est jamais coupé entre deux pages.
+- « Télécharger le PDF » remplace « Imprimer » : jsPDF chargé à la demande, mise en page en mm (`lib/sideSheetPdf.ts`), texte ramené au Latin-1 ; `@media print` conservé (`print-exact`).
+- Relais `GET /api/cards/:id/image` (CDN sans CORS) : adresse amont fixe, passcode numérique strict, authentifié ; 400 / 404 / 502 ; image illisible = cadre nommé dans le PDF.

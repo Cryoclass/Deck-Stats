@@ -619,3 +619,61 @@ courant » C0–C6 :
 - **Reste à l'utilisateur** : les contrôles au navigateur — ouvrir un deck, onglet « Plans de side »,
   créer un adversaire, faire un échange, enregistrer, ouvrir la fiche et « Tout calculer »,
   « Comparer au deck de base ».
+
+## 15. Retouche de la fiche : lisibilité et PDF téléchargé (11 septembre 2026)
+
+**Demande** (après le déploiement) : ce qui sort et ce qui entre n'était pas assez clair ; une case
+pour afficher ou masquer les noms (« les artworks ça suffit ») ; des groupes encadrés ; le badge
+« ×2 » « bien gros, qu'on ne le rate pas » ; la fiche seulement. Puis : « 3 adversaires sur une page
+A4, 4 si on est à l'étroit » au lieu de sept, et un PDF téléchargé plutôt qu'une impression directe.
+
+### Livré
+
+- **`SideSheet.tsx`** : par volet, cadres SORT (pointillé rouge) et ENTRE (plein vert) côte à côte,
+  vignettes de 56 px (14 mm à l'impression), gros badge « ×n » (32 px, 7 mm) si copies > 1, noms
+  masqués par défaut (case « Noms des cartes », retenue par localStorage) ; « Télécharger le PDF »
+  remplace « Imprimer » ; `.print-exact` (index.css) pour que Chrome imprime badges et cadres.
+- **`lib/sideSheetPdf.ts`** : PDF A4 construit par jsPDF 4.2.1 (MIT, import dynamique, chunk séparé
+  de 391 kB), mise en page en millimètres, pagination à blocs entiers, texte ramené au Latin-1
+  (`pdfText`), images lues par canvas (même origine ou `data:`), cadre nommé à la place d'une image
+  illisible. Fichier `plans-de-side_<deck>_<date>.pdf`.
+- **Relais `GET /api/cards/:id/image`** (`routes/cards.ts`, `domain/cardImage.ts`) : le CDN n'envoie
+  pas de CORS ; adresse amont fixe, passcode numérique strict, authentifié ; 400 / 404 / 502, délai
+  de 8 s, 2 Mo au plus, `Cache-Control: private, max-age=86400`.
+- **Docs** : DECISIONS.md, décisions compressées, contrat §8, charte §6.3, architecture (route),
+  AGENTS.md.
+
+### Vérifications exécutées
+
+- `npm run typecheck`, `npm run build` (chunk jsPDF séparé ; seul l'avertissement ExcelJS, attendu).
+- `node scripts/test-quiet.mjs` : 254 web (+5, `lib/sideSheetPdf.test.ts`), 14 serveur (+2,
+  `tests/cardImage.test.ts`).
+- e2e `setup,sidesheet` : la première passe a trouvé l'impression du navigateur à **4 pages** pour
+  sept adversaires (vignettes de 17 mm) → vignettes d'impression ramenées à 14 mm, badge à 7 mm :
+  3 pages. Le PDF téléchargé tenait déjà en 3 pages (3 + 3 + 1 adversaires) ; relu à l'œil, le badge
+  mordait sur le bas de son cadre → remonté de 0,6 mm, cadre allongé de 0,5 mm, relu à nouveau.
+- e2e complet (`npm run e2e -w web`, ports déplacés par `E2E_WEB_PORT` / `E2E_BASE`) : 10 scénarios OK,
+  dont `sidesheet` (impression du navigateur en 3 pages, PDF téléchargé en 3 pages avec adversaires,
+  cadres SORT / ENTRE, notes et illustrations intégrées).
+
+### Contrôle par mutation (6 posées, 6 détectées)
+
+| # | Mutation | Détectée par |
+| --- | --- | --- |
+| P1 | Relais : passcode non numérique accepté | `cardImage.test.ts` |
+| P2 | Relais : autre chose qu'une image relayée | `cardImage.test.ts` |
+| P3 | PDF : un bloc déborde la page au lieu de passer à la suivante | `sideSheetPdf.test.ts` |
+| P4 | PDF : « ≥ » écrit tel quel (hors Latin-1) | `sideSheetPdf.test.ts` |
+| P5 | PDF : vignettes de 17 mm | `sideSheetPdf.test.ts` (3 adversaires par page, noms affichés) |
+| P6 | Fiche : le PDF lit les images directement sur le CDN | e2e `sidesheet` : « illustrations intégrées » = 0 (canvas refusé, cadres nommés) |
+
+### Non couvert / reporté
+
+- Le relais n'est pas exercé de bout en bout par l'e2e (cartes synthétiques en `data:`, passcodes
+  absents du CDN) : il est prouvé par `cardImage.test.ts` avec un faux amont ; premier essai réel
+  après déploiement, sur une fiche aux vraies cartes.
+- La production (`bc5a004`) garde « Imprimer » tant que ce code n'est pas déployé : code seul, aucune
+  migration, variante C0–C6 ; le conteneur de l'app doit joindre `images.ygoprodeck.com` en sortie
+  (à vérifier en C4 : télécharger une fiche et voir les illustrations).
+- Seul test existant modifié : le scénario e2e `sidesheet`, réécrit pour la nouvelle mise en page et
+  la nouvelle cible (demande de l'utilisateur) ; moteur, oracles et `__ENGINE_VERSION__` intacts.
