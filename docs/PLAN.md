@@ -47,7 +47,8 @@ cette étape ajoute une fonctionnalité, elle ne la rouvre pas.
 - **Vérifications exécutées** : `npm run typecheck`, `npm run build`, `node scripts/test-quiet.mjs` (249 web, 12 serveur), `npm run e2e -w web` (10 scénarios) ; 4 mutations détectées (D1–D4) ; répétition complète de clôture (§14 de docs/etape-10.md).
 - **Non fait / reporté** : Q5 (archétypes avec icône), ergonomie à 360 px de la vue Side, garde du retrait du side par le menu ⋯, écart et sources neutralisées sur la fiche (hors D4). Aucun test existant modifié ; moteur et oracles intacts ; aucune commande vers le VPS ni la base de dev.
 - **Décisions ajoutées** : DECISIONS.md, section « Plans de side — étape 10, partie D » ; résumé dans docs/decisions-compressees.md.
-- **Prochaine action** (à la main de l'utilisateur) : pousser, puis déployer l'étape 9 et l'étape 10 par la variante « déploiement courant » C0–C6 (docs/deploy-runbook.md, note « étape 10 » en tête : migration 004 additive, aucune question attendue).
+- **Déploiement** : exécuté le 11 septembre 2026 par l'agent à la demande de l'utilisateur (`ssh goldfish`, variante C0–C6) — prod `d0d8210` → `bc5a004`, `deploy.sh` code 0 sans question, 004 journalisée, effectifs identiques avant / après, contrôles OK ; retour arrière : code `d0d8210`, données `keep/ygo-pre-migration-20260911-141821.sql.gz` (détail : docs/etape-10.md, « Déploiement exécuté »).
+- **Prochaine action** (utilisateur) : contrôles au navigateur de l'étape 10 (onglet « Plans de side », échange, enregistrement, fiche et « Tout calculer », comparateur sidé).
 
 ## Compte rendu final de la mission (9 septembre 2026)
 

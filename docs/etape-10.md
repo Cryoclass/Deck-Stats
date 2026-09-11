@@ -592,3 +592,30 @@ emporte l'étape 9 et l'étape 10.
 - Par choix (D4), la fiche n'imprime ni l'écart avec le deck de base ni les sources neutralisées :
   à ajouter si l'usage en tournoi le demande.
 - Reports antérieurs conservés : Q9–Q18, Q11 (`ygo_previous`), réexamen catégorie / profil.
+
+### Déploiement exécuté (11 septembre 2026)
+
+À la demande explicite de l'utilisateur, par l'agent, via `ssh goldfish`, variante « déploiement
+courant » C0–C6 :
+
+- **C0** : `main` et les tags `etape-10*` poussés (`bc5a004`) ; répétition complète conforme sur le
+  code final.
+- **C1** : le VPS était à **`d0d8210`** (étape 9, déployée le 9 septembre par l'utilisateur ; le
+  runbook attendait encore `9d281cf`) — commit de retour arrière du code ; dépôt propre ;
+  `git pull --ff-only` → `bc5a004`, `git diff d0d8210..HEAD -- db` = `004-side-plans.sql` seul.
+- **C2** : app et DB `healthy`, sauvegarde de la nuit vérifiée, API saine (14 529 cartes), journal
+  001–003, effectifs 1 utilisateur / 4 decks / 67 cartes en extra ou side / 3 résumés ;
+  `backup.sh` vérifiée (empreinte `3dd3d9ea…`, identique à celle de la nuit).
+- **C3** : `deploy.sh` lancé détaché (`nohup`, entrée `/dev/null` : toute question aurait été
+  refusée) — **code 0, aucune question** ; conteneur `db` recréé en tête (montage de la 004 ajouté
+  au compose, volume conservé, « Skipping initialization ») ; archive pré-migration vérifiée
+  `keep/ygo-pre-migration-20260911-141821.sql.gz` (retour arrière des données) ; inventaire à
+  16 tables ; rejeu du schéma puis de `004-side-plans.sql` ; 003 « déjà journalisée » ; tous les
+  contrôles `OK`, dont les trois tables de 004, les tables intactes de bout en bout et « 003 n'a
+  touché que ses propres objets ».
+- **C4** : app et DB `healthy`, API saine, journal **001 à 004**, effectifs **identiques** à C2,
+  aucune erreur au démarrage de l'app ; l'interface servie contient l'onglet « Plans de side », la
+  fiche imprimable et le comparateur sidé.
+- **Reste à l'utilisateur** : les contrôles au navigateur — ouvrir un deck, onglet « Plans de side »,
+  créer un adversaire, faire un échange, enregistrer, ouvrir la fiche et « Tout calculer »,
+  « Comparer au deck de base ».

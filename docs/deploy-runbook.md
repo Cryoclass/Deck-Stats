@@ -38,7 +38,16 @@ aucune question — c'est exactement le cas « F, rejeu » de `deploy/test-migra
 >   `rejeu par stdin : db/migrations/004-side-plans.sql` ; les contrôles ajoutent
 >   `OK|journal 004-side-plans : journalisée` et trois `OK|table v2 deck_matchups / deck_side_plans
 >   / deck_side_plan_cards : présente` ; aucune `KO|` ;
-> - C5, retour arrière du code seul : toujours valable — `9d281cf` ignore les trois tables.
+> - C5, retour arrière du code seul : toujours valable — l'ancienne app ignore les trois tables.
+> - C1 : noter le commit **réellement** en service. Au déploiement de l'étape 10 (11 septembre 2026)
+>   c'était `d0d8210` (étape 9, déployée le 9 septembre), pas `9d281cf` : l'inventaire affichait alors
+>   `3 résumé(s)` et non 0 — normal une fois l'étape 9 en service.
+> - C3 : le conteneur `db` est **recréé** en tête (`Container ygo-proba-db-1 Recreate`), parce que
+>   le montage de `04-side-plans.sql` change sa configuration Compose ; le volume est conservé
+>   (journaux : « Skipping initialization »), et l'app encore en service perd sa base quelques
+>   secondes avant son propre arrêt. Un `FATAL: terminating autovacuum process due to
+>   administrator command` pendant la sauvegarde pré-migration est la suppression normale de la base
+>   de vérification, pas un incident.
 >
 > Preuve locale : cas « F sans 004 » de `deploy/test-migration-sequence.sh` (base à 003 sans 004 →
 > code 0 sans question, 004 rejouée, journal 001 à 004). Toute autre différence : `NON` et stop.
