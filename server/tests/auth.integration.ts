@@ -142,3 +142,13 @@ test('un cookie inconnu ou une session expirée valent 401 ; la session expirée
   assert.equal(login.statusCode,200,login.body);
   b={ session: login.cookies.find((c) => c.name===SESSION)!.value };
 });
+
+// ─── 2. Inscription : un email hostile ne doit pas geler la boucle d'événements (05 C1) ───
+
+test('une inscription avec un email de 64 000 « @ » et un code valide répond 400 en moins de 50 ms',async () => {
+  const t0=performance.now();
+  const r=await inject('POST','/api/auth/register',{ payload:{ email:'@'.repeat(64_000),password:PASSWORD,invite_code:'audit-invite' } });
+  const ms=performance.now()-t0;
+  assert.equal(r.statusCode,400,r.body.slice(0,120));assert.deepEqual(r.json(),{ error:'email invalide' });
+  assert.ok(ms<50,`inscription hostile traitée en ${ms.toFixed(0)} ms (attendu < 50 ms)`);
+});

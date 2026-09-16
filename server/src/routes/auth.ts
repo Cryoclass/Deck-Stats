@@ -16,6 +16,10 @@ function inviteCodes(): string[] {
 }
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
+// Audit 05 C1 : `\S+@\S+` sur une chaîne de « @ » coûte n² sur la boucle d'événements (64 000
+// « @ » = 8 s de gel pour TOUTES les requêtes). La longueur est bornée AVANT la regex — 254
+// caractères, maximum d'une adresse (RFC 5321) ; à cette taille la regex est négligeable.
+const EMAIL_MAX = 254;
 const PASSWORD_MIN = 8;
 
 interface UserRow {
@@ -66,7 +70,7 @@ export async function authRoutes(app: FastifyInstance) {
       if (!invite_code || !codes.includes(invite_code.trim())) {
         return reply.code(403).send({ error: "code d'invitation invalide" });
       }
-      if (!email || !EMAIL_RE.test(email.trim())) {
+      if (typeof email !== 'string' || email.length > EMAIL_MAX || !EMAIL_RE.test(email.trim())) {
         return reply.code(400).send({ error: 'email invalide' });
       }
       if (!password || password.length < PASSWORD_MIN) {
