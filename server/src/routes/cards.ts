@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { query } from '../db.js';
+import { requireUser } from '../auth/session.js';
 import { parseCardIdList } from '../domain/cardIds.js';
 import { cardImageUpstream } from '../domain/cardImage.js';
 
@@ -11,10 +12,13 @@ const CARD_IMAGE_MAX_BYTES = 2_000_000;
 
 export async function cardsRoutes(app: FastifyInstance, opts: { fetchImage?: typeof fetch } = {}) {
   const fetchImage = opts.fetchImage ?? fetch;
+  // Catalogue réservé aux comptes (textes de Konami, audit 03 B2) : derrière la garde globale,
+  // et `requireUser` dans chaque gestionnaire comme dans decks.ts et library.ts (audit 04 O1).
 
   // Résolution par ids (import YDK → passcodes). GET /api/cards?ids=123,456
   // Étape 6 (C5) : passcodes entiers positifs stricts, sinon 400 explicite.
   app.get<{ Querystring: { ids?: string } }>('/', async (req, reply) => {
+    requireUser(req);
     const raw = req.query.ids;
     if (!raw) return reply.code(400).send({ error: 'paramètre `ids` requis' });
     const ids = parseCardIdList(raw);
@@ -30,6 +34,7 @@ export async function cardsRoutes(app: FastifyInstance, opts: { fetchImage?: typ
   app.get<{ Querystring: { q?: string; limit?: string } }>(
     '/search',
     async (req) => {
+      requireUser(req);
       const q = (req.query.q ?? '').trim();
       const limit = Math.min(Number(req.query.limit ?? 30) || 30, 100);
       if (q.length < 2) return [];
@@ -49,6 +54,7 @@ export async function cardsRoutes(app: FastifyInstance, opts: { fetchImage?: typ
   // sans aucun appel sortant ; amont absent : 404 ; tout le reste (panne, délai, autre chose
   // qu'une image, taille démesurée) : 502. Derrière l'authentification, comme toute l'API.
   app.get<{ Params: { id: string } }>('/:id/image', async (req, reply) => {
+    requireUser(req);
     const upstream = cardImageUpstream(req.params.id);
     if (!upstream) return reply.code(400).send({ error: 'passcode invalide' });
     let res: Response;

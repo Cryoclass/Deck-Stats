@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { query } from '../db.js';
 import { verifyAgainstDummy, verifyPassword } from '../auth/password.js';
 import { createAccount } from '../auth/account.js';
-import { createSession, destroySession, resolveSession } from '../auth/session.js';
+import { createSession, destroySession, requireUser } from '../auth/session.js';
 import { discordConfigured } from './discord.js';
 
 // Codes d'invitation : liste en variable d'environnement (séparés par des virgules).
@@ -48,12 +48,14 @@ async function withAccountMeta(u: Pick<UserRow, 'id' | 'email' | 'display_name'>
 }
 
 export async function authRoutes(app: FastifyInstance) {
+  // Routes publiques (`public: true`, garde de auth/guard.ts) : inscription, connexion,
+  // fournisseurs, déconnexion. `/me` reste derrière la garde, comme le reste de l'API.
   // Inscription — protégée par code d'invitation + rate-limit.
   app.post<{
     Body: { email?: string; password?: string; display_name?: string; invite_code?: string };
   }>(
     '/register',
-    { config: { rateLimit: { max: 5, timeWindow: '10 minutes' } } },
+    { config: { public: true, rateLimit: { max: 5, timeWindow: '10 minutes' } } },
     async (req, reply) => {
       const { email, password, display_name, invite_code } = req.body ?? {};
 
@@ -98,7 +100,7 @@ export async function authRoutes(app: FastifyInstance) {
   // pas d'énumération de comptes.
   app.post<{ Body: { email?: string; password?: string } }>(
     '/login',
-    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    { config: { public: true, rateLimit: { max: 10, timeWindow: '1 minute' } } },
     async (req, reply) => {
       const { email, password } = req.body ?? {};
       if (!email || !password) {
@@ -122,18 +124,14 @@ export async function authRoutes(app: FastifyInstance) {
   );
 
   // Fournisseurs OAuth disponibles (pilote l'affichage du bouton Discord).
-  app.get('/providers', async () => ({ discord: discordConfigured() }));
+  app.get('/providers', { config: { public: true } }, async () => ({ discord: discordConfigured() }));
 
-  app.post('/logout', async (req, reply) => {
+  // Publique : déconnecter une session déjà expirée reste un succès (cookie effacé).
+  app.post('/logout', { config: { public: true } }, async (req, reply) => {
     await destroySession(req, reply);
     return { ok: true };
   });
 
-  // Sonde de session du front : 401 = anonyme (les routes /api/auth/* échappent à la
-  // garde globale, on résout donc la session explicitement ici).
-  app.get('/me', async (req, reply) => {
-    const user = await resolveSession(req, reply);
-    if (!user) return reply.code(401).send({ error: 'non authentifié' });
-    return { user: await withAccountMeta(user) };
-  });
+  // Sonde de session du front : 401 = anonyme, rendu par la garde globale (route privée).
+  app.get('/me', async (req) => ({ user: await withAccountMeta(requireUser(req)) }));
 }

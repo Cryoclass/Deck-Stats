@@ -23,6 +23,9 @@ test('the image route relays an image, refuses an invalid id without any outgoin
     return upstream();
   }) as typeof fetch;
   const app = Fastify();
+  // Session injectée : la route exige un utilisateur (garde globale + requireUser, audit 04 O1).
+  app.decorateRequest('user', null);
+  app.addHook('onRequest', async (req) => { req.user = { id: '00000000-0000-4000-8000-000000000001', email: 'test@example.invalid', display_name: 'Test' }; });
   await app.register(cardsRoutes, { prefix: '/api/cards', fetchImage: fakeFetch });
 
   const ok = await app.inject({ method: 'GET', url: '/api/cards/483/image' });

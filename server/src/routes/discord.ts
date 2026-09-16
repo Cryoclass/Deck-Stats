@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { query, tx } from '../db.js';
 import { insertAccount } from '../auth/account.js';
-import { createSession, resolveSession } from '../auth/session.js';
+import { createSession, requireUser, resolveSession } from '../auth/session.js';
 
 /**
  * OAuth Discord (itération 8, Lot D). Deux intentions, portées par un cookie
@@ -80,10 +80,11 @@ interface DiscordUser {
 
 export async function discordRoutes(app: FastifyInstance) {
   // ─── Départ : pose l'état puis redirige vers l'autorisation Discord ───
+  // Publique (connexion ou création sans session ; la liaison vérifie la sienne ci-dessous).
   // Rate-limité : la réponse (erreur immédiate vs redirection) révèle si un code
   // d'invitation est valide — sans limite, c'est un oracle de brute-force.
   app.get<{ Querystring: { invite?: string; link?: string } }>('/start', {
-    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    config: { public: true, rateLimit: { max: 10, timeWindow: '1 minute' } },
   }, async (req, reply) => {
     const c = cfg();
     if (!discordConfigured()) return fail(reply, 'not_configured');
@@ -107,9 +108,11 @@ export async function discordRoutes(app: FastifyInstance) {
     return reply.redirect(url.toString());
   });
 
-  // ─── Retour de Discord ───
+  // ─── Retour de Discord ─── Publique : le visiteur n'a que le cookie d'état (la liaison
+  // résout sa session elle-même). Jamais exercée contre Discord (aucune application configurée).
   app.get<{ Querystring: { code?: string; state?: string; error?: string } }>(
     '/callback',
+    { config: { public: true } },
     async (req, reply) => {
       const c = cfg();
       const st = readOauthCookie(req.cookies[OAUTH_COOKIE]);
@@ -214,10 +217,9 @@ export async function discordRoutes(app: FastifyInstance) {
     },
   );
 
-  // ─── Déliaison (depuis le menu de compte, session requise) ───
+  // ─── Déliaison (depuis le menu de compte, session requise : route privée, garde globale) ───
   app.delete('/', async (req, reply) => {
-    const me = await resolveSession(req, reply);
-    if (!me) return reply.code(401).send({ error: 'non authentifié' });
+    const me = requireUser(req);
     // Un compte SANS mot de passe perdrait tout moyen de connexion : refus.
     const pw = await query<{ has: boolean }>(
       'select password_hash is not null as has from users where id = $1',
