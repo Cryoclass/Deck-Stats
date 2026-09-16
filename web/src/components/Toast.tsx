@@ -25,17 +25,21 @@ export function Toast() {
   if (!toast) return null;
 
   return (
-    <div data-removal-zone={toast.card.zone} className="fixed bottom-4 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-ink-100 shadow-2xl shadow-black/60">
+    <div data-removal-zone={toast.card.zone} className="fixed bottom-4 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-value text-fg-1 shadow-2xl shadow-black/60">
       <span>
-        <span className="text-ink-400">Retirée{toast.card.zone !== 'main' ? ` du ${ZONE_LABEL[toast.card.zone]}` : ''} :</span> {name}
+        <span className="text-fg-3">Retirée{toast.card.zone !== 'main' ? ` du ${ZONE_LABEL[toast.card.zone]}` : ''} :</span> {name}
       </span>
       <button
         onClick={undoRemove}
-        className="rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-black hover:bg-emerald-500"
+        className="rounded bg-emerald-600 px-2.5 py-1 text-body font-medium text-black hover:bg-emerald-500"
       >
         Annuler
       </button>
-      <button onClick={dismiss} className="text-ink-500 hover:text-ink-200" title="Fermer">
+      <button
+        onClick={dismiss}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-fg-3 hover:bg-ink-800 hover:text-fg-1"
+        title="Fermer"
+      >
         ✕
       </button>
     </div>

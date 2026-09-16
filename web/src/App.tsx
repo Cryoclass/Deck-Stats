@@ -33,7 +33,7 @@ function Gate() {
   const { state } = useAuth();
   if (state.status === 'loading') {
     return (
-      <div className="flex h-screen items-center justify-center bg-ink-950 text-sm text-ink-500">
+      <div className="flex h-[100dvh] items-center justify-center bg-ink-950 text-value text-fg-3">
         Chargement…
       </div>
     );

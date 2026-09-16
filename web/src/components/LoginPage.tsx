@@ -4,8 +4,8 @@ import { useAuth } from '../lib/auth.js';
 import { Segmented } from './ui.js';
 
 const field =
-  'w-full rounded-md border border-ink-700 bg-ink-950 px-2.5 py-1.5 text-sm text-ink-100 outline-none placeholder:text-ink-600 focus:border-ink-500';
-const label = 'text-[11px] uppercase tracking-wide text-ink-500';
+  'w-full rounded-md border border-ink-700 bg-ink-950 px-2.5 py-1.5 text-value text-fg-1 outline-none placeholder:text-fg-3 focus:border-ink-500';
+const label = 'text-meta uppercase tracking-wide text-fg-3';
 
 // Codes d'erreur renvoyés par le callback OAuth (?discord_error=…, Lot D).
 const DISCORD_ERRORS: Record<string, string> = {
@@ -99,11 +99,11 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-ink-950 text-ink-200">
+    <div className="flex h-[100dvh] items-center justify-center bg-ink-950 text-fg-2">
       <div className="w-full max-w-sm px-6">
         <div className="mb-6 text-center">
-          <div className="text-lg font-bold tracking-tight text-ink-100">YGO</div>
-          <div className="text-xs text-ink-500">probabilités &amp; mains</div>
+          <div className="text-title font-bold tracking-tight text-fg-1">YGO</div>
+          <div className="text-body text-fg-3">probabilités &amp; mains</div>
         </div>
 
         <div className="rounded-xl border border-ink-800 bg-ink-900 p-5">
@@ -158,7 +158,7 @@ export function LoginPage() {
               <>
                 <div className="flex flex-col gap-1">
                   <label className={label} htmlFor="auth-name">
-                    Nom affiché <span className="normal-case text-ink-600">(optionnel)</span>
+                    Nom affiché <span className="normal-case text-fg-3">(optionnel)</span>
                   </label>
                   <input
                     id="auth-name"
@@ -183,12 +183,12 @@ export function LoginPage() {
               </>
             )}
 
-            {error && <p className="text-xs text-red-400">{error}</p>}
+            {error && <p className="text-body text-neg">{error}</p>}
 
             <button
               type="submit"
               disabled={busy}
-              className="mt-1 rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-emerald-500 disabled:cursor-default disabled:opacity-60"
+              className="mt-1 rounded bg-emerald-600 px-3 py-1.5 text-value font-medium text-black transition-colors hover:bg-emerald-500 disabled:cursor-default disabled:opacity-60"
             >
               {busy ? '…' : mode === 'login' ? 'Se connecter' : 'Créer le compte'}
             </button>
@@ -198,12 +198,12 @@ export function LoginPage() {
             <>
               <div className="my-4 flex items-center gap-3">
                 <div className="h-px flex-1 bg-ink-800" />
-                <span className="text-[10px] uppercase tracking-wide text-ink-600">ou</span>
+                <span className="text-meta uppercase tracking-wide text-fg-3">ou</span>
                 <div className="h-px flex-1 bg-ink-800" />
               </div>
               <button
                 onClick={startDiscord}
-                className="flex w-full items-center justify-center gap-2 rounded bg-[#5865F2] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#4954d8]"
+                className="flex w-full items-center justify-center gap-2 rounded bg-[#5865F2] px-3 py-1.5 text-value font-medium text-white transition-colors hover:bg-[#4954d8]"
               >
                 <DiscordMark />
                 {mode === 'login' ? 'Se connecter avec Discord' : 'Créer un compte avec Discord'}
@@ -212,7 +212,7 @@ export function LoginPage() {
           )}
         </div>
 
-        <p className="mt-3 text-center text-[11px] text-ink-600">
+        <p className="mt-3 text-center text-meta text-fg-3">
           {mode === 'register'
             ? "L'inscription nécessite un code d'invitation."
             : 'Les decks et annotations sont propres à chaque compte.'}

@@ -43,8 +43,30 @@ export default async function guards() {
     await page.waitForSelector('text=/\\d+ ms/', { state: 'attached', timeout: 20000 });
     await page.waitForTimeout(400);
     expect('éditeur : en-tête sans débordement', await page.locator('header').evaluate(fits));
-    ge('éditeur : Enregistrer 32 px', await box(page.locator('header button:has-text("Enregistrer")')), 32);
-    ge('éditeur : sélecteur de contexte 24 px', await box(page.locator('header button:has-text("Premier")')), 24);
+    ge('éditeur : Enregistrer 32 px', await box(page.locator('header button[data-save]')), 32);
+    // Refonte visuelle (audit 01 §4) : le réglage de contexte a quitté l'en-tête pour le
+    // panneau « Probabilités », à côté des chiffres qu'il gouverne. À 1440 il est dans le
+    // panneau latéral ; sous 1024 il est dans l'onglet « Stats ».
+    if (cfg.width < 1024) await page.click('nav button[title="Stats"]');
+    ge('panneau : sélecteur de contexte 24 px', await box(page.locator('button[title="Premier · 5 cartes"]').first()), 24);
+    if (cfg.width < 1024) await page.click('nav button[title="Annoter"]');
+    // Chrome avant le premier contenu : 118 px d'en-tête (trois lignes) et 266 px au total
+    // à 360 px avant la refonte, soit 34 % de l'écran (audit 01 §4).
+    const chrome = await page.evaluate(() => {
+      const tile = document.querySelector('div.group');
+      const nav = document.querySelector('nav');
+      return {
+        header: Math.round(document.querySelector('header').getBoundingClientRect().height),
+        firstTile: tile ? Math.round(tile.getBoundingClientRect().top) : null,
+        navScroll: nav.scrollWidth,
+        navClient: nav.clientWidth,
+        tabs: nav.querySelectorAll('button').length,
+      };
+    });
+    expect(`chrome : en-tête sur une ligne (${chrome.header} px)`, chrome.header <= 56, chrome);
+    expect(`chrome : premier contenu à ${chrome.firstTile} px`, chrome.firstTile !== null && chrome.firstTile <= 140, chrome);
+    expect(`onglets : ${chrome.tabs} visibles, aucun masqué`, chrome.navScroll <= chrome.navClient + 1, chrome);
+    if (cfg.width < 640) ge('onglets : cible du bas 44 px', await box(page.locator('nav button[title="Annoter"]')), 44);
     const tile = tileOf(page, 'Starter Alpha');
     ge('tuile : stepper − 32 px (M1)', await box(tile.locator('button[title*="copies"]').first()), 32);
     ge('tuile : stepper + 32 px (M1)', await box(tile.locator('button[title="Plus de copies"]')), 32);

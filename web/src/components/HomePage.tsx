@@ -151,13 +151,13 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-ink-950 text-ink-200">
+    <div className="flex h-[100dvh] flex-col bg-ink-950 text-fg-2">
       {/* Étape 6B : sous 400 px les actions passent sur une seconde ligne (flex-wrap) au lieu
           de déborder ; boutons primaires 32 px, libellés insécables. */}
       <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-ink-800 bg-ink-950 px-5 py-3">
-        <span className="text-sm font-bold tracking-tight text-ink-100">YGO</span>
-        <span className="whitespace-nowrap text-[11px] text-ink-500">probabilités &amp; mains</span>
-        <h1 className="ml-2 whitespace-nowrap text-sm text-ink-300">Mes decks</h1>
+        <span className="text-value font-bold tracking-tight text-fg-1">YGO</span>
+        <span className="whitespace-nowrap text-meta text-fg-3">probabilités &amp; mains</span>
+        <h1 className="ml-2 whitespace-nowrap text-value text-fg-3">Mes decks</h1>
         <button
           onClick={() => setCompareOpen(true)}
           disabled={(decks?.length ?? 0) < 2}
@@ -166,31 +166,31 @@ export function HomePage() {
               ? 'Il faut au moins deux decks pour comparer.'
               : 'Comparer deux decks (matrice starts × non-engine)'
           }
-          className="ml-auto whitespace-nowrap rounded border border-ink-700 px-3 py-2 text-xs font-medium text-ink-200 hover:bg-ink-800 disabled:opacity-40"
+          className="ml-auto whitespace-nowrap rounded border border-ink-700 px-3 py-2 text-body font-medium text-fg-2 hover:bg-ink-800 disabled:opacity-40"
         >
           ⇄ Comparer
         </button>
         <button
           onClick={() => setNewOpen(true)}
-          className="whitespace-nowrap rounded bg-emerald-600 px-3 py-2 text-xs font-medium text-black hover:bg-emerald-500"
+          className="whitespace-nowrap rounded bg-emerald-600 px-3 py-2 text-body font-medium text-black hover:bg-emerald-500"
         >
           + Nouveau deck
         </button>
         <AccountMenu />
       </header>
 
-      {actionError && <p role="alert" className="px-5 py-2 text-sm text-red-300">{actionError}</p>}
+      {actionError && <p role="alert" className="px-5 py-2 text-value text-neg">{actionError}</p>}
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
-        {decks === null && <div className="text-sm text-ink-500">Chargement…</div>}
+        {decks === null && <div className="text-value text-fg-3">Chargement…</div>}
         {decks !== null && decks.length === 0 && (
           <div className="mx-auto mt-16 max-w-md rounded-xl border border-dashed border-ink-700 p-8 text-center">
-            <p className="text-sm text-ink-300">Aucun deck pour l'instant.</p>
-            <p className="mt-1 text-xs text-ink-500">
+            <p className="text-value text-fg-3">Aucun deck pour l'instant.</p>
+            <p className="mt-1 text-body text-fg-3">
               Commence par importer un fichier YDK — c'est le plus rapide.
             </p>
             <button
               onClick={() => setNewOpen(true)}
-              className="mt-4 rounded bg-emerald-600 px-3 py-2 text-xs font-medium text-black hover:bg-emerald-500"
+              className="mt-4 rounded bg-emerald-600 px-3 py-2 text-body font-medium text-black hover:bg-emerald-500"
             >
               + Importer un deck
             </button>
@@ -271,7 +271,7 @@ function DeckCard({
       {/* Bandeau de vignettes pour la reconnaissance visuelle. */}
       <button onClick={onOpen} className="flex h-16 gap-0.5 overflow-hidden bg-ink-950 px-2 pt-2" title="Ouvrir">
         {thumbs.length === 0 && (
-          <span className="flex w-full items-center justify-center text-[10px] text-ink-600">deck vide</span>
+          <span className="flex w-full items-center justify-center text-meta text-fg-3">deck vide</span>
         )}
         {thumbs.map((id) => (
           <img
@@ -290,9 +290,9 @@ function DeckCard({
           onChange={(e) => setName(e.target.value)}
           onBlur={() => name.trim() && name !== deck.name && onRename(name.trim())}
           onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-          className="min-w-0 flex-1 rounded bg-transparent px-1 py-0.5 text-sm font-medium text-ink-100 outline-none hover:bg-ink-850 focus:bg-ink-850"
+          className="min-w-0 flex-1 rounded bg-transparent px-1 py-0.5 text-value font-medium text-fg-1 outline-none hover:bg-ink-850 focus:bg-ink-850"
         />
-        <span className="tnum shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">
+        <span className="tnum shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-meta text-fg-3">
           {deck.main_count} c.
         </span>
         <DeckMenu
@@ -303,15 +303,15 @@ function DeckCard({
         />
       </div>
 
-      <div className="flex items-center gap-4 px-3 py-2 text-xs" data-preview={summary ? 'ready' : preview?.kind ?? 'pending'}>
+      <div className="flex items-center gap-4 px-3 py-2 text-body" data-preview={summary ? 'ready' : preview?.kind ?? 'pending'}>
         <Stat label="départs ≥1 (premier)" value={summary?.startRateFirst} pending={pending} good />
         <Stat label="brick (premier)" value={summary?.brickRate} pending={pending} />
-        <span className="ml-auto text-[10px] text-ink-600">{updated}</span>
+        <span className="ml-auto text-meta text-fg-4">{updated}</span>
       </div>
 
       <button
         onClick={onOpen}
-        className="mt-auto border-t border-ink-800 py-1.5 text-xs font-medium text-emerald-300 hover:bg-ink-850"
+        className="mt-auto border-t border-ink-800 py-1.5 text-body font-medium text-pos hover:bg-ink-850"
       >
         Ouvrir
       </button>
@@ -324,12 +324,12 @@ function Stat({ label, value, pending, good }: { label: string; value?: number; 
   return (
     <div>
       <div
-        className={`tnum text-sm font-semibold ${value === undefined ? 'text-ink-400' : good ? 'text-emerald-300' : 'text-red-400'}`}
+        className={`tnum text-value font-semibold ${value === undefined ? 'text-fg-3' : good ? 'text-pos' : 'text-neg'}`}
         title={value === undefined ? pending?.title : pct(value, 2)}
       >
         {value === undefined ? pending?.text ?? '—' : pct(value, 0)}
       </div>
-      <div className="text-[9px] uppercase tracking-wide text-ink-600">{label}</div>
+      <div className="text-meta uppercase tracking-wide text-fg-3">{label}</div>
     </div>
   );
 }
@@ -346,11 +346,11 @@ function DeckMenu({
   onExportJson: () => void;
 }) {
   const item =
-    'cursor-pointer rounded px-2 py-1.5 text-xs outline-none data-[highlighted]:bg-ink-700';
+    'cursor-pointer rounded px-2 py-1.5 text-body outline-none data-[highlighted]:bg-ink-700';
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-ink-400 hover:bg-ink-800 hover:text-ink-100">
+        <button className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-fg-3 hover:bg-ink-800 hover:text-fg-1">
           ⋯
         </button>
       </DropdownMenu.Trigger>
@@ -361,17 +361,17 @@ function DeckMenu({
           collisionPadding={8}
           className="z-50 min-w-[170px] rounded-lg border border-ink-700 bg-ink-850 p-1 shadow-2xl shadow-black/50"
         >
-          <DropdownMenu.Item className={`${item} text-ink-200`} onSelect={onDuplicate}>
+          <DropdownMenu.Item className={`${item} text-fg-2`} onSelect={onDuplicate}>
             Dupliquer
           </DropdownMenu.Item>
-          <DropdownMenu.Item className={`${item} text-ink-200`} onSelect={onExportYdk}>
+          <DropdownMenu.Item className={`${item} text-fg-2`} onSelect={onExportYdk}>
             Exporter YDK
           </DropdownMenu.Item>
-          <DropdownMenu.Item className={`${item} text-ink-200`} onSelect={onExportJson}>
+          <DropdownMenu.Item className={`${item} text-fg-2`} onSelect={onExportJson}>
             Exporter JSON complet
           </DropdownMenu.Item>
           <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
-          <DropdownMenu.Item className={`${item} text-red-300`} onSelect={onDelete}>
+          <DropdownMenu.Item className={`${item} text-neg`} onSelect={onDelete}>
             Supprimer
           </DropdownMenu.Item>
         </DropdownMenu.Content>

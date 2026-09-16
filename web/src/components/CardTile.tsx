@@ -131,8 +131,9 @@ export function CardTile({
             style={{ background: comboVeil(pivotColor) }}
           />
         )}
-        {/* Pastilles des groupes qui combottent avec cette carte (§4.2). */}
-        <span className="pointer-events-none absolute right-1 top-1 flex flex-col gap-1">
+        {/* Pastilles des groupes qui combottent avec cette carte (§4.2). Posées SOUS le bandeau
+            de nom de l'illustration (audit 01 §4), comme les badges de rôle. */}
+        <span className="pointer-events-none absolute right-1 top-[11%] flex flex-col gap-1">
           {pastilles.map((c) => (
             <span
               key={c}
@@ -141,17 +142,17 @@ export function CardTile({
             />
           ))}
         </span>
-        {/* Badges rôle. */}
-        <span className="pointer-events-none absolute left-1 top-1 flex flex-wrap gap-1">
+        {/* Badges rôle, sous le bandeau de nom (audit 01 §4). */}
+        <span className="pointer-events-none absolute left-1 top-[11%] flex flex-wrap gap-1">
           {isStarter && (
-            <span className="rounded bg-emerald-500/90 px-1 text-[10px] font-bold text-black">S</span>
+            <span className="rounded bg-emerald-500/90 px-1 text-meta font-bold text-black">S</span>
           )}
           {isHopt && (
-            <span className="rounded bg-amber-500/90 px-1 text-[10px] font-bold text-black">H</span>
+            <span className="rounded bg-amber-500/90 px-1 text-meta font-bold text-black">H</span>
           )}
           {profile && (
             <span
-              className="rounded bg-sky-500/90 px-1 text-[10px] font-bold text-black"
+              className="rounded bg-sky-500/90 px-1 text-meta font-bold text-black"
               title={`Profil ${AVAILABILITY_LABEL[profile.availability]}${groupName ? ` · plafond « ${groupName} »` : ''}`}
             >
               {AVAILABILITY_SHORT[profile.availability]}
@@ -160,7 +161,7 @@ export function CardTile({
           )}
           {unprofiled && (
             <span
-              className="rounded bg-amber-400/90 px-1 text-[10px] font-bold text-black"
+              className="rounded bg-amber-400/90 px-1 text-meta font-bold text-black"
               title="Étiquetée non-engine sans profil de disponibilité : non comptée dans le potentiel (copies brutes seulement)."
             >
               ?
@@ -170,16 +171,16 @@ export function CardTile({
         {(deadFirst || deadSecond) && (
           <span className="pointer-events-none absolute bottom-1 left-1 flex gap-1">
             {deadFirst && (
-              <span className="rounded bg-black/70 px-1 text-[9px] font-medium text-red-300">†1er</span>
+              <span className="rounded bg-black/70 px-1 text-meta font-medium text-neg">†1er</span>
             )}
             {deadSecond && (
-              <span className="rounded bg-black/70 px-1 text-[9px] font-medium text-red-300">†2nd</span>
+              <span className="rounded bg-black/70 px-1 text-meta font-medium text-neg">†2nd</span>
             )}
           </span>
         )}
         {/* Feedback modes. */}
         {pivotActive && linkedToPivot && (
-          <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-emerald-500/15 text-lg text-emerald-200">
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-emerald-500/15 text-title text-pos">
             ✓
           </span>
         )}
@@ -190,8 +191,8 @@ export function CardTile({
         {nonEngineEffect && (
           <span
             data-nonengine-effect={nonEngineEffect}
-            className={`pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 rounded px-1 text-[9px] font-bold ${
-              nonEngineEffect === 'poser' ? 'bg-sky-500/90 text-black' : 'bg-black/70 text-sky-200 ring-1 ring-sky-400/70'
+            className={`pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 rounded px-1 text-meta font-bold ${
+              nonEngineEffect === 'poser' ? 'bg-sky-500/90 text-black' : 'bg-black/70 text-info ring-1 ring-sky-400/70'
             }`}
           >
             {nonEngineEffect}
@@ -201,7 +202,7 @@ export function CardTile({
             distinct des pastilles de combo (§D). */}
         {showPrereqMarker && (
           <span
-            className="pointer-events-none absolute bottom-1 right-1 flex h-4 items-center rounded border border-dashed border-amber-400 bg-black/60 px-1 text-[9px] font-bold text-amber-300"
+            className="pointer-events-none absolute bottom-1 right-1 flex h-4 items-center rounded border border-dashed border-amber-400 bg-black/60 px-1 text-meta font-bold text-warn"
             title="Son start dépend de cartes restant en deck (condition ET/OU)"
           >
             ▤
@@ -209,7 +210,7 @@ export function CardTile({
         )}
         {/* Rebond au survol de la dépendante : relation dirigée → la requise. */}
         {prereqHighlight === 'required' && (
-          <span className="pointer-events-none absolute inset-x-0 top-0 bg-amber-500/25 text-center text-[9px] font-medium text-amber-100">
+          <span className="pointer-events-none absolute inset-x-0 top-0 bg-amber-500/25 text-center text-meta font-medium text-amber-100">
             ↑ requise en deck
           </span>
         )}
@@ -222,16 +223,16 @@ export function CardTile({
         <div className="flex shrink-0 items-center rounded border border-ink-700 bg-ink-850">
           <button
             onClick={() => setCopies(cardId, copies - 1, zone)}
-            className="flex h-8 w-8 items-center justify-center text-sm text-ink-300 hover:text-ink-100"
+            className="flex h-8 w-8 items-center justify-center text-value text-fg-3 hover:text-fg-1"
             title={copies <= 1 ? (zone === 'main' ? 'Retirer du deck (0 copie)' : `Retirer du ${ZONE_LABEL[zone]} (0 copie)`) : 'Moins de copies'}
           >
             −
           </button>
-          <span className="tnum w-3 text-center text-[11px] text-ink-100">{copies}</span>
+          <span className="tnum w-3 text-center text-meta text-fg-1">{copies}</span>
           <button
             onClick={() => setCopies(cardId, copies + 1, zone)}
             disabled={copies >= 3}
-            className="flex h-8 w-8 items-center justify-center text-sm text-ink-300 hover:text-ink-100 disabled:opacity-30"
+            className="flex h-8 w-8 items-center justify-center text-value text-fg-3 hover:text-fg-1 disabled:opacity-30"
             title="Plus de copies"
           >
             +
@@ -244,14 +245,14 @@ export function CardTile({
         {zone !== 'main' ? (
           <div
             data-off-calc
-            className="min-w-0 flex-1 whitespace-nowrap text-center text-[10px] leading-none text-ink-600"
+            className="min-w-0 flex-1 whitespace-nowrap text-center text-meta leading-none text-fg-3"
             title="Carte du side : ses annotations servent aux plans de side, jamais au calcul du deck de base."
           >
             hors calcul
           </div>
         ) : (
         <div
-          className={`tnum min-w-0 flex-1 whitespace-nowrap text-center text-[10px] leading-none text-ink-500 transition-opacity ${
+          className={`tnum min-w-0 flex-1 whitespace-nowrap text-center text-meta leading-none text-fg-2 transition-opacity ${
             stale ? 'opacity-45' : ''
           }`}
           title={`Δ P(≥1 départ théorique) si l'on retire une copie — contexte ${context === 'first' ? 'premier' : 'second'}${

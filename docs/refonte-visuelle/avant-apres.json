@@ -1,0 +1,127 @@
+{
+ "avant": {
+  "360": {
+   "pages": 25,
+   "styles": 611,
+   "echecs": 297,
+   "echecsPct": 49,
+   "echecsHorsAttenues": 255,
+   "surImageEchecs": 56,
+   "sous11px": 38,
+   "a9px": 16,
+   "a10px": 22,
+   "cibles": 622,
+   "ciblesSous24": 23,
+   "ciblesSous32": 279
+  },
+  "768": {
+   "pages": 25,
+   "styles": 745,
+   "echecs": 359,
+   "echecsPct": 48,
+   "echecsHorsAttenues": 328,
+   "surImageEchecs": 24,
+   "sous11px": 35,
+   "a9px": 4,
+   "a10px": 31,
+   "cibles": 1174,
+   "ciblesSous24": 32,
+   "ciblesSous32": 335
+  },
+  "1440": {
+   "pages": 24,
+   "styles": 1352,
+   "echecs": 667,
+   "echecsPct": 49,
+   "echecsHorsAttenues": 531,
+   "surImageEchecs": 25,
+   "sous11px": 41,
+   "a9px": 3,
+   "a10px": 38,
+   "cibles": 1381,
+   "ciblesSous24": 106,
+   "ciblesSous32": 438
+  }
+ },
+ "apres": {
+  "360": {
+   "pages": 25,
+   "styles": 477,
+   "echecs": 16,
+   "echecsPct": 3,
+   "echecsHorsAttenues": 0,
+   "surImageEchecs": 2,
+   "sous11px": 10,
+   "a9px": 0,
+   "a10px": 10,
+   "cibles": 668,
+   "ciblesSous24": 1,
+   "ciblesSous32": 147
+  },
+  "768": {
+   "pages": 25,
+   "styles": 653,
+   "echecs": 60,
+   "echecsPct": 9,
+   "echecsHorsAttenues": 0,
+   "surImageEchecs": 1,
+   "sous11px": 0,
+   "a9px": 0,
+   "a10px": 0,
+   "cibles": 1153,
+   "ciblesSous24": 1,
+   "ciblesSous32": 159
+  },
+  "1440": {
+   "pages": 24,
+   "styles": 1230,
+   "echecs": 70,
+   "echecsPct": 6,
+   "echecsHorsAttenues": 0,
+   "surImageEchecs": 0,
+   "sous11px": 0,
+   "a9px": 0,
+   "a10px": 0,
+   "cibles": 1379,
+   "ciblesSous24": 1,
+   "ciblesSous32": 298
+  }
+ },
+ "parPage": {
+  "avant": {
+   "login-360": "5/9 (hors atténués 5)",
+   "register-360": "6/10 (hors atténués 6)",
+   "home-1440": "5/14 (hors atténués 5)",
+   "home-vide-1440": "8/14 (hors atténués 7)",
+   "import-dialog-1440": "13/21 (hors atténués 11)",
+   "editor-annoter-1440": "43/78 (hors atténués 35)",
+   "editor-annoter-360": "12/20 (hors atténués 11)",
+   "editor-stats-360": "29/39 (hors atténués 8)",
+   "editor-combos-1440": "45/80 (hors atténués 36)",
+   "editor-inventaire-1440": "40/82 (hors atténués 33)",
+   "editor-mains-1440": "37/78 (hors atténués 30)",
+   "editor-side-1440": "45/85 (hors atténués 35)",
+   "compare-1440": "25/104 (hors atténués 25)",
+   "fiche-1440": "6/16 (hors atténués 6)",
+   "fiche-print-1440": "0/11 (hors atténués 0)"
+  },
+  "apres": {
+   "login-360": "0/8 (hors atténués 0)",
+   "register-360": "0/9 (hors atténués 0)",
+   "home-1440": "0/14 (hors atténués 0)",
+   "home-vide-1440": "1/14 (hors atténués 0)",
+   "import-dialog-1440": "2/21 (hors atténués 0)",
+   "editor-annoter-1440": "2/78 (hors atténués 0)",
+   "editor-annoter-360": "1/13 (hors atténués 0)",
+   "editor-stats-360": "0/50 (hors atténués 0)",
+   "editor-combos-1440": "3/80 (hors atténués 0)",
+   "editor-inventaire-1440": "1/81 (hors atténués 0)",
+   "editor-mains-1440": "1/76 (hors atténués 0)",
+   "editor-side-1440": "4/84 (hors atténués 0)",
+   "compare-1440": "0/47 (hors atténués 0)",
+   "fiche-1440": "0/16 (hors atténués 0)",
+   "fiche-print-1440": "0/11 (hors atténués 0)"
+  }
+ },
+ "echecsRestantsHorsAttenues": []
+}

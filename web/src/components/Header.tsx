@@ -1,5 +1,4 @@
 import { useDeck } from '../store/deckStore.js';
-import { Segmented } from './ui.js';
 import { AccountMenu } from './AccountMenu.js';
 
 /** Libellés du contexte d'analyse (contrat §3), communs à toute l'interface. */
@@ -14,6 +13,17 @@ export const CONTEXT_SHORT = {
 export const CONTEXT_TITLE =
   'Contexte d’analyse unique : premier = les 5 cartes initiales ; second = les 5 initiales et une sixième pioche identifiée. Il s’applique aux deltas de la grille, à la matrice, aux requêtes et au mur de mains.';
 
+/**
+ * En-tête de l'éditeur — UNE ligne à toute largeur (audit 01 §4 : trois lignes et 118 px à
+ * 360 px avant cette mise en page). N'y restent que l'identité du deck et l'action.
+ * Ce qui en sort :
+ *  - le réglage de contexte premier / second, descendu dans le panneau « Probabilités », à
+ *    côté des chiffres qu'il gouverne (le mur de mains a déjà le sien) ;
+ *  - l'heure du dernier enregistrement, qui devient l'état au repos du bouton lui-même —
+ *    un bouton inerte qui dit « enregistré 10:04 » vaut mieux qu'un horodatage séparé ;
+ *  - l'état de la persistance, passé en ligne d'état du menu compte.
+ * Une erreur de persistance, elle, prend une seconde ligne pleine : elle doit se voir.
+ */
 export function Header({ onSave, onHome }: { onSave: () => void; onHome: () => void }) {
   const deckName = useDeck((s) => s.deckName);
   const renameDeck = useDeck((s) => s.renameDeck);
@@ -24,83 +34,74 @@ export function Header({ onSave, onHome }: { onSave: () => void; onHome: () => v
   const persistenceError = useDeck((s) => s.persistenceError);
   const libraryPending = useDeck((s) => s.libraryPending);
   const lastSavedAt = useDeck((s) => s.lastSavedAt);
-  const context = useDeck((s) => s.context);
-  const setContext = useDeck((s) => s.setContext);
 
   const outOfBounds = deckSize < 40 || deckSize > 60;
   const savedLabel = lastSavedAt
     ? new Date(lastSavedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
     : null;
+  const atRest = !dirty && !saving && savedLabel !== null;
 
   return (
-    <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-800 bg-ink-950 px-4 py-2">
-      <button
-        onClick={onHome}
-        className="rounded px-2 py-1 text-xs text-ink-400 hover:bg-ink-800 hover:text-ink-100"
-        title="Retour aux decks"
-      >
-        ← Decks
-      </button>
-
-      <div className="mx-1 h-5 w-px bg-ink-800" />
-
-      <input
-        value={deckName}
-        onChange={(e) => renameDeck(e.target.value)}
-        className="w-32 min-w-0 rounded bg-transparent px-1 py-0.5 text-sm text-ink-100 outline-none hover:bg-ink-900 focus:bg-ink-900 sm:w-52"
-      />
-
-      <span
-        className={`tnum rounded px-1.5 py-0.5 text-[11px] ${
-          outOfBounds ? 'bg-amber-500/15 text-amber-300' : 'bg-ink-800 text-ink-400'
-        }`}
-        title="Taille du main deck (extra/side exclus)"
-      >
-        {deckSize} cartes
-      </span>
-
-      {persistenceError && <p role="alert" className="text-xs text-red-300">{persistenceError}</p>}
-      {libraryPending > 0 && <span role="status" className="text-xs text-ink-400">Enregistrement des annotations…</span>}
-      <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-        <div className="flex items-center gap-1.5 text-[11px] text-ink-500" title="Persistance backend">
-          <span className={`h-2 w-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-ink-600'}`} />
-          {online ? 'en ligne' : 'hors-ligne'}
-        </div>
-
-        {/* Réglage UNIQUE premier/second (étape 5B) : remplace l'ancien bouton « delta ». */}
-        <div className="flex items-center gap-1.5 text-[11px] text-ink-400" title={CONTEXT_TITLE}>
-          <span>contexte</span>
-          <Segmented
-            size="sm"
-            value={context}
-            onChange={setContext}
-            options={[
-              { value: 'first', label: CONTEXT_SHORT.first, title: CONTEXT_LABEL.first },
-              { value: 'second', label: CONTEXT_SHORT.second, title: CONTEXT_LABEL.second },
-            ]}
-          />
-        </div>
-
-        {savedLabel && !dirty && (
-          <span className="text-[10px] text-ink-600">enregistré {savedLabel}</span>
-        )}
-
+    <header className="shrink-0 border-b border-ink-800 bg-ink-950">
+      <div className="flex h-12 items-center gap-2 px-3 sm:gap-3 sm:px-4">
         <button
-          onClick={onSave}
-          disabled={!dirty || saving || libraryPending > 0}
-          title="Enregistrer (Ctrl/Cmd + S)"
-          className={`flex items-center gap-1.5 rounded px-3 py-2 text-xs font-medium transition-colors ${
-            dirty
-              ? 'bg-emerald-600 text-black hover:bg-emerald-500'
-              : 'cursor-default bg-ink-800 text-ink-500'
-          }`}
+          onClick={onHome}
+          className="flex h-8 shrink-0 items-center rounded px-2 text-body text-fg-3 hover:bg-ink-800 hover:text-fg-1"
+          title="Retour aux decks"
         >
-          {saving ? 'Enregistrement…' : 'Enregistrer'}
-          {dirty && <span className="h-1.5 w-1.5 rounded-full bg-black/70" />}
+          <span aria-hidden>←</span>
+          <span className="ml-1 hidden sm:inline">Decks</span>
         </button>
 
-        <AccountMenu />
+        <input
+          value={deckName}
+          onChange={(e) => renameDeck(e.target.value)}
+          aria-label="Nom du deck"
+          className="min-w-0 flex-1 rounded bg-transparent px-1.5 py-1 text-value text-fg-1 outline-none hover:bg-ink-900 focus:bg-ink-900 sm:max-w-[22rem]"
+        />
+
+        <span
+          className={`tnum shrink-0 rounded px-1.5 py-0.5 text-meta ${
+            outOfBounds ? 'bg-amber-500/15 text-warn' : 'bg-ink-800 text-fg-3'
+          }`}
+          title="Taille du main deck (extra/side exclus)"
+        >
+          {deckSize}
+          <span className="hidden sm:inline"> cartes</span>
+          <span className="sm:hidden"> c.</span>
+        </span>
+
+        {libraryPending > 0 && (
+          <span role="status" className="hidden text-meta text-fg-3 sm:inline">
+            Enregistrement des annotations…
+          </span>
+        )}
+
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <button
+            data-save
+            onClick={onSave}
+            disabled={!dirty || saving || libraryPending > 0}
+            title={atRest ? `Dernier enregistrement à ${savedLabel}` : 'Enregistrer (Ctrl/Cmd + S)'}
+            className={`tnum flex h-8 items-center gap-1.5 rounded px-3 text-body font-medium transition-colors ${
+              dirty
+                ? 'bg-emerald-600 text-black hover:bg-emerald-500'
+                : 'cursor-default bg-ink-800 text-fg-3'
+            }`}
+          >
+            {saving ? 'Enregistrement…' : atRest ? `enregistré ${savedLabel}` : 'Enregistrer'}
+            {dirty && <span className="h-1.5 w-1.5 rounded-full bg-black/70" />}
+          </button>
+
+          <AccountMenu status={{ online, savedLabel }} />
+        </div>
       </div>
+
+      {persistenceError && (
+        <p role="alert" className="border-t border-red-500/30 bg-red-500/10 px-4 py-1.5 text-body text-neg">
+          {persistenceError}
+        </p>
+      )}
     </header>
   );
 }

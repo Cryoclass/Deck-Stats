@@ -1,5 +1,6 @@
 import type { PassResult } from '../engine/types.js';
 import { pct, num } from './fmt.js';
+import { SERIES_STARTS, SERIES_COUNT } from './colors.js';
 
 // ─── Vues du panneau de statistiques (étape 7) ───
 // Réduction PURE d'une passe aux grandeurs affichées par le panneau (seaux 0/1/2/≥3,
@@ -52,26 +53,26 @@ export function resolveView(pass: PassResult, viewId: string): Resolved {
         pass.startsBuckets[2] ?? 0,
         pass.startsBuckets[3] ?? 0,
       ],
-      color: '#4fae7a',
+      color: SERIES_STARTS,
       mean: pass.meanStarts,
-      meanLabel: 'E[S]',
-      extra: `brick ${pct(pass.brick)} · E[red.] ${num(meanFromDist(pass.redundancy))}`,
+      meanLabel: 'moyenne',
+      extra: `brick ${pct(pass.brick)} · redondance moyenne ${num(meanFromDist(pass.redundancy))}`,
     };
   }
   if (viewId === 'nonengine') {
     return {
       buckets: toBuckets(pass.nonEngine),
-      color: '#5b8def',
+      color: SERIES_COUNT,
       mean: pass.meanNonEngine,
-      meanLabel: 'E[U]',
+      meanLabel: 'moyenne',
     };
   }
   const cat = pass.perCategory.find((c) => c.id === viewId);
-  if (!cat) return { buckets: [0, 0, 0, 0], color: '#5b8def', mean: 0, meanLabel: '' };
+  if (!cat) return { buckets: [0, 0, 0, 0], color: SERIES_COUNT, mean: 0, meanLabel: '' };
   return {
     buckets: toBuckets(cat.dist),
-    color: '#5b8def',
+    color: SERIES_COUNT,
     mean: cat.mean,
-    meanLabel: 'E[copies]',
+    meanLabel: 'moyenne',
   };
 }

@@ -4,6 +4,12 @@
 > de cette application pour qu'un **autre projet** puisse le reprendre et produire une
 > interface cohérente avec celle-ci, sans avoir accès à ce dépôt.
 >
+> **Refonte visuelle du 16 septembre 2026** (audit `docs/audit/01-visuel.md`, direction A
+> « sombre relevé » ; compte rendu `docs/refonte-visuelle.md`) : palette relevée de deux
+> paliers, quatre rôles de texte tous ≥ 4,5:1, échelle typographique fermée (corps 13 px,
+> plancher 11 px), valeurs servies par des variables CSS, en-tête sur une ligne et onglets
+> en bas sous 640 px. Les sections 1, 2, 3, 6, 7.8, 12 et 13 décrivent l'état refondu.
+>
 > Tout ce qui suit est extrait du code réel (`web/tailwind.config.js`, `web/src/index.css`,
 > `web/src/lib/colors.ts`, `web/src/components/*`). Les classes Tailwind citées servent
 > de référence d'implémentation ; la §12 donne les mêmes tokens en CSS pur pour un projet
@@ -18,8 +24,10 @@ suffit à obtenir une interface de la même famille ; les enfreindre casse l'acc
 même si la palette est respectée.
 
 1. **Le sombre n'est pas un thème, c'est le seul mode.** `color-scheme: dark`, aucune
-   variante claire n'existe. Le fond est très profond (`#0a0b0e`, quasi-noir), pas un
-   gris moyen : c'est ce qui laisse « respirer » les images et fait ressortir les chiffres.
+   variante claire n'existe (les variables CSS la rendent possible, elle n'est pas faite).
+   Le fond est profond (`#111318`), pas un gris moyen : c'est ce qui laisse « respirer » les
+   images et fait ressortir les chiffres. Il a été relevé de `#0a0b0e` à la refonte : en
+   dessous, une bordure de 1 px ne se distinguait plus de la surface (1,15:1).
 2. **Le chrome est chromatiquement neutre.** Toute l'ossature — fonds, bordures, textes,
    boutons secondaires — vit sur une seule échelle de gris froids. **La couleur est un
    signal, jamais une décoration.** Une teinte qui apparaît veut dire quelque chose.
@@ -29,11 +37,12 @@ même si la palette est respectée.
 4. **Les chiffres sont le produit.** Toute valeur numérique est en chiffres tabulaires
    (`font-variant-numeric: tabular-nums`), alignée à droite, et affichée dans la couleur
    de texte la plus claire de l'échelle. Le libellé, lui, est discret.
-5. **Densité assumée.** La taille de texte de référence de l'interface est **12 px**,
-   pas 14 ni 16. Les paddings sont de l'ordre de 4–10 px. On privilégie de voir
-   beaucoup d'un coup plutôt que de l'air.
-6. **Hiérarchie par la valeur de gris, pas par la graisse.** Six niveaux de texte
-   du plus clair au plus effacé font tout le travail. `font-semibold` est réservé aux
+5. **Densité assumée, lisibilité garantie.** Le corps de l'interface est à **13 px**, et
+   **aucun texte n'est sous 11 px** (seule dérogation : les cellules des matrices A / B du
+   comparateur sous 640 px, à 10 px). Les paddings sont de l'ordre de 4–10 px. On
+   privilégie de voir beaucoup d'un coup plutôt que de l'air.
+6. **Hiérarchie par la valeur de gris, pas par la graisse.** Quatre rôles de texte
+   (`fg-1` à `fg-4`), tous lisibles (≥ 4,5:1), font tout le travail. `font-semibold` est réservé aux
    titres courts et aux valeurs ; il n'y a pas de `font-bold` généralisé.
 7. **Le rayon d'arrondi croît avec l'élévation.** 4 px pour les contrôles à plat,
    6 px pour les tuiles et lignes de liste, 8 px pour les surfaces flottantes,
@@ -51,37 +60,46 @@ même si la palette est respectée.
 
 ## 2. Couleur
 
-### 2.1 L'échelle neutre `ink` — la colonne vertébrale
+### 2.1 Surfaces `ink` et rôles de texte `fg` — la colonne vertébrale
 
-Onze paliers de **gris froids** (légèrement bleutés, ~230° de teinte : jamais du gris
-pur, jamais du chaud). C'est la particularité principale de la palette.
+Deux familles, servies par des **variables CSS** (`web/src/index.css`, `:root`) et exposées
+à Tailwind par `web/tailwind.config.js` (`ink-900: 'var(--ink-900)'`). Aucun composant ne
+connaît une valeur hexadécimale : un thème alternatif se fait en redéfinissant `:root`.
+
+**Surfaces et bordures** — gris froids (≈ 230° de teinte, jamais du gris pur ni chaud) :
 
 | Token | Hex | Rôle canonique |
 |---|---|---|
-| `ink-950` | `#0a0b0e` | Fond de l'application, fond de l'en-tête, fond des `<kbd>` |
-| `ink-900` | `#0f1116` | Surface de contenu : cartes, panneaux, lignes de liste, dialogues |
-| `ink-850` | `#151822` | Contrôles en creux (champs, `select`, steppers) et surfaces flottantes |
-| `ink-800` | `#1b1f2a` | **Bordure de séparation par défaut** · fond de puce · fond de survol · piste de barre |
-| `ink-700` | `#252a37` | **Bordure des surfaces flottantes et des champs** · fond d'onglet actif · bouton secondaire |
-| `ink-600` | `#333a4a` | Bouton segmenté actif · pouce d'ascenseur · bordure en pointillés |
-| `ink-500` | `#4a5265` | Texte méta / inactif · icônes discrètes (décoratif) |
-| `ink-400` | `#6b7488` | Libellés secondaires, texte atténué |
-| `ink-300` | `#9aa2b5` | Texte secondaire lisible, corps des menus |
-| `ink-200` | `#c7ccd8` | **Couleur de texte par défaut du `<body>`** |
-| `ink-100` | `#e8eaf0` | Texte principal, titres, **valeurs numériques** |
+| `ink-950` | `#111318` | Fond de l'application, de l'en-tête et de la barre d'onglets du bas, fond des `<kbd>` |
+| `ink-900` | `#181b22` | Surface de contenu : cartes, panneaux, lignes de liste, dialogues |
+| `ink-850` | `#1f232c` | Contrôles en creux (champs, `select`, steppers) et surfaces flottantes |
+| `ink-800` | `#262b36` | **Bordure de séparation par défaut** · fond de puce · fond de survol · piste de barre |
+| `ink-700` | `#323846` | **Bordure des surfaces flottantes et des champs** · état actif · bouton secondaire |
+| `ink-600` | `#3d4452` | Bouton segmenté actif · pouce d'ascenseur · bordure en pointillés |
+| `ink-500` | `#667085` | **Bordure de composant** (3,46:1 sur la surface : passe WCAG 1.4.11) · couleur par défaut de `Bar` |
 
-Contrastes mesurés sur `ink-950` (approximatifs) : `ink-100` ≈ 15:1 · `ink-200` ≈ 12:1 ·
-`ink-300` ≈ 7,7:1 · `ink-400` ≈ 4,1:1 · `ink-500` ≈ 2,5:1.
-**Conséquence à respecter :** `ink-500` et `ink-600` sont *décoratifs* — horodatages,
-séparateurs, texte désactivé. Ne jamais y mettre une information dont la lecture est
-nécessaire.
+`ink-400` à `ink-100` **n'existent plus** : ils ne servaient qu'au texte.
+
+**Texte — quatre rôles**, tous ≥ 4,5:1 sur les surfaces où ils sont autorisés :
+
+| Classe | Hex | Emploi | Ratio page / surface / creux |
+|---|---|---|---|
+| `text-fg-1` | `#f3f4f8` | Valeurs numériques, titres, noms d'objets | 16,9 / 15,7 / 14,3 |
+| `text-fg-2` | `#c9cfdb` | Corps, couleur du `<body>`, delta de tuile, texte de carte | 11,9 / 11,0 / 10,1 |
+| `text-fg-3` | `#9aa3b6` | Libellés, en-têtes de tableau, étiquettes de section, onglets inactifs | 7,3 / 6,8 / 6,2 |
+| `text-fg-4` | `#7f8899` | Méta pur : date, horodatage, passcode | 5,2 / 4,8 / **4,4 — interdit sur `ink-850`** |
+
+**Règle d'affectation** (c'est elle que la refonte corrige : avant, trois paliers sous le
+seuil — 4,2 / 2,5 / 1,7:1 — portaient des libellés, des deltas et des en-têtes de tableau) :
+une information dont la lecture est nécessaire n'est **jamais** en `fg-4`, et `fg-4` n'est
+jamais posé sur un creux. Tout ce qui est « atténué » passe par `fg-3`, qui reste lisible.
 
 ### 2.2 L'escalier des surfaces
 
 L'empilement est strict et se lit du plus sombre (le plus loin) au plus clair (le plus près) :
 
 ```
-ink-950   fond de page + en-tête           ← le plus sombre : la page « recule »
+ink-950   fond de page + en-tête           ← le plus sombre : la page « recule » (#111318)
   └ ink-900   panneau / carte / dialogue      + bordure ink-800
       └ ink-850   champ, select, popover       + bordure ink-700
           └ ink-800   puce, badge, survol
@@ -107,6 +125,10 @@ Chaque teinte a un sens unique et non négociable. Une cinquième couleur n'exis
 | **Ciel** | Information · catégorisation neutre | Mode de catégorisation, bandeaux informatifs, marquage de la carte piochée en plus |
 | **Rouge** | Destructif · négatif · invalide | Supprimer / se déconnecter, taux défavorables, erreurs de saisie |
 
+**En texte**, chaque teinte passe par un token (`index.css`) : `text-pos` `#5ee3a9`,
+`text-warn` `#f6c453`, `text-info` `#6cc7f5`, `text-neg` `#ff8a8a` (7,6 à 10,7:1 sur la
+surface). Les aplats et les contenants translucides gardent la palette Tailwind par défaut :
+
 Valeurs utiles (palette Tailwind par défaut, à reproduire telles quelles) :
 
 ```
@@ -129,7 +151,7 @@ Fond translucide très faible, texte clair de la teinte, contour translucide :
 
 ```
 fond    : <teinte>-500 à 10–20 % d'opacité      (bg-emerald-500/10 … /20)
-texte   : <teinte>-200 ou -300                  (text-emerald-200)
+texte   : <teinte>-200 ou -300                  (text-pos)
 contour : <teinte>-500 à 30–40 %                (border-…/30  ou  ring-1 ring-…/40)
 ```
 
@@ -159,8 +181,9 @@ récupération (`bg-amber-500 text-black`).
 font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 -webkit-font-smoothing: antialiased;
 
-/* Monospace : réservée aux saisies de données brutes (listes d'identifiants) */
-font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+/* Monospace : réservée aux saisies de données brutes (listes d'identifiants), `font-mono`.
+   JetBrains Mono était déclarée sans jamais être chargée : retirée à la refonte. */
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 ```
 
 Aucune webfont n'est téléchargée. C'est un choix : la pile système participe au
@@ -184,30 +207,36 @@ temps réel. C'est le détail le plus rentable de tout le système.
 
 ### 3.3 Échelle
 
-L'échelle est **basse et resserrée**. Fréquence réelle dans le code : 12 px (70×),
-11 px (53×), 10 px (41×), 14 px (34×) — puis presque rien.
+**Échelle fermée** : `theme.fontSize` est redéfini en entier dans `tailwind.config.js` ;
+`text-xs`, `text-sm`, `text-base`… n'existent plus, et une classe d'origine oubliée ne
+produit rien. Les tailles arbitraires (`text-[10px]`) sont proscrites.
 
-| Taille | Graisse | Emploi |
-|---|---|---|
-| 24 px | — | Le `+` de la tuile d'ajout. Unique. |
-| 20 px | semibold | Le résultat de probabilité mis en avant. Unique. |
-| 18 px | bold | Logotype de la page de connexion. |
-| 16 px | semibold | Titre de dialogue. Rien d'autre. |
-| **14 px** | semibold / normal | Titres de panneau, noms d'objets, valeurs de statistiques |
-| **12 px** | medium / normal | **Taille de référence** : boutons, onglets, corps dense, lignes de liste |
-| **11 px** | normal | Libellés secondaires, aides, méta dense |
-| **10 px** | medium | Étiquettes de section en capitales, puces, horodatages |
-| 9 px | bold | Micro-badges sur les vignettes (`†1st`, touches clavier) |
+| Classe | Taille | Graisse | Emploi |
+|---|---|---|---|
+| `text-glyph` | 24 px | — | Le `+` de la tuile d'ajout. Unique. |
+| `text-hero` | 20 px | semibold | Le résultat de probabilité mis en avant. Unique. |
+| `text-title` | 18 px | bold | Logotype de la page de connexion, ✓ de sélection sur tuile. |
+| `text-head` | 16 px | semibold | Titre de dialogue, titre de la fiche. |
+| **`text-value`** | **14 px** | semibold / normal | Titres de panneau, noms d'objets, valeurs de statistiques |
+| **`text-body`** | **13 px** | medium / normal | **Corps de référence** : boutons, onglets, lignes de liste, texte |
+| **`text-meta`** | **11 px** | normal / medium | **Plancher** : libellés, étiquettes de section, puces, horodatages, badges |
+| `text-cell` | 10 px | — | **Dérogation unique** : cellules compactes des matrices A / B du comparateur sous 640 px |
+
+La dérogation `text-cell` est motivée (étape 7B) : sous 640 px, A et B restent côte à côte
+sans défilement ; à 11 px, six colonnes ne tiennent plus dans une demi-largeur de 360 px.
+Elle monte de 9 à 10 px à la refonte. Dès 640 px, les mêmes cellules sont en `text-meta`.
 
 ### 3.4 La formule d'étiquette de section
 
 Un seul motif pour tous les titres de section, sur-titres et en-têtes de tableau :
 
 ```
-10–11 px · MAJUSCULES · letter-spacing: 0.025em · couleur ink-500 (ou ink-400)
+text-meta (11 px) · MAJUSCULES · letter-spacing: 0.025em · text-fg-3
 ```
 
-C'est le marqueur typographique le plus identifiable de l'interface. Aucun titre de
+En-tête de tableau : même formule. **Jamais** le palier le plus faible de l'écran :
+l'en-tête guide la lecture du tableau. C'est le marqueur typographique le plus
+identifiable de l'interface. Aucun titre de
 section n'est en gros et en gras : la hiérarchie vient du contraste faible + capitales,
 pas de la taille.
 
@@ -217,8 +246,8 @@ Motif récurrent (fiches de deck, récapitulatifs de mains) : **valeur au-dessus
 libellé en dessous**, jamais l'inverse.
 
 ```
-valeur   14 px  semibold  tabulaire  coloré (émeraude / rouge / ink-200)
-libellé   9 px  MAJUSCULES  tracking-wide  ink-600
+valeur   text-value (14 px)  semibold  tabulaire  coloré (text-pos / text-neg / text-fg-2)
+libellé  text-meta (11 px)   MAJUSCULES  tracking-wide  text-fg-3
 ```
 
 ---
@@ -296,30 +325,50 @@ Toutes les pages suivent la même armature — hauteur d'écran fixe, une seule 
 défile :
 
 ```
-h-screen · flex-col
-├── <header>  shrink-0        ink-950, bordure basse ink-800, px 16 py 8
+h-[100dvh] · flex-col
+├── <header>  shrink-0        ink-950, bordure basse ink-800, une ligne de 48 px (h-12)
 ├── [bandeau d'alerte]        conditionnel, teinté, dans le flux
-└── <div>     flex-1 min-h-0  ← la seule zone en overflow-y-auto
-     ├── <main>  flex-1 min-w-0, bordure droite ink-800
-     │    ├── <nav>  barre d'onglets, shrink-0, fond ink-900
-     │    └── contenu
-     └── <aside>  largeur fixe 500 px, masqué sous 1024 px
+├── <div>     flex-1 min-h-0  ← la seule zone en overflow-y-auto
+│    ├── <main>  flex-1 min-w-0, bordure droite ink-800
+│    │    ├── <nav>  onglets soulignés, shrink-0, fond ink-900   (dès 640 px seulement)
+│    │    └── contenu
+│    └── <aside>  largeur fixe 500 px, masqué sous 1024 px
+└── <nav>     shrink-0        barre d'onglets du bas, 48 px     (sous 640 px seulement)
 ```
+
+`h-[100dvh]` et non `h-screen` : sur mobile, la barre d'outils dynamique du navigateur
+recouvrirait la barre d'onglets du bas. **Une seule des deux `<nav>` est rendue** (état
+`compact`, `matchMedia('(max-width: 639px)')`), jamais les deux masquées par CSS. La barre
+du bas est le dernier enfant de la colonne, pas un `fixed` : elle ne recouvre jamais le
+contenu.
 
 Le couple **`min-h-0` + `flex-1`** est indispensable : c'est lui qui garde l'en-tête
 et les barres d'outils toujours visibles et confine le défilement à une seule colonne.
 
 ### 6.2 En-tête
 
-Une seule ligne, `flex-wrap`, gouttières 12 px horizontales / 6 px verticales.
-Ordre invariable : **retour → séparateur → identité éditable → état → `ml-auto` →
-contrôles → action primaire → compte**.
+**Une seule ligne à toute largeur** (48 px, sans `flex-wrap`). Ordre invariable :
+**retour → identité éditable (`flex-1 min-w-0`, cède la place en premier) → puce de taille
+→ `ml-auto` → action primaire → compte**. Sous 640 px, « ← Decks » devient « ← » et le menu
+compte n'affiche que l'initiale.
+
+N'y figurent **ni réglage d'analyse ni état** (avant la refonte, l'en-tête de l'éditeur
+tenait sur trois lignes et 118 px à 360 px) :
+- le réglage de contexte premier / second vit dans l'en-tête du panneau « Probabilités »,
+  à côté des chiffres qu'il gouverne ;
+- le bouton d'enregistrement (`data-save`) dit « Enregistrer » quand il y a du
+  non-enregistré et « enregistré 10:04 » au repos, inerte : l'horodatage est son état ;
+- « en ligne / hors-ligne » est une ligne d'état du menu compte ;
+- une erreur de persistance prend une seconde ligne pleine (bandeau rouge, §7.12).
 `margin-left: auto` sur le groupe de droite est le mécanisme d'alignement unique ;
 aucune grille n'est utilisée dans les barres.
 
 ### 6.3 Responsive
 
-Un seul point de rupture significatif : **1024 px**.
+Deux points de rupture structurels. **640 px** : la navigation de l'éditeur passe en bas,
+au pouce (six entrées de 48 px à libellé court — Annoter, Combos, Mains, Invent., Side,
+Stats —, nom complet en `title`), et la barre de modes masque ses touches `<kbd>`, sans
+objet au toucher. **1024 px** :
 Au-dessus, le panneau de statistiques est une colonne latérale permanente. En dessous,
 il **devient un onglet** de la zone principale — et l'onglet se referme automatiquement
 quand la fenêtre repasse en large. La stratégie est donc « déplacer le contenu dans la
@@ -337,7 +386,7 @@ Largeurs validées à l'écran (étape 6B, contrat §6) : **360, 390 et 768 px**
 bureau. Sous 400 px, les barres d'en-tête et les bandeaux de mode **passent à la ligne**
 (`flex-wrap`) au lieu de déborder ou d'écraser leurs pastilles ; les zones de fichier du
 dialogue d'import passent en une colonne sous 640 px (`sm:`). Cibles tactiles : **32 px**
-(`h-8 w-8` ou `py-2` sur `text-xs`) pour le stepper de copies, le menu ⋯ d'une tuile ou
+(`h-8 w-8` ou `py-2` sur `text-body`) pour le stepper de copies, le menu ⋯ d'une tuile ou
 d'un deck, les actions primaires (Enregistrer, Nouveau deck, Importer, Terminer, ✕ d'un
 dialogue) ; **24 px minimum** partout ailleurs (onglets, boutons de mode, sélecteur de
 contexte, lignes d'inventaire, entrées de menu). Le minimum de 96 px par tuile vient de
@@ -350,13 +399,13 @@ Comparateur et mur de mains (étape 7B, contrat §5 / §6, gardés par `web/e2e/
 pour qu'ils cèdent la place en premier) ; ⇄ Inverser A/B, Exporter Excel, Comparer et le ✕
 du dialogue rejoignent la liste des cibles de 32 px. Les matrices A et B restent **côte à
 côte à toute largeur** : sous 640 px, `grid grid-cols-2 gap-2` avec Δ en `col-span-2`, puis
-`sm:flex sm:flex-wrap sm:gap-4` ; les cellules deviennent compactes sous 640 px (`text-[9px]`,
+`sm:flex sm:flex-wrap sm:gap-4` ; les cellules deviennent compactes sous 640 px (`text-cell`,
 `border-spacing-px`, `px-px py-1`, `min-w-5` soit 20 px par colonne pour qu'une colonne de
-« · » n'écrase pas son en-tête, coin « S\U »), puis reprennent `text-[10px]`, `w-8`, `p-1`
+« · » n'écrase pas son en-tête, coin « S\U »), puis reprennent `text-meta`, `w-8`, `p-1`
 comme la matrice du panneau ; le conteneur et les cartes se resserrent (`p-2` / `p-1.5`)
 sous 640 px pour garder quelques pixels de marge quelle que soit la police système. La
 matrice Δ, seule en pleine largeur sous 640 px, n'est jamais compacte (étape 9A :
-`MatrixGrid compact={false}`, `text-[10px]`, `w-8`, `p-1` partout). Une ligne de main du mur
+`MatrixGrid compact={false}`, `text-meta`, `w-8`, `p-1` partout). Une ligne de main du mur
 garde une bande de cartes `shrink-0` : les vignettes ne sont jamais déformées. Étape 9A : sous
 640 px la ligne est compacte (`p-1`, cartes `h-[60px]`, récapitulatif empilé « S n / U n » en
 11 px et note `h-7 w-7` à droite des cartes, sur la même ligne, ligne ≤ 80 px) ; dès 640 px
@@ -378,7 +427,7 @@ quittée (« Retirée du side deck : … ») et son « Annuler » restaure dans 
 
 Plans de side (étape 10C). Dans la grille d'annotation, le bloc **side** rend de vraies tuiles
 (`CardTile zone="side"`, 96 px comme le main : tous les modes, badges, menu ⋯ qui retire **du side**) ;
-à la place du delta, « hors calcul » en `text-ink-600` (ni delta ni couleur de groupe : ces cartes ne
+à la place du delta, « hors calcul » en `text-fg-3` (ni delta ni couleur de groupe : ces cartes ne
 sont pas dans le calcul du deck de base). L'extra garde `ZoneCardTile` (80 px, nu). L'onglet
 « Plans de side » de l'éditeur : puces d'adversaire à 32 px (`h-8`, active `bg-ink-700`) en
 `flex-wrap`, champ d'ajout et « + Ajouter » à 32 px ; ligne de l'adversaire en `flex-wrap` (nom en
@@ -433,56 +482,59 @@ Discrets et cohérents avec le chrome — à reprendre tel quel :
 Décrites sémantiquement, avec les classes Tailwind d'origine comme référence.
 
 ### 7.1 Bouton primaire
-`bg-emerald-600 text-black text-xs font-medium px-3 py-1.5 rounded hover:bg-emerald-500`
-— désactivé : `bg-ink-800 text-ink-500 cursor-default` (pas seulement une opacité).
+`bg-emerald-600 text-black text-body font-medium px-3 py-1.5 rounded hover:bg-emerald-500`
+— désactivé : `bg-ink-800 text-fg-3 cursor-default` (pas seulement une opacité).
 
 ### 7.2 Bouton secondaire
-`border border-ink-700 text-ink-200 px-3 py-1.5 rounded text-xs hover:bg-ink-800`
+`border border-ink-700 text-fg-2 px-3 py-1.5 rounded text-body hover:bg-ink-800`
 — désactivé : `disabled:opacity-40`.
 
 ### 7.3 Bouton fantôme (le plus courant)
-`text-ink-400 px-2 py-1 rounded text-xs hover:bg-ink-800 hover:text-ink-100`
+`text-fg-3 px-2 py-1 rounded text-body hover:bg-ink-800 hover:text-fg-1`
 Le survol agit **sur deux propriétés à la fois** : le fond apparaît *et* le texte
 s'éclaircit d'un cran. C'est systématique.
 
 ### 7.4 Champ de saisie
-`bg-ink-850 border border-ink-700 rounded px-2 py-1.5 text-sm text-ink-100
-outline-none placeholder:text-ink-600 focus:border-ink-500`
+`bg-ink-850 border border-ink-700 rounded px-2 py-1.5 text-value text-fg-1
+outline-none placeholder:text-fg-4 focus:border-ink-500`
 Variante « éditable en place » (nom de deck, nom de carte) : **aucun cadre au repos**,
 `bg-transparent`, un fond apparaît au survol et au focus (`hover:bg-ink-900
 focus:bg-ink-900`). Le champ ne se déclare comme champ qu'à l'approche.
 
 ### 7.5 Contrôle segmenté
 Conteneur `inline-flex rounded-md border border-ink-700 bg-ink-850 overflow-hidden`,
-segments sans bordure interne. Actif `bg-ink-600 text-ink-100`, inactif
-`text-ink-400 hover:bg-ink-800 hover:text-ink-200`. Deux tailles : 11 px / 8×2 px et
+segments sans bordure interne. Actif `bg-ink-600 text-fg-1`, inactif
+`text-fg-3 hover:bg-ink-800 hover:text-fg-2`. Deux tailles : 11 px / 8×2 px et
 12 px / 10×4 px.
 
 ### 7.6 Stepper numérique
 `flex items-center rounded border border-ink-700 bg-ink-850`, `−` et `+` en
-`text-ink-300 hover:text-ink-100 disabled:opacity-30`, valeur au centre en tabulaire
+`text-fg-3 hover:text-fg-1 disabled:opacity-30`, valeur au centre en tabulaire
 sur une largeur fixe pour que rien ne bouge.
 
 ### 7.7 Puce / badge
-`rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400` — variante d'alerte :
-`bg-amber-500/15 text-amber-300`.
+`rounded bg-ink-800 px-1.5 py-0.5 text-meta text-fg-3` — variante d'alerte :
+`bg-amber-500/15 text-warn`.
 
 ### 7.8 Onglet
-Actif `bg-ink-700 text-ink-100`, inactif `text-ink-400 hover:bg-ink-800 hover:text-ink-200`,
-`rounded px-3 py-1 text-xs font-medium`. Barre d'onglets sur `bg-ink-900`, bordure basse
-`ink-800`, `overflow-x-auto` pour ne jamais casser sur mobile. **Pas de soulignement**
-d'onglet actif : c'est un remplissage.
+**Souligné** (refonte : l'ancien remplissage `bg-ink-700` se distinguait à peine).
+`-mb-px h-10 px-3 border-b-2 text-body font-medium` ; actif `border-emerald-500 text-fg-1`,
+inactif `border-transparent text-fg-3 hover:border-ink-600 hover:text-fg-1`,
+`aria-current="page"` sur l'actif. Barre sur `bg-ink-900`, bordure basse `ink-800`, **jamais
+de défilement horizontal** : avant la refonte, 208 px d'onglets étaient masqués à 360 px sans
+indice. Sous 640 px, barre du bas : `h-12 flex-1 border-t-2 text-meta`, même couleur d'actif.
+Chaque onglet porte son nom complet en `title` à toute largeur.
 
 ### 7.9 Dialogue
 Voile `fixed inset-0 z-50 bg-black/70 p-4` fermant au clic ; panneau
 `rounded-xl border border-ink-700 bg-ink-900 p-5 shadow-2xl`, `max-w-md`/`max-w-lg`,
 `max-h-[80vh]` avec défilement interne, et `stopPropagation` sur le panneau.
-En-tête de dialogue : titre 16 px semibold `ink-100` + `✕` en `text-ink-500 hover:text-ink-200`.
+En-tête de dialogue : titre 16 px semibold `ink-100` + `✕` en `text-fg-3 hover:text-fg-2`.
 
 ### 7.10 Menu déroulant / popover
 `rounded-lg border border-ink-700 bg-ink-850 p-1 shadow-2xl shadow-black/50`,
-largeur minimale 170–200 px. Éléments : `rounded px-2 py-1.5 text-xs text-ink-200`,
-survol `bg-ink-700`. Élément destructif en `text-red-300`.
+largeur minimale 170–200 px. Éléments : `rounded px-2 py-1.5 text-body text-fg-2`,
+survol `bg-ink-700`. Élément destructif en `text-neg`.
 Toujours rendu dans un *portal* avec évitement de collision (`collisionPadding: 8`).
 
 ### 7.11 Case à cocher
@@ -491,12 +543,12 @@ Un simple carré de 14 px : `h-3.5 w-3.5 rounded-sm border`, non coché
 (ou ambre selon le sens). Pas de coche dessinée — le remplissage suffit.
 
 ### 7.12 Bandeau d'alerte
-`border-b px-3 py-1.5 text-xs` avec la formule d'accent A. Trois sévérités :
+`border-b px-3 py-1.5 text-body` avec la formule d'accent A. Trois sévérités :
 
 ```
-erreur        border-red-500/40    bg-red-500/10    text-red-300
-avertissement border-amber-500/30  bg-amber-500/10  text-amber-300
-information   border-sky-500/20    bg-sky-500/5     text-sky-300/90
+erreur        border-red-500/40    bg-red-500/10    text-neg
+avertissement border-amber-500/30  bg-amber-500/10  text-warn
+information   border-sky-500/20    bg-sky-500/5     text-info
 ```
 
 ### 7.13 Toast
@@ -541,7 +593,7 @@ Toujours enveloppé dans un `overflow-x-auto`.
 | Survol (fantôme) | fond `ink-800` **et** texte remonté d'un cran vers `ink-100` |
 | Survol (surface) | fond `ink-850`, ou bordure qui passe à `emerald-500/60` si l'élément est cliquable-vers-l'avant |
 | Actif / sélectionné | fond `ink-700` (neutre) ou contenant d'état teinté (formule A) |
-| Désactivé | `opacity-40` (ou 30) **+ `cursor-default`** — parfois remplacé par un vrai style éteint `bg-ink-800 text-ink-500` pour le bouton primaire |
+| Désactivé | `opacity-40` (ou 30) **+ `cursor-default`** — parfois remplacé par un vrai style éteint `bg-ink-800 text-fg-3` pour le bouton primaire |
 | Focus | `outline-none` puis `focus:border-ink-500` ou `focus:border-emerald-500/60` |
 | Mise en évidence transitoire | `outline outline-2 outline-offset-1 outline-amber-300`, effacé automatiquement après ~2,2 s |
 | Erreur de saisie | `border-red-500/40 bg-red-500/5` sur le conteneur du champ |
@@ -680,42 +732,32 @@ apparaît, elle ne se déplie pas.
 
 ## 12. Tokens prêts à copier
 
+La source de vérité est `web/src/index.css` (valeurs) et `web/tailwind.config.js` (classes).
+
 ### 12.1 CSS pur (projet sans Tailwind)
 
 ```css
 :root {
   color-scheme: dark;
 
-  /* Neutres froids */
-  --ink-950: #0a0b0e;  --ink-900: #0f1116;  --ink-850: #151822;
-  --ink-800: #1b1f2a;  --ink-700: #252a37;  --ink-600: #333a4a;
-  --ink-500: #4a5265;  --ink-400: #6b7488;  --ink-300: #9aa2b5;
-  --ink-200: #c7ccd8;  --ink-100: #e8eaf0;
+  /* Surfaces et bordures */
+  --ink-950: #111318;  --ink-900: #181b22;  --ink-850: #1f232c;
+  --ink-800: #262b36;  --ink-700: #323846;  --ink-600: #3d4452;
+  --ink-500: #667085;
 
-  /* Rôles de surface */
-  --surface-page:    var(--ink-950);
-  --surface-raised:  var(--ink-900);
-  --surface-sunken:  var(--ink-850);
-  --surface-chip:    var(--ink-800);
-  --surface-active:  var(--ink-700);
-  --border-flat:     var(--ink-800);
-  --border-floating: var(--ink-700);
+  /* Texte — quatre rôles, tous >= 4,5:1 là où ils sont autorisés */
+  --fg-1: #f3f4f8;   /* valeurs, titres */
+  --fg-2: #c9cfdb;   /* corps */
+  --fg-3: #9aa3b6;   /* libellés, en-têtes de tableau */
+  --fg-4: #7f8899;   /* méta : page et surface seulement */
 
-  /* Rôles de texte */
-  --text-primary:   var(--ink-100);
-  --text-body:      var(--ink-200);
-  --text-secondary: var(--ink-300);
-  --text-muted:     var(--ink-400);
-  --text-faint:     var(--ink-500);   /* décoratif : jamais d'information */
+  /* Accents en texte */
+  --pos: #5ee3a9;  --warn: #f6c453;  --info: #6cc7f5;  --neg: #ff8a8a;
 
-  /* Accents */
-  --positive:    #059669;  --positive-hover: #10b981;
-  --positive-fg: #6ee7b7;  --positive-fill:  #34d399;
-  --caution:     #f59e0b;  --caution-fg:     #fcd34d;
-  --info:        #0ea5e9;  --info-fg:        #7dd3fc;
-  --danger:      #ef4444;  --danger-fg:      #f87171;
+  /* Accents en aplat (palette Tailwind) */
+  --positive: #059669;  --positive-hover: #10b981;  --caution: #f59e0b;
 
-  /* Séries de données */
+  /* Séries de données (lib/colors.ts) */
   --series-1: #4fae7a;
   --series-2: #5b8def;
 
@@ -726,19 +768,26 @@ apparaît, elle ne se déplie pas.
   --shadow-float: 0 25px 50px -12px rgb(0 0 0 / .5);
   --scrim:        rgb(0 0 0 / .7);
 
-  /* Typo */
-  --font-ui:  system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-num: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Typo : échelle fermée */
+  --font-ui:   system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --text-cell:  10px;  /* dérogation : matrices compactes sous 640 px */
+  --text-meta:  11px;  /* plancher */
+  --text-body:  13px;  /* corps */
+  --text-value: 14px;
+  --text-head:  16px;
+  --text-title: 18px;
+  --text-hero:  20px;
+  --text-glyph: 24px;
 }
 
 html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  background: var(--surface-page);
-  color: var(--text-body);
+  background: var(--ink-950);
+  color: var(--fg-2);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--text-body);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -751,8 +800,8 @@ body {
 
 @keyframes barGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-/* Ajout recommandé, absent de l'original (cf. §8) */
-:focus-visible { outline: 2px solid var(--positive-fill); outline-offset: 2px; }
+/* Ajout recommandé, toujours absent du code (cf. §8) */
+:focus-visible { outline: 2px solid var(--pos); outline-offset: 2px; }
 ```
 
 ### 12.2 Configuration Tailwind (projet Tailwind)
@@ -762,16 +811,21 @@ body {
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
+    // Échelle FERMÉE : hors `extend`, les tailles d'origine disparaissent.
+    fontSize: {
+      cell: ['10px', '1.2'], meta: ['11px', '1.35'], body: ['13px', '1.45'],
+      value: ['14px', '1.4'], head: ['16px', '1.35'], title: ['18px', '1.3'],
+      hero: ['20px', '1.2'], glyph: ['24px', '1'],
+    },
     extend: {
       colors: {
         ink: {
-          950: '#0a0b0e', 900: '#0f1116', 850: '#151822', 800: '#1b1f2a',
-          700: '#252a37', 600: '#333a4a', 500: '#4a5265', 400: '#6b7488',
-          300: '#9aa2b5', 200: '#c7ccd8', 100: '#e8eaf0',
+          950: 'var(--ink-950)', 900: 'var(--ink-900)', 850: 'var(--ink-850)',
+          800: 'var(--ink-800)', 700: 'var(--ink-700)', 600: 'var(--ink-600)',
+          500: 'var(--ink-500)',
         },
-      },
-      fontFamily: {
-        num: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        fg: { 1: 'var(--fg-1)', 2: 'var(--fg-2)', 3: 'var(--fg-3)', 4: 'var(--fg-4)' },
+        pos: 'var(--pos)', warn: 'var(--warn)', info: 'var(--info)', neg: 'var(--neg)',
       },
     },
   },
@@ -779,10 +833,10 @@ export default {
 };
 ```
 
-Les accents (`emerald`, `amber`, `sky`, `red`) sont ceux de la palette Tailwind par
-défaut : ne rien redéfinir, se contenter de respecter l'affectation sémantique de la §2.3.
-Le document racine porte `<html class="dark">` et `:root { color-scheme: dark }` ;
-aucune variante claire n'est prévue.
+Les aplats et contenants d'état (`bg-emerald-600`, `bg-amber-500/10`…) restent la palette
+Tailwind par défaut ; en **texte**, seuls `text-pos`, `text-warn`, `text-info` et `text-neg`
+sont employés. Le document racine porte `<html lang="fr" class="dark">`,
+`<meta name="theme-color" content="#111318">` et `:root { color-scheme: dark }`.
 
 ---
 
@@ -790,12 +844,12 @@ aucune variante claire n'est prévue.
 
 À vérifier sur un premier écran du projet cible pour savoir s'il est « de la même famille » :
 
-- [ ] Le fond de page est-il sous `#101014` ? Les gris sont-ils froids ?
+- [ ] Le fond de page est-il autour de `#111318` ? Les gris sont-ils froids ?
 - [ ] L'en-tête est-il **plus sombre** que le contenu ?
 - [ ] Y a-t-il des ombres sur des éléments non flottants ? (il ne devrait pas)
-- [ ] Le corps de l'interface est-il à 12 px ?
-- [ ] Les titres de section sont-ils en 10 px capitales espacées et gris moyen ?
-- [ ] Les nombres sont-ils tabulaires, à droite, en `ink-100` ?
+- [ ] Le corps de l'interface est-il à 13 px, et aucun texte sous 11 px ?
+- [ ] Les titres de section sont-ils en 11 px capitales espacées, en `fg-3` lisible ?
+- [ ] Les nombres sont-ils tabulaires, à droite, en `fg-1` ?
 - [ ] Y a-t-il exactement un bouton émeraude à texte noir par écran ?
 - [ ] Chaque couleur présente à l'écran a-t-elle une signification déclarée ?
 - [ ] Les états teintés sont-ils translucides plutôt qu'en aplat ?

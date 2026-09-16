@@ -21,8 +21,8 @@ interface Props {
   onEnter: (mode: AnnotationMode, option?: ModeOption) => void;
 }
 
-const ITEM = 'flex cursor-pointer items-center justify-between gap-3 rounded px-2 py-1.5 text-xs text-ink-200 outline-none data-[highlighted]:bg-ink-700';
-const SECTION = 'px-2 py-1 text-[10px] uppercase tracking-wide text-ink-500';
+const ITEM = 'flex cursor-pointer items-center justify-between gap-3 rounded px-2 py-1.5 text-body text-fg-2 outline-none data-[highlighted]:bg-ink-700';
+const SECTION = 'px-2 py-1 text-meta uppercase tracking-wide text-fg-3';
 
 export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfile, onEnter }: Props) {
   const categories = useDeck((s) => s.categories);
@@ -63,21 +63,21 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button
-            className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-body font-medium transition-colors ${
               mode === 'nonengine'
-                ? 'bg-sky-500/20 text-sky-200 ring-1 ring-sky-500/40'
-                : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
+                ? 'bg-sky-500/20 text-info ring-1 ring-sky-500/40'
+                : 'text-fg-3 hover:bg-ink-800 hover:text-fg-1'
             }`}
             title="Non-engine : pose l'étiquette choisie et, si un profil est choisi, ce profil ; sur une carte déjà conforme, retire l'étiquette (et le profil s'il ne reste aucune étiquette)."
           >
             {MODE_LABEL.nonengine}
             {mode === 'nonengine' && activeCat && (
-              <span className="rounded bg-sky-500/30 px-1 text-[10px] text-sky-100">
+              <span className="rounded bg-sky-500/30 px-1 text-meta text-sky-100">
                 {activeCat.name}
                 {nonEngineProfile ? ` + ${AVAILABILITY_LABEL[nonEngineProfile]}` : ''}
               </span>
             )}
-            <span className="text-ink-500">▾</span>
+            <span className="text-fg-3">▾</span>
             <Kbd>{MODE_KEY.nonengine}</Kbd>
           </button>
         </DropdownMenu.Trigger>
@@ -97,7 +97,7 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
                 className={ITEM}
               >
                 {cat.name}
-                {cat.id === activeCategoryId && <span className="text-sky-300">✓</span>}
+                {cat.id === activeCategoryId && <span className="text-info">✓</span>}
               </DropdownMenu.Item>
             ))}
             <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
@@ -106,14 +106,14 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
               value={nonEngineProfile ?? 'unchanged'}
               onValueChange={(v) => onEnter('nonengine', { nonEngineProfile: v === 'unchanged' ? null : (v as Availability) })}
             >
-              <DropdownMenu.RadioItem value="unchanged" className={`${ITEM} text-ink-400`}>
+              <DropdownMenu.RadioItem value="unchanged" className={`${ITEM} text-fg-3`}>
                 Profil inchangé
-                <DropdownMenu.ItemIndicator className="text-sky-300">✓</DropdownMenu.ItemIndicator>
+                <DropdownMenu.ItemIndicator className="text-info">✓</DropdownMenu.ItemIndicator>
               </DropdownMenu.RadioItem>
               {AVAILABILITY_PROFILES.map((profile) => (
                 <DropdownMenu.RadioItem key={profile} value={profile} title={AVAILABILITY_HINT[profile]} className={ITEM}>
                   {AVAILABILITY_LABEL[profile]}
-                  <DropdownMenu.ItemIndicator className="text-sky-300">✓</DropdownMenu.ItemIndicator>
+                  <DropdownMenu.ItemIndicator className="text-info">✓</DropdownMenu.ItemIndicator>
                 </DropdownMenu.RadioItem>
               ))}
             </DropdownMenu.RadioGroup>
@@ -126,20 +126,20 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button
-            className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-body font-medium transition-colors ${
               mode === 'profile'
-                ? 'bg-sky-500/20 text-sky-200 ring-1 ring-sky-500/40'
-                : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
+                ? 'bg-sky-500/20 text-info ring-1 ring-sky-500/40'
+                : 'text-fg-3 hover:bg-ink-800 hover:text-fg-1'
             }`}
             title="Profil de disponibilité non-engine : détermine les fenêtres retenues (premier / second / sixième carte)."
           >
             {MODE_LABEL.profile}
             {mode === 'profile' && (
-              <span className="rounded bg-sky-500/30 px-1 text-[10px] text-sky-100">
+              <span className="rounded bg-sky-500/30 px-1 text-meta text-sky-100">
                 {activeProfile ? AVAILABILITY_LABEL[activeProfile] : 'retirer'}
               </span>
             )}
-            <span className="text-ink-500">▾</span>
+            <span className="text-fg-3">▾</span>
             <Kbd>{MODE_KEY.profile}</Kbd>
           </button>
         </DropdownMenu.Trigger>
@@ -157,7 +157,7 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
                 key={profile}
                 onSelect={() => onEnter('profile', { profile })}
                 title={AVAILABILITY_HINT[profile]}
-                className="cursor-pointer rounded px-2 py-1.5 text-xs text-ink-200 outline-none data-[highlighted]:bg-ink-700"
+                className="cursor-pointer rounded px-2 py-1.5 text-body text-fg-2 outline-none data-[highlighted]:bg-ink-700"
               >
                 {AVAILABILITY_LABEL[profile]}
               </DropdownMenu.Item>
@@ -165,7 +165,7 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
             <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
             <DropdownMenu.Item
               onSelect={() => onEnter('profile', { profile: null })}
-              className="cursor-pointer rounded px-2 py-1.5 text-xs text-ink-400 outline-none data-[highlighted]:bg-ink-700"
+              className="cursor-pointer rounded px-2 py-1.5 text-body text-fg-3 outline-none data-[highlighted]:bg-ink-700"
             >
               Retirer le profil
             </DropdownMenu.Item>
@@ -176,10 +176,10 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
       {/* Conditions de start — accent ambre pour se distinguer des combos (émeraude). */}
       <button
         onClick={() => onEnter('prereq')}
-        className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+        className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-body font-medium transition-colors ${
           mode === 'prereq'
-            ? 'bg-amber-500/20 text-amber-200 ring-1 ring-amber-500/40'
-            : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
+            ? 'bg-amber-500/20 text-warn ring-1 ring-amber-500/40'
+            : 'text-fg-3 hover:bg-ink-800 hover:text-fg-1'
         }`}
         title="Condition de start : la source exige qu'il reste des copies d'une carte en deck après le tirage (ET/OU dans l'inventaire et les combos)."
       >
@@ -206,12 +206,12 @@ function ModeButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+      className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-body font-medium transition-colors ${
         active
           ? accent
-            ? 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40'
-            : 'bg-ink-700 text-ink-100'
-          : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
+            ? 'bg-emerald-500/20 text-pos ring-1 ring-emerald-500/40'
+            : 'bg-ink-700 text-fg-1'
+          : 'text-fg-3 hover:bg-ink-800 hover:text-fg-1'
       }`}
     >
       {label}
@@ -222,7 +222,7 @@ function ModeButton({
 
 function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="rounded border border-ink-700 bg-ink-950 px-1 text-[9px] leading-4 text-ink-500">
+    <kbd className="hidden rounded border border-ink-700 bg-ink-950 px-1 text-meta leading-4 text-fg-3 sm:inline">
       {children}
     </kbd>
   );

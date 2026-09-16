@@ -24,16 +24,16 @@ export function ZoneCardTile({ cardId, zone }: { cardId: number; zone: Zone }) {
         <div className="flex shrink-0 items-center rounded border border-ink-700 bg-ink-850">
           <button
             onClick={() => setCopies(cardId, copies - 1, zone)}
-            className="flex h-8 w-8 items-center justify-center text-sm text-ink-300 hover:text-ink-100"
+            className="flex h-8 w-8 items-center justify-center text-value text-fg-3 hover:text-fg-1"
             title={copies <= 1 ? `Retirer du ${zone} (0 copie)` : 'Moins de copies'}
           >
             −
           </button>
-          <span className="tnum w-3 text-center text-[11px] text-ink-100">{copies}</span>
+          <span className="tnum w-3 text-center text-meta text-fg-1">{copies}</span>
           <button
             onClick={() => setCopies(cardId, copies + 1, zone)}
             disabled={copies >= MAX_COPIES}
-            className="flex h-8 w-8 items-center justify-center text-sm text-ink-300 hover:text-ink-100 disabled:opacity-30"
+            className="flex h-8 w-8 items-center justify-center text-value text-fg-3 hover:text-fg-1 disabled:opacity-30"
             title="Plus de copies"
           >
             +

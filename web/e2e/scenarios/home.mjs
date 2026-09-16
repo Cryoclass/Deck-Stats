@@ -84,7 +84,7 @@ export default async function home({ log }) {
   await tile.locator('button[title*="copies"]').first().click(); // −1 : composition initiale, deck sale
   await page.waitForSelector('text=/\\d+ ms/', { state: 'attached', timeout: 30000 });
   await page.waitForTimeout(400);
-  await page.click('button:has-text("Enregistrer")');
+  await page.click('button[data-save]');
   await page.waitForSelector('text=/enregistré/');
   await page.waitForTimeout(300);
   const afterSave = (await listed()).summary;
@@ -102,7 +102,7 @@ export default async function home({ log }) {
   await page.waitForSelector('text=/\\d+ ms/', { state: 'attached', timeout: 30000 });
   await tile.locator('button[title="Plus de copies"]').click();
   await page.waitForTimeout(200);
-  await page.click('button:has-text("Enregistrer")'); // pendant le recalcul (3 s)
+  await page.click('button[data-save]'); // pendant le recalcul (3 s)
   await page.waitForSelector('text=/enregistré/', { timeout: 10000 });
   await page.waitForTimeout(200);
   expect('H4 bis : enregistrement pendant le recalcul → aucun résumé joint', (await listed()).summary === null, (await listed()).summary);
@@ -111,7 +111,7 @@ export default async function home({ log }) {
   await tile.locator('button[title*="copies"]').first().click();
   await page.waitForSelector('text=/\\d+ ms/', { state: 'attached', timeout: 30000 });
   await page.waitForTimeout(3600);
-  await page.click('button:has-text("Enregistrer")');
+  await page.click('button[data-save]');
   await page.waitForSelector('text=/enregistré/');
   await page.waitForTimeout(300);
   expect('H4 : composition restaurée et résumé de nouveau joint', (await listed()).summary?.startRateFirst === stored.startRateFirst);

@@ -72,3 +72,47 @@ export function assignGroups(edges: Array<[number, number]>): GroupAssignment {
 
   return { colorOf, pastillesOf };
 }
+
+/**
+ * Cartes de chaleur (charte §9.3 et §9.4) : UNE formule, deux consommateurs (panneau
+ * Probabilités et comparateur). Elle était copiée à l'identique dans les deux fichiers.
+ *
+ * La case est OPAQUE : la teinte est mélangée à `ink-900` (`color-mix`, équivalent exact
+ * d'une superposition à l'opacité α), quel que soit le fond du panneau. C'est ce qui permet
+ * un choix de texte exact : blanc pur, puis noir au-delà de `HEAT_INK_FROM` pour le vert.
+ * Au point de bascule noir et blanc se valent ; aucun seuil unique ne tenait 4,5:1 sur deux
+ * fonds différents (4,49 au mieux), un fond fixe le permet (4,58 au pire). Le rouge, plus
+ * sombre, garde le blanc sur toute l'échelle (5,75 au pire). Vérifié par `tokens.test.ts`
+ * contre les valeurs de `index.css`.
+ */
+export const HEAT_MAX_ALPHA = 0.85;
+export const HEAT_GREEN = 'oklch(0.7 0.13 155)';
+export const HEAT_RED = 'oklch(0.58 0.17 25)';
+/** Opacité du vert à partir de laquelle le texte noir contraste mieux que le blanc (sur ink-900). */
+export const HEAT_INK_FROM = 0.6685;
+
+function heat(hue: string, alpha: number, inkFrom: number): { background?: string; color?: string } {
+  if (alpha <= 0) return {};
+  return {
+    background: `color-mix(in srgb, ${hue} ${(alpha * 100).toFixed(2)}%, var(--ink-900))`,
+    color: alpha >= inkFrom ? '#000' : '#fff',
+  };
+}
+
+/** Séquentielle : vert dont l'opacité suit la valeur rapportée au maximum de la matrice. */
+export function heatCell(value: number, max: number): { background?: string; color?: string } {
+  return heat(HEAT_GREEN, (Math.max(0, value) / Math.max(max, 1e-9)) * HEAT_MAX_ALPHA, HEAT_INK_FROM);
+}
+
+/** Divergente : vert au-dessus de zéro, rouge en dessous, bornes ±2 points. */
+export function heatDelta(d: number): { background?: string; color?: string } {
+  const alpha = Math.min(Math.abs(d) / 0.02, 1) * HEAT_MAX_ALPHA;
+  return d > 0 ? heat(HEAT_GREEN, alpha, HEAT_INK_FROM) : d < 0 ? heat(HEAT_RED, alpha, Infinity) : {};
+}
+
+/**
+ * Séries des distributions (charte §9.1) : deux couleurs, posées ici et nulle part ailleurs.
+ * Elles étaient en dur dans `statsViews.ts` (audit 01 §2.1).
+ */
+export const SERIES_STARTS = '#4fae7a';
+export const SERIES_COUNT = '#5b8def';

@@ -37,7 +37,7 @@ export default async function extraside() {
     await page.waitForTimeout(300);
   };
   const msLabel = () => page.locator('aside span.tnum').filter({ hasText: /ms$/ }).first().innerText();
-  const saveBtn = () => page.locator('header button:has-text("Enregistrer")');
+  const saveBtn = () => page.locator('header button[data-save]');
   const sideBlock = () => page.locator('[data-zone-block="side"]');
   const rhoTile = () => sideBlock().locator(`[data-zone-tile="side"][data-card-id="${RHO}"]`);
   const mainTiles = () => page.locator('div.group').filter({ has: page.locator('div[title^="Δ P"]') });
@@ -96,7 +96,7 @@ export default async function extraside() {
   await noRecompute('Z3', ms0);
 
   // ─── Z4 : enregistrement, API, aperçu joint, rechargement ───
-  await page.click('header button:has-text("Enregistrer")');
+  await page.click('header button[data-save]');
   await page.waitForSelector('text=/enregistré/');
   await page.waitForTimeout(400);
   const saved = await detail();
@@ -135,7 +135,7 @@ export default async function extraside() {
     await tile.locator('button[title^="Retirer du side"]').click();
     await p.waitForSelector('[data-removal-zone="side"]');
     await p.locator('[data-removal-zone="side"] button[title="Fermer"]').click();
-    await p.click('header button:has-text("Enregistrer")');
+    await p.click('header button[data-save]');
     await p.waitForSelector('text=/enregistré/');
     await p.waitForTimeout(400);
     const restored = await (await m.context.request.get(`/api/decks/${id}`)).json();

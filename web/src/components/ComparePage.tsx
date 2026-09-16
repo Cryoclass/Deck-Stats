@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type DeckSummary } from '../lib/api.js';
 import { useRouter } from '../lib/router.js';
+import { heatCell, heatDelta } from '../lib/colors.js';
 import { buildEngineModel } from '../lib/engineModel.js';
 import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled } from '../worker/computeClient.js';
@@ -111,37 +112,37 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
     state.status === 'ready' ? state.cmp.warnings.filter((w) => w.severity === 'error') : [];
 
   return (
-    <div className="flex h-screen flex-col bg-ink-950 text-ink-200">
+    <div className="flex h-[100dvh] flex-col bg-ink-950 text-fg-2">
       {/* Étape 7B (Q4, charte §6.3) : sous 400 px les actions passent sur une seconde ligne
           (flex-wrap) au lieu de couper leurs libellés ; les noms A / B prennent la place
           restante (basis-0, truncate) ; ⇄ Inverser et Exporter Excel mesurent 32 px. */}
       <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-ink-800 bg-ink-950 px-5 py-3">
         <button
           onClick={() => navigate({ name: 'home' })}
-          className="whitespace-nowrap text-xs text-ink-400 hover:text-ink-100"
+          className="flex h-8 items-center whitespace-nowrap rounded px-2 text-body text-fg-3 hover:bg-ink-800 hover:text-fg-1"
         >
           ← Mes decks
         </button>
-        <h1 className="whitespace-nowrap text-sm font-semibold text-ink-100">Comparateur</h1>
+        <h1 className="whitespace-nowrap text-value font-semibold text-fg-1">Comparateur</h1>
         {state.status === 'ready' && (
-          <span className="min-w-0 flex-1 basis-0 truncate text-xs text-ink-400">
-            <span className="text-ink-200">A. {state.cmp.deckA.name}</span>
+          <span className="min-w-0 flex-1 basis-0 truncate text-body text-fg-3">
+            <span className="text-fg-2">A. {state.cmp.deckA.name}</span>
             {' vs '}
-            <span className="text-ink-200">B. {state.cmp.deckB.name}</span>
+            <span className="text-fg-2">B. {state.cmp.deckB.name}</span>
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => navigate({ name: 'compare', a: b, b: a })}
             title="Échanger référence et variante"
-            className="whitespace-nowrap rounded border border-ink-700 px-2.5 py-2 text-xs text-ink-300 hover:bg-ink-800"
+            className="flex h-8 items-center whitespace-nowrap rounded border border-ink-700 px-2.5 text-body text-fg-3 hover:bg-ink-800"
           >
             ⇄ Inverser A/B
           </button>
           <button
             onClick={onExport}
             disabled={state.status !== 'ready' || blocking.length > 0 || exporting}
-            className="whitespace-nowrap rounded bg-emerald-600 px-3 py-2 text-xs font-medium text-black hover:bg-emerald-500 disabled:opacity-40"
+            className="flex h-8 items-center whitespace-nowrap rounded bg-emerald-600 px-3 text-body font-medium text-black hover:bg-emerald-500 disabled:opacity-40"
           >
             {exporting ? 'Export…' : 'Exporter Excel'}
           </button>
@@ -150,10 +151,10 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {state.status === 'loading' && (
-          <div className="p-6 text-sm text-ink-500">Calcul des quatre matrices…</div>
+          <div className="p-6 text-value text-fg-3">Calcul des quatre matrices…</div>
         )}
         {state.status === 'error' && (
-          <div className="m-5 rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300">
+          <div className="m-5 rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-value text-neg">
             {state.message}
           </div>
         )}
@@ -178,9 +179,9 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
 // ─── Bandeau de garde-fous (§7) — visible, jamais en console ───
 
 const WARN_STYLES: Record<ComparisonWarning['severity'], string> = {
-  error: 'border-red-500/40 bg-red-500/10 text-red-300',
-  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  info: 'border-sky-500/20 bg-sky-500/5 text-sky-300/90',
+  error: 'border-red-500/40 bg-red-500/10 text-neg',
+  warning: 'border-amber-500/30 bg-amber-500/10 text-warn',
+  info: 'border-sky-500/20 bg-sky-500/5 text-info/90',
 };
 
 function WarningsBanner({ warnings }: { warnings: ComparisonWarning[] }) {
@@ -188,7 +189,7 @@ function WarningsBanner({ warnings }: { warnings: ComparisonWarning[] }) {
   return (
     <div className="mb-4 flex flex-col gap-1.5">
       {warnings.map((w, i) => (
-        <div key={i} className={`rounded-md border px-3 py-1.5 text-xs ${WARN_STYLES[w.severity]}`}>
+        <div key={i} className={`rounded-md border px-3 py-1.5 text-body ${WARN_STYLES[w.severity]}`}>
           {w.message}
         </div>
       ))}
@@ -209,7 +210,7 @@ function ScenarioSection({ cmp, scenario }: { cmp: DeckComparison; scenario: Sce
 
   return (
     <section className="mb-6">
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">
+      <h2 className="mb-2 text-body font-semibold uppercase tracking-wide text-fg-3">
         {scenarioTitle[scenario]}
       </h2>
       {/* Étape 7B (Q3, contrat §5) : sous 640 px, A et B restent côte à côte dans une grille
@@ -227,17 +228,17 @@ function ScenarioSection({ cmp, scenario }: { cmp: DeckComparison; scenario: Sce
 function MatrixCard({ title, m, maxCell }: { title: string; m: ComparisonMatrix; maxCell: number }) {
   return (
     <div className="min-w-0 rounded-lg border border-ink-800 bg-ink-900 p-1.5 sm:p-3">
-      <div className="mb-2 truncate text-xs font-semibold text-ink-100" title={title}>{title}</div>
+      <div className="mb-2 truncate text-body font-semibold text-fg-1" title={title}>{title}</div>
       <MatrixGrid
         rowLabels={m.rowLabels}
         colLabels={m.colLabels}
         cells={m.cells}
-        cellStyle={(v) => ({ background: `oklch(0.7 0.13 155 / ${(v / maxCell) * 0.85})` })}
+        cellStyle={(v) => heatCell(v, maxCell)}
         format={matrixCell}
         cellTitle={(v) => pct(v, 2)}
       />
       {/* S / N retenus par scénario (§7.6) : rend visible l'effet de la classification. */}
-      <div className="tnum mt-2 text-[10px] text-ink-500">
+      <div className="tnum mt-2 text-meta text-fg-3">
         deck {m.deckSize} cartes · S = {m.starterCount} starters · N = {m.nonEngineCount}{' '}
         non-engine étiquetées
       </div>
@@ -248,30 +249,23 @@ function MatrixCard({ title, m, maxCell }: { title: string; m: ComparisonMatrix;
 function DeltaCard({ cmp, scenario }: { cmp: DeckComparison; scenario: Scenario }) {
   const A = cmp.deckA.matrices[scenario];
   const delta = cmp.deltas[scenario];
-  // Échelle divergente centrée sur 0, bornes ±2 points (§5).
-  const style = (d: number) => {
-    const alpha = Math.min(Math.abs(d) / 0.02, 1) * 0.85;
-    return {
-      background:
-        d > 0 ? `oklch(0.7 0.13 155 / ${alpha})` : d < 0 ? `oklch(0.58 0.17 25 / ${alpha})` : undefined,
-    };
-  };
+  // Échelle divergente centrée sur 0, bornes ±2 points (§5) — formule partagée (lib/colors).
   return (
     <div className="col-span-2 rounded-lg border border-ink-800 bg-ink-900 p-1.5 sm:p-3">
-      <div className="mb-2 text-xs font-semibold text-ink-100">Δ (B − A), en points de %</div>
+      <div className="mb-2 text-body font-semibold text-fg-1">Δ (B − A), en points de %</div>
       {/* Étape 9 (réponse 4 de 7B) : Δ occupe toute la largeur sous 640 px, donc cellules de
           10 px et 32 px à toute largeur (jamais compactes). */}
       <MatrixGrid
         rowLabels={A.rowLabels}
         colLabels={A.colLabels}
         cells={delta}
-        cellStyle={style}
+        cellStyle={heatDelta}
         format={deltaPoints}
         cellTitle={(v) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)} pt`}
         compact={false}
       />
       {/* Légende OBLIGATOIRE (§5) : le signe n'est pas un jugement de valeur. */}
-      <div className="mt-2 max-w-[240px] text-[10px] leading-snug text-ink-500">
+      <div className="mt-2 max-w-[240px] text-meta leading-snug text-fg-3">
         vert = probabilité plus élevée dans B — <em>pas nécessairement meilleur</em> (ex. colonne
         U = 0). Lignes = départs théoriques S, colonnes = potentiel non-engine U. La synthèse
         ci-dessous donne le sens de lecture.
@@ -298,10 +292,11 @@ function MatrixGrid({
   /** Cellules compactes sous 640 px (A et B côte à côte) ; `false` = taille bureau partout (Δ). */
   compact?: boolean;
 }) {
-  // Cellules compactes sous 640 px (Q3) : police 9 px, espacement 1 px, largeur au
-  // contenu avec un minimum de 20 px par colonne (sinon une colonne de « · » écrase son
-  // en-tête) ; à partir de 640 px, cellules de 32 px à 10 px comme le panneau.
-  const table = compact ? 'border-spacing-px text-[9px] sm:border-spacing-0.5 sm:text-[10px]' : 'border-spacing-0.5 text-[10px]';
+  // Cellules compactes sous 640 px (Q3, étape 7B) : espacement 1 px, largeur au contenu
+  // avec un minimum de 20 px par colonne (sinon une colonne de « · » écrase son en-tête).
+  // Audit 01, dérogation D2 : ce sont les SEULES cellules sous le plancher de 11 px, et
+  // elles sont montées de 9 à 10 px (`text-cell`) ; dès 640 px, plancher commun.
+  const table = compact ? 'border-spacing-px text-cell sm:border-spacing-0.5 sm:text-meta' : 'border-spacing-0.5 text-meta';
   const corner = compact ? 'px-px py-1 sm:p-1' : 'p-1';
   const head = compact ? 'min-w-5 px-px py-1 sm:w-8 sm:p-1' : 'w-8 p-1';
   const label = compact ? 'px-px py-1 sm:p-1' : 'p-1';
@@ -310,12 +305,12 @@ function MatrixGrid({
       <table className={`border-separate ${table}`}>
         <thead>
           <tr>
-            <th className={`${corner} text-ink-600`} title={STARTS_HINT}>
+            <th className={`${corner} text-fg-3`} title={STARTS_HINT}>
               <span className={compact ? 'sm:hidden' : 'hidden'}>S\U</span>
               <span className={compact ? 'hidden sm:inline' : ''}>↓S \ U→</span>
             </th>
             {colLabels.map((c) => (
-              <th key={c} className={`tnum ${head} text-right text-ink-500`}>
+              <th key={c} className={`tnum ${head} text-right text-fg-3`}>
                 {c}
               </th>
             ))}
@@ -324,12 +319,12 @@ function MatrixGrid({
         <tbody>
           {cells.map((row, i) => (
             <tr key={i}>
-              <td className={`tnum ${label} text-right text-ink-500`}>{rowLabels[i]}</td>
+              <td className={`tnum ${label} text-right text-fg-3`}>{rowLabels[i]}</td>
               {row.map((v, j) => (
                 <td
                   key={j}
                   title={cellTitle(v)}
-                  className={`tnum ${head} rounded text-right text-ink-100`}
+                  className={`tnum ${head} rounded text-right text-fg-1`}
                   style={cellStyle(v)}
                 >
                   {format(v)}
@@ -354,13 +349,13 @@ function SynthTable({ cmp }: { cmp: DeckComparison }) {
 
   return (
     <section className="mb-6">
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">
+      <h2 className="mb-2 text-body font-semibold uppercase tracking-wide text-fg-3">
         Synthèse — Δ coloré selon le sens souhaité
       </h2>
       <div className="overflow-x-auto rounded-lg border border-ink-800 bg-ink-900">
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full border-collapse text-body">
           <thead>
-            <tr className="border-b border-ink-800 text-[10px] uppercase tracking-wide text-ink-500">
+            <tr className="border-b border-ink-800 text-meta uppercase tracking-wide text-fg-3">
               <th className="p-2 text-left font-medium">Indicateur</th>
               <th className="p-2 text-right font-medium" title={scenarioTitle.going_first}>A · 1er</th>
               <th className="p-2 text-right font-medium" title={scenarioTitle.going_first}>B · 1er</th>
@@ -374,14 +369,14 @@ function SynthTable({ cmp }: { cmp: DeckComparison }) {
           <tbody>
             {rows.map(({ gf, gs }) => (
               <tr key={gf.key} className="border-b border-ink-850 last:border-0">
-                <td className="p-2 text-ink-300">{gf.label}</td>
-                <td className="tnum p-2 text-right text-ink-100">{val(gf, gf.valueA)}</td>
-                <td className="tnum p-2 text-right text-ink-100">{val(gf, gf.valueB)}</td>
+                <td className="p-2 text-fg-3">{gf.label}</td>
+                <td className="tnum p-2 text-right text-fg-1">{val(gf, gf.valueA)}</td>
+                <td className="tnum p-2 text-right text-fg-1">{val(gf, gf.valueB)}</td>
                 <DeltaCell row={gf} />
-                <td className="tnum p-2 text-right text-ink-100">{val(gs, gs.valueA)}</td>
-                <td className="tnum p-2 text-right text-ink-100">{val(gs, gs.valueB)}</td>
+                <td className="tnum p-2 text-right text-fg-1">{val(gs, gs.valueA)}</td>
+                <td className="tnum p-2 text-right text-fg-1">{val(gs, gs.valueB)}</td>
                 <DeltaCell row={gs} />
-                <td className="p-2 text-ink-500">
+                <td className="p-2 text-fg-3">
                   {gf.direction === 'lower_is_better' ? '↓ plus bas = mieux' : '↑'}
                 </td>
               </tr>
@@ -400,7 +395,7 @@ function DeltaCell({ row }: { row: AggregateRow }) {
   // conditionnelle de l'Excel (`lessThan 0` / `greaterThan 0`) ; « · » et neutre
   // seulement pour le zéro exact — jamais de seuil qui ferait passer un delta pour nul.
   const favorable = row.direction === 'lower_is_better' ? d < 0 : d > 0;
-  const cls = d === 0 ? 'text-ink-500' : favorable ? 'text-emerald-300' : 'text-red-400';
+  const cls = d === 0 ? 'text-fg-3' : favorable ? 'text-pos' : 'text-neg';
   const text = row.unit === 'percent' ? deltaPoints(d) : deltaCount(d);
   return (
     <td className={`tnum p-2 text-right ${cls}`} title={row.unit === 'percent' ? `${(d * 100).toFixed(2)} pt` : d.toFixed(3)}>
@@ -423,7 +418,7 @@ export function CompareDialog({
   const [bSel, setB] = useState(decks[1]?.id ?? '');
 
   const selectCls =
-    'w-full rounded border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-ink-100';
+    'w-full rounded border border-ink-700 bg-ink-850 px-2 py-1.5 text-value text-fg-1';
 
   return (
     <div
@@ -435,18 +430,18 @@ export function CompareDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-ink-100">Comparer deux decks</h2>
+          <h2 className="text-head font-semibold text-fg-1">Comparer deux decks</h2>
           <button
             onClick={onClose}
             title="Fermer"
-            className="flex h-8 w-8 items-center justify-center rounded text-ink-500 hover:bg-ink-800 hover:text-ink-200"
+            className="flex h-8 w-8 items-center justify-center rounded text-fg-3 hover:bg-ink-800 hover:text-fg-2"
           >
             ✕
           </button>
         </div>
 
         <label className="mb-3 block">
-          <span className="mb-1 block text-[11px] uppercase tracking-wide text-ink-400">
+          <span className="mb-1 block text-meta uppercase tracking-wide text-fg-3">
             A — référence
           </span>
           <select value={a} onChange={(e) => setA(e.target.value)} className={selectCls}>
@@ -459,7 +454,7 @@ export function CompareDialog({
         </label>
 
         <label className="mb-4 block">
-          <span className="mb-1 block text-[11px] uppercase tracking-wide text-ink-400">
+          <span className="mb-1 block text-meta uppercase tracking-wide text-fg-3">
             B — variante
           </span>
           <select value={bSel} onChange={(e) => setB(e.target.value)} className={selectCls}>
@@ -472,19 +467,19 @@ export function CompareDialog({
         </label>
 
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-ink-500">
+          <span className="text-meta text-fg-3">
             Le delta se lit B − A : A est l'état de départ.
           </span>
           <button
             onClick={() => navigate({ name: 'compare', a, b: bSel })}
             disabled={!a || !bSel || a === bSel}
-            className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-black hover:bg-emerald-500 disabled:opacity-40"
+            className="rounded bg-emerald-600 px-3 py-1.5 text-value font-medium text-black hover:bg-emerald-500 disabled:opacity-40"
           >
             Comparer
           </button>
         </div>
         {a === bSel && a && (
-          <div className="mt-2 text-[11px] text-amber-300">
+          <div className="mt-2 text-meta text-warn">
             Même deck des deux côtés — choisis deux versions différentes.
           </div>
         )}

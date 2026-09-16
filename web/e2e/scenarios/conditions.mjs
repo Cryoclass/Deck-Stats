@@ -22,7 +22,7 @@ export default async function conditions({ log }) {
     const id = await deckId(context, DECK_A);
     await page.goto('/decks/' + id);
     await page.waitForSelector('button[title="Starter Alpha"]');
-    await page.click('nav button:has-text("Inventaire")');
+    await page.click('nav button[title="Inventaire"]');
     const section = page.locator('div.border-b', { hasText: 'Starters conditionnels' }).first();
     await section.waitFor();
     const item = section.locator('li', { hasText: 'Starter Alpha' }).first();

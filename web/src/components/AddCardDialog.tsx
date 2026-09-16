@@ -73,25 +73,25 @@ export function AddCardDialog({ zone = 'main', onClose }: { zone?: Zone; onClose
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
-          <h2 className="text-base font-semibold text-ink-100" data-add-zone={zone}>
+          <h2 className="text-head font-semibold text-fg-1" data-add-zone={zone}>
             Ajouter une carte{zone !== 'main' ? ` — ${ZONE_LABEL[zone]}` : ''}
           </h2>
           <button
             onClick={onClose}
             title="Fermer"
-            className="flex h-8 w-8 items-center justify-center rounded text-ink-500 hover:bg-ink-800 hover:text-ink-200"
+            className="flex h-8 w-8 items-center justify-center rounded text-fg-3 hover:bg-ink-800 hover:text-fg-2"
           >
             ✕
           </button>
         </div>
 
         {zone === 'main' && deckSize >= 60 && (
-          <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-[11px] text-amber-300">
-            Main deck à {deckSize} cartes — au-delà de 60 (§D). Ajout autorisé quand même.
+          <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-meta text-warn">
+            Main deck à {deckSize} cartes — au-delà des 60 du format. Ajout autorisé quand même.
           </div>
         )}
         {overSoftLimit(zone, deckSize) && (
-          <div role="status" className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-[11px] text-amber-300">
+          <div role="status" className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-meta text-warn">
             {ZONE_LABEL[zone].charAt(0).toUpperCase() + ZONE_LABEL[zone].slice(1)} à {deckSize} cartes — au-delà de {EXTRA_SIDE_SOFT_LIMIT} (repère, étape 9C). Ajout autorisé quand même.
           </div>
         )}
@@ -109,18 +109,18 @@ export function AddCardDialog({ zone = 'main', onClose }: { zone?: Zone; onClose
               }
             }}
             placeholder="Nom de carte ou passcode…"
-            className="w-full rounded border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-ink-100 outline-none focus:border-emerald-500/60"
+            className="w-full rounded border border-ink-700 bg-ink-850 px-3 py-2 text-value text-fg-1 outline-none focus:border-emerald-500/60"
           />
-          <div className="mt-1 flex justify-between text-[10px] text-ink-600">
+          <div className="mt-1 flex justify-between text-meta text-fg-3">
             <span>Entrée ajoute le premier résultat · Échap ferme</span>
             <span className="tnum">{zone} : {deckSize}</span>
           </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-          {loading && <div className="px-2 py-3 text-xs text-ink-500">recherche…</div>}
+          {loading && <div className="px-2 py-3 text-body text-fg-3">recherche…</div>}
           {!loading && query.trim().length >= 2 && results.length === 0 && (
-            <div className="px-2 py-3 text-xs text-ink-500">Aucun résultat.</div>
+            <div className="px-2 py-3 text-body text-fg-3">Aucun résultat.</div>
           )}
           <ul className="flex flex-col gap-0.5">
             {results.map((card, i) => {
@@ -139,21 +139,21 @@ export function AddCardDialog({ zone = 'main', onClose }: { zone?: Zone; onClose
                       <CardImage cardId={card.id} />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-ink-100">{card.name}</span>
-                      <span className="block truncate text-[11px] text-ink-500">
+                      <span className="block truncate text-value text-fg-1">{card.name}</span>
+                      <span className="block truncate text-meta text-fg-3">
                         {[card.type, card.race, card.attribute].filter(Boolean).join(' · ')}
                       </span>
                     </span>
                     {inDeck >= MAX_COPIES ? (
-                      <span className="tnum shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] text-amber-300">
+                      <span className="tnum shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-meta text-warn">
                         ×{inDeck} · max
                       </span>
                     ) : inDeck > 0 ? (
-                      <span className="tnum shrink-0 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[11px] text-emerald-200">
+                      <span className="tnum shrink-0 rounded bg-emerald-500/20 px-1.5 py-0.5 text-meta text-pos">
                         ×{inDeck} → +1
                       </span>
                     ) : (
-                      <span className="shrink-0 rounded bg-ink-700 px-1.5 py-0.5 text-[11px] text-ink-200">
+                      <span className="shrink-0 rounded bg-ink-700 px-1.5 py-0.5 text-meta text-fg-2">
                         + ajouter
                       </span>
                     )}

@@ -105,11 +105,11 @@ export function ImportDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-ink-100">{review ? 'Vérifier l’import' : 'Nouveau deck'}</h2>
+          <h2 className="text-head font-semibold text-fg-1">{review ? 'Vérifier l’import' : 'Nouveau deck'}</h2>
           <button
             onClick={onClose}
             title="Fermer"
-            className="flex h-8 w-8 items-center justify-center rounded text-ink-500 hover:bg-ink-800 hover:text-ink-200"
+            className="flex h-8 w-8 items-center justify-center rounded text-fg-3 hover:bg-ink-800 hover:text-fg-2"
           >
             ✕
           </button>
@@ -126,12 +126,12 @@ export function ImportDialog({
         ) : (
           <>
             <label className="mb-3 block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-ink-400">Nom du deck</span>
+              <span className="mb-1 block text-meta uppercase tracking-wide text-fg-3">Nom du deck</span>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="ex. Ryzeal going second"
-                className="w-full rounded border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-ink-100"
+                className="w-full rounded border border-ink-700 bg-ink-850 px-2 py-1.5 text-value text-fg-1"
               />
             </label>
 
@@ -143,32 +143,32 @@ export function ImportDialog({
             </div>
 
             <div className="mb-3">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-ink-400">
+              <span className="mb-1 block text-meta uppercase tracking-wide text-fg-3">
                 ou coller des passcodes (main deck, un par ligne : « 12345678 », « 3x 12345678 » ou « 3 12345678 » ; texte après le passcode et lignes « # » ignorés)
               </span>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={4}
-                className="w-full resize-y rounded border border-ink-700 bg-ink-850 px-2 py-1.5 font-num text-xs text-ink-100"
+                className="w-full resize-y rounded border border-ink-700 bg-ink-850 px-2 py-1.5 font-mono text-body text-fg-1"
                 placeholder={'27204311\n27204311\n27204311\n14558127'}
               />
             </div>
 
-            {error && <div role="alert" className="mb-3 text-xs text-red-400">{error}</div>}
+            {error && <div role="alert" className="mb-3 text-body text-neg">{error}</div>}
 
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <button onClick={onEmpty} disabled={busy} className="whitespace-nowrap py-1 text-xs text-ink-400 hover:text-ink-200">
+              <button onClick={onEmpty} disabled={busy} className="whitespace-nowrap py-1 text-body text-fg-3 hover:text-fg-2">
                 Créer un deck vide
               </button>
               <div className="ml-auto flex gap-2">
-                <button onClick={onClose} className="rounded px-3 py-1.5 text-sm text-ink-300 hover:bg-ink-800">
+                <button onClick={onClose} className="rounded px-3 py-1.5 text-value text-fg-3 hover:bg-ink-800">
                   Annuler
                 </button>
                 <button
                   onClick={onPaste}
                   disabled={busy || !text.trim()}
-                  className="whitespace-nowrap rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-black disabled:opacity-40"
+                  className="whitespace-nowrap rounded bg-emerald-600 px-3 py-1.5 text-value font-medium text-black disabled:opacity-40"
                 >
                   {busy ? 'Création…' : 'Importer le texte'}
                 </button>
@@ -204,9 +204,9 @@ function ReviewPanel({
   const mainEmpty = report.deck.main.size === 0;
 
   return (
-    <div className="flex flex-col gap-2 text-xs">
-      <div className="text-ink-300">
-        <span className="font-medium text-ink-100">{review.name || 'Deck importé'}</span> — {recognised} carte{recognised > 1 ? 's' : ''} lue{recognised > 1 ? 's' : ''} ({report.deck.main.size} identité{report.deck.main.size > 1 ? 's' : ''} en main, {report.deck.extra.size} en extra, {report.deck.side.size} en side).
+    <div className="flex flex-col gap-2 text-body">
+      <div className="text-fg-3">
+        <span className="font-medium text-fg-1">{review.name || 'Deck importé'}</span> — {recognised} carte{recognised > 1 ? 's' : ''} lue{recognised > 1 ? 's' : ''} ({report.deck.main.size} identité{report.deck.main.size > 1 ? 's' : ''} en main, {report.deck.extra.size} en extra, {report.deck.side.size} en side).
       </div>
 
       {mainEmpty && (
@@ -229,10 +229,10 @@ function ReviewPanel({
 
       {report.ignored.length > 0 && (
         <Notice tone="amber" title={`${report.ignored.length} ligne${report.ignored.length > 1 ? 's' : ''} non reconnue${report.ignored.length > 1 ? 's' : ''} (aucune carte ajoutée pour elles)`}>
-          <ul className="mt-1 flex max-h-32 flex-col gap-0.5 overflow-y-auto font-num">
+          <ul className="mt-1 flex max-h-32 flex-col gap-0.5 overflow-y-auto font-mono">
             {report.ignored.map((l) => (
               <li key={l.line} className="truncate">
-                <span className="text-ink-500">l.{l.line}</span> {l.text}
+                <span className="text-fg-3">l.{l.line}</span> {l.text}
               </li>
             ))}
           </ul>
@@ -241,10 +241,10 @@ function ReviewPanel({
 
       {report.unknownHeaders.length > 0 && (
         <Notice tone="amber" title="En-têtes de zone non reconnus">
-          <ul className="mt-1 flex flex-col gap-0.5 font-num">
+          <ul className="mt-1 flex flex-col gap-0.5 font-mono">
             {report.unknownHeaders.map((l) => (
               <li key={l.line}>
-                <span className="text-ink-500">l.{l.line}</span> {l.text} — attendu « #main », « #extra » ou « !side » ; les cartes qui suivent restent dans la zone précédente.
+                <span className="text-fg-3">l.{l.line}</span> {l.text} — attendu « #main », « #extra » ou « !side » ; les cartes qui suivent restent dans la zone précédente.
               </li>
             ))}
           </ul>
@@ -254,7 +254,7 @@ function ReviewPanel({
       {unknownCardIds.length > 0 && (
         <Notice tone="amber" title={`${unknownCardIds.length} passcode${unknownCardIds.length > 1 ? 's' : ''} inconnu${unknownCardIds.length > 1 ? 's' : ''} du catalogue`}>
           Conservé{unknownCardIds.length > 1 ? 's' : ''} avec leur passcode et compté{unknownCardIds.length > 1 ? 's' : ''} comme cartes du deck (image tentée depuis le CDN, nom absent) :{' '}
-          <span className="font-num">{unknownCardIds.join(', ')}</span>.
+          <span className="font-mono">{unknownCardIds.join(', ')}</span>.
         </Notice>
       )}
 
@@ -264,16 +264,16 @@ function ReviewPanel({
         </Notice>
       )}
 
-      {error && <div role="alert" className="text-red-400">{error}</div>}
+      {error && <div role="alert" className="text-neg">{error}</div>}
 
       <div className="mt-2 flex items-center justify-end gap-2">
-        <button onClick={onBack} disabled={busy} className="rounded px-3 py-1.5 text-sm text-ink-300 hover:bg-ink-800">
+        <button onClick={onBack} disabled={busy} className="rounded px-3 py-1.5 text-value text-fg-3 hover:bg-ink-800">
           Retour
         </button>
         <button
           onClick={onConfirm}
           disabled={busy}
-          className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-black disabled:opacity-40"
+          className="rounded bg-emerald-600 px-3 py-1.5 text-value font-medium text-black disabled:opacity-40"
         >
           {busy ? 'Création…' : report.overLimit.length > 0 ? `Importer avec ${MAX_COPIES} copies maximum` : 'Importer quand même'}
         </button>
@@ -283,11 +283,11 @@ function ReviewPanel({
 }
 
 function Notice({ tone, title, children }: { tone: 'amber' | 'red'; title: string; children: ReactNode }) {
-  const cls = tone === 'red' ? 'border-red-500/40 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+  const cls = tone === 'red' ? 'border-red-500/40 bg-red-500/10 text-neg' : 'border-amber-500/30 bg-amber-500/10 text-warn';
   return (
     <div role="status" className={`rounded-md border px-2.5 py-1.5 ${cls}`}>
       <div className="font-medium">{title}</div>
-      <div className="mt-0.5 text-[11px] opacity-90">{children}</div>
+      <div className="mt-0.5 text-meta opacity-90">{children}</div>
     </div>
   );
 }
@@ -303,12 +303,12 @@ function FileZone({
 }) {
   return (
     <div className="rounded-lg border border-dashed border-ink-700 p-3 text-center">
-      <span className="mb-2 block text-[11px] uppercase tracking-wide text-ink-400">{label}</span>
+      <span className="mb-2 block text-meta uppercase tracking-wide text-fg-3">{label}</span>
       <input
         type="file"
         accept={accept}
         onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-        className="mx-auto block w-full min-w-0 text-[11px] text-ink-300 file:mr-2 file:rounded file:border-0 file:bg-ink-700 file:px-2 file:py-1 file:text-ink-100"
+        className="mx-auto block w-full min-w-0 text-meta text-fg-3 file:mr-2 file:h-7 file:rounded file:border-0 file:bg-ink-700 file:px-2 file:text-fg-1"
       />
     </div>
   );

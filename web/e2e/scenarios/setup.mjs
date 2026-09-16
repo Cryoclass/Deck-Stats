@@ -54,7 +54,7 @@ export default async function setup() {
 
   const save = async () => {
     await page.waitForTimeout(600);
-    await page.click('button:has-text("Enregistrer")');
+    await page.click('button[data-save]');
     await page.waitForSelector('text=/enregistré/');
     await page.waitForTimeout(600);
   };
@@ -97,14 +97,14 @@ export default async function setup() {
   // Breaker Kappa : étiquetée, volontairement sans profil.
 
   // Plafond partagé « Mulcharmy », 1 par tour, sur les deux Mulcharmy (menu ⋯).
-  await page.click('nav button:has-text("Combos")');
+  await page.click('nav button[title="Combos & catégories"]');
   const capName = page.locator('input[placeholder^="Nouveau plafond"]');
   await capName.waitFor();
   await capName.fill('Mulcharmy');
   await capName.locator('..').locator('input[type="number"]').fill('1');
   await capName.locator('..').locator('button', { hasText: '+' }).click();
   await page.waitForSelector('li:has-text("Mulcharmy")');
-  await page.click('nav button:has-text("Annoter")');
+  await page.click('nav button[title="Annoter"]');
   await page.waitForSelector('button[title="Starter Alpha"]');
   for (const n of ['Mulcharmy Eta', 'Mulcharmy Theta']) {
     await tileOf(page, n).locator('button:has-text("⋯")').click();

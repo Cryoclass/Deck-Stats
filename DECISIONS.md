@@ -1825,3 +1825,73 @@ Consentement publicitaire : [Google, exigences CMP EEE / UK / Suisse](https://su
 RPM : [benchmarks par niche et pays](https://www.techconda.com/2026/02/adsense-rpm-benchmarks.html).
 Affiliation : [Cardmarket, partenariats et API](https://help.cardmarket.com/en/api-partnerships),
 [TCGplayer Affiliate](https://docs.tcgplayer.com/docs/tcgplayer-affiliate-program).
+
+## Refonte visuelle — application du verdict de l'audit 01 (16 septembre 2026)
+
+Source : `docs/audit/01-visuel.md` §0 (verdict) et §8 (direction A « sombre relevé »), plus une
+demande directe : la présentation des decks est bonne, la navigation de l'éditeur ne l'est pas.
+Périmètre **purement visuel** : aucun calcul, aucune règle, aucune route, aucun schéma ; moteur,
+`lib/engineModel.ts`, `lib/conditions.ts`, `lib/summary.ts` intacts, donc `__ENGINE_VERSION__`
+inchangé et aucun aperçu invalidé. Compte rendu : `docs/refonte-visuelle.md`.
+
+Décisions validées avant le code :
+
+- **D1 — Navigation.** En-tête de l'éditeur sur une ligne à toute largeur ; onglets soulignés en
+  haut dès 640 px ; **sous 640 px, barre d'onglets en bas** (48 px, libellés courts, nom complet en
+  `title`). Préférée aux onglets sur deux lignes et au rail latéral.
+- **D2 — Plancher typographique.** Corps 13 px, minimum 11 px ; **seule dérogation** : cellules
+  compactes des matrices A / B du comparateur sous 640 px, montées de 9 à 10 px (`text-cell`), pour
+  conserver la décision de 7B (A et B côte à côte sans défilement). Préférée à « 11 px partout avec
+  un comparateur mobile réaménagé ».
+- **D3 — Tokens.** `text-ink-*` supprimé au profit de quatre rôles `fg-1..4` ; fonds et bordures
+  gardent les noms `ink-950..500` mais leurs valeurs, relevées, viennent de variables CSS.
+  `ink-400..100` retirés de Tailwind (aucun fond ni bordure ne les employait). Préféré à « tout en
+  rôles » (400 occurrences requalifiées à la main) et à « ink remappé seulement » (pas de couche de
+  rôles).
+- **D4 — Une seule passe**, une validation, un commit.
+
+Décisions prises en cours de tâche (questions ouvertes du plan tranchées par défaut, à confirmer) :
+
+- **Échelle fermée.** `theme.fontSize` redéfini hors `extend` : `text-xs`, `text-sm`… n'existent
+  plus. Une classe d'origine oubliée ne produit rien et se voit, au lieu de survivre en silence.
+- **Nom des classes de texte : `text-fg-1..4`** (et non `text-1..4` du plan) : Tailwind préfixe la
+  couleur par `text-`, un groupe `text` aurait donné `text-text-1`.
+- **Correspondance mécanique** : `ink-100 → fg-1`, `ink-200 → fg-2`, `ink-300/400/500/600 → fg-3`
+  (tout ce qui était « atténué » devient lisible), puis `fg-4` posé à la main sur le seul vrai méta
+  (date de l'accueil, passcode) et `fg-2` sur ce qui se lit (delta de tuile, texte de carte).
+  `ink-300` (`#9aa2b5`) et `fg-3` (`#9aa3b6`) sont quasi identiques : aucun libellé n'a perdu en
+  contraste. Accents en texte : `emerald/amber/sky/red-200/300` → `text-pos/warn/info/neg`.
+- **Horodatage = état du bouton.** Le bouton d'enregistrement dit « enregistré 10:04 » au repos
+  (inerte) au lieu d'un texte séparé ; « en ligne » et l'heure sont aussi dans le menu compte.
+  Conséquence : les gardes e2e désignent le bouton par `data-save` et non par son libellé.
+- **Contexte premier / second** : descendu de l'en-tête dans l'en-tête du panneau « Probabilités »
+  (Q2 du plan) ; sous 1024 px il ne se règle donc que depuis l'onglet « Stats » et le mur de mains.
+- **Barre du bas à libellés seuls** (Q3) : aucune iconographie n'existe dans l'application ; en
+  introduire une est une décision de charte, reportée.
+- **Une seule `<nav>` rendue** (état `compact` par `matchMedia`), jamais deux masquées par CSS :
+  deux barres dans le document rendaient ambigus les sélecteurs `nav button` et la lecture d'écran.
+- **Barre du bas = dernier enfant de la colonne**, pas `fixed` : aucune réserve de padding, jamais
+  de contenu recouvert ; `h-screen → h-[100dvh]` partout (barre d'outils mobile dynamique).
+- **Cartes de chaleur** : formule unique dans `lib/colors.ts` (`heatCell`, `heatDelta`). Case
+  **opaque** (`color-mix(in srgb, teinte α, var(--ink-900))`, équivalent exact d'une superposition),
+  texte **blanc pur**, puis **noir à partir de α = 0,6685** pour le vert ; le rouge garde le blanc sur
+  toute l'échelle. Écart au premier jet (« noir dès α > 0,5 », translucide) : la re-mesure a trouvé du
+  noir à 3,1:1 sur les cases moyennes. Calcul : au point de bascule, noir et `#f3f4f8` plafonnent à
+  4,38:1 et aucun seuil unique ne tient 4,5:1 sur deux fonds différents (4,49 au mieux) ; blanc pur
+  et fond fixe donnent 4,585:1 au pire (rouge 5,75). Gardé par `lib/tokens.test.ts` contre
+  `index.css`. Couleurs des séries (`SERIES_STARTS`, `SERIES_COUNT`) sorties de `statsViews.ts`
+  (hors `__ENGINE_VERSION__`, vérifié dans `vite.config.ts`).
+- **Marqueur « sort / entre »** du planificateur : seule l'illustration d'une copie engagée
+  s'estompe, plus le marqueur (4,15:1 quand il s'estompait avec elle).
+- **Cibles** : tous les contrôles secondaires à 24 px minimum (`h-6`), les retours « ← Mes decks » /
+  « ← Plans de side » et le ✕ du toast et du détail de carte à 32 px ; la garde `mobile` P1 « ← Mes
+  decks sur une ligne » se vérifie désormais sur le texte (un seul rectangle de ligne), plus par une
+  hauteur de bouton ≤ 20 px.
+- **Libellés** : « E[S] / E[U] / E[copies] » → « moyenne », « E[red.] » → « redondance moyenne »,
+  « C(D,5) mains » → « les 5 cartes initiales » ; références « §D », « §E », « §3.3 », « §4.4 »,
+  « contrat §2 / §3 » retirées du texte affiché (les commentaires de code les gardent).
+- **Badges de rôle et pastilles de tuile** descendus à `top-[11%]`, sous le bandeau de nom de
+  l'illustration, qu'ils masquaient.
+- **`JetBrains Mono` retirée** de la configuration (déclarée, jamais chargée) : `font-mono` système.
+- **Hors périmètre** : variante claire optionnelle (Q4), `:focus-visible`, `role="dialog"` et Échap
+  sur tous les dialogues (audit §2.4), page de connexion et parcours (volet 02).

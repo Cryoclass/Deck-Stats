@@ -39,7 +39,7 @@ export default async function side() {
   await put({ ...original, cards: [...original.cards, { card_id: RHO, zone: 'side', copies: 3 }, { card_id: LAMBDA, zone: 'side', copies: 1 }] });
 
   const msLabel = () => page.locator('aside span.tnum').filter({ hasText: /ms$/ }).first().innerText();
-  const saveBtn = () => page.locator('header button:has-text("Enregistrer")');
+  const saveBtn = () => page.locator('header button[data-save]');
   const copies = (zone, card, state) => page.locator(`[data-copy="${zone}"][data-card-id="${card}"]${state ? `[data-state="${state}"]` : ''}`);
   const status = (s) => page.locator(`[data-plan-status="${s}"]`);
   const swap = () => page.locator('[data-swap]');
@@ -66,7 +66,7 @@ export default async function side() {
     await shot(page, 'side-1440-annoter');
 
     // ─── P2 : adversaire, copies dépliées, sélection, échange ───
-    await page.locator('nav button', { hasText: 'Plans de side' }).click();
+    await page.locator('nav button[title="Plans de side"]').click();
     await page.waitForSelector('text=Aucun adversaire');
     await page.fill('input[aria-label="Nom du nouvel adversaire"]', 'Kewl Tune');
     await page.locator('[data-add-matchup]').click();
@@ -104,7 +104,7 @@ export default async function side() {
     // ─── P4 : note, enregistrement, chiffres persistés ───
     await page.fill('textarea[aria-label="Note du plan"]', NOTE);
     await saveBtn().click();
-    await page.waitForSelector('header button:has-text("Enregistrer"):disabled', { timeout: 10000 });
+    await page.waitForSelector('header button[data-save]:disabled', { timeout: 10000 });
     const saved = await detail();
     const matchup = saved.matchups?.[0];
     const second = matchup?.plans.find((p) => p.position === 'second');

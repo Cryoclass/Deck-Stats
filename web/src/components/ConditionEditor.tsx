@@ -38,9 +38,9 @@ export function ConditionEditor({
   const update = (next: ConditionNode | null) => setCondition(source, next);
 
   return (
-    <div className="flex flex-col gap-1 text-[11px]">
+    <div className="flex flex-col gap-1 text-meta">
       {condition === null ? (
-        <span className="text-ink-600">source inconditionnelle</span>
+        <span className="text-fg-3">source inconditionnelle</span>
       ) : (
         <Node node={condition} path={[]} name={name} main={main} root={condition} update={update} />
       )}
@@ -72,16 +72,16 @@ function Node({
 }) {
   if (node.kind === 'remaining') {
     return (
-      <span className="flex flex-wrap items-center gap-1 rounded border border-dashed border-amber-500/50 bg-amber-500/5 px-1.5 py-0.5 text-amber-200">
+      <span className="flex flex-wrap items-center gap-1 rounded border border-dashed border-amber-500/50 bg-amber-500/5 px-1.5 py-0.5 text-warn">
         <span>▤ {name(node.card_id)}</span>
-        <label className="flex items-center gap-0.5 text-amber-300/80" title="Copies devant rester en deck après le tirage observé">
+        <label className="flex items-center gap-0.5 text-warn/80" title="Copies devant rester en deck après le tirage observé">
           ≥
           <input
             type="number"
             min={1}
             value={node.at_least}
             onChange={(e) => update(setAtLeast(root, path, Number(e.target.value)))}
-            className="tnum h-6 w-9 rounded border border-ink-700 bg-ink-850 px-1 text-center text-[11px] text-ink-100"
+            className="tnum h-6 w-9 rounded border border-ink-700 bg-ink-850 px-1 text-center text-meta text-fg-1"
           />
         </label>
         <CardPicker
@@ -93,7 +93,7 @@ function Node({
         />
         <button
           onClick={() => update(removeAt(root, path))}
-          className="flex h-6 w-6 items-center justify-center rounded text-amber-400/70 hover:bg-red-500/10 hover:text-red-400"
+          className="flex h-6 w-6 items-center justify-center rounded text-warn hover:bg-red-500/10 hover:text-neg"
           title="Retirer cette condition"
         >
           ✕
@@ -112,7 +112,7 @@ function Node({
     >
       {children.map((child, i) => (
         <span key={i} className="flex flex-wrap items-center gap-1">
-          {i > 0 && <span className="text-[10px] font-semibold uppercase text-ink-400">{op}</span>}
+          {i > 0 && <span className="text-meta font-semibold uppercase text-fg-3">{op}</span>}
           <Node node={child} path={[...path, i]} name={name} main={main} root={root} update={update} />
         </span>
       ))}
@@ -150,7 +150,7 @@ function CardPicker({
         const id = Number(e.target.value);
         if (id) onPick(id);
       }}
-      className="h-6 rounded border border-ink-700 bg-ink-850 px-1 text-[11px] text-ink-300"
+      className="h-6 rounded border border-ink-700 bg-ink-850 px-1 text-meta text-fg-3"
     >
       <option value="">{label}</option>
       {main.map((m) => (

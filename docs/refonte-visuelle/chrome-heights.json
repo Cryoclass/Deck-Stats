@@ -1,0 +1,642 @@
+{
+ "360": {
+  "viewport": {
+   "w": 360,
+   "h": 780
+  },
+  "header": {
+   "top": 0,
+   "h": 49,
+   "w": 360
+  },
+  "nav": {
+   "top": 731,
+   "h": 49,
+   "w": 360
+  },
+  "navOverflowPx": 0,
+  "modebar": {
+   "top": 49,
+   "h": 73,
+   "w": 359
+  },
+  "firstTile": {
+   "top": 130,
+   "h": 232,
+   "w": 110
+  },
+  "tileImage": {
+   "top": 131,
+   "h": 158,
+   "w": 108
+  },
+  "gridColumns": 3,
+  "stepper": {
+   "top": 294,
+   "h": 32,
+   "w": 32
+  },
+  "menu": {
+   "top": 327,
+   "h": 32,
+   "w": 32
+  },
+  "delta": {
+   "top": 337,
+   "h": 11,
+   "w": 72,
+   "font": "11px",
+   "color": "rgb(201, 207, 219)"
+  },
+  "tabs": [
+   {
+    "t": "Annoter",
+    "top": 732,
+    "h": 48,
+    "w": 60
+   },
+   {
+    "t": "Combos",
+    "top": 732,
+    "h": 48,
+    "w": 60
+   },
+   {
+    "t": "Mains",
+    "top": 732,
+    "h": 48,
+    "w": 60
+   },
+   {
+    "t": "Invent.",
+    "top": 732,
+    "h": 48,
+    "w": 60
+   },
+   {
+    "t": "Side",
+    "top": 732,
+    "h": 48,
+    "w": 60
+   },
+   {
+    "t": "Stats",
+    "top": 732,
+    "h": 48,
+    "w": 60
+   }
+  ],
+  "modes": [
+   {
+    "t": "Sélection",
+    "top": 55,
+    "h": 27,
+    "w": 74
+   },
+   {
+    "t": "Lier combo",
+    "top": 55,
+    "h": 27,
+    "w": 86
+   },
+   {
+    "t": "HOPT",
+    "top": 55,
+    "h": 27,
+    "w": 54
+   },
+   {
+    "t": "Starter",
+    "top": 55,
+    "h": 27,
+    "w": 60
+   },
+   {
+    "t": "Non-engine ▾",
+    "top": 88,
+    "h": 27,
+    "w": 108
+   },
+   {
+    "t": "Profil ▾",
+    "top": 88,
+    "h": 27,
+    "w": 68
+   },
+   {
+    "t": "Condition",
+    "top": 88,
+    "h": 27,
+    "w": 78
+   }
+  ],
+  "hdrBtns": [
+   {
+    "t": "←",
+    "top": 8,
+    "h": 32,
+    "w": 27
+   },
+   {
+    "t": "Snake-Eye Fiendsmith",
+    "top": 10,
+    "h": 28,
+    "w": 90
+   },
+   {
+    "t": "enregistré 16:08",
+    "top": 8,
+    "h": 32,
+    "w": 119
+   },
+   {
+    "t": "E",
+    "top": 8,
+    "h": 32,
+    "w": 36
+   }
+  ],
+  "chromeBeforeContent": 130,
+  "chromeShare": 0.167
+ },
+ "390": {
+  "viewport": {
+   "w": 390,
+   "h": 844
+  },
+  "header": {
+   "top": 0,
+   "h": 49,
+   "w": 390
+  },
+  "nav": {
+   "top": 795,
+   "h": 49,
+   "w": 390
+  },
+  "navOverflowPx": 0,
+  "modebar": {
+   "top": 49,
+   "h": 73,
+   "w": 389
+  },
+  "firstTile": {
+   "top": 130,
+   "h": 247,
+   "w": 120
+  },
+  "tileImage": {
+   "top": 131,
+   "h": 172,
+   "w": 118
+  },
+  "gridColumns": 3,
+  "stepper": {
+   "top": 308,
+   "h": 32,
+   "w": 32
+  },
+  "menu": {
+   "top": 341,
+   "h": 32,
+   "w": 32
+  },
+  "delta": {
+   "top": 352,
+   "h": 11,
+   "w": 82,
+   "font": "11px",
+   "color": "rgb(201, 207, 219)"
+  },
+  "tabs": [
+   {
+    "t": "Annoter",
+    "top": 796,
+    "h": 48,
+    "w": 65
+   },
+   {
+    "t": "Combos",
+    "top": 796,
+    "h": 48,
+    "w": 65
+   },
+   {
+    "t": "Mains",
+    "top": 796,
+    "h": 48,
+    "w": 65
+   },
+   {
+    "t": "Invent.",
+    "top": 796,
+    "h": 48,
+    "w": 65
+   },
+   {
+    "t": "Side",
+    "top": 796,
+    "h": 48,
+    "w": 65
+   },
+   {
+    "t": "Stats",
+    "top": 796,
+    "h": 48,
+    "w": 65
+   }
+  ],
+  "modes": [
+   {
+    "t": "Sélection",
+    "top": 55,
+    "h": 27,
+    "w": 74
+   },
+   {
+    "t": "Lier combo",
+    "top": 55,
+    "h": 27,
+    "w": 86
+   },
+   {
+    "t": "HOPT",
+    "top": 55,
+    "h": 27,
+    "w": 54
+   },
+   {
+    "t": "Starter",
+    "top": 55,
+    "h": 27,
+    "w": 60
+   },
+   {
+    "t": "Non-engine ▾",
+    "top": 88,
+    "h": 27,
+    "w": 108
+   },
+   {
+    "t": "Profil ▾",
+    "top": 88,
+    "h": 27,
+    "w": 68
+   },
+   {
+    "t": "Condition",
+    "top": 88,
+    "h": 27,
+    "w": 78
+   }
+  ],
+  "hdrBtns": [
+   {
+    "t": "←",
+    "top": 8,
+    "h": 32,
+    "w": 27
+   },
+   {
+    "t": "Snake-Eye Fiendsmith",
+    "top": 10,
+    "h": 28,
+    "w": 120
+   },
+   {
+    "t": "enregistré 16:08",
+    "top": 8,
+    "h": 32,
+    "w": 119
+   },
+   {
+    "t": "E",
+    "top": 8,
+    "h": 32,
+    "w": 36
+   }
+  ],
+  "chromeBeforeContent": 130,
+  "chromeShare": 0.154
+ },
+ "768": {
+  "viewport": {
+   "w": 768,
+   "h": 1024
+  },
+  "header": {
+   "top": 0,
+   "h": 49,
+   "w": 768
+  },
+  "nav": {
+   "top": 49,
+   "h": 40,
+   "w": 767
+  },
+  "navOverflowPx": 0,
+  "modebar": {
+   "top": 89,
+   "h": 40,
+   "w": 767
+  },
+  "firstTile": {
+   "top": 137,
+   "h": 220,
+   "w": 102
+  },
+  "tileImage": {
+   "top": 138,
+   "h": 146,
+   "w": 100
+  },
+  "gridColumns": 7,
+  "stepper": {
+   "top": 289,
+   "h": 32,
+   "w": 32
+  },
+  "menu": {
+   "top": 322,
+   "h": 32,
+   "w": 32
+  },
+  "delta": {
+   "top": 332,
+   "h": 11,
+   "w": 64,
+   "font": "11px",
+   "color": "rgb(201, 207, 219)"
+  },
+  "tabs": [
+   {
+    "t": "Annoter",
+    "top": 49,
+    "h": 40,
+    "w": 72
+   },
+   {
+    "t": "Combos & catégories",
+    "top": 49,
+    "h": 40,
+    "w": 150
+   },
+   {
+    "t": "Mur de mains",
+    "top": 49,
+    "h": 40,
+    "w": 105
+   },
+   {
+    "t": "Inventaire",
+    "top": 49,
+    "h": 40,
+    "w": 83
+   },
+   {
+    "t": "Plans de side",
+    "top": 49,
+    "h": 40,
+    "w": 101
+   },
+   {
+    "t": "Stats",
+    "top": 49,
+    "h": 40,
+    "w": 53
+   }
+  ],
+  "modes": [
+   {
+    "t": "Sélection",
+    "top": 95,
+    "h": 27,
+    "w": 74
+   },
+   {
+    "t": "Lier combo C",
+    "top": 95,
+    "h": 27,
+    "w": 108
+   },
+   {
+    "t": "HOPT H",
+    "top": 95,
+    "h": 27,
+    "w": 76
+   },
+   {
+    "t": "Starter S",
+    "top": 95,
+    "h": 27,
+    "w": 82
+   },
+   {
+    "t": "Non-engine ▾ N",
+    "top": 95,
+    "h": 27,
+    "w": 130
+   },
+   {
+    "t": "Profil ▾ D",
+    "top": 95,
+    "h": 27,
+    "w": 90
+   },
+   {
+    "t": "Condition P",
+    "top": 95,
+    "h": 27,
+    "w": 100
+   }
+  ],
+  "hdrBtns": [
+   {
+    "t": "←\nDecks",
+    "top": 8,
+    "h": 32,
+    "w": 65
+   },
+   {
+    "t": "Snake-Eye Fiendsmith",
+    "top": 10,
+    "h": 28,
+    "w": 352
+   },
+   {
+    "t": "enregistré 16:08",
+    "top": 8,
+    "h": 32,
+    "w": 119
+   },
+   {
+    "t": "E\nE2E",
+    "top": 8,
+    "h": 32,
+    "w": 62
+   }
+  ],
+  "chromeBeforeContent": 137,
+  "chromeShare": 0.134
+ },
+ "1440": {
+  "viewport": {
+   "w": 1440,
+   "h": 900
+  },
+  "header": {
+   "top": 0,
+   "h": 49,
+   "w": 1440
+  },
+  "nav": {
+   "top": 49,
+   "h": 40,
+   "w": 939
+  },
+  "navOverflowPx": 0,
+  "modebar": {
+   "top": 89,
+   "h": 40,
+   "w": 939
+  },
+  "firstTile": {
+   "top": 137,
+   "h": 213,
+   "w": 97
+  },
+  "tileImage": {
+   "top": 138,
+   "h": 139,
+   "w": 95
+  },
+  "gridColumns": 9,
+  "stepper": {
+   "top": 282,
+   "h": 32,
+   "w": 32
+  },
+  "menu": {
+   "top": 315,
+   "h": 32,
+   "w": 32
+  },
+  "delta": {
+   "top": 325,
+   "h": 11,
+   "w": 59,
+   "font": "11px",
+   "color": "rgb(201, 207, 219)"
+  },
+  "tabs": [
+   {
+    "t": "Annoter",
+    "top": 49,
+    "h": 40,
+    "w": 72
+   },
+   {
+    "t": "Combos & catégories",
+    "top": 49,
+    "h": 40,
+    "w": 150
+   },
+   {
+    "t": "Mur de mains",
+    "top": 49,
+    "h": 40,
+    "w": 105
+   },
+   {
+    "t": "Inventaire",
+    "top": 49,
+    "h": 40,
+    "w": 83
+   },
+   {
+    "t": "Plans de side",
+    "top": 49,
+    "h": 40,
+    "w": 101
+   },
+   {
+    "t": "Stats",
+    "top": 0,
+    "h": 0,
+    "w": 0
+   }
+  ],
+  "modes": [
+   {
+    "t": "Sélection",
+    "top": 95,
+    "h": 27,
+    "w": 74
+   },
+   {
+    "t": "Lier combo C",
+    "top": 95,
+    "h": 27,
+    "w": 108
+   },
+   {
+    "t": "HOPT H",
+    "top": 95,
+    "h": 27,
+    "w": 76
+   },
+   {
+    "t": "Starter S",
+    "top": 95,
+    "h": 27,
+    "w": 82
+   },
+   {
+    "t": "Non-engine ▾ N",
+    "top": 95,
+    "h": 27,
+    "w": 130
+   },
+   {
+    "t": "Profil ▾ D",
+    "top": 95,
+    "h": 27,
+    "w": 90
+   },
+   {
+    "t": "Condition P",
+    "top": 95,
+    "h": 27,
+    "w": 100
+   }
+  ],
+  "hdrBtns": [
+   {
+    "t": "←\nDecks",
+    "top": 8,
+    "h": 32,
+    "w": 65
+   },
+   {
+    "t": "Snake-Eye Fiendsmith",
+    "top": 10,
+    "h": 28,
+    "w": 352
+   },
+   {
+    "t": "enregistré 16:08",
+    "top": 8,
+    "h": 32,
+    "w": 119
+   },
+   {
+    "t": "E\nE2E",
+    "top": 8,
+    "h": 32,
+    "w": 62
+   }
+  ],
+  "chromeBeforeContent": 137,
+  "chromeShare": 0.152
+ }
+}

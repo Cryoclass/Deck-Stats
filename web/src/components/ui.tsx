@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 
 /** Barre horizontale animée (temps réel visible, §E). */
-export function Bar({ value, color = '#6b7488' }: { value: number; color?: string }) {
+export function Bar({ value, color = 'var(--ink-500)' }: { value: number; color?: string }) {
   return (
     <div className="h-2 w-full overflow-hidden rounded-sm bg-ink-800">
       <div
@@ -31,10 +31,10 @@ export function Segmented<T extends string | number>({
           key={String(o.value)}
           title={o.title}
           onClick={() => onChange(o.value)}
-          className={`${size === 'sm' ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1 text-xs'} tnum transition-colors ${
+          className={`${size === 'sm' ? 'h-6 px-2 text-meta' : 'h-7 px-2.5 text-body'} tnum transition-colors ${
             value === o.value
-              ? 'bg-ink-600 text-ink-100'
-              : 'text-ink-400 hover:bg-ink-800 hover:text-ink-200'
+              ? 'bg-ink-600 text-fg-1'
+              : 'text-fg-3 hover:bg-ink-800 hover:text-fg-2'
           }`}
         >
           {o.label}
@@ -84,7 +84,7 @@ export function Toggle({
   return (
     <button
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-xs text-ink-200 hover:bg-ink-800"
+      className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-body text-fg-2 hover:bg-ink-800"
     >
       <span>{label}</span>
       <span
@@ -97,8 +97,8 @@ export function Toggle({
 export function StatLine({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[11px] uppercase tracking-wide text-ink-400">{label}</span>
-      <span className="tnum text-ink-100">{children}</span>
+      <span className="text-meta uppercase tracking-wide text-fg-3">{label}</span>
+      <span className="tnum text-fg-1">{children}</span>
     </div>
   );
 }

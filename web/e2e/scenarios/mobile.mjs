@@ -93,8 +93,17 @@ export default async function mobile({ out, log }) {
     pointGe('P1', '⇄ Inverser (Q4)', bInv, 32);
     pointGe('P1', 'Exporter Excel (Q4)', bExp, 32);
     point('P1', 'libellés des actions sur une ligne', bInv?.h <= 36 && bExp?.h <= 36, { inverser: bInv, exporter: bExp });
-    const back = await box(page.locator('header button:has-text("Mes decks")'));
-    point('P1', '« ← Mes decks » sur une ligne', back?.h <= 20, back);
+    // Refonte visuelle : le lien retour est une cible de 32 px (audit 01, 19 px auparavant) ;
+    // « sur une ligne » se vérifie sur le texte (un seul rectangle de ligne), plus par la hauteur du bouton.
+    const backBtn = page.locator('header button:has-text("Mes decks")');
+    const back = await box(backBtn);
+    const backLines = await backBtn.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return range.getClientRects().length === 1;
+    });
+    point('P1', '« ← Mes decks » sur une ligne', backLines && back?.h <= 36, back);
+    pointGe('P1', '« ← Mes decks » cible', back, 32);
     const names = page.locator('header span.truncate').first();
     point('P1', 'noms A / B visibles', (await names.isVisible()) && (await names.evaluate((el) => el.getBoundingClientRect().width >= 40)), await rect(names));
 
@@ -125,7 +134,7 @@ export default async function mobile({ out, log }) {
         const metrics = await cells.evaluateAll((tds) => tds.map((td) => ({ w: td.getBoundingClientRect().width, h: td.getBoundingClientRect().height, font: parseFloat(getComputedStyle(td).fontSize), clipped: td.scrollWidth > td.clientWidth + 1 })));
         const minFont = Math.min(...metrics.map((m) => m.font));
         const minH = Math.min(...metrics.map((m) => m.h));
-        point('P3', `${name} : matrice ${nm} cellules lisibles (police ≥ 9 px, hauteur ≥ 14 px, aucune coupée)`, minFont >= 9 && minH >= 14 && !metrics.some((m) => m.clipped), { minFont, minH, clipped: metrics.filter((m) => m.clipped).length });
+        point('P3', `${name} : matrice ${nm} cellules lisibles (police ≥ 10 px, hauteur ≥ 14 px, aucune coupée)`, minFont >= 10 && minH >= 14 && !metrics.some((m) => m.clipped), { minFont, minH, clipped: metrics.filter((m) => m.clipped).length });
         point('P3', `${name} : ligne S / N sous ${nm}`, /starters · N =/.test(await cards.nth(i).innerText()));
         const heads = await table.locator('thead th').evaluateAll((ths) => ths.slice(1).map((th) => Math.round(th.getBoundingClientRect().width)));
         point('P3', `${name} : matrice ${nm} colonnes ≥ 18 px (en-têtes distincts)`, heads.length === 6 && heads.every((w) => w >= 18), heads);
@@ -184,7 +193,7 @@ export default async function mobile({ out, log }) {
     await page.goto('/decks/' + a.id);
     await page.waitForSelector('button[title="Starter Alpha"]');
     await page.waitForSelector('text=/\\d+ ms/', { state: 'attached', timeout: 30000 });
-    await page.click('nav button:has-text("Mur de mains")');
+    await page.click('nav button[title="Mur de mains"]');
     const wall = page.locator('main');
     const rows = wall.locator('div.rounded-md.border', { has: page.locator('img') });
     await rows.first().waitFor();
@@ -232,10 +241,10 @@ export default async function mobile({ out, log }) {
     await shot(page, `mobile-${W}-mains-second`);
 
     // État périmé : une copie de plus (onglet Annoter), retour au mur pendant le recalcul.
-    await page.click('nav button:has-text("Annoter")');
+    await page.click('nav button[title="Annoter"]');
     await page.waitForSelector('button[title="Filler Omicron"]');
     await page.locator('div.group', { has: page.locator('button[title="Filler Omicron"]') }).locator('button[title="Plus de copies"]').click();
-    await page.click('nav button:has-text("Mur de mains")');
+    await page.click('nav button[title="Mur de mains"]');
     const status = wall.locator('[role="status"]');
     await status.waitFor({ timeout: 3000 }).catch(() => {});
     const staleText = (await status.count()) ? await status.innerText() : '';

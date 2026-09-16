@@ -66,7 +66,7 @@ export function HandWall() {
 
   if (!result || mainLen === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-ink-400">
+      <div className="flex h-full items-center justify-center text-value text-fg-3">
         {!result && computing && mainLen > 0
           ? 'Calcul initial des statistiques…'
           : 'Charge un deck pour générer des mains de test.'}
@@ -79,7 +79,7 @@ export function HandWall() {
   return (
     <div className="flex h-full flex-col">
       {/* Barre de contrôle. */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-ink-800 px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-3 border-b border-ink-800 px-3 py-2 text-body">
         <span title={CONTEXT_TITLE}>
           <Segmented
             value={context}
@@ -93,16 +93,16 @@ export function HandWall() {
         {/* Étape 9 (réponse 2 de 7B) : action primaire du mur, cible de 32 px comme Enregistrer. */}
         <button
           onClick={resample}
-          className="whitespace-nowrap rounded bg-ink-700 px-3 py-2 font-medium text-ink-100 hover:bg-ink-600"
+          className="whitespace-nowrap rounded bg-ink-700 px-3 py-2 font-medium text-fg-1 hover:bg-ink-600"
         >
           ↻ Nouvelles mains
         </button>
-        <label className="flex items-center gap-1 text-ink-400">
+        <label className="flex items-center gap-1 text-fg-3">
           n
           <select
             value={count}
             onChange={(e) => setCount(Number(e.target.value))}
-            className="rounded border border-ink-700 bg-ink-850 px-1 py-0.5 text-ink-100"
+            className="rounded border border-ink-700 bg-ink-850 px-1 py-0.5 text-fg-1"
           >
             {[30, 60, 120, 240].map((n) => (
               <option key={n} value={n}>
@@ -112,7 +112,7 @@ export function HandWall() {
           </select>
         </label>
 
-        <div className="flex items-center gap-1 text-ink-400">
+        <div className="flex items-center gap-1 text-fg-3">
           <span>importance non-engine</span>
           <input
             type="range"
@@ -121,25 +121,25 @@ export function HandWall() {
             step={0.05}
             value={importance}
             onChange={(e) => setImportance(Number(e.target.value))}
-            className="w-24 accent-emerald-500"
+            className="h-6 w-24 accent-emerald-500"
           />
-          <span className="tnum w-8 text-right text-ink-200">{importance.toFixed(2)}</span>
+          <span className="tnum w-8 text-right text-fg-2">{importance.toFixed(2)}</span>
         </div>
 
-        <div className="ml-auto flex items-center gap-2 text-ink-400">
+        <div className="ml-auto flex items-center gap-2 text-fg-3">
           {/* Le filtre du mur = la requête (§D). Édition dans le panneau « Mode requête ». */}
           <button
             onClick={() => setHandFilterByQuery(!handFilterByQuery)}
             title="Filtrer par la requête en cours (éditée dans le panneau de droite)"
             className={`rounded px-2 py-1 ${
-              handFilterByQuery ? 'bg-emerald-500/20 text-emerald-200' : 'bg-ink-800 text-ink-300'
+              handFilterByQuery ? 'bg-emerald-500/20 text-pos' : 'bg-ink-800 text-fg-3'
             }`}
           >
             {handFilterByQuery ? 'filtré par requête' : 'filtrer par requête'}
           </button>
           <button
             onClick={() => setSortByNote((v) => !v)}
-            className={`rounded px-2 py-1 ${sortByNote ? 'bg-ink-700 text-ink-100' : 'bg-ink-800 text-ink-400'}`}
+            className={`rounded px-2 py-1 ${sortByNote ? 'bg-ink-700 text-fg-1' : 'bg-ink-800 text-fg-3'}`}
             title="Trier par note (sinon flux aléatoire)"
           >
             {sortByNote ? 'tri: note' : 'flux libre'}
@@ -148,19 +148,19 @@ export function HandWall() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-ink-500">
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-meta text-fg-3">
           <span>
             {view.length} mains affichées{' '}
             {noted.length !== view.length ? `(sur ${noted.length} tirées)` : ''}
           </span>
           {context === 'second' && (
-            <span className="flex items-center gap-1" title="En second, la dernière carte de chaque main est la sixième pioche : identifiée, elle n'a pas les mêmes fenêtres qu'une carte initiale (contrat §3).">
+            <span className="flex items-center gap-1" title="En second, la dernière carte de chaque main est la sixième pioche : identifiée, elle n'a pas les mêmes fenêtres qu'une carte initiale.">
               <span className="inline-block h-3 w-2 rounded-sm ring-2 ring-sky-400" /> sixième carte = pioche
             </span>
           )}
           {/* Étape 4 : les notes viennent du dernier résultat ; s'il est périmé, on le dit et on atténue. */}
           {stale && (
-            <span role="status" className="rounded bg-ink-800 px-1.5 py-0.5 text-ink-300">
+            <span role="status" className="rounded bg-ink-800 px-1.5 py-0.5 text-fg-3">
               Recalcul… notes de la version précédente
             </span>
           )}
@@ -188,7 +188,7 @@ export function HandWall() {
                         className={`h-[60px] rounded sm:h-[68px] ${sixth ? 'ring-2 ring-sky-400' : ''}`}
                       />
                       {sixth && (
-                        <span className="pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded bg-sky-400 px-1 text-[9px] font-bold leading-4 text-black">
+                        <span className="pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded bg-sky-400 px-1 text-meta font-bold leading-4 text-black">
                           6ᵉ
                         </span>
                       )}
@@ -205,7 +205,7 @@ export function HandWall() {
             </div>
           ))}
           {view.length === 0 && (
-            <div className="p-6 text-center text-sm text-ink-500">
+            <div className="p-6 text-center text-value text-fg-3">
               {pass.total === 0 ? `Mains indisponibles. ${pass.unavailableReason}` : 'Aucune main ne correspond à ces filtres.'}
             </div>
           )}
@@ -227,11 +227,11 @@ function Recap({
   title?: string;
 }) {
   const color =
-    tone === 'bad' ? 'text-red-400' : tone === 'good' ? 'text-emerald-300' : 'text-ink-200';
+    tone === 'bad' ? 'text-neg' : tone === 'good' ? 'text-pos' : 'text-fg-2';
   return (
     <div className="hidden text-center sm:block" title={title}>
-      <div className={`tnum text-sm font-semibold ${color}`}>{value}</div>
-      <div className="text-[9px] uppercase tracking-wide text-ink-600">{label}</div>
+      <div className={`tnum text-value font-semibold ${color}`}>{value}</div>
+      <div className="text-meta uppercase tracking-wide text-fg-3">{label}</div>
     </div>
   );
 }
@@ -241,12 +241,12 @@ function Recap({
  *  que ~80 px à droite. */
 function CompactRecap({ starts, neTotal }: { starts: number; neTotal: number }) {
   return (
-    <div className="flex flex-col items-start gap-0.5 text-[11px] leading-none sm:hidden" data-recap="compact">
-      <span className={`tnum whitespace-nowrap ${starts === 0 ? 'text-red-400' : 'text-emerald-300'}`} title="Départs théoriques S">
-        <span className="text-ink-500">S </span>{starts}
+    <div className="flex flex-col items-start gap-0.5 text-meta leading-none sm:hidden" data-recap="compact">
+      <span className={`tnum whitespace-nowrap ${starts === 0 ? 'text-neg' : 'text-pos'}`} title="Départs théoriques S">
+        <span className="text-fg-3">S </span>{starts}
       </span>
-      <span className="tnum whitespace-nowrap text-ink-200" title="Potentiel non-engine U (fenêtres et plafonds appliqués)">
-        <span className="text-ink-500">U </span>{neTotal}
+      <span className="tnum whitespace-nowrap text-fg-2" title="Potentiel non-engine U (fenêtres et plafonds appliqués)">
+        <span className="text-fg-3">U </span>{neTotal}
       </span>
     </div>
   );
@@ -256,9 +256,9 @@ function NoteBadge({ note }: { note: number }) {
   const hue = (note / 10) * 140; // rouge → vert
   return (
     <div
-      className="tnum flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-black sm:h-9 sm:w-9 sm:text-sm"
+      className="tnum flex h-7 w-7 items-center justify-center rounded-full text-body font-bold text-black sm:h-9 sm:w-9 sm:text-value"
       style={{ background: `oklch(0.78 0.15 ${hue})` }}
-      title="Note = percentile parmi les mains de ce deck (§4.4)"
+      title="Note = rang de cette main parmi les mains de ce deck, en centiles"
     >
       {note}
     </div>

@@ -233,9 +233,9 @@ export function AnnotationGrid({
     <div className="mt-4" data-zone-section>
       <button
         onClick={() => setExtraSideHidden(!extraSideHidden)}
-        className="mb-2 flex h-6 items-center text-[11px] uppercase tracking-wide text-ink-500 hover:text-ink-300"
+        className="mb-2 flex h-6 items-center text-meta uppercase tracking-wide text-fg-3 hover:text-fg-3"
       >
-        {extraSideHidden ? '▸' : '▾'} Extra / Side — éditables, exclus des calculs (contrat §2)
+        {extraSideHidden ? '▸' : '▾'} Extra / Side — éditables, exclus des calculs
       </button>
       {!extraSideHidden && (
         <div className="flex flex-col gap-4">
@@ -251,11 +251,11 @@ export function AnnotationGrid({
   if (main.length === 0) {
     return (
       <div className="flex h-full flex-col overflow-y-auto p-2">
-        <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-sm text-ink-400">
+        <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-value text-fg-3">
           <p>Importe un deck (fichier YDK ou liste collée) pour commencer à annoter.</p>
           <button
             onClick={() => setAddOpen('main')}
-            className="rounded border border-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-800"
+            className="rounded border border-ink-700 px-3 py-1.5 text-body text-fg-2 hover:bg-ink-800"
           >
             + Ajouter une carte
           </button>
@@ -304,10 +304,10 @@ export function AnnotationGrid({
           <button
             onClick={() => setAddOpen('main')}
             title="Ajouter une carte"
-            className="flex aspect-[59/86] flex-col items-center justify-center rounded-md border border-dashed border-ink-600 text-ink-500 transition-colors hover:border-emerald-500/60 hover:text-emerald-300"
+            className="flex aspect-[59/86] flex-col items-center justify-center rounded-md border border-dashed border-ink-600 text-fg-3 transition-colors hover:border-emerald-500/60 hover:text-pos"
           >
-            <span className="text-2xl leading-none">+</span>
-            <span className="mt-1 text-[10px]">Ajouter</span>
+            <span className="text-glyph leading-none">+</span>
+            <span className="mt-1 text-meta">Ajouter</span>
           </button>
         </div>
 
@@ -327,27 +327,27 @@ function ZoneBlock({ zone, cards, onAdd, renderTile }: { zone: Zone; cards: Deck
   const over = overSoftLimit(zone, count);
   return (
     <section data-zone-block={zone} aria-label={ZONE_LABEL[zone]}>
-      <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
-        <span className="font-semibold text-ink-200">{ZONE_LABEL[zone].charAt(0).toUpperCase() + ZONE_LABEL[zone].slice(1)}</span>
+      <div className="mb-1.5 flex flex-wrap items-center gap-2 text-body">
+        <span className="font-semibold text-fg-2">{ZONE_LABEL[zone].charAt(0).toUpperCase() + ZONE_LABEL[zone].slice(1)}</span>
         <span
           data-zone-count={zone}
-          className={`tnum rounded px-1.5 py-0.5 ${over ? 'bg-amber-500/15 text-amber-300' : 'bg-ink-800 text-ink-400'}`}
+          className={`tnum rounded px-1.5 py-0.5 ${over ? 'bg-amber-500/15 text-warn' : 'bg-ink-800 text-fg-3'}`}
           title={over ? `Au-delà de ${EXTRA_SIDE_SOFT_LIMIT} cartes : repère seulement, rien n'est refusé.` : `${count} carte${count > 1 ? 's' : ''}`}
         >
           {count}
         </span>
-        {over && <span className="text-[11px] text-amber-300">au-delà de {EXTRA_SIDE_SOFT_LIMIT} (repère)</span>}
+        {over && <span className="text-meta text-warn">au-delà de {EXTRA_SIDE_SOFT_LIMIT} (repère)</span>}
         <button
           onClick={onAdd}
           data-zone-add={zone}
           title={`Ajouter une carte au ${ZONE_LABEL[zone]}`}
-          className="ml-auto h-8 rounded border border-ink-700 px-2.5 text-[11px] text-ink-200 hover:bg-ink-800"
+          className="ml-auto h-8 rounded border border-ink-700 px-2.5 text-meta text-fg-2 hover:bg-ink-800"
         >
           + Ajouter
         </button>
       </div>
       {cards.length === 0 ? (
-        <p className="text-[11px] text-ink-600">Aucune carte.</p>
+        <p className="text-meta text-fg-3">Aucune carte.</p>
       ) : (
         <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${renderTile ? 96 : 80}px, 1fr))` }}>
           {cards.map((c) => (renderTile ? renderTile(c) : <ZoneCardTile key={`${zone}-${c.cardId}`} cardId={c.cardId} zone={zone} />))}
@@ -391,10 +391,10 @@ function ModeBanner({
 }) {
   const accent =
     mode === 'combo'
-      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+      ? 'border-emerald-500/30 bg-emerald-500/10 text-pos'
       : mode === 'nonengine' || mode === 'profile'
-        ? 'border-sky-500/30 bg-sky-500/10 text-sky-200'
-        : 'border-amber-500/30 bg-amber-500/10 text-amber-200';
+        ? 'border-sky-500/30 bg-sky-500/10 text-info'
+        : 'border-amber-500/30 bg-amber-500/10 text-warn';
 
   let hint: string;
   if (mode === 'combo') {
@@ -424,17 +424,17 @@ function ModeBanner({
   return (
     // Étape 6B : sous 400 px la consigne passe sur sa propre ligne (flex-wrap) au lieu
     // d'écraser le compteur et les boutons ; actions du mode à 32 px de haut.
-    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-3 py-1.5 text-xs ${accent}`}>
+    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-3 py-1.5 text-body ${accent}`}>
       <span className="shrink-0 font-semibold">Mode {MODE_LABEL[mode]}</span>
       <span className="min-w-[12rem] flex-1 opacity-90">{hint}</span>
-      <span className="tnum ml-auto shrink-0 whitespace-nowrap rounded bg-black/20 px-1.5 py-0.5 text-[11px]">
+      <span className="tnum ml-auto shrink-0 whitespace-nowrap rounded bg-black/20 px-1.5 py-0.5 text-meta">
         {modCount} modif.
         {skipped > 0 ? ` · ${skipped} sans étiquette, ignorée${skipped > 1 ? 's' : ''}` : ''}
       </span>
       {mode === 'combo' && comboPivot !== null && (
         <button
           onClick={onNewPivot}
-          className="h-8 shrink-0 rounded border border-white/20 px-2.5 text-[11px] hover:bg-black/20"
+          className="h-8 shrink-0 rounded border border-white/20 px-2.5 text-meta hover:bg-black/20"
         >
           Nouveau pivot
         </button>
@@ -442,14 +442,14 @@ function ModeBanner({
       {mode === 'prereq' && prereqSource !== null && (
         <button
           onClick={onNewSource}
-          className="h-8 shrink-0 rounded border border-white/20 px-2.5 text-[11px] hover:bg-black/20"
+          className="h-8 shrink-0 rounded border border-white/20 px-2.5 text-meta hover:bg-black/20"
         >
           Nouvelle source
         </button>
       )}
       <button
         onClick={onDone}
-        className="h-8 shrink-0 rounded bg-black/25 px-2.5 text-[11px] hover:bg-black/40"
+        className="h-8 shrink-0 rounded bg-black/25 px-2.5 text-meta hover:bg-black/40"
         title="Échap"
       >
         Terminer

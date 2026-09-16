@@ -22,18 +22,18 @@ export function ComboList() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-3">
-      <div className="mb-3 rounded-md border border-ink-800 px-2.5 py-1.5 text-[11px] text-ink-400">
+      <div className="mb-3 rounded-md border border-ink-800 px-2.5 py-1.5 text-meta text-fg-3">
         Les paires et leurs conditions appartiennent à ce deck. Cliquez sur Enregistrer pour les conserver.
         Les étiquettes non-engine, profils, plafonds partagés et HOPT sont communs à vos decks et enregistrés lors de leur modification.
       </div>
 
       {/* Ajout d'une paire depuis les cartes du main deck. */}
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-ink-800 bg-ink-900 p-2">
-        <span className="text-[11px] uppercase tracking-wide text-ink-400">Nouveau combo</span>
+        <span className="text-meta uppercase tracking-wide text-fg-3">Nouveau combo</span>
         <select
           value={a}
           onChange={(e) => setA(e.target.value ? Number(e.target.value) : '')}
-          className="max-w-[42%] flex-1 rounded border border-ink-700 bg-ink-850 px-2 py-1 text-xs text-ink-100"
+          className="max-w-[42%] flex-1 rounded border border-ink-700 bg-ink-850 px-2 py-1 text-body text-fg-1"
         >
           <option value="">carte A…</option>
           {main.map((m) => (
@@ -42,11 +42,11 @@ export function ComboList() {
             </option>
           ))}
         </select>
-        <span className="text-ink-500">+</span>
+        <span className="text-fg-3">+</span>
         <select
           value={b}
           onChange={(e) => setB(e.target.value ? Number(e.target.value) : '')}
-          className="max-w-[42%] flex-1 rounded border border-ink-700 bg-ink-850 px-2 py-1 text-xs text-ink-100"
+          className="max-w-[42%] flex-1 rounded border border-ink-700 bg-ink-850 px-2 py-1 text-body text-fg-1"
         >
           <option value="">carte B…</option>
           {main.map((m) => (
@@ -64,7 +64,7 @@ export function ComboList() {
               setB('');
             }
           }}
-          className="rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-black disabled:opacity-40"
+          className="rounded bg-emerald-600 px-2.5 py-1 text-body font-medium text-black disabled:opacity-40"
         >
           Ajouter
         </button>
@@ -72,28 +72,32 @@ export function ComboList() {
 
       <ul className="flex flex-col gap-1">
         {applicable.length === 0 && (
-          <li className="px-1 py-2 text-xs text-ink-500">Aucun combo applicable à ce deck.</li>
+          <li className="px-1 py-2 text-body text-fg-3">Aucun combo applicable à ce deck.</li>
         )}
         {applicable.map((p) => {
           const active = !excl.has(p.id);
           return (
             <li
               key={p.id}
-              className="flex flex-col gap-1 rounded-md border border-ink-800 bg-ink-900 px-2 py-1.5 text-sm"
+              className="flex flex-col gap-1 rounded-md border border-ink-800 bg-ink-900 px-2 py-1.5 text-value"
             >
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPairExcluded(p.id, active)}
                   title={active ? 'Désactiver pour ce deck' : 'Réactiver'}
-                  className={`h-4 w-4 shrink-0 rounded-sm border ${active ? 'border-emerald-400 bg-emerald-400' : 'border-ink-500'}`}
-                />
-                <span className={active ? 'text-ink-100' : 'text-ink-500 line-through'}>
-                  {name(p.card_a_id)} <span className="text-ink-500">+</span> {name(p.card_b_id)}
+                  className="-m-2 flex h-8 w-8 shrink-0 items-center justify-center rounded p-2 hover:bg-ink-800"
+                >
+                  <span
+                    className={`h-4 w-4 rounded-sm border ${active ? 'border-emerald-400 bg-emerald-400' : 'border-ink-500'}`}
+                  />
+                </button>
+                <span className={active ? 'text-fg-1' : 'text-fg-3 line-through'}>
+                  {name(p.card_a_id)} <span className="text-fg-3">+</span> {name(p.card_b_id)}
                 </span>
                 <button
                   onClick={() => removePairFromDeck(p.id)}
                   title="Supprimer du deck à la prochaine sauvegarde"
-                  className="ml-auto rounded px-1.5 text-ink-600 hover:bg-red-500/10 hover:text-red-400"
+                  className="ml-auto flex h-8 items-center rounded px-2 text-fg-3 hover:bg-red-500/10 hover:text-neg"
                 >
                   supprimer
                 </button>
@@ -106,19 +110,19 @@ export function ComboList() {
 
       {inapplicable.length > 0 && (
         <div className="mt-4">
-          <div className="mb-1 text-[11px] uppercase tracking-wide text-ink-500">
+          <div className="mb-1 text-meta uppercase tracking-wide text-fg-3">
             Conservés dans ce deck, carte absente
           </div>
           <ul className="flex flex-col gap-1">
             {inapplicable.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center gap-2 rounded-md border border-ink-850 px-2 py-1 text-xs text-ink-500"
+                className="flex items-center gap-2 rounded-md border border-ink-850 px-2 py-1 text-body text-fg-3"
               >
                 {name(p.card_a_id)} + {name(p.card_b_id)}
                 <button
                   onClick={() => removePairFromDeck(p.id)}
-                  className="ml-auto rounded px-1.5 hover:bg-red-500/10 hover:text-red-400"
+                  className="ml-auto rounded px-1.5 hover:bg-red-500/10 hover:text-neg"
                 >
                   supprimer
                 </button>
@@ -138,8 +142,8 @@ export function ComboList() {
 function PairCondition({ pairId }: { pairId: string }) {
   const condition = useDeck((s) => s.startConditions.find((r) => r.sourcePairId === pairId)?.condition ?? null);
   return (
-    <div className="flex flex-wrap items-start gap-1.5 pl-6 text-[11px]">
-      <span className="pt-0.5 text-amber-300/80">requiert en deck :</span>
+    <div className="flex flex-wrap items-start gap-1.5 pl-6 text-meta">
+      <span className="pt-0.5 text-warn/80">requiert en deck :</span>
       <ConditionEditor source={{ pairId }} condition={condition} />
     </div>
   );
@@ -158,24 +162,24 @@ function CategoryManager() {
 
   return (
     <div className="mt-6 border-t border-ink-800 pt-3">
-      <div className="mb-1 text-[11px] uppercase tracking-wide text-ink-400">
+      <div className="mb-1 text-meta uppercase tracking-wide text-fg-3">
         Étiquettes non-engine (compte)
       </div>
-      <div className="mb-2 text-[10px] text-ink-500">
+      <div className="mb-2 text-meta text-fg-3">
         Une étiquette dit ce qui est compté ; les fenêtres viennent du profil de chaque carte (mode Profil).
       </div>
       <ul className="mb-2 flex flex-col gap-1">
         {categories.map((c) => (
           <li
             key={c.id}
-            className="flex items-center gap-2 rounded-md border border-ink-800 bg-ink-900 px-2 py-1 text-xs"
+            className="flex items-center gap-2 rounded-md border border-ink-800 bg-ink-900 px-2 py-1 text-body"
           >
-            <span className="text-ink-100">{c.name}</span>
-            <span className="tnum text-ink-500">{countFor(c.id)} cartes</span>
+            <span className="text-fg-1">{c.name}</span>
+            <span className="tnum text-fg-3">{countFor(c.id)} cartes</span>
             {!c.is_builtin && (
               <button
                 onClick={() => deleteCategory(c.id)}
-                className="ml-auto rounded px-1 text-ink-600 hover:text-red-400"
+                className="ml-auto flex h-6 w-6 items-center justify-center rounded text-fg-3 hover:bg-red-500/10 hover:text-neg"
               >
                 ✕
               </button>
@@ -188,7 +192,7 @@ function CategoryManager() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nouvelle étiquette…"
-          className="flex-1 rounded border border-ink-700 bg-ink-850 px-2 py-1 text-xs text-ink-100"
+          className="flex-1 rounded border border-ink-700 bg-ink-850 px-2 py-1 text-body text-fg-1"
         />
         <button
           disabled={!name.trim()}
@@ -196,7 +200,7 @@ function CategoryManager() {
             addCategory(name.trim());
             setName('');
           }}
-          className="rounded bg-ink-700 px-2 py-1 text-xs text-ink-100 hover:bg-ink-600 disabled:opacity-40"
+          className="rounded bg-ink-700 px-2 py-1 text-body text-fg-1 hover:bg-ink-600 disabled:opacity-40"
         >
           +
         </button>
@@ -220,22 +224,22 @@ function GroupManager() {
 
   return (
     <div className="mt-6 border-t border-ink-800 pt-3">
-      <div className="mb-1 text-[11px] uppercase tracking-wide text-ink-400">
+      <div className="mb-1 text-meta uppercase tracking-wide text-fg-3">
         Plafonds partagés par tour (compte)
       </div>
-      <div className="mb-2 text-[10px] text-ink-500">
+      <div className="mb-2 text-meta text-fg-3">
         Les membres d’un plafond cumulent au plus sa limite par tour (ex. Mulcharmy : 2 effets). Distinct du HOPT ;
         s’attribue à une carte déjà profilée, depuis son menu ⋯.
       </div>
       <ul className="mb-2 flex flex-col gap-1">
-        {groups.length === 0 && <li className="px-1 text-[11px] text-ink-600">aucun plafond défini</li>}
+        {groups.length === 0 && <li className="px-1 text-meta text-fg-3">aucun plafond défini</li>}
         {groups.map((g) => (
           <li
             key={g.id}
-            className="flex items-center gap-2 rounded-md border border-ink-800 bg-ink-900 px-2 py-1 text-xs"
+            className="flex items-center gap-2 rounded-md border border-ink-800 bg-ink-900 px-2 py-1 text-body"
           >
-            <span className="text-ink-100">{g.name}</span>
-            <label className="flex items-center gap-1 text-ink-400">
+            <span className="text-fg-1">{g.name}</span>
+            <label className="flex items-center gap-1 text-fg-3">
               limite
               <input
                 type="number"
@@ -245,15 +249,15 @@ function GroupManager() {
                   const v = Math.max(1, Math.floor(Number(e.target.value)));
                   if (Number.isFinite(v) && v !== g.cap_per_turn) updateGroup(g.id, { cap_per_turn: v });
                 }}
-                className="tnum w-12 rounded border border-ink-700 bg-ink-850 px-1 py-0.5 text-center text-ink-100"
+                className="tnum h-6 w-12 rounded border border-ink-700 bg-ink-850 px-1 text-center text-fg-1"
               />
               /tour
             </label>
-            <span className="tnum text-ink-500">{membersOf(g.id)} cartes</span>
+            <span className="tnum text-fg-3">{membersOf(g.id)} cartes</span>
             <button
               onClick={() => deleteGroup(g.id)}
               title="Supprimer : les membres gardent leur profil, sans plafond"
-              className="ml-auto rounded px-1 text-ink-600 hover:text-red-400"
+              className="ml-auto flex h-6 w-6 items-center justify-center rounded text-fg-3 hover:bg-red-500/10 hover:text-neg"
             >
               ✕
             </button>
@@ -265,16 +269,16 @@ function GroupManager() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nouveau plafond (ex. Mulcharmy)…"
-          className="flex-1 rounded border border-ink-700 bg-ink-850 px-2 py-1 text-xs text-ink-100"
+          className="flex-1 rounded border border-ink-700 bg-ink-850 px-2 py-1 text-body text-fg-1"
         />
-        <label className="flex items-center gap-1 text-[11px] text-ink-400">
+        <label className="flex items-center gap-1 text-meta text-fg-3">
           limite
           <input
             type="number"
             min={1}
             value={cap}
             onChange={(e) => setCap(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
-            className="tnum w-12 rounded border border-ink-700 bg-ink-850 px-1 py-0.5 text-center text-ink-100"
+            className="tnum h-6 w-12 rounded border border-ink-700 bg-ink-850 px-1 text-center text-fg-1"
           />
         </label>
         <button
@@ -283,7 +287,7 @@ function GroupManager() {
             addGroup(name.trim(), cap);
             setName('');
           }}
-          className="rounded bg-ink-700 px-2 py-1 text-xs text-ink-100 hover:bg-ink-600 disabled:opacity-40"
+          className="rounded bg-ink-700 px-2 py-1 text-body text-fg-1 hover:bg-ink-600 disabled:opacity-40"
         >
           +
         </button>

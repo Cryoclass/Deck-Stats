@@ -28,8 +28,8 @@ function ConditionalStarters() {
 
   return (
     <div className="border-b border-ink-800 p-3">
-      <div className="mb-2 text-[11px] uppercase tracking-wide text-ink-400">
-        Starters conditionnels (§E) — conditions ET/OU sur le deck restant
+      <div className="mb-2 text-meta uppercase tracking-wide text-fg-3">
+        Starters conditionnels — conditions ET/OU sur le deck restant
       </div>
       <ul className="flex flex-col gap-2">
         {startConditions.map((r) => {
@@ -54,10 +54,10 @@ function ConditionalStarters() {
             }
           }
           return (
-            <li key={r.id} className="rounded-md border border-ink-800 bg-ink-900 p-2 text-xs">
-              <div className="font-medium text-ink-100">
+            <li key={r.id} className="rounded-md border border-ink-800 bg-ink-900 p-2 text-body">
+              <div className="font-medium text-fg-1">
                 {label}
-                {note && <span className="ml-2 text-[10px] text-ink-500">({note})</span>}
+                {note && <span className="ml-2 text-meta text-fg-3">({note})</span>}
               </div>
               <div className="mt-1">
                 <ConditionEditor
@@ -70,8 +70,8 @@ function ConditionalStarters() {
                   {warnings.map((w) => (
                     <li
                       key={w.key}
-                      className={`rounded px-1.5 py-0.5 text-[10px] ${
-                        w.tone === 'red' ? 'bg-red-500/15 font-medium text-red-300' : 'bg-amber-500/15 text-amber-300'
+                      className={`rounded px-1.5 py-0.5 text-meta ${
+                        w.tone === 'red' ? 'bg-red-500/15 font-medium text-neg' : 'bg-amber-500/15 text-warn'
                       }`}
                     >
                       {w.text}
@@ -210,7 +210,7 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
 
   if (main.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center p-8 text-center text-sm text-ink-400">
+      <div className="flex h-full items-center justify-center p-8 text-center text-value text-fg-3">
         Importe un deck pour voir sa composition.
       </div>
     );
@@ -223,22 +223,22 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
   return (
     <div className="flex h-full flex-col">
       {/* Bandeau de tête : tailles des trois zones + alerte de plage. */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-ink-800 bg-ink-900 px-3 py-2 text-xs">
-        <span className="font-semibold text-ink-100">Inventaire</span>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-ink-800 bg-ink-900 px-3 py-2 text-body">
+        <span className="font-semibold text-fg-1">Inventaire</span>
         <span
           className={`tnum rounded px-1.5 py-0.5 ${
-            outOfBounds ? 'bg-amber-500/15 text-amber-300' : 'bg-ink-800 text-ink-300'
+            outOfBounds ? 'bg-amber-500/15 text-warn' : 'bg-ink-800 text-fg-3'
           }`}
           title="Taille du main deck (extra/side exclus des calculs)"
         >
           Main {deckSize}
         </span>
-        <span className="tnum rounded bg-ink-800 px-1.5 py-0.5 text-ink-400">Extra {extraCount}</span>
-        <span className="tnum rounded bg-ink-800 px-1.5 py-0.5 text-ink-400">Side {sideCount}</span>
+        <span className="tnum rounded bg-ink-800 px-1.5 py-0.5 text-fg-3">Extra {extraCount}</span>
+        <span className="tnum rounded bg-ink-800 px-1.5 py-0.5 text-fg-3">Side {sideCount}</span>
         {outOfBounds && (
-          <span className="text-[11px] text-amber-300">hors bornes 40–60 (§D)</span>
+          <span className="text-meta text-warn">hors des bornes 40 à 60</span>
         )}
-        <span className="ml-auto text-[10px] text-ink-600">
+        <span className="ml-auto text-meta text-fg-3">
           Les sections se recoupent — total dédupliqué en bas.
         </span>
       </div>
@@ -262,10 +262,10 @@ export function Inventory({ onFocusCard }: { onFocusCard: (cardId: number) => vo
 
       {/* Pied de vue : total dédupliqué (une carte comptée une fois quel que soit le
           nombre de sections qui la contiennent). */}
-      <div className="shrink-0 border-t border-ink-800 bg-ink-900 px-3 py-2 text-xs text-ink-400">
-        Total annoté : <span className="tnum text-ink-100">{annotatedCopies}</span> copies ·{' '}
-        <span className="tnum text-ink-100">{deckSize}</span> dans le deck ·{' '}
-        <span className={`tnum ${nonAnnotatedCopies > 0 ? 'text-amber-300' : 'text-ink-300'}`}>
+      <div className="shrink-0 border-t border-ink-800 bg-ink-900 px-3 py-2 text-body text-fg-3">
+        Total annoté : <span className="tnum text-fg-1">{annotatedCopies}</span> copies ·{' '}
+        <span className="tnum text-fg-1">{deckSize}</span> dans le deck ·{' '}
+        <span className={`tnum ${nonAnnotatedCopies > 0 ? 'text-warn' : 'text-fg-3'}`}>
           {nonAnnotatedCopies}
         </span>{' '}
         non annotées
@@ -309,19 +309,19 @@ function SectionRow({
       <button
         onClick={onToggle}
         disabled={empty}
-        className={`flex w-full items-center gap-3 px-3 py-2 text-left text-xs ${
-          empty ? 'cursor-default text-ink-600' : 'text-ink-200 hover:bg-ink-900'
+        className={`flex w-full items-center gap-3 px-3 py-2 text-left text-body ${
+          empty ? 'cursor-default text-fg-3' : 'text-fg-2 hover:bg-ink-900'
         }`}
       >
-        <span className="w-3 shrink-0 text-ink-500">{empty ? '' : expanded ? '▾' : '▸'}</span>
-        <span className={`font-medium ${accent ? 'text-amber-300' : empty ? '' : 'text-ink-100'}`}>
+        <span className="w-3 shrink-0 text-fg-3">{empty ? '' : expanded ? '▾' : '▸'}</span>
+        <span className={`font-medium ${accent ? 'text-warn' : empty ? '' : 'text-fg-1'}`}>
           {section.title}
         </span>
         {section.badge && (
-          <span className="rounded bg-ink-800 px-1 text-[10px] text-ink-500">{section.badge}</span>
+          <span className="rounded bg-ink-800 px-1 text-meta text-fg-3">{section.badge}</span>
         )}
         <span
-          className={`tnum ml-auto ${accent ? 'font-medium text-amber-300' : 'text-ink-400'}`}
+          className={`tnum ml-auto ${accent ? 'font-medium text-warn' : 'text-fg-3'}`}
         >
           {copies} copies · {cartes} cartes · {pct(share, 1)} du deck
         </span>
@@ -363,7 +363,7 @@ function ThumbButton({
       className="relative block aspect-[59/86] overflow-hidden rounded-md border border-ink-800 bg-ink-900 transition-colors hover:border-emerald-500/60"
     >
       <CardImage cardId={cardId} />
-      <span className="tnum pointer-events-none absolute bottom-1 right-1 rounded bg-black/75 px-1 text-[10px] font-bold text-ink-100">
+      <span className="tnum pointer-events-none absolute bottom-1 right-1 rounded bg-black/75 px-1 text-meta font-bold text-fg-1">
         ×{copies}
       </span>
     </button>

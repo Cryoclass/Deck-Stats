@@ -257,13 +257,13 @@ export function SidePlanner() {
         placeholder="Nouvel adversaire…"
         maxLength={200}
         aria-label="Nom du nouvel adversaire"
-        className="h-8 w-40 min-w-0 rounded border border-ink-700 bg-ink-900 px-2 text-xs text-ink-100 outline-none placeholder:text-ink-600 focus:border-ink-500"
+        className="h-8 w-40 min-w-0 rounded border border-ink-700 bg-ink-900 px-2 text-body text-fg-1 outline-none placeholder:text-fg-3 focus:border-ink-500"
       />
       <button
         type="submit"
         data-add-matchup
         disabled={!newName.trim()}
-        className="h-8 shrink-0 rounded border border-ink-700 px-2.5 text-[11px] text-ink-200 hover:bg-ink-800 disabled:opacity-40"
+        className="h-8 shrink-0 rounded border border-ink-700 px-2.5 text-meta text-fg-2 hover:bg-ink-800 disabled:opacity-40"
       >
         + Ajouter
       </button>
@@ -272,7 +272,7 @@ export function SidePlanner() {
 
   if (!current || !plan || !applied) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 overflow-y-auto p-8 text-center text-sm text-ink-400">
+      <div className="flex h-full flex-col items-center justify-center gap-3 overflow-y-auto p-8 text-center text-value text-fg-3">
         <p>Aucun adversaire. Ajoutes-en un pour préparer ses deux plans de side, en premier et en second.</p>
         {addForm}
       </div>
@@ -284,10 +284,10 @@ export function SidePlanner() {
   const engaged = (list: readonly SidePlanCard[]) => new Map(list.map((c) => [c.card_id, c.copies]));
   const statusChip =
     applied.status === 'ready'
-      ? { cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200', text: planIsEmpty ? 'Aucun échange — deck de base' : 'Prêt' }
+      ? { cls: 'border-emerald-500/30 bg-emerald-500/10 text-pos', text: planIsEmpty ? 'Aucun échange — deck de base' : 'Prêt' }
       : applied.status === 'incomplete'
-        ? { cls: 'border-amber-500/30 bg-amber-500/10 text-amber-200', text: `Incomplet : ${applied.outgoing} sortante${applied.outgoing > 1 ? 's' : ''} pour ${applied.incoming} entrante${applied.incoming > 1 ? 's' : ''}` }
-        : { cls: 'border-amber-500/30 bg-amber-500/10 text-amber-200', text: 'À revoir' };
+        ? { cls: 'border-amber-500/30 bg-amber-500/10 text-warn', text: `Incomplet : ${applied.outgoing} sortante${applied.outgoing > 1 ? 's' : ''} pour ${applied.incoming} entrante${applied.incoming > 1 ? 's' : ''}` }
+        : { cls: 'border-amber-500/30 bg-amber-500/10 text-warn', text: 'À revoir' };
   const baseSize = main.reduce((n, c) => n + c.copies, 0);
 
   return (
@@ -299,8 +299,8 @@ export function SidePlanner() {
             key={m.id}
             data-matchup={m.name}
             onClick={() => setSelectedId(m.id)}
-            className={`h-8 max-w-[14rem] truncate rounded px-3 text-xs ${
-              m.id === current.id ? 'bg-ink-700 font-medium text-ink-100' : 'border border-ink-700 text-ink-300 hover:bg-ink-800 hover:text-ink-100'
+            className={`h-8 max-w-[14rem] truncate rounded px-3 text-body ${
+              m.id === current.id ? 'bg-ink-700 font-medium text-fg-1' : 'border border-ink-700 text-fg-3 hover:bg-ink-800 hover:text-fg-1'
             }`}
           >
             {m.name}
@@ -313,7 +313,7 @@ export function SidePlanner() {
           onClick={() => deckId && navigate({ name: 'sideSheet', id: deckId })}
           disabled={dirty || !deckId}
           title={dirty ? 'Enregistre le deck : la fiche montre le deck enregistré.' : 'Fiche imprimable de tous les adversaires'}
-          className="ml-auto h-8 rounded border border-ink-700 px-2.5 text-[11px] text-ink-200 hover:bg-ink-800 disabled:opacity-40"
+          className="ml-auto h-8 rounded border border-ink-700 px-2.5 text-meta text-fg-2 hover:bg-ink-800 disabled:opacity-40"
         >
           Fiche imprimable
         </button>
@@ -328,7 +328,7 @@ export function SidePlanner() {
           onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
           maxLength={200}
           aria-label="Nom de l’adversaire"
-          className="h-8 w-44 min-w-0 rounded bg-transparent px-1 text-sm text-ink-100 outline-none hover:bg-ink-900 focus:bg-ink-900"
+          className="h-8 w-44 min-w-0 rounded bg-transparent px-1 text-value text-fg-1 outline-none hover:bg-ink-900 focus:bg-ink-900"
         />
         <Segmented
           size="sm"
@@ -339,15 +339,15 @@ export function SidePlanner() {
             { value: 'second', label: POSITION_LABEL.second, title: 'Plan quand tu joues en second' },
           ]}
         />
-        <span data-plan-status={applied.status} className={`rounded border px-1.5 py-0.5 text-[11px] ${statusChip.cls}`}>
+        <span data-plan-status={applied.status} className={`rounded border px-1.5 py-0.5 text-meta ${statusChip.cls}`}>
           {statusChip.text}
         </span>
-        <span className="tnum text-[11px] text-ink-400" title="Taille du main deck avant et après échange">
+        <span className="tnum text-meta text-fg-3" title="Taille du main deck avant et après échange">
           main {baseSize} → {applied.mainSize}
         </span>
         <button
           onClick={() => window.confirm(`Supprimer l’adversaire « ${current.name} » et ses deux plans ?`) && removeMatchup(current.id)}
-          className="ml-auto h-8 rounded px-2.5 text-[11px] text-ink-400 hover:bg-ink-800 hover:text-red-300"
+          className="ml-auto h-8 rounded px-2.5 text-meta text-fg-3 hover:bg-ink-800 hover:text-neg"
         >
           Supprimer l’adversaire
         </button>
@@ -356,13 +356,13 @@ export function SidePlanner() {
       {/* Main et side du deck de base, copies dépliées (D16). */}
       <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section aria-label="Main deck">
-          <div className="mb-1 text-[10px] uppercase tracking-wide text-ink-500">Main — copies à sortir</div>
+          <div className="mb-1 text-meta uppercase tracking-wide text-fg-3">Main — copies à sortir</div>
           <CopyGrid zone="main" list={main} engaged={engaged(plan.outgoing)} selection={selection} onToggle={toggle} onRelease={(id) => release('outgoing', id)} name={name} />
         </section>
         <section aria-label="Side deck">
-          <div className="mb-1 text-[10px] uppercase tracking-wide text-ink-500">Side — copies à faire entrer</div>
+          <div className="mb-1 text-meta uppercase tracking-wide text-fg-3">Side — copies à faire entrer</div>
           {side.length === 0 ? (
-            <p className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">
+            <p className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-meta text-warn">
               Side deck vide : ajoute des cartes depuis l’onglet Annoter (bloc Side) pour pouvoir échanger.
             </p>
           ) : (
@@ -374,27 +374,27 @@ export function SidePlanner() {
       {/* Échange : sélection équilibrée seulement (D10). Bouton principal par la taille, pas par la
           couleur (un seul bouton émeraude par écran : Enregistrer). */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="tnum text-xs text-ink-300" data-selection>
+        <span className="tnum text-body text-fg-3" data-selection>
           Sélection : −{out} / +{inn}
         </span>
         <button
           data-swap
           onClick={doSwap}
           disabled={!canSwap}
-          className="h-8 rounded bg-ink-700 px-3 text-xs font-medium text-ink-100 hover:bg-ink-600 disabled:cursor-default disabled:bg-ink-800 disabled:text-ink-500"
+          className="h-8 rounded bg-ink-700 px-3 text-body font-medium text-fg-1 hover:bg-ink-600 disabled:cursor-default disabled:bg-ink-800 disabled:text-fg-3"
           title={canSwap ? 'Ajouter ces copies au plan' : 'Sélectionne autant de copies du main à sortir que de copies du side à faire entrer'}
         >
           Échanger
         </button>
         {selection.size > 0 && (
-          <button onClick={() => setSelection(new Set())} className="h-8 rounded px-2.5 text-[11px] text-ink-400 hover:bg-ink-800 hover:text-ink-100">
+          <button onClick={() => setSelection(new Set())} className="h-8 rounded px-2.5 text-meta text-fg-3 hover:bg-ink-800 hover:text-fg-1">
             Vider la sélection
           </button>
         )}
-        <span className="text-[11px] text-ink-500">Clic gauche ou droit sur une copie ; sur une copie estompée, la retire du plan.</span>
+        <span className="text-meta text-fg-3">Clic gauche ou droit sur une copie ; sur une copie estompée, la retire du plan.</span>
       </div>
       {swapError && (
-        <p role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[11px] text-red-200">
+        <p role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-meta text-neg">
           {swapError}
         </p>
       )}
@@ -406,14 +406,14 @@ export function SidePlanner() {
           <PlanList label="Entre" direction="incoming" list={plan.incoming} name={name} onRemove={release} />
         </div>
         {applied.issues.length > 0 && (
-          <ul className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200" data-plan-issues>
+          <ul className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-meta text-warn" data-plan-issues>
             {applied.issues.map((issue) => (
               <li key={`${issue.kind}:${issue.cardId}`}>{describeIssue(issue, name)}</li>
             ))}
           </ul>
         )}
         {neutralized.length > 0 && (
-          <p className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200" data-neutralized>
+          <p className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-meta text-warn" data-neutralized>
             Neutralisé{neutralized.length > 1 ? 's' : ''} par ce plan (condition devenue impossible) :{' '}
             {neutralized.map((n) => (n.kind === 'starter' ? name(n.cardId) : `paire ${name(n.cardA)} + ${name(n.cardB)}`)).join(' · ')}
           </p>
@@ -426,13 +426,13 @@ export function SidePlanner() {
             placeholder="Note pour ce plan (imprimée sur la fiche)…"
             rows={2}
             aria-label="Note du plan"
-            className="min-w-0 flex-1 resize-y rounded border border-ink-700 bg-ink-950 px-2 py-1 text-xs text-ink-100 outline-none placeholder:text-ink-600 focus:border-ink-500"
+            className="min-w-0 flex-1 resize-y rounded border border-ink-700 bg-ink-950 px-2 py-1 text-body text-fg-1 outline-none placeholder:text-fg-3 focus:border-ink-500"
           />
           <button
             onClick={() => {
               if (planIsEmpty || window.confirm(`Remplacer le plan ${POSITION_LABEL[position].toLowerCase()} par celui en ${POSITION_LABEL[other].toLowerCase()} ?`)) copyPlan(current.id, other, position);
             }}
-            className="h-8 shrink-0 rounded border border-ink-700 px-2.5 text-[11px] text-ink-200 hover:bg-ink-800"
+            className="h-8 shrink-0 rounded border border-ink-700 px-2.5 text-meta text-fg-2 hover:bg-ink-800"
           >
             Recopier depuis {POSITION_LABEL[other].toLowerCase()}
           </button>
@@ -441,7 +441,7 @@ export function SidePlanner() {
             onClick={() => deckId && navigate({ name: 'compare', a: deckId, b: compareSegment(deckId, current.id, position) })}
             disabled={applied.status !== 'ready' || dirty || !deckId}
             title={dirty ? 'Enregistre le deck : le comparateur lit le deck enregistré.' : applied.status !== 'ready' ? 'Seul un plan prêt se compare.' : 'Comparer le deck de base au deck après ce plan'}
-            className="h-8 shrink-0 rounded border border-ink-700 px-2.5 text-[11px] text-ink-200 hover:bg-ink-800 disabled:opacity-40"
+            className="h-8 shrink-0 rounded border border-ink-700 px-2.5 text-meta text-fg-2 hover:bg-ink-800 disabled:opacity-40"
           >
             Comparer au deck de base
           </button>
@@ -491,16 +491,22 @@ function CopyGrid({
               onClick={act}
               onContextMenu={act}
               title={`${name(c.cardId)} — copie ${i + 1}/${c.copies}${isEngaged ? ` (${zone === 'main' ? 'sort' : 'entre'} : clic pour la retirer du plan)` : ''}`}
-              className={`relative block aspect-[59/86] w-full overflow-hidden rounded-md border transition-opacity ${
+              className={`relative block aspect-[59/86] w-full overflow-hidden rounded-md border ${
                 isSelected ? 'border-emerald-300 ring-2 ring-emerald-300' : 'border-ink-800'
-              } ${isEngaged ? 'opacity-45' : ''}`}
+              }`}
             >
-              <CardImage cardId={c.cardId} />
+              {/* Seule l'illustration d'une copie engagée s'estompe : le marqueur « sort / entre »
+                  est le seul signe visible de l'engagement, il garde tout son contraste (audit 01,
+                  re-mesure de la refonte : 4,15:1 quand il s'estompait avec la vignette). */}
+              <CardImage
+                cardId={c.cardId}
+                className={`h-full w-full object-cover transition-opacity ${isEngaged ? 'opacity-45' : ''}`}
+              />
               {isSelected && (
-                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-emerald-500/20 text-lg text-emerald-100">✓</span>
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-emerald-500/20 text-title text-emerald-100">✓</span>
               )}
               {isEngaged && (
-                <span className="pointer-events-none absolute bottom-0.5 right-0.5 rounded bg-black/75 px-1 text-[10px] text-ink-100">
+                <span className="pointer-events-none absolute bottom-0.5 right-0.5 rounded bg-black/75 px-1 text-meta text-fg-1">
                   {zone === 'main' ? 'sort' : 'entre'}
                 </span>
               )}
@@ -527,21 +533,21 @@ function PlanList({
 }) {
   return (
     <div data-plan-list={direction}>
-      <div className="mb-1 text-[10px] uppercase tracking-wide text-ink-500">
-        {label} <span className="tnum text-ink-400">{countOf(list)}</span>
+      <div className="mb-1 text-meta uppercase tracking-wide text-fg-3">
+        {label} <span className="tnum text-fg-3">{countOf(list)}</span>
       </div>
       {list.length === 0 ? (
-        <p className="text-[11px] text-ink-600">—</p>
+        <p className="text-meta text-fg-3">—</p>
       ) : (
         <ul className="flex flex-wrap gap-1">
           {list.map((c) => (
-            <li key={c.card_id} className="flex h-6 items-center gap-1 rounded bg-ink-800 pl-2 text-[11px] text-ink-200">
+            <li key={c.card_id} className="flex h-6 items-center gap-1 rounded bg-ink-800 pl-2 text-meta text-fg-2">
               <span className="max-w-[10rem] truncate">{name(c.card_id)}</span>
-              <span className="tnum text-ink-400">×{c.copies}</span>
+              <span className="tnum text-fg-3">×{c.copies}</span>
               <button
                 onClick={() => onRemove(direction, c.card_id)}
                 title="Retirer une copie du plan"
-                className="flex h-6 w-6 items-center justify-center rounded text-ink-400 hover:bg-ink-700 hover:text-ink-100"
+                className="flex h-6 w-6 items-center justify-center rounded text-fg-3 hover:bg-ink-700 hover:text-fg-1"
               >
                 ×
               </button>
@@ -554,9 +560,9 @@ function PlanList({
 }
 
 function PlanFigures({ figures, base, position }: { figures: Figures; base: PlanIndicators | null; position: SidePlanPosition }) {
-  if (figures.kind === 'none') return figures.reason ? <p className="text-[11px] text-ink-500">{figures.reason}</p> : null;
-  if (figures.kind === 'computing') return <p className="text-[11px] text-ink-500" data-plan-figures="computing">Calcul du deck sidé…</p>;
-  if (figures.kind === 'unavailable') return <p className="text-[11px] text-amber-300">{figures.reason}</p>;
+  if (figures.kind === 'none') return figures.reason ? <p className="text-meta text-fg-3">{figures.reason}</p> : null;
+  if (figures.kind === 'computing') return <p className="text-meta text-fg-3" data-plan-figures="computing">Calcul du deck sidé…</p>;
+  if (figures.kind === 'unavailable') return <p className="text-meta text-warn">{figures.reason}</p>;
   const s = figures.summary;
   const cells: Array<{ key: keyof PlanIndicators; label: string; hint: string }> = [
     { key: 'startOne', label: '≥ 1 départ', hint: 'P(au moins 1 départ théorique)' },
@@ -565,7 +571,7 @@ function PlanFigures({ figures, base, position }: { figures: Figures; base: Plan
   ];
   return (
     <div data-plan-figures="ready">
-      <div className="mb-1 text-[10px] uppercase tracking-wide text-ink-500">
+      <div className="mb-1 text-meta uppercase tracking-wide text-fg-3">
         Deck sidé · {position === 'first' ? 'premier · 5 cartes' : 'second · 5 cartes + pioche'}
         {base ? ' · écart avec le deck de base' : ' · écart : en attente du calcul du deck de base'}
       </div>
@@ -574,10 +580,10 @@ function PlanFigures({ figures, base, position }: { figures: Figures; base: Plan
           const d = base ? s[key] - base[key] : null;
           return (
             <div key={key} className="flex items-baseline gap-1.5" title={`${hint} — ${(100 * s[key]).toFixed(4)} %`} data-figure={key}>
-              <span className="text-[11px] text-ink-500">{label}</span>
-              <span className="tnum text-sm font-semibold text-ink-100">{pct(s[key], 1)}</span>
+              <span className="text-meta text-fg-3">{label}</span>
+              <span className="tnum text-value font-semibold text-fg-1">{pct(s[key], 1)}</span>
               {d !== null && (
-                <span className={`tnum text-[11px] ${d > 0 ? 'text-emerald-300' : d < 0 ? 'text-red-300' : 'text-ink-500'}`} title={`Écart : ${(100 * d).toFixed(4)} points`}>
+                <span className={`tnum text-meta ${d > 0 ? 'text-pos' : d < 0 ? 'text-neg' : 'text-fg-3'}`} title={`Écart : ${(100 * d).toFixed(4)} points`}>
                   {deltaPoints(d)}
                 </span>
               )}

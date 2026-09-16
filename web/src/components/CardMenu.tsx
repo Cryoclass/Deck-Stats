@@ -45,7 +45,7 @@ export function CardMenu({
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded leading-none text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded leading-none text-fg-3 hover:bg-ink-800 hover:text-fg-1"
           title="Plus d'actions"
           onClick={(e) => e.stopPropagation()}
         >
@@ -62,7 +62,7 @@ export function CardMenu({
           className="z-[55] min-w-[220px] rounded-lg border border-ink-700 bg-ink-850 p-1 shadow-2xl shadow-black/50"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="truncate px-2 py-1 text-[11px] font-medium text-ink-200">
+          <div className="truncate px-2 py-1 text-meta font-medium text-fg-2">
             {name(cardId)}
           </div>
 
@@ -72,7 +72,7 @@ export function CardMenu({
           </Item>
 
           <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
-          <div className="px-2 py-0.5 text-[10px] uppercase tracking-wide text-ink-500">
+          <div className="px-2 py-0.5 text-meta uppercase tracking-wide text-fg-3">
             Morte selon la position
           </div>
           <Check checked={deadFirst} onToggle={() => toggleDeadFirst(cardId)}>
@@ -85,11 +85,11 @@ export function CardMenu({
           {/* Profil non-engine (contrat §3) : commun aux decks du compte. Q1 : sans
               étiquette, aucun profil n'est proposé. */}
           <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
-          <div className="px-2 py-0.5 text-[10px] uppercase tracking-wide text-ink-500">
+          <div className="px-2 py-0.5 text-meta uppercase tracking-wide text-fg-3">
             Profil non-engine (compte)
           </div>
           {!labelled ? (
-            <div className="px-2 py-1 text-[11px] text-ink-600">
+            <div className="px-2 py-1 text-meta text-fg-3">
               poser d’abord une étiquette non-engine
             </div>
           ) : (
@@ -105,7 +105,7 @@ export function CardMenu({
                 </Radio>
               ))}
               <Radio checked={!profile} onSelect={() => setProfile(cardId, null)}>
-                <span className="text-ink-400">Aucun (non comptée)</span>
+                <span className="text-fg-3">Aucun (non comptée)</span>
               </Radio>
             </>
           )}
@@ -114,11 +114,11 @@ export function CardMenu({
           {profile && (
             <>
               <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
-              <div className="px-2 py-0.5 text-[10px] uppercase tracking-wide text-ink-500">
+              <div className="px-2 py-0.5 text-meta uppercase tracking-wide text-fg-3">
                 Plafond partagé par tour
               </div>
               {groups.length === 0 && (
-                <div className="px-2 py-1 text-[11px] text-ink-600">
+                <div className="px-2 py-1 text-meta text-fg-3">
                   aucun plafond défini (onglet Combos &amp; catégories)
                 </div>
               )}
@@ -128,29 +128,29 @@ export function CardMenu({
                   checked={profile.groupId === g.id}
                   onSelect={() => setCardGroup(cardId, profile.groupId === g.id ? null : g.id)}
                 >
-                  {g.name} <span className="tnum text-ink-500">· {g.cap_per_turn}/tour</span>
+                  {g.name} <span className="tnum text-fg-3">· {g.cap_per_turn}/tour</span>
                 </Radio>
               ))}
             </>
           )}
 
           <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
-          <div className="px-2 py-0.5 text-[10px] uppercase tracking-wide text-ink-500">
+          <div className="px-2 py-0.5 text-meta uppercase tracking-wide text-fg-3">
             Combos de ce deck
           </div>
           {combos.length === 0 && (
-            <div className="px-2 py-1 text-[11px] text-ink-600">aucun</div>
+            <div className="px-2 py-1 text-meta text-fg-3">aucun</div>
           )}
           {combos.map((p) => (
             <div
               key={p.id}
-              className="flex items-center justify-between gap-2 px-2 py-1 text-[11px] text-ink-300"
+              className="flex items-center justify-between gap-2 px-2 py-1 text-meta text-fg-3"
             >
               <span className="truncate">+ {name(other(cardId, p))}</span>
               <button
                 onClick={() => removePair(p.id)}
                 title="Supprimer du deck à la prochaine sauvegarde"
-                className="shrink-0 rounded px-1 text-ink-600 hover:bg-red-500/10 hover:text-red-400"
+                className="shrink-0 rounded px-1 text-fg-3 hover:bg-red-500/10 hover:text-neg"
               >
                 supprimer
               </button>
@@ -174,8 +174,8 @@ function Item({
   return (
     <DropdownMenu.Item
       onSelect={onSelect}
-      className={`cursor-pointer rounded px-2 py-1.5 text-xs outline-none data-[highlighted]:bg-ink-700 ${
-        danger ? 'text-red-300' : 'text-ink-200'
+      className={`cursor-pointer rounded px-2 py-1.5 text-body outline-none data-[highlighted]:bg-ink-700 ${
+        danger ? 'text-neg' : 'text-fg-2'
       }`}
     >
       {children}
@@ -197,7 +197,7 @@ function Check({
       checked={checked}
       onCheckedChange={onToggle}
       onSelect={(e) => e.preventDefault()}
-      className="flex cursor-pointer items-center justify-between gap-3 rounded px-2 py-1.5 text-xs text-ink-200 outline-none data-[highlighted]:bg-ink-700"
+      className="flex cursor-pointer items-center justify-between gap-3 rounded px-2 py-1.5 text-body text-fg-2 outline-none data-[highlighted]:bg-ink-700"
     >
       {children}
       <span
@@ -222,7 +222,7 @@ function Radio({
     <DropdownMenu.Item
       onSelect={onSelect}
       title={title}
-      className="flex cursor-pointer items-center justify-between gap-3 rounded px-2 py-1.5 text-xs text-ink-200 outline-none data-[highlighted]:bg-ink-700"
+      className="flex cursor-pointer items-center justify-between gap-3 rounded px-2 py-1.5 text-body text-fg-2 outline-none data-[highlighted]:bg-ink-700"
     >
       <span>{children}</span>
       <span
