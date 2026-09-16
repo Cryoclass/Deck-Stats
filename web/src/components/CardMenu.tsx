@@ -26,7 +26,6 @@ export function CardMenu({
   const pairs = useDeck((s) => s.pairs);
   const deadFirst = useDeck((s) => s.deadFirst.has(cardId));
   const deadSecond = useDeck((s) => s.deadSecond.has(cardId));
-  const labelled = useDeck((s) => (s.cardCategories.get(cardId)?.size ?? 0) > 0);
   const profile = useDeck((s) => s.profiles.get(cardId));
   const groups = useDeck((s) => s.groups);
   const removeCard = useDeck((s) => s.removeCard);
@@ -82,19 +81,13 @@ export function CardMenu({
             Morte en second
           </Check>
 
-          {/* Profil non-engine (contrat §3) : commun aux decks du compte. Q1 : sans
-              étiquette, aucun profil n'est proposé. */}
+          {/* Profil non-engine (contrat §3) : commun aux decks du compte. Depuis le 16 septembre
+              2026 (D14′), le profil seul fait compter la carte : proposé à toute carte. */}
           <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
           <div className="px-2 py-0.5 text-meta uppercase tracking-wide text-fg-3">
             Profil non-engine (compte)
           </div>
-          {!labelled ? (
-            <div className="px-2 py-1 text-meta text-fg-3">
-              poser d’abord une étiquette non-engine
-            </div>
-          ) : (
-            <>
-              {AVAILABILITY_PROFILES.map((p) => (
+          {AVAILABILITY_PROFILES.map((p) => (
                 <Radio
                   key={p}
                   checked={profile?.availability === p}
@@ -104,11 +97,9 @@ export function CardMenu({
                   {AVAILABILITY_LABEL[p]}
                 </Radio>
               ))}
-              <Radio checked={!profile} onSelect={() => setProfile(cardId, null)}>
-                <span className="text-fg-3">Aucun (non comptée)</span>
-              </Radio>
-            </>
-          )}
+          <Radio checked={!profile} onSelect={() => setProfile(cardId, null)}>
+            <span className="text-fg-3">Aucun (non comptée)</span>
+          </Radio>
 
           {/* Plafond partagé (Q2) : proposé seulement à une carte profilée. */}
           {profile && (

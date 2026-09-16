@@ -289,7 +289,7 @@ describe('toComparisonMatrix — seaux et normalisation de forme', () => {
       edges: [],
       categories: [{ id: 'ht' }],
     };
-    // N décrit la composition (copies étiquetées), pas les activations : identique par scénario.
+    // N décrit la composition (copies profilées, D14′), pas les activations : identique par scénario.
     expect(scenarioCounts(inp, 'going_first')).toEqual({ starterCount: 3, nonEngineCount: 3 });
     expect(scenarioCounts(inp, 'going_second')).toEqual({ starterCount: 2, nonEngineCount: 3 });
   });

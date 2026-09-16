@@ -343,3 +343,8 @@ Plan validé, non rouvert : docs/annotations-par-defaut.md (D1–D15, révisions
 - Profil réactif déduit de la clause de déclenchement (adversaire acteur → tour adverse seul) ; jetons et parenthèses hors condition d'archétype → Veiler / Nibiru / Droll / Kuriboh réactifs, Ash / Ghost Ogre flexibles.
 - Faux positifs (Griffoh, The Iris Swordsoul) et manqués (Kurikara, Bystial, Gamma) nommés dans le test, jamais corrigés par une liste → le référent les pose.
 - Fixtures de textes réels et choix d'un compte numéroté dans le dépôt → accord exact 97 / 99 gardé par le test ; `scripts/annotations-report.ts` = mêmes gardes que recompute-check, rapport d'écart par deck reporté en C.
+Tranché par l'agent en B :
+- Porte « profil ET étiquette » levée sur décision (Q3 / Q4) : `nonEngine[i] = profile !== undefined`, signature `{ cats: [] }` pour une profilée sans étiquette (dans U, dans aucune catégorie) ; cas Q1 réécrit et oracle étendu = révision datée du contrat §3, jamais « pour faire passer » ; Q5 inchangée.
+- Une carte profilée est un type suivi de `buildEngineModel` même sans étiquette ; gardes Q1 levées (serveur, store, grille).
+- Profil `reactive` (type Droll : tour adverse suivant en premier, tour adverse initial en second, sixième sans fenêtre) → contrat, moteur, oracle N01, pont B02 (deck réactif) ; libellé « Réactive » / « Ra ».
+- Migration 006 ouverte en B (contrainte CHECK des profils, DDL idempotent hors journal) et branchée partout (compose, lib.sh deux branches avant 003, check-migration, e2e, test-migration-sequence, suites d'intégration) ; étendue en C avant tout déploiement.

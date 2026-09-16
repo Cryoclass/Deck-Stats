@@ -70,12 +70,8 @@ export async function libraryRoutes(app: FastifyInstance) {
           : (await c.query<{ availability: string | null }>('select availability from card_flags where owner_id=$1 and card_id=$2', [uid,id])).rows[0]?.availability ?? null;
         if (!profile) throw new ConfigurationError('Un plafond partagé exige un profil de disponibilité sur la carte.');
       }
-      if (body.availability) {
-        // Q1 : un profil décrit quand une contribution est disponible, l'étiquette ce qui
-        // est compté ; sans catégorie non-engine, un profil ne mesure rien.
-        const labelled = await c.query('select 1 from card_categories cc join nonengine_categories n on n.id=cc.category_id where n.owner_id=$1 and cc.card_id=$2 limit 1', [uid,id]);
-        if (!labelled.rowCount) throw new ConfigurationError('Choisir d’abord une catégorie non-engine pour cette carte avant son profil.');
-      }
+      // Depuis le 16 septembre 2026 (docs/annotations-par-defaut.md, D14′) : le profil seul déclenche le
+      // comptage non-engine ; l'ancienne garde Q1 (« choisir d'abord une catégorie ») est levée.
       try {
         const { rows: [row] } = await c.query(
           `insert into card_flags (owner_id,card_id,is_hopt,availability,group_id)

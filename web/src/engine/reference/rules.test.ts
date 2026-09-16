@@ -69,6 +69,8 @@ describe('Reference N — chronology and non-engine potential, not resolved play
     ['flexible', ['opponent'], ['opponent', 'own'], ['own']],
     ['prepared', ['opponent'], ['own'], ['own']],
     ['breaker', [], ['own'], ['own']],
+    // Added on 16 September 2026 (docs/annotations-par-defaut.md, Q4): opponent's turn only.
+    ['reactive', ['opponent'], ['opponent'], []],
   ];
   it.each(cases)('N01: profile %s has the specified three availability cases', (profile, first, second, sixth) => {
     expect(windows(profile, 'first')).toEqual(first);

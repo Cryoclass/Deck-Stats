@@ -21,6 +21,8 @@ function engineVersion(): string {
   // Annotations par défaut (D1, D8) : la détection depuis le texte des cartes détermine l'entrée du
   // moteur au même titre que la bibliothèque ; toute règle qui change périme les aperçus.
   files.push(path.resolve(src, '..', '..', 'server', 'src', 'domain', 'cardDefaults.ts'));
+  // La liste des profils (contrat) détermine aussi ce que le moteur accepte.
+  files.push(path.resolve(src, '..', '..', 'server', 'src', 'domain', 'deckConfiguration.ts'));
   const h = createHash('sha1');
   for (const f of files.sort()) {
     h.update(path.basename(f));

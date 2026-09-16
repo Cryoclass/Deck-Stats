@@ -59,6 +59,30 @@ aucune question — c'est exactement le cas « F, rejeu » de `deploy/test-migra
 > Preuve locale : cas « F sans 004 » de `deploy/test-migration-sequence.sh` (base à 003 sans 004 →
 > code 0 sans question, 004 rejouée, journal 001 à 004). Toute autre différence : `NON` et stop.
 
+> **Si `main` contient le chantier « annotations par défaut »** (docs/annotations-par-defaut.md) :
+> la migration additive `006-annotation-defaults.sql` s'ajoute au montage Compose et à la séquence.
+> Même procédure, **toujours sans question** ; différences attendues :
+> - C0 : `git diff --stat <commit en service>..HEAD -- db` liste `db/migrations/006-annotation-defaults.sql` ;
+> - C3 : le conteneur `db` est **recréé** (nouveau montage `06-annotation-defaults.sql`), volume
+>   conservé (« Skipping initialization ») — même comportement qu'aux étapes 10 et back-office ;
+> - C4 : après `rejeu par stdin : db/migrations/005-backoffice.sql`, une ligne
+>   `rejeu par stdin : db/migrations/006-annotation-defaults.sql` ; les contrôles ajoutent
+>   `OK|journal 006-annotation-defaults : journalisée` ; aucune `KO|`, aucune empreinte modifiée
+>   (006 n'élargit à ce jour qu'une contrainte CHECK : `card_flags.availability` accepte le
+>   cinquième profil `reactive`) ;
+> - C5, retour arrière du code seul : valable tant que 006 reste additive — l'ancienne app n'écrit
+>   jamais `reactive`, mais elle ne sait pas le LIRE (« Profil de disponibilité inconnu » dans le
+>   moteur web) : un retour arrière après qu'un compte a posé un profil réactif exige de remettre
+>   ces lignes à un profil connu, ou de restaurer l'archive pré-migration. Idem pour l'ancien
+>   moteur de `recompute-check.ts`.
+>
+> Preuve locale : cas « F sans 006 » de `deploy/test-migration-sequence.sh` (base à 005 sans 006 →
+> code 0 sans question, 006 rejouée par la branche post-003, `reactive` refusé avant et accepté
+> après, journal 001 à 006). Ce fichier de migration est **étendu par la partie C du chantier**
+> (rôle `referent`, `card_references`, groupe fourni de base, résumés à NULL) : relire ce bloc et
+> `git diff -- db` avant de déployer, la liste des effets ci-dessus n'étant valable que pour la
+> partie B.
+
 Indisponibilité : de « arrêt de l'app » à « démarrage de l'app » dans la séquence, soit la
 sauvegarde pré-migration vérifiée (≈ 1 min) et les contrôles (quelques secondes) ; le build de
 l'image se fait **avant** l'arrêt, app en service. Choisir un créneau calme.

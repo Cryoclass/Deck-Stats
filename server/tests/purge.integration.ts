@@ -28,6 +28,8 @@ const m3=await sql('../../db/migrations/003-purge-legacy.sql');
 // Étape 10 : additive et indépendante de 003, appliquée AVANT elle comme dans la séquence de
 // deploy/lib.sh — la base de cette suite est celle que l'API sert après migration.
 const m4=await sql('../../db/migrations/004-side-plans.sql');
+// Annotations par défaut (partie B) : additive, appliquée après 004 comme dans la séquence.
+const m6=await sql('../../db/migrations/006-annotation-defaults.sql');
 const fixture=await sql('./fixtures/legacy-representative.sql');
 const SERVER_DIR=fileURLToPath(new URL('..',import.meta.url));
 
@@ -119,7 +121,7 @@ async function snapshot(): Promise<string> {
 
 before(async () => {
   await reset();
-  await query(schema);await query(fixture);await query(m1);await query(m2);await query(m4);
+  await query(schema);await query(fixture);await query(m1);await query(m2);await query(m4);await query(m6);
   await app.ready();
 });
 after(async () => { await app.close();await pool.end();stub.close(); });

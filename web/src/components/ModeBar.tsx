@@ -151,7 +151,7 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
             collisionPadding={8}
             className="z-50 min-w-[220px] rounded-lg border border-ink-700 bg-ink-850 p-1 shadow-2xl shadow-black/50"
           >
-            <div className={SECTION}>Profil à poser (cartes étiquetées)</div>
+            <div className={SECTION}>Profil à poser</div>
             {AVAILABILITY_PROFILES.map((profile) => (
               <DropdownMenu.Item
                 key={profile}

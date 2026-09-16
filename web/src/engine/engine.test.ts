@@ -256,6 +256,31 @@ describe('Étape 5B — étiquette et profil (anciens horizons retirés)', () =>
     expect(evaluate(prep, 'second', [3], -1).ne).toBe(3);
   });
 
+  it('Profil sans étiquette (D14′, 16 sept. 2026) : compte dans U, dans aucune catégorie', () => {
+    const input: EngineInput = {
+      deckSize: 40,
+      types: [T({ copies: 3, availability: 'flexible' }), T({ copies: 3, categories: [0], availability: 'early' })],
+      edges: [],
+      categories: [{ id: 'x' }],
+    };
+    const prep = prepare(input);
+    expect(evaluate(prep, 'first', [2, 0]).ne).toBe(2);
+    expect(evaluate(prep, 'second', [2, 1], -1).ne).toBe(3);
+    expect(evaluate(prep, 'first', [2, 0]).catCounts[0]).toBe(0);
+    const pass = computePass(input, 'first');
+    expect(pass.neSignatures).toEqual([{ cats: [] }, { cats: ['x'] }]);
+  });
+
+  it('Profil réactif (type Droll) : tour adverse seul, rien en sixième carte', () => {
+    const prep = prepare({ deckSize: 40, types: [T({ copies: 3, availability: 'reactive' })], edges: [], categories: [] });
+    expect(evaluate(prep, 'first', [2]).ne).toBe(2);
+    expect(evaluate(prep, 'second', [2], -1).ne).toBe(2); // deux copies initiales : tour adverse initial
+    expect(evaluate(prep, 'second', [2], 0).ne).toBe(1); // l'une des deux est la sixième : aucune fenêtre
+    expect(evaluate(prep, 'second', [1], 0).ne).toBe(0);
+    const hopt = prepare({ deckSize: 40, types: [T({ copies: 3, availability: 'reactive', isHopt: true })], edges: [], categories: [] });
+    expect(evaluate(hopt, 'second', [2], -1).ne).toBe(1); // HOPT : une seule contribution sur l'unique tour
+  });
+
   it('Étiquette sans profil (Q5) : zéro contribution retenue, copies brutes intactes', () => {
     const input: EngineInput = {
       deckSize: 40,

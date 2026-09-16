@@ -111,8 +111,19 @@ pas une classification automatique de toutes les cartes de ce type.
 | --- | --- | --- | --- |
 | Précoce, type Mulcharmy | Aucune fenêtre retenue | Tour adverse initial | Aucune fenêtre retenue |
 | Flexible, type handtrap | Tour adverse suivant | Tour adverse initial ou son propre tour | Son propre tour |
+| Réactive, type Droll (16 sept. 2026) | Tour adverse suivant | Tour adverse initial | Aucune fenêtre retenue |
 | Préparé, type magie rapide | Tour adverse suivant, après préparation | Son propre tour | Son propre tour |
 | Board breaker | Aucune fenêtre retenue | Son propre tour | Son propre tour |
+
+Révision du 16 septembre 2026 ([annotations par défaut](annotations-par-defaut.md), D14′) :
+**le profil seul déclenche le comptage non-engine**. Une carte profilée entre dans le
+potentiel U ; ses étiquettes ne servent qu'à la ventilation par catégorie et aux critères
+(une carte profilée sans étiquette compte dans U et dans aucune catégorie). Une carte
+étiquetée sans profil reste comptée dans les copies brutes de son étiquette et vaut zéro
+contribution (Q5 inchangée). Le profil réactif décrit une carte qui ne sert que pendant le
+tour adverse : la sixième carte du second, piochée à son propre tour, n'a aucune fenêtre.
+Les profils peuvent être pré-remplis par détection textuelle ou par un référent ; le choix
+du compte prime toujours.
 
 Le profil préparé distingue une magie rapide qu'il faut préalablement poser pour
 l'utiliser pendant le tour adverse d'une carte flexible utilisable depuis la main.

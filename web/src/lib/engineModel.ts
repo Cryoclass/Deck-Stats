@@ -63,6 +63,9 @@ export function buildEngineModel(s: EngineModelSource): EngineModel {
   for (const [cardId] of s.cardCategories) {
     if (labelsOf(cardId).length > 0 && mainCopies.has(cardId)) annotated.add(cardId);
   }
+  // 16 septembre 2026 (docs/annotations-par-defaut.md, D14′) : le profil seul déclenche le
+  // comptage ; une carte profilée sans étiquette est un type suivi (potentiel total, aucune catégorie).
+  for (const [cardId] of s.profiles) if (mainCopies.has(cardId)) annotated.add(cardId);
   // Toute carte requise par une condition est promue en type suivi, sinon sa présence
   // résiduelle en deck serait structurellement incalculable (§C).
   for (const r of s.startConditions) {

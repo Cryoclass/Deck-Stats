@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { choose, roundRatio, windows, type Position, type Profile } from './oracle.js';
 import {
-  enumerateExact, potentialOf, tally, toEngineInput, withOneCopyReplaced,
+  enumerateExact, evaluateOracleHand, potentialOf, tally, toEngineInput, withOneCopyReplaced,
   type ExactOutcome, type OracleSpec,
 } from './deckOracle.js';
 import { frequency, simulate, tolerance, type Simulation } from './monteCarlo.js';
@@ -54,7 +54,7 @@ describe('Référence N — profils, sixième carte et plafonds (moteur)', () =>
   });
 
   it('N01 (moteur) : chaque profil suit exactement le tableau des fenêtres de l’oracle', () => {
-    const profiles: Profile[] = ['early', 'flexible', 'prepared', 'breaker'];
+    const profiles: Profile[] = ['early', 'flexible', 'prepared', 'breaker', 'reactive'];
     for (const profile of profiles) {
       const prep = prepare(profiled(profile, { copies: 1 }));
       expect(evaluate(prep, 'first', [1]).ne).toBe(windows(profile, 'first').length > 0 ? 1 : 0);
@@ -167,6 +167,17 @@ const SPECS: Record<string, OracleSpec> = {
     profiles: { F: 'flexible', P: 'prepared', M: 'early' },
     labels: { F: ['h'], P: ['h', 'q'], M: ['m', 'q'] },
     groups: { F: 'w', P: 'w', M: 'w' },
+    groupCaps: { w: 1 },
+  },
+  // 16 septembre 2026 (docs/annotations-par-defaut.md) : profil réactif (tour adverse seul, sixième
+  // sans fenêtre) et carte profilée SANS étiquette (compte dans U, dans aucune catégorie).
+  'profil réactif et carte profilée sans étiquette': {
+    deck: ['D', 'D', 'V', 'F', 'N', 'S', 'S', 'X', 'X', 'X'],
+    starters: ['S'],
+    hopt: ['D', 'S'],
+    profiles: { D: 'reactive', V: 'reactive', F: 'flexible', N: 'breaker' },
+    labels: { D: ['h'], F: ['h'] },
+    groups: { D: 'w', V: 'w' },
     groupCaps: { w: 1 },
   },
 };
@@ -428,9 +439,20 @@ describe('Pont B04 — deck de 40 cartes : Monte Carlo contre le moteur (hors po
 // « Réponses ») : Q1, Q2 et Q4 confirment l'interprétation conservatrice ; Q3 remplace
 // la combinaison par ET par un refus explicite (une seule représentation par source).
 describe('Questions Q1–Q4 tranchées (étape 5B)', () => {
-  it('Q1 : une carte profilée sans étiquette n’apporte aucune contribution', () => {
-    const prep = prepare({ deckSize: 40, types: [T({ copies: 3, availability: 'flexible' })], edges: [], categories: [] });
-    expect(evaluate(prep, 'second', [2], -1).ne).toBe(0);
+  // Q1 RÉÉCRITE le 16 septembre 2026 sur décision (docs/annotations-par-defaut.md, réponses Q3 / Q4,
+  // D14′) : le profil seul déclenche le comptage, les étiquettes ne sont que des axes. Avant cette
+  // date, la même carte valait zéro. Ce n'est pas une correction « pour faire passer le code ».
+  it('Q1 (révisée) : une carte profilée sans étiquette compte dans le potentiel total, dans aucune catégorie', () => {
+    const prep = prepare({ deckSize: 40, types: [T({ copies: 3, availability: 'flexible' })], edges: [], categories: [{ id: 'h' }] });
+    expect(evaluate(prep, 'second', [2], -1).ne).toBe(2);
+    expect(evaluate(prep, 'first', [2]).ne).toBe(2);
+    const pass = computePass({ deckSize: 40, types: [T({ copies: 3, availability: 'flexible' })], edges: [], categories: [{ id: 'h' }] }, 'first');
+    // Aucune catégorie ne la revendique : ventilation brute nulle, signature sans étiquette.
+    expect(pass.perCategory[0].mean).toBe(0);
+    expect(pass.neSignatures).toEqual([{ cats: [] }]);
+    // Même verdict par l'oracle d'énumération : la carte profilée sans étiquette est un potentiel.
+    const spec: OracleSpec = { deck: ['F', 'F', 'X', 'X', 'X', 'X'], profiles: { F: 'flexible' } };
+    expect(evaluateOracleHand(spec, 'first', ['F', 'F', 'X', 'X', 'X'], null).potential).toBe(2);
   });
 
   it('Q2 : un plafond de groupe sur une carte sans profil est refusé, pas ignoré', () => {

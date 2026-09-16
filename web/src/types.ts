@@ -76,18 +76,21 @@ export interface Library {
 export const AVAILABILITY_LABEL: Record<Availability, string> = {
   early: 'Précoce',
   flexible: 'Flexible',
+  reactive: 'Réactive',
   prepared: 'Préparée',
   breaker: 'Board breaker',
 };
 export const AVAILABILITY_SHORT: Record<Availability, string> = {
   early: 'Pc',
   flexible: 'Fx',
+  reactive: 'Ra',
   prepared: 'Pp',
   breaker: 'Bb',
 };
 export const AVAILABILITY_HINT: Record<Availability, string> = {
   early: 'Type Mulcharmy : tour adverse initial en second seulement ; rien en premier, rien en sixième carte.',
   flexible: 'Type handtrap : tour adverse suivant en premier ; tour adverse ou tour propre en second (sixième : tour propre).',
+  reactive: 'Type Droll, tour adverse seul : tour adverse suivant en premier ; tour adverse initial en second ; rien en sixième carte.',
   prepared: 'Type magie rapide à poser : tour adverse suivant en premier ; tour propre en second.',
   breaker: 'Utile en second seulement (tour propre) ; aucune fenêtre retenue en premier.',
 };

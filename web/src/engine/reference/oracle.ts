@@ -45,17 +45,20 @@ export function chronologicalHands(size: number, openingSize = 5): Array<{
   );
 }
 
-export type Profile = 'early' | 'flexible' | 'prepared' | 'breaker';
+// `reactive` (opponent's turn only, Droll-like) added on 16 September 2026 by decision
+// (docs/annotations-par-defaut.md, Q4): a rule extension, not a fix to make code pass.
+export type Profile = 'early' | 'flexible' | 'prepared' | 'breaker' | 'reactive';
 export type Position = 'first' | 'second';
 export type Window = 'opponent' | 'own';
 
 export function windows(profile: Profile, position: Position, sixth = false): Window[] {
   if (position === 'first') {
     if (sixth) throw new Error('First player has no sixth opening card');
-    return profile === 'flexible' || profile === 'prepared' ? ['opponent'] : [];
+    return profile === 'flexible' || profile === 'prepared' || profile === 'reactive' ? ['opponent'] : [];
   }
   switch (profile) {
     case 'early': return sixth ? [] : ['opponent'];
+    case 'reactive': return sixth ? [] : ['opponent'];
     case 'flexible': return sixth ? ['own'] : ['opponent', 'own'];
     case 'prepared':
     case 'breaker': return ['own'];

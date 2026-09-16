@@ -11,8 +11,8 @@ declare
   t text;
   names text[];
 begin
-  -- Journal : 001 à 005 journalisées.
-  foreach t in array array['001-deck-configuration', '002-profiles-and-conditions', '003-purge-legacy', '004-side-plans', '005-backoffice'] loop
+  -- Journal : 001 à 006 journalisées.
+  foreach t in array array['001-deck-configuration', '002-profiles-and-conditions', '003-purge-legacy', '004-side-plans', '005-backoffice', '006-annotation-defaults'] loop
     if to_regclass('public.app_migrations') is null then ok := false;
     else execute 'select exists (select 1 from app_migrations where id = $1)' into ok using t; end if;
     insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|journal ' || t || (case when ok then ' : journalisée' else ' : ABSENTE du journal' end));

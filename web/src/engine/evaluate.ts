@@ -44,7 +44,7 @@ interface NeSignature {
   types: number[]; // index des types de cette signature
 }
 
-const PROFILES: ReadonlySet<string> = new Set<AvailabilityProfile>(['early', 'flexible', 'prepared', 'breaker']);
+const PROFILES: ReadonlySet<string> = new Set<AvailabilityProfile>(['early', 'flexible', 'prepared', 'breaker', 'reactive']);
 
 // ─── Conditions ET/OU (contrat §4) ───
 
@@ -174,10 +174,12 @@ export function prepare(input: EngineInput): Prepared {
         throw new Error('Catégorie non-engine : référence hors du modèle.');
       }
     }
-    // Contrat §3 : le profil détermine les fenêtres, l'étiquette dit ce qui est compté.
-    // Profil sans étiquette (Q1) ou étiquette sans profil (Q5) : aucune contribution.
-    nonEngine[i] = profile !== undefined && t.categories.length > 0;
-    sixthSensitive[i] = nonEngine[i] && (profile === 'early' || profile === 'flexible');
+    // Contrat §3 (révisé le 16 septembre 2026, docs/annotations-par-defaut.md D14′) : le profil
+    // seul déclenche le comptage ; les étiquettes ne sont que des axes (ventilation, critères).
+    // Profil sans étiquette : compte dans U, dans aucune catégorie. Étiquette sans profil (Q5) :
+    // aucune contribution, copies brutes intactes.
+    nonEngine[i] = profile !== undefined;
+    sixthSensitive[i] = nonEngine[i] && (profile === 'early' || profile === 'flexible' || profile === 'reactive');
     deadFirst[i] = !!t.deadFirst;
     deadSecond[i] = !!t.deadSecond;
     const legacy = t.starterPrereqs && t.starterPrereqs.length > 0 ? prereqsToCondition(t.starterPrereqs, n) : undefined;
@@ -251,14 +253,17 @@ function capacities(
   let total = 0;
   if (context === 'first') {
     // Une seule fenêtre observée : le tour adverse qui suit. early/breaker : aucune.
-    if (profile === 'flexible' || profile === 'prepared') {
+    if (profile === 'flexible' || profile === 'prepared' || profile === 'reactive') {
       opp = initial;
       total = initial;
     }
   } else {
     switch (profile) {
       case 'early':
-        opp = initial; // la sixième arrive après le tour adverse initial : zéro fenêtre
+      case 'reactive':
+        // early : la sixième arrive après le tour adverse initial : zéro fenêtre.
+        // reactive (type Droll) : tour adverse seul ; la sixième, piochée à son propre tour, n'en a aucune.
+        opp = initial;
         total = initial;
         break;
       case 'flexible':

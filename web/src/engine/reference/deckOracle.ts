@@ -82,7 +82,10 @@ export function evaluateOracleHand(
     const labels = spec.labels?.[name] ?? [];
     for (const label of labels) catCounts[label] = (catCounts[label] ?? 0) + 1;
     const profile = spec.profiles?.[name];
-    if (labels.length === 0 || profile === undefined) return;
+    // Decision of 16 September 2026 (docs/annotations-par-defaut.md, D14′): the profile alone
+    // triggers the count; labels are axes only. A profiled card without label counts in the
+    // total potential and in no category. Before: `labels.length === 0 || profile === undefined`.
+    if (profile === undefined) return;
     const isSixth = sixth !== null && i === observed.length - 1;
     copies.push({
       name,

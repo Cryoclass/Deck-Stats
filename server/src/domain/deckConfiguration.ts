@@ -1,7 +1,8 @@
 /** Pure boundary contract shared with the web client; no server/framework imports. */
 
-/** Profil de disponibilité non-engine (contrat §3), annotation manuelle du compte. */
-export const AVAILABILITY_PROFILES = ['early', 'flexible', 'prepared', 'breaker'] as const;
+/** Profil de disponibilité non-engine (contrat §3), annotation du compte ou valeur par défaut
+ *  (docs/annotations-par-defaut.md). `reactive` = tour adverse seul, type Droll (Q4). */
+export const AVAILABILITY_PROFILES = ['early', 'flexible', 'prepared', 'breaker', 'reactive'] as const;
 export type Availability = (typeof AVAILABILITY_PROFILES)[number];
 
 /**

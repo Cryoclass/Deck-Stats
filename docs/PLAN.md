@@ -52,7 +52,7 @@ par un référent → choix du compte.
 | Partie | Résultat vérifiable attendu | Statut |
 | --- | --- | --- |
 | A — détection | `server/src/domain/cardDefaults.ts` (pur, partagé, dans `__ENGINE_VERSION__`), fixtures de textes réels, tests d'accord avec les choix existants, `scripts/annotations-report.ts` | ✅ Terminée le 16 sept. 2026 — HOPT `byName` seul (4 623 cartes du catalogue), profils par 4 gabarits (réactive / flexible / précoce + plafond Mulcharmy / board breaker), 97 des 99 HOPT du compte expert retrouvés sur 126 cartes jouées, 7 tests, 6 mutations détectées (docs/annotations-par-defaut.md §12). |
-| B — contrat et moteur | Profil `reactive` (contrat §3, moteur, oracle, libellés), porte profil / étiquette levée (cas Q1 réécrit sur décision, garde serveur), tag `annotations-b-ok` | À faire |
+| B — contrat et moteur | Profil `reactive` (contrat §3, moteur, oracle, libellés), porte profil / étiquette levée (cas Q1 réécrit sur décision, garde serveur), migration 006 ouverte, tag `annotations-b-ok` | ✅ Terminée le 16 sept. 2026 — profil réactif (moteur, oracle N01, pont B02), porte levée (Q1 réécrit sur décision, gardes serveur / store / grille), 006 (contrainte CHECK, branchée partout, 99 gardes A–J, répétition conforme), 291 web + 21 serveur, 12 + 14 + 11 PostgreSQL, 10 scénarios e2e, 5 mutations détectées (docs/annotations-par-defaut.md §14). |
 | C — modèle et persistance | Migration 006 (rôle `referent`, `is_hopt` nullable, `nonengine_choice`, groupe fourni de base, `card_references` + journal, résumés à NULL), routes, `effectiveLibrary.ts`, archive JSON, `prune-stale-cards`, `backoffice-role.sh`, séquence de déploiement, rapport d'écart, tag `annotations-c-ok` | À faire |
 | D — interface | Pastilles d'origine, retour au défaut, bandeau, mode Non-engine par profil, formulaire et page de référence, e2e `defaults`, docs, tag `annotations-d-ok` | À faire |
 
@@ -67,12 +67,12 @@ par un référent → choix du compte.
 À mettre à jour en fin de chaque tâche (remplacer le contenu, l'historique reste dans docs/etapes-*.md et git).
 
 - **Date** : 16 septembre 2026.
-- **Étape** : hors numérotation, annotations par défaut, partie A (docs/annotations-par-defaut.md §12). Tag `annotations-a-ok`, rien poussé.
-- **Livré** : `server/src/domain/cardDefaults.ts` (détection HOPT par fenêtre de limite, nom littéral ou normalisé ; profils par 4 gabarits, jamais « préparée » ; `summonOnce` reporté sans HOPT), entrée du module dans `__ENGINE_VERSION__`, fixtures de textes réels (84 cartes choisies, 126 cartes jouées, choix d'un compte numéroté), `server/tests/cardDefaults.test.ts` (7 tests), `scripts/annotations-report.ts` (base jetable, `--out`).
-- **Vérifications exécutées** : `npm run typecheck`, `npm run build -w web`, `node scripts/test-quiet.mjs`, rapport sur la restauration jetable de l'archive du 8 septembre (55446, détruite), 6 mutations détectées.
-- **Non fait / reporté** : parties B, C, D ; rapport d'écart par deck (attend la bibliothèque effective de C). Aucune commande vers le VPS ni la base de dev.
-- **Décisions ajoutées** : DECISIONS.md, section « Annotations par défaut » ; résumé dans docs/decisions-compressees.md.
-- **Prochaine action** : partie B (profil `reactive`, porte levée) selon docs/annotations-par-defaut.md §11.
+- **Étape** : hors numérotation, annotations par défaut, parties A et B (docs/annotations-par-defaut.md §12 et §14). Tags `annotations-a-ok` et `annotations-b-ok`, rien poussé.
+- **Livré** : A — `server/src/domain/cardDefaults.ts` (détection HOPT par fenêtre de limite nommée, profils par 4 gabarits), fixtures de textes réels, 7 tests, `scripts/annotations-report.ts` ; B — profil `reactive` (contrat, moteur, oracle, libellés), porte profil / étiquette levée (cas Q1 réécrit sur décision, gardes serveur / store / grille), migration `006-annotation-defaults.sql` (contrainte CHECK) branchée partout, contrat §3 révisé.
+- **Vérifications exécutées** : typecheck, build, test-quiet (291 web, 21 serveur), `test:integration` (12 + 14 + 11), e2e (10 scénarios), `test-migration-sequence.sh` (99 gardes), `rehearsal.sh --fixture` conforme ; 6 + 5 mutations détectées ; relectures indépendantes par sous-agent (A et B). 006 appliquée sur la base de dev par stdin.
+- **Non fait / reporté** : parties C (modèle, persistance, référent, 006 étendue) et D (interface) ; rapport d'écart par deck (attend la bibliothèque effective de C) ; renumérotation du fichier local `06-backoffice-login`.
+- **Décisions ajoutées** : DECISIONS.md, section « Annotations par défaut » (parties A et B) ; résumé dans docs/decisions-compressees.md.
+- **Prochaine action** : partie C selon docs/annotations-par-defaut.md §13 (lots C1–C3).
 
 Compte rendu précédent (back-office, même jour, conservé pour la lecture de la passation) :
 

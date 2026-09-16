@@ -166,7 +166,7 @@ function CategoryManager() {
         Étiquettes non-engine (compte)
       </div>
       <div className="mb-2 text-meta text-fg-3">
-        Une étiquette dit ce qui est compté ; les fenêtres viennent du profil de chaque carte (mode Profil).
+        Le profil de chaque carte (mode Profil) la fait compter et fixe ses fenêtres ; une étiquette est un axe facultatif de ventilation et de requête.
       </div>
       <ul className="mb-2 flex flex-col gap-1">
         {categories.map((c) => (

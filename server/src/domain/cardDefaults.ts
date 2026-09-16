@@ -21,11 +21,8 @@
  */
 import type { Availability } from './deckConfiguration.js';
 
-/**
- * Profils que la détection peut proposer : les profils du contrat plus « réactive » (tour
- * adverse seul, type Droll — Q4), qui entre au contrat et au moteur avec la partie B.
- */
-export type DefaultAvailability = Availability | 'reactive';
+/** Profils que la détection peut proposer : ceux du contrat (dont « réactive », partie B). */
+export type DefaultAvailability = Availability;
 
 /** Ce que la détection lit d'une carte du catalogue. */
 export interface CardText {

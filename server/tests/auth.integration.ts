@@ -46,7 +46,7 @@ before(async () => {
   const tables=await query("select tablename from pg_tables where schemaname='public'");
   assert.equal(tables.rows.length,0,'Integration suite requires a fresh disposable database.');
   await query(await readFile(new URL('../../db/schema.sql',import.meta.url),'utf8'));
-  for (const m of ['001-deck-configuration','002-profiles-and-conditions','004-side-plans']) await query(await readFile(new URL(`../../db/migrations/${m}.sql`,import.meta.url),'utf8'));
+  for (const m of ['001-deck-configuration','002-profiles-and-conditions','004-side-plans','006-annotation-defaults']) await query(await readFile(new URL(`../../db/migrations/${m}.sql`,import.meta.url),'utf8'));
   await app.ready();
 });
 after(async () => {

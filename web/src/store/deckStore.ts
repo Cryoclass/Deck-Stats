@@ -728,8 +728,9 @@ export const useDeck = create<State>((set, get) => {
       });
     },
     // Étape 9B — mode Non-engine combiné. L'effet est décidé au clic sur l'état adopté (acquitté),
-    // puis rejoué dans la file : l'étiquette d'abord (le serveur exige une étiquette avant un
-    // profil, Q1 de 5B), le profil ensuite ; en retrait, l'étiquette puis le profil devenu orphelin.
+    // puis rejoué dans la file : l'étiquette d'abord, le profil ensuite (ordre conservé bien que le
+    // serveur n'exige plus d'étiquette avant un profil depuis le 16 septembre 2026, D14′) ; en
+    // retrait, l'étiquette puis le profil devenu orphelin.
     // Chaque écriture est adoptée après son acquittement ; une erreur arrête la paire et laisse
     // l'état tel qu'acquitté (persistenceError).
     applyNonEngine(cardId, categoryId, profile) {
@@ -760,11 +761,8 @@ export const useDeck = create<State>((set, get) => {
     // Annotations du compte : adoptées après acquittement, puis recalcul (les
     // statistiques de tout deck contenant la carte deviennent périmées).
     setProfile(cardId, availability) {
-      // Q1 : un profil sans étiquette ne mesure rien — refusé ici, comme sur le serveur.
-      if (availability && (get().cardCategories.get(cardId)?.size ?? 0) === 0) {
-        set({ persistenceError: 'Choisir d’abord une catégorie non-engine pour cette carte avant son profil.' });
-        return;
-      }
+      // Depuis le 16 septembre 2026 (docs/annotations-par-defaut.md, D14′) : le profil seul
+      // déclenche le comptage ; une étiquette n'est plus requise (ancienne garde Q1 levée).
       persist(set, async () => {
         const saved = await api.setFlags(cardId,{ availability });
         const profiles = new Map(get().profiles);

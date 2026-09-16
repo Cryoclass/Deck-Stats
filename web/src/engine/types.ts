@@ -20,7 +20,7 @@ export type AnalysisContext = 'first' | 'second';
  *                                      son propre tour en second (initiale ou sixième).
  *   • breaker   (board breaker)      : rien en premier ; son propre tour en second.
  */
-export type AvailabilityProfile = 'early' | 'flexible' | 'prepared' | 'breaker';
+export type AvailabilityProfile = 'early' | 'flexible' | 'prepared' | 'breaker' | 'reactive';
 
 /**
  * Prérequis en deck (itération 5, REPRÉSENTATION ANCIENNE) : une source de start

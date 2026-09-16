@@ -374,7 +374,7 @@ describe('Étape 7 — identité des données analyse / comparateur / Excel', ()
     });
   });
 
-  it('carte étiquetée sans profil : listée à l’identique, comptée dans N, contribution nulle', () => {
+  it('carte étiquetée sans profil : listée à l’identique, hors de N (D14′), contribution nulle', () => {
     // Même liste pour le panneau (`resultContext`) et l'avertissement du comparateur.
     expect(analysisA.unprofiledCardIds).toEqual([UNPROFILED_L]);
     expect(analysisB.unprofiledCardIds).toEqual([UNPROFILED_L]);
@@ -383,11 +383,12 @@ describe('Étape 7 — identité des données analyse / comparateur / Excel', ()
       '« Référence » : 1 carte non-engine sans profil, non comptée dans le potentiel.',
       '« Variante » : 1 carte non-engine sans profil, non comptée dans le potentiel.',
     ]);
-    // N = composition : copies étiquetées, carte sans profil comprise (contrat §5).
-    const labelled = library.cardCategories.map((cc) => cc.card_id);
+    // N = composition : copies PROFILÉES (D14′, 16 sept. 2026 : non-engine = profilée) ; la carte
+    // étiquetée sans profil (3 copies) n'en fait plus partie. Avant : copies étiquetées, 16.
+    const profiled = [...library.profiles.map((p) => p.card_id)];
     const copiesA = new Map(sourceA.main.map((c) => [c.cardId, c.copies]));
-    const expectedN = labelled.reduce((s, id) => s + (copiesA.get(id) ?? 0), 0);
-    expect(expectedN).toBe(3 + 3 + 3 + 2 + 2 + 3);
+    const expectedN = profiled.reduce((s, id) => s + (copiesA.get(id) ?? 0), 0);
+    expect(expectedN).toBe(3 + 3 + 3 + 2 + 2);
     for (const sc of SCENARIOS) expect(cmp.deckA.matrices[sc].nonEngineCount).toBe(expectedN);
     // Contribution nulle : retirer son étiquette ne change ni U ni la matrice…
     const stripped: EngineModelSource = {

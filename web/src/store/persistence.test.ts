@@ -89,10 +89,9 @@ describe('Étape 3 — persistance du store',() => {
     expect(useDeck.getState().dirty).toBe(true);
   });
 
-  it('profil et plafond sont globaux : refus local sans étiquette (Q1) ou sans profil (Q2), sinon acquittement serveur',async () => {
-    useDeck.getState().setProfile(1,'flexible');
-    expect(api.setFlags).not.toHaveBeenCalled();expect(useDeck.getState().persistenceError).toMatch(/catégorie/);
-    useDeck.setState({ cardCategories:new Map([[1,new Set(['cat'])]]),persistenceError:null });
+  it('profil et plafond sont globaux : profil accepté sans étiquette (D14′, 16 sept. 2026), refus local sans profil (Q2), sinon acquittement serveur',async () => {
+    // Depuis le 16 septembre 2026 (docs/annotations-par-defaut.md), le profil seul déclenche le comptage :
+    // aucune étiquette n'est exigée avant un profil (ancienne garde Q1 levée).
     vi.mocked(api.setFlags).mockResolvedValue({ ok:true,is_hopt:false,availability:'flexible',group_id:null });
     useDeck.getState().setProfile(1,'flexible');
     await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));

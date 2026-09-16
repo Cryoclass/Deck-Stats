@@ -581,3 +581,157 @@ Conteneur `testhand-annot-inventory` détruit en fin de partie.
 M1 repli de nom normalisé retiré · M2 « twice per turn » compté comme limite à 1 · M3 extra deck
 annoté · M4 gabarit Mulcharmy sans plafond · M5 invocation limitée comptée HOPT · M6 clause de
 déclenchement ignorée (tout flexible). Fichier restauré, empreinte identique.
+
+## 13. Modèle révisé pour la partie C (après les réponses du §11)
+
+### Schéma — extension de `006-annotation-defaults.sql` (ouverte en B)
+
+```
+-- rôles (Q1) : hiérarchie admin > referent > user
+alter table users drop constraint if exists users_role_check;
+alter table users add constraint users_role_check check (role in ('user', 'referent', 'admin'));
+-- choix du compte, copie sur écriture par aspect (D6)
+alter table card_flags alter column is_hopt drop not null;            -- null = hérite du défaut
+alter table card_flags add column if not exists nonengine_choice boolean not null default false;
+-- plafond fourni de base (D7′)
+alter table nonengine_groups add column if not exists is_builtin boolean not null default false;
+-- référence commune (D4′)
+create table if not exists card_references (
+  card_id bigint primary key check (card_id > 0),
+  is_hopt boolean,                     -- null = laisser la détection décider
+  nonengine_set boolean not null default false,  -- true = availability/group font foi (même null = « pas non-engine »)
+  availability text check (availability in ('early','flexible','prepared','breaker','reactive')),
+  group_name text check (group_name is null or length(group_name) between 1 and 200),
+  note text check (note is null or length(note) <= 2000),
+  updated_by uuid references users on delete set null,
+  updated_at timestamptz not null default now(),
+  check (nonengine_set or (availability is null and group_name is null)),
+  check (group_name is null or availability is not null)
+);
+create table if not exists card_reference_log (… card_id, action, before jsonb, after jsonb, actor uuid, at … ; ajout seul par déclencheur, comme backoffice_audit);
+-- une seule fois (journal 006) :
+update card_flags set is_hopt = null where is_hopt = false;                          -- Q2
+update card_flags set nonengine_choice = true where availability is not null;
+insert into card_flags (owner_id, card_id, is_hopt, nonengine_choice) select n.owner_id, cc.card_id, null, true from card_categories cc join nonengine_categories n on n.id = cc.category_id on conflict (owner_id, card_id) do update set nonengine_choice = true;
+insert into nonengine_groups (owner_id, name, cap_per_turn, is_builtin) select u.id, 'Mulcharmy', 2, true from users u where not exists (select 1 from nonengine_groups g where g.owner_id = u.id and g.name = 'Mulcharmy');
+update nonengine_groups set is_builtin = true where name = 'Mulcharmy' and not is_builtin;
+update decks set summary = null;
+```
+
+`auth/account.ts` crée aussi le groupe « Mulcharmy » (2, `is_builtin`) à l'inscription ; un groupe
+fourni de base ne se supprime pas (`DELETE /library/groups/:id` → 400 comme une étiquette de base),
+sa limite reste modifiable. Le rôle `testhand_backoffice` reçoit `select` sur `card_references`
+(lecture seule, futur écran) — rien d'autre.
+
+### Sémantique des choix (copie sur écriture par aspect)
+
+| Aspect | État hérité | Matérialisation | Retour au défaut |
+| --- | --- | --- | --- |
+| HOPT | `card_flags.is_hopt is null` (ou aucune ligne) | `PUT /flags/:id { is_hopt }` écrit true / false | `DELETE /flags/:id?aspect=hopt` → `is_hopt = null` |
+| Non-engine (profil, plafond, étiquettes) | `nonengine_choice = false` (ou aucune ligne) | premier geste (`PUT /flags` avec `availability` ou `group_id`, `POST/DELETE /card-categories`) : le serveur pose d'abord la valeur EFFECTIVE (profil + plafond de base résolus depuis `references` puis détection **fournie par le client** dans la requête, voir ci-dessous), passe `nonengine_choice = true`, puis applique le geste | `DELETE /flags/:id?aspect=nonengine` → `availability = null`, `group_id = null`, `nonengine_choice = false`, affectations d'étiquettes supprimées |
+
+Le serveur ne calcule jamais la détection (D13) : le client envoie, avec le premier geste sur un
+aspect hérité, la valeur effective qu'il affiche (`inherited: { availability, group_name }`) ; le
+serveur la matérialise telle quelle. Une écriture sans ce champ sur un aspect hérité matérialise
+la référence seule (ou rien). C'est le seul chemin où le client « dit » une valeur par défaut au
+serveur, et elle est validée par le contrat comme n'importe quel profil.
+
+### Routes
+
+| Route | Garde | Effet |
+| --- | --- | --- |
+| `GET /api/library` | compte | + `references: CardReference[]`, `referencesVersion` (max `updated_at` ou `'0'`), `groups[].is_builtin`, `flags` avec `is_hopt: boolean | null` et `nonengine_choice` |
+| `PUT /api/library/flags/:cardId` | compte | corps : `{ is_hopt?, availability?, group_id?, inherited? }` ; matérialise l'aspect hérité avant d'appliquer |
+| `DELETE /api/library/flags/:cardId?aspect=hopt|nonengine` | compte | retour au défaut pour cet aspect |
+| `POST / DELETE /api/library/card-categories…` | compte | matérialisent l'aspect non-engine (avec `inherited` optionnel dans le corps du POST) |
+| `GET /api/references` | compte | liste complète + journal des 50 dernières écritures |
+| `PUT /api/references/:cardId` | référent (404 sinon) | corps `{ is_hopt: boolean | null, nonengine_set, availability, group_name, note }` ; journal ; `update decks set summary = null where id in (select deck_id from deck_cards where card_id = $1)` tous comptes |
+| `DELETE /api/references/:cardId` | référent (404 sinon) | retire la référence ; journal ; même invalidation |
+| `GET /api/auth/me` | compte | + `role` (`user` / `referent` / `admin`) et `referent: boolean` |
+
+Garde `requireReferent(req)` : `role in ('referent','admin')`, sinon `error(404)`. Le rôle est lu
+avec la session (`SessionUser.role`).
+
+### Client
+
+- `web/src/lib/effectiveLibrary.ts` (pur, dans `__ENGINE_VERSION__`) :
+  `effectiveLibrary(library, cards: Record<number, Card>, cardIds: number[])` → `{ source:
+  EngineModelSource-partiel (hopt, profiles, groups), origin: Map<cardId, { hopt: Origin | null;
+  nonengine: Origin | null }> }` avec `Origin = 'choice' | 'reference' | 'detection'`. Le plafond
+  d'un défaut se résout par nom vers le groupe fourni de base du compte ; absent → profil sans plafond.
+- Appelants : store (`libraryCalc`, `annotationCalc`), accueil (`sourceFromDetail` reçoit les cartes),
+  comparateur, fiche de side, planificateur, `scripts/annotations-report.ts` (rapport d'écart).
+- Archive JSON : `library.hoptCardIds` = choix explicites `true` seulement ; `profiles` = aspects
+  non-engine matérialisés seulement ; import : un `hoptCardIds` matérialise `true`, un profil
+  matérialise l'aspect.
+
+### Découpage de C en lots délégables
+
+| Lot | Contenu | Dépend de |
+| --- | --- | --- |
+| C1 | 006 étendue (§ ci-dessus), `account.ts` (groupe de base), `backoffice-role.sh` (`--role referent|admin`), séquence et gardes (`test-migration-sequence.sh` : cas « 005 sans 006 » vérifie `is_hopt` false → null, `nonengine_choice`, groupe de base), `check-migration.sql` | B |
+| C2 | Contrat (`CardReference`, `parseReference`, `Library`), routes (`library.ts`, `references.ts`, `auth` `/me`), `requireReferent`, invalidation tous comptes, tests d'intégration (55433) | C1 (schéma) |
+| C3 | `effectiveLibrary.ts` + tests, appelants, archive JSON, `prune-stale-cards` (`card_references`), rapport d'écart dans `annotations-report.ts` | C2 (forme de `Library`) |
+
+## 14. Compte rendu B (16 septembre 2026)
+
+### Livré
+
+- **Profil `reactive`** (« Réactive », « Ra », type Droll) : contrat (`AVAILABILITY_PROFILES`), moteur
+  (`PROFILES`, `capacities` : premier = tour adverse suivant, second = tour adverse initial, sixième
+  sans fenêtre ; `sixthSensitive`), oracle (`windows`, N01 de `rules.test.ts`), libellés et infobulle
+  (`types.ts`), deck « profil réactif et carte profilée sans étiquette » ajouté aux SPECS du pont B02
+  (`chronology.test.ts`), tests moteur (`engine.test.ts`) et modèle (`engineModel.test.ts`).
+- **Porte profil / étiquette levée** (D14′, réponses Q3 / Q4) : `nonEngine[i] = profile !==
+  undefined`, signature `{ cats: [] }` pour une profilée sans étiquette ; `deckOracle.ts` aligné ;
+  cas Q1 de `chronology.test.ts` **réécrit sur décision** (commenté et daté) ; `buildEngineModel`
+  suit les cartes profilées sans étiquette ; gardes Q1 levées dans `library.ts`, `deckStore.ts`
+  (`setProfile`), `AnnotationGrid.tsx` (mode Profil sans compteur « ignorées ») ; textes du mode Profil
+  et de `ModeBar` ; tests `persistence.test.ts` et `persistence.integration.ts` adaptés ; contrat
+  §3 (tableau et révision datée), `cas-reference.md` (ligne Q1–Q5).
+- **Migration `006-annotation-defaults.sql`** (sous-agent, relu) : contrainte CHECK de
+  `card_flags.availability` retrouvée par `pg_constraint` (seule colonne), supprimée, recréée avec
+  `reactive` ; DDL idempotent hors journal, journalisation une fois, refus nominatif sans 002 ;
+  branchée dans les trois composes (`06-annotation-defaults.sql`), `lib.sh` (deux branches, après
+  005, avant 003), `check-migration.sql`, `web/e2e/run.mjs`, `test-migration-sequence.sh` (cas
+  « F sans 006 » + rejeu, cas I), suites d'intégration (auth, persistence, purge), README de la pile
+  locale, runbook (bloc prospectif de la variante « déploiement courant »), AGENTS.md et
+  server/AGENTS.md. Appliquée par stdin sur la base de dev (journal 001, 002, 003, 004, 006).
+
+### Vérifications exécutées
+
+`npm run typecheck` · `npm run build` · `node scripts/test-quiet.mjs` (291 web, 21 serveur) ·
+`test:integration` sur 55433 (12 + 14 + 11) · `npm run e2e -w web` (10 scénarios OK, `nonengine`
+compris) · `bash deploy/test-migration-sequence.sh` (99 gardes A–J, +13 pour 006) ·
+`bash deploy/rehearsal.sh --fixture` (RÉPÉTITION CONFORME, 269 s) · conteneur jetable 55447 :
+`reactive` refusé avant 006, accepté après, `bogus` refusé, rejeu sans effet, refus sans 002.
+Conteneurs jetables supprimés.
+
+### Contrôle par mutation (5 posées, 5 détectées)
+
+M1 porte rétablie (profil ET étiquette) → `engine.test` « Profil sans étiquette » · M2 réactive =
+flexible en second → `engine.test` « Profil réactif » · M3 sixième réactive non distinguée → pont B02
+« profil réactif » · M4 modèle : carte profilée sans étiquette non suivie → `engineModel.test` D14′ ·
+M5 oracle : réactive sans fenêtre en premier → N01. Fichiers restaurés, empreintes identiques.
+
+### Relecture indépendante (sous-agent à contexte neuf)
+
+Un bloquant corrigé : le menu ⋯ d'une carte imposait encore « poser d'abord une étiquette » avant
+de proposer un profil (garde retirée, profils proposés à toute carte). Remarques retenues : `N` du
+comparateur et de l'export Excel = copies **profilées** (`scenarioCounts`, test d'identité de
+l'étape 7 aligné : 13 au lieu de 16 sur la fixture) ; plafond partagé ajouté aux deux réactives du
+deck B02 (« w », 1) ; `deckConfiguration.ts` entre dans `__ENGINE_VERSION__` ; texte de l'onglet
+« Combos & catégories », commentaire du scénario `nonengine`, continuation de ligne du cas I,
+runbook C5 qualifié (l'ancienne app n'écrit jamais `reactive` mais ne sait pas le lire). Décision
+consignée : le geste « retirer » du mode combiné retire l'étiquette puis le profil devenu seul
+(annulation du geste « poser »). Vérifications rejouées après corrections : typecheck, suite complète,
+e2e `setup, guards, nonengine, compare`.
+
+### Écarts au plan et notes
+
+- La détection distingue `reactive` de `flexible` (partie A) ; le mode Non-engine combiné de la
+  grille pose toujours étiquette + profil (l'interface par profil seul est en partie D).
+- Deux « 06 » dans `deploy/docker-compose.local.yml` (`06-annotation-defaults.sql` et le fichier
+  local `06-backoffice-login`) : ordre lexical correct ; à renuméroter en C si gênant.
+- `deploy/README.md` §9 énumère toujours « schéma → 001 → 002 → 003 » (énumération partielle
+  par choix) ; seule la ligne de la pile locale cite 006.

@@ -22,7 +22,8 @@
 #   restauration affichée) ; 3 rapport refusé (app relancée sans 003, Q8).
 #   Le back-office (service `admin`, docs/backoffice.md) écrit dans backoffice_audit à chaque
 #   requête : hook_stop_app doit l'arrêter avec l'app (sinon la sauvegarde pré-migration vérifiée
-#   en mode keep échoue, « la base a bougé »), et 005 se rejoue avant 003 comme 004.
+#   en mode keep échoue, « la base a bougé »), et 005 se rejoue avant 003 comme 004 — 006
+#   (annotations par défaut) de même.
 #   Crochets à définir par l'appelant : hook_stop_app, hook_start_app (nouvelle app),
 #   hook_start_old_app (conteneur précédent), hook_app_left_stopped <commande de restauration>,
 #   hook_backup <dossier> (lance backup.sh --pre-migration et pose PRE_MIGRATION_ARCHIVE ;
@@ -44,6 +45,9 @@ TOUCHED_BY_003='app_migrations card_flags nonengine_categories combo_pairs deck_
 # qu'elle s'applique — le contrôle de bout en bout en tient compte (check_after_migration).
 BACKOFFICE_ROLE=testhand_backoffice
 RESHAPED_BY_005='users'
+# 006 (annotations par défaut) n'élargit qu'une contrainte CHECK de `card_flags` : ni l'effectif ni
+# le contenu des lignes ne bougent, donc aucune empreinte ne change et aucun contrôle de bout en
+# bout n'est à adapter (card_flags est de toute façon dans TOUCHED_BY_003).
 # Git Bash (MSYS) réécrit les chemins absolus passés à Docker (« mount path must be absolute ») :
 # conversion désactivée pour tout le script ; les chemins destinés à Node passent alors par
 # host_path (cygpath), Node n'étant pas MSYS.
@@ -430,14 +434,14 @@ run_migration_sequence() {  # <dossier de sortie> <interactive | auto | empreint
   # `deck_requirements` (intermédiaire v2 que 003 supprime), et 003 refuse alors tout rejeu
   # (« objet historique réapparu »). Après 003, leurs objets sont définitifs ; seul le schéma
   # (bloc historique conditionnel, D1) se rejoue à chaque déploiement.
-  # 004 (étape 10) et 005 (back-office) sont additives et indépendantes de 003 : elles se rejouent
-  # dans les DEUX cas, avant l'empreinte-2 pour que le contrôle « 003 n'a touché que ses propres
-  # objets » compare deux empreintes portant déjà leurs tables (sinon elles seraient vues
-  # « absentes avant »).
-  local files='db/schema.sql db/migrations/001-deck-configuration.sql db/migrations/002-profiles-and-conditions.sql db/migrations/004-side-plans.sql db/migrations/005-backoffice.sql'
+  # 004 (étape 10), 005 (back-office) et 006 (annotations par défaut) sont additives et
+  # indépendantes de 003 : elles se rejouent dans les DEUX cas, avant l'empreinte-2 pour que le
+  # contrôle « 003 n'a touché que ses propres objets » compare deux empreintes portant déjà leurs
+  # tables (sinon elles seraient vues « absentes avant »).
+  local files='db/schema.sql db/migrations/001-deck-configuration.sql db/migrations/002-profiles-and-conditions.sql db/migrations/004-side-plans.sql db/migrations/005-backoffice.sql db/migrations/006-annotation-defaults.sql'
   if grep -q '003-purge-legacy' "$out/inventory-before-journal.txt"; then
     seq_log "003 déjà journalisée : 001 et 002 ne se rejouent plus (001 recréerait deck_requirements), schéma et migrations additives postérieures seulement"
-    files='db/schema.sql db/migrations/004-side-plans.sql db/migrations/005-backoffice.sql'
+    files='db/schema.sql db/migrations/004-side-plans.sql db/migrations/005-backoffice.sql db/migrations/006-annotation-defaults.sql'
   fi
   for f in $files; do
     seq_log "rejeu par stdin : $f"

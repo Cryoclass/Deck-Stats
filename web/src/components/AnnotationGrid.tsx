@@ -49,7 +49,6 @@ export function AnnotationGrid({
   const [prereqSource, setPrereqSource] = useState<number | null>(null);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [modCount, setModCount] = useState(0);
-  const [skipped, setSkipped] = useState(0); // mode Profil : cartes sans étiquette ignorées (Q1)
   // Étape 9C : le dialogue d'ajout porte la zone visée (main, extra ou side), `null` = fermé.
   const [addOpen, setAddOpen] = useState<Zone | null>(null);
 
@@ -59,7 +58,6 @@ export function AnnotationGrid({
       setComboPivot(null);
       setPrereqSource(null);
       setModCount(0);
-      setSkipped(0);
       if (next === 'nonengine') {
         setActiveCategoryId(option?.categoryId ?? activeCategoryId ?? categories[0]?.id ?? null);
         if (option && 'nonEngineProfile' in option) setNonEngineProfile(option.nonEngineProfile ?? null);
@@ -180,11 +178,7 @@ export function AnnotationGrid({
         }
         break;
       case 'profile':
-        // Q1 : un profil sans étiquette ne mesure rien — la carte est ignorée, et dite ignorée.
-        if (activeProfile !== null && (cardCategories.get(cardId)?.size ?? 0) === 0) {
-          setSkipped((c) => c + 1);
-          break;
-        }
+        // Depuis le 16 septembre 2026 (D14′) : le profil seul compte, aucune étiquette requise.
         setProfile(cardId, activeProfile);
         setModCount((c) => c + 1);
         break;
@@ -274,7 +268,6 @@ export function AnnotationGrid({
         <ModeBanner
           mode={mode}
           modCount={modCount}
-          skipped={skipped}
           comboPivot={comboPivot}
           pivotName={comboPivot !== null ? cards[comboPivot]?.name ?? `#${comboPivot}` : null}
           prereqSource={prereqSource}
@@ -360,7 +353,6 @@ function ZoneBlock({ zone, cards, onAdd, renderTile }: { zone: Zone; cards: Deck
 function ModeBanner({
   mode,
   modCount,
-  skipped,
   comboPivot,
   pivotName,
   prereqSource,
@@ -375,7 +367,6 @@ function ModeBanner({
 }: {
   mode: AnnotationMode;
   modCount: number;
-  skipped: number;
   comboPivot: number | null;
   pivotName: string | null;
   prereqSource: number | null;
@@ -415,7 +406,7 @@ function ModeBanner({
       : `${couple} : clique une carte pour la rendre conforme ; sur une carte déjà conforme, le clic retire l'étiquette (et le profil s'il ne reste aucune étiquette).`;
   } else if (mode === 'profile') {
     hint = profileName
-      ? `Profil « ${profileName} » : clique les cartes étiquetées non-engine (annotation du compte).`
+      ? `Profil « ${profileName} » : clique les cartes non-engine ; le profil seul les fait compter (annotation du compte).`
       : 'Retirer le profil : clique les cartes concernées (elles ne seront plus comptées).';
   } else {
     hint = `Clique les cartes à basculer en ${MODE_LABEL[mode]}.`;
@@ -429,7 +420,6 @@ function ModeBanner({
       <span className="min-w-[12rem] flex-1 opacity-90">{hint}</span>
       <span className="tnum ml-auto shrink-0 whitespace-nowrap rounded bg-black/20 px-1.5 py-0.5 text-meta">
         {modCount} modif.
-        {skipped > 0 ? ` · ${skipped} sans étiquette, ignorée${skipped > 1 ? 's' : ''}` : ''}
       </span>
       {mode === 'combo' && comboPivot !== null && (
         <button

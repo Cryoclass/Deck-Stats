@@ -80,7 +80,8 @@ export function scenarioCounts(
   for (const t of input.types) {
     const dead = first ? t.deadFirst : t.deadSecond;
     if (t.isStarter && !dead) s += t.copies;
-    if (t.categories.length > 0) n += t.copies;
+    // D14′ (16 sept. 2026) : non-engine = profilée ; une étiquette seule ne compte pas.
+    if (t.availability !== undefined) n += t.copies;
   }
   return { starterCount: s, nonEngineCount: n };
 }

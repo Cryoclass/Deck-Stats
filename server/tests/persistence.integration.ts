@@ -20,6 +20,8 @@ const reqA='00000000-0000-4000-8000-00000000000a',reqB='00000000-0000-4000-8000-
 const migration=await readFile(new URL('../../db/migrations/001-deck-configuration.sql',import.meta.url),'utf8');
 const migration2=await readFile(new URL('../../db/migrations/002-profiles-and-conditions.sql',import.meta.url),'utf8');
 const migration4=await readFile(new URL('../../db/migrations/004-side-plans.sql',import.meta.url),'utf8');
+// Annotations par défaut (partie B) : additive, étend la contrainte des profils (« reactive »).
+const migration6=await readFile(new URL('../../db/migrations/006-annotation-defaults.sql',import.meta.url),'utf8');
 const leaf=(card_id: number, at_least=1): ConditionNode => ({ kind:'remaining',card_id,at_least });
 app.decorateRequest('user',null);
 app.addHook('onRequest',async (req) => { req.user={ id: req.headers['x-test-owner'] === 'other' ? other : owner,email:'test@example.invalid',display_name:'Test' }; });
@@ -82,6 +84,9 @@ before(async () => {
   await query(migration4);
   await query(migration4);
   assert.equal((await query("select count(*)::int as n from app_migrations where id='004-side-plans'")).rows[0].n,1);
+  await query(migration6);
+  await query(migration6);
+  assert.equal((await query("select count(*)::int as n from app_migrations where id='006-annotation-defaults'")).rows[0].n,1);
   await app.ready();
 });
 after(async () => { await app.close();await pool.end(); });
@@ -189,9 +194,11 @@ test('owner isolation and malformed source references reject without partial wri
   assert.equal((await app.inject({ method:'POST',url:'/decks',payload:c })).statusCode,400);
 });
 
-test('profiles and shared caps are account annotations: label before profile (Q1), profile before cap (Q2), cross-account caps rejected',async () => {
-  const uncategorised=await app.inject({ method:'PUT',url:'/library/flags/300',payload:{ availability:'flexible' } });
-  assert.equal(uncategorised.statusCode,400,uncategorised.body);assert.match(uncategorised.body,/catégorie/);
+test('profiles and shared caps are account annotations: profile without label accepted (D14′, 16 Sept. 2026), profile before cap (Q2), cross-account caps rejected',async () => {
+  // Since 16 September 2026 (docs/annotations-par-defaut.md): the profile alone triggers the count,
+  // no label is required first (former Q1 guard lifted); the new `reactive` profile is accepted.
+  const uncategorised=await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ availability:'reactive' } });
+  assert.equal(uncategorised.statusCode,200,uncategorised.body);assert.deepEqual(uncategorised.json(),{ ok:true,card_id:301,is_hopt:false,availability:'reactive',group_id:null });
   const cat=(await app.inject({ method:'POST',url:'/library/categories',payload:{ name:'Étiquette 5B' } })).json();
   assert.equal(cat.name,'Étiquette 5B');assert.equal(cat.relevance,undefined);
   assert.equal((await app.inject({ method:'POST',url:'/library/card-categories',payload:{ card_id:300,category_id:cat.id } })).statusCode,201);

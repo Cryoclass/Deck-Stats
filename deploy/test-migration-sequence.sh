@@ -6,7 +6,7 @@
 # enregistrent l'app relancée / laissée arrêtée. Chaque cas repart d'une base réinitialisée :
 #   A. sauvegarde pré-migration en échec → code 1, ancienne app relancée, base intacte ;
 #   B. 003 refusée (prérequis historique jamais converti, injecté après 002) → code 1, app
-#      démarrée sans 003, 001, 002 et 004 journalisées, 003 absente ;
+#      démarrée sans 003, 001, 002, 004, 005 et 006 journalisées, 003 absente ;
 #   C. marqueur « SIMULATION TERMINÉE » retiré de la sortie de psql (code 0 conservé) → code 1,
 #      003 non appliquée : le code de sortie seul n'est jamais un succès ;
 #   D. --accept avec une empreinte différente → code 3, app démarrée sans 003 ;
@@ -17,14 +17,16 @@
 #      la production avant l'étape 10) → 004 appliquée par la branche post-003, sans question ;
 #      puis base à 004 SANS 005 ni rôle PostgreSQL (état de la production avant le back-office) →
 #      005 appliquée par la branche post-003, rôle créé, `users` reformée à effectif identique et
-#      rôles « user », contrôles OK ;
+#      rôles « user », contrôles OK ; puis base à 005 SANS 006 (contrainte de 002 remise sur
+#      `card_flags.availability`) → 006 appliquée par la branche post-003, profil « reactive »
+#      refusé avant et accepté après, contrôles OK ;
 #   G. base vide (« départ à vide », 8C) en mode interactif sans terminal → code 0 sans question
-#      (une question aurait rendu 3), 001 à 004 journalisées, 0 ligne purgée, contrôle
+#      (une question aurait rendu 3), 001 à 006 journalisées, 0 ligne purgée, contrôle
 #      « base vide au départ » OK ; rejeu → code 0, « déjà journalisée », base identique ;
 #   H. base vide mais une table conservée remplie après 003 (users) → code 2, app laissée
 #      ARRÊTÉE, KO nominatif du contrôle « base vide au départ » ;
 #   I. (étape 9B, incident 8C) volume neuf : conteneur créé par `docker create`, scripts
-#      d'initialisation copiés par `docker cp` (schéma, 001 à 004 comme en production, plus
+#      d'initialisation copiés par `docker cp` (schéma, 001 à 006 comme en production, plus
 #      98-slow.sql à pg_sleep(6) qui prolonge la fenêtre du serveur temporaire une fois la base
 #      complète), démarré ; un témoin en arrière-plan enregistre le premier `select 1` réussi par le
 #      socket et les journaux à cet instant (« init process complete » absent = fenêtre ouverte,
@@ -114,7 +116,7 @@ simulate_003() {
 run_seq auto
 expect "B code 1" test "$RC" = 1
 expect "B app démarrée sans 003 (stop, start-new)" hooks_are "stop start-new"
-expect "B journal 001, 002, 004 et 005 seulement" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans,005-backoffice'
+expect "B journal 001, 002, 004, 005 et 006 seulement" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans,005-backoffice,006-annotation-defaults'
 expect "B refus nominatif dans 003-simulation.txt.err" grep_file 'jamais converti' "$CASE_OUT/003-simulation.txt.err"
 expect "B journal : « 003 refusée ou en erreur en simulation »" grep_file '003 refusée ou en erreur en simulation' "$CASE_OUT/journal.txt"
 
@@ -130,7 +132,7 @@ run_003() {
 run_seq auto
 expect "C code 1 (le code 0 de psql sans marqueur n'est pas un succès)" test "$RC" = 1
 expect "C journal : « marqueur « SIMULATION TERMINÉE » absent »" grep_file 'marqueur « SIMULATION TERMINÉE » absent' "$CASE_OUT/journal.txt"
-expect "C 003 non journalisée" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans,005-backoffice'
+expect "C 003 non journalisée" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans,005-backoffice,006-annotation-defaults'
 expect "C app démarrée sans 003" hooks_are "stop start-new"
 expect "C la table combo_pairs existe encore" test "$(db_query "select to_regclass('public.combo_pairs') is not null")" = t
 
@@ -140,7 +142,7 @@ run_seq 00000000000000000000000000000000
 expect "D code 3" test "$RC" = 3
 expect "D app démarrée sans 003" hooks_are "stop start-new"
 expect "D journal : « différente du rapport »" grep_file 'différente du rapport' "$CASE_OUT/journal.txt"
-expect "D 003 non journalisée, combo_pairs conservée" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans,005-backoffice' -a "$(db_query 'select count(*) from combo_pairs')" = 4
+expect "D 003 non journalisée, combo_pairs conservée" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans,005-backoffice,006-annotation-defaults' -a "$(db_query 'select count(*) from combo_pairs')" = 4
 SIM_FP_D=$SIM_FP
 expect "D empreinte de la simulation capturée" bash -c "printf '%s' '$SIM_FP_D' | grep -Eq '^[0-9a-f]{32}$'"
 
@@ -162,7 +164,7 @@ expect "E l'archive pré-migration nommée existe avec sa somme et son empreinte
 begin_case F
 run_seq "$SIM_FP_D"
 expect "F code 0" test "$RC" = 0
-expect "F 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
+expect "F 001 à 006 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice,006-annotation-defaults'
 expect "F 004 : les trois tables des plans de side existent" test "$(db_query "select count(*) from pg_tables where schemaname = 'public' and tablename in ('deck_matchups', 'deck_side_plans', 'deck_side_plan_cards')")" = 3
 expect "F app démarrée (stop, start-new)" hooks_are "stop start-new"
 expect "F journal : empreinte fournie identique" grep_file 'empreinte fournie identique au rapport' "$CASE_OUT/journal.txt"
@@ -184,7 +186,7 @@ run_seq interactive
 expect "F sans 004 : code 0 sans question" test "$RC" = 0
 expect "F sans 004 : 003 « déjà journalisée »" grep_file 'déjà journalisée' "$CASE_OUT/journal.txt"
 expect "F sans 004 : 004 rejouée par la branche post-003" grep_file 'rejeu par stdin : db/migrations/004-side-plans.sql' "$CASE_OUT/journal.txt"
-expect "F sans 004 : 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
+expect "F sans 004 : 001 à 006 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice,006-annotation-defaults'
 expect "F sans 004 : les trois tables des plans de side existent" test "$(db_query "select count(*) from pg_tables where schemaname = 'public' and tablename in ('deck_matchups', 'deck_side_plans', 'deck_side_plan_cards')")" = 3
 expect "F sans 004 : aucun KO dans check-migration.txt" not grep_file '^KO\|' "$CASE_OUT/check-migration.txt"
 # F, base à 004 SANS 005 ni rôle PostgreSQL : l'état de la production avant le back-office. Seule
@@ -196,7 +198,7 @@ CASE_OUT="$OUT/case-F-sans-005"; mkdir -p "$CASE_OUT"; HOOKS="$CASE_OUT/hooks.tx
 run_seq interactive
 expect "F sans 005 : code 0 sans question" test "$RC" = 0
 expect "F sans 005 : 005 rejouée par la branche post-003" grep_file 'rejeu par stdin : db/migrations/005-backoffice.sql' "$CASE_OUT/journal.txt"
-expect "F sans 005 : 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
+expect "F sans 005 : 001 à 006 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice,006-annotation-defaults'
 expect "F sans 005 : rôle testhand_backoffice créé, NOLOGIN" test "$(db_query "select rolcanlogin from pg_roles where rolname = 'testhand_backoffice'")" = f
 expect "F sans 005 : users reformée à effectif identique ($USERS_F), rôles « user » (contrôle OK nominatif)" grep_file "^OK\|005 appliquée par cette séquence : users reformée \(colonne role ajoutée\), effectif $USERS_F identique, tous les rôles « user »" "$CASE_OUT/check-migration.txt"
 expect "F sans 005 : users hors de la liste stricte, les autres tables intactes" grep_file '^OK\|tables intactes de bout en bout \(effectif et contenu\) : cards catalog_version user_identities sessions deck_cards deck_starters card_categories' "$CASE_OUT/check-migration.txt"
@@ -207,12 +209,42 @@ run_seq interactive
 expect "F rejeu après 005 : code 0, base identique, users strictement intacte" test "$RC" = 0 -a "$(db_fingerprint | fingerprint_global)" = "$FP_F5"
 expect "F rejeu après 005 : liste stricte complète (users comprise)" grep_file '^OK\|tables intactes de bout en bout \(effectif et contenu\) : cards catalog_version users user_identities' "$CASE_OUT/check-migration.txt"
 
+# F, base à 005 SANS 006 : l'état de la production avant le chantier « annotations par défaut ».
+# La contrainte de 002 (quatre profils) est remise en place et 006 retirée du journal : seule preuve
+# que la branche « 003 déjà journalisée » rejoue 006 et que le cinquième profil « reactive » n'est
+# accepté qu'après. Aucune donnée n'est touchée : 006 n'élargit qu'une contrainte CHECK.
+db_query "alter table card_flags drop constraint card_flags_availability_check; alter table card_flags add constraint card_flags_availability_check check (availability in ('early', 'flexible', 'prepared', 'breaker')); delete from app_migrations where id = '006-annotation-defaults'" > /dev/null
+# avail_ok <profil> : 0 si card_flags accepte ce profil (ligne d'essai retirée aussitôt).
+avail_ok() {
+  db_query "insert into card_flags (owner_id, card_id, availability) values ((select id from users order by id limit 1), 999000001, '$1')" > /dev/null 2>&1 || return 1
+  db_query 'delete from card_flags where card_id = 999000001' > /dev/null
+}
+expect "F sans 006 : profil « reactive » refusé avant (contrainte de 002)" not avail_ok reactive
+expect "F sans 006 : profil « flexible » accepté avant" avail_ok flexible
+CARD_FLAGS_F6=$(db_query 'select count(*) from card_flags')
+CASE_OUT="$OUT/case-F-sans-006"; mkdir -p "$CASE_OUT"; HOOKS="$CASE_OUT/hooks.txt"; : > "$HOOKS"
+run_seq interactive
+expect "F sans 006 : code 0 sans question" test "$RC" = 0
+expect "F sans 006 : 006 rejouée par la branche post-003" grep_file 'rejeu par stdin : db/migrations/006-annotation-defaults.sql' "$CASE_OUT/journal.txt"
+expect "F sans 006 : 001 à 006 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice,006-annotation-defaults'
+expect "F sans 006 : profil « reactive » accepté après" avail_ok reactive
+expect "F sans 006 : profil inconnu toujours refusé" not avail_ok bogus
+expect "F sans 006 : une seule contrainte CHECK sur la seule colonne availability" test "$(db_query "select count(*) from pg_constraint con join pg_class rel on rel.oid = con.conrelid join pg_attribute att on att.attrelid = rel.oid and att.attname = 'availability' where rel.relname = 'card_flags' and con.contype = 'c' and con.conkey::smallint[] = array[att.attnum]")" = 1
+expect "F sans 006 : card_flags inchangée ($CARD_FLAGS_F6 ligne(s))" test "$(db_query 'select count(*) from card_flags')" = "$CARD_FLAGS_F6"
+expect "F sans 006 : contrainte de deux colonnes de 002 conservée" test "$(db_query "select count(*) from pg_constraint where conname = 'card_flags_group_requires_profile'")" = 1
+expect "F sans 006 : aucun KO dans check-migration.txt" not grep_file '^KO\|' "$CASE_OUT/check-migration.txt"
+FP_F6=$(db_fingerprint | fingerprint_global)
+CASE_OUT="$OUT/case-F-rejeu-006"; mkdir -p "$CASE_OUT"; HOOKS="$CASE_OUT/hooks.txt"; : > "$HOOKS"
+run_seq interactive
+expect "F rejeu après 006 : code 0, base identique (une contrainte ne change aucune empreinte)" test "$RC" = 0 -a "$(db_fingerprint | fingerprint_global)" = "$FP_F6"
+expect "F rejeu après 006 : profil « reactive » toujours accepté" avail_ok reactive
+
 # ─── G. base vide (« départ à vide », 8C) : aucune question, 003 journalisée, contrôles OK ───
 begin_case G empty
 expect "G base vide au départ (aucune table dans public)" test "$(db_query "select count(*) from pg_tables where schemaname = 'public'")" = 0
 run_seq interactive
 expect "G code 0 sans question (aucun terminal : une question aurait rendu 3)" test "$RC" = 0
-expect "G 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
+expect "G 001 à 006 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice,006-annotation-defaults'
 expect "G app démarrée (stop, start-new)" hooks_are "stop start-new"
 expect "G journal : « rien à purger : aucune acceptation requise »" grep_file 'rien à purger : aucune acceptation requise' "$CASE_OUT/journal.txt"
 expect "G purge appliquée : 0 ligne" grep_file 'PURGE APPLIQUÉE : 003-purge-legacy journalisée, 0 ligne' "$CASE_OUT/003-apply.txt"
@@ -240,7 +272,7 @@ expect "H KO nominatif : users (1 ligne(s))" grep_file '^KO\|base vide au dépar
 
 # ─── I. volume neuf : db_ready exclut le serveur temporaire d'initialisation (étape 9B, incident 8C) ───
 # Le conteneur des cas A–H est remplacé par un conteneur CRÉÉ puis démarré, dont l'entrypoint joue
-# les scripts copiés dans docker-entrypoint-initdb.d comme en production (schéma, 001 à 004) ;
+# les scripts copiés dans docker-entrypoint-initdb.d comme en production (schéma, 001 à 006) ;
 # 98-slow.sql (pg_sleep(6)) prolonge la fenêtre du serveur temporaire alors que la base est déjà
 # complète : le pire cas pour une attente naïve. Rien n'est réinitialisé : la séquence part de
 # l'état laissé par initdb, comme le premier deploy.sh de 8C.
@@ -255,7 +287,7 @@ docker create --name "$CONTAINER" --label purpose=testhand-step8 --rm --tmpfs /v
   -p "127.0.0.1:$PORT:5432" postgres:17-alpine > /dev/null
 for f in db/schema.sql:00-schema.sql db/migrations/001-deck-configuration.sql:01-deck-configuration.sql \
          db/migrations/002-profiles-and-conditions.sql:02-profiles-and-conditions.sql db/migrations/003-purge-legacy.sql:03-purge-legacy.sql \
-         db/migrations/004-side-plans.sql:04-side-plans.sql db/migrations/005-backoffice.sql:05-backoffice.sql; do
+         db/migrations/004-side-plans.sql:04-side-plans.sql db/migrations/005-backoffice.sql:05-backoffice.sql \n         db/migrations/006-annotation-defaults.sql:06-annotation-defaults.sql; do
   docker cp "$(host_path "$ROOT_DIR/${f%%:*}")" "$CONTAINER:/docker-entrypoint-initdb.d/${f##*:}"
 done
 docker cp "$(host_path "$CASE_OUT/98-slow.sql")" "$CONTAINER:/docker-entrypoint-initdb.d/98-slow.sql"
@@ -285,7 +317,7 @@ expect "I à la sortie de db_ready : « init process complete » suivi du second
 expect "I 98-slow.sql joué par l'entrypoint (fenêtre prolongée de 6 s)" grep_file 'running /docker-entrypoint-initdb.d/98-slow.sql' "$CASE_OUT/container-logs/at-db-ready.txt"
 expect "I séquence lancée aussitôt : code 0" test "$RC" = 0
 expect "I 003 déjà journalisée par initdb : aucune question" grep_file 'déjà journalisée' "$CASE_OUT/journal.txt"
-expect "I 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
+expect "I 001 à 006 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice,006-annotation-defaults'
 expect "I app démarrée (stop, start-new)" hooks_are "stop start-new"
 expect "I aucun « shutting down » dans les sorties de la séquence" not bash -c "grep -rq 'shutting down' '$CASE_OUT' --exclude-dir=container-logs"
 expect "I aucun KO dans check-migration.txt" not grep_file '^KO\|' "$CASE_OUT/check-migration.txt"

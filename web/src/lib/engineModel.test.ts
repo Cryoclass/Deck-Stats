@@ -81,6 +81,21 @@ describe('buildEngineModel — profils, plafonds et conditions depuis la bibliot
     expect(evaluate(prepare(profiled.input), 'second', k, -1).ne).toBe(2);
   });
 
+  it('D14′ (16 sept. 2026) : une carte profilée sans étiquette est un type suivi qui compte dans U, dans aucune catégorie', () => {
+    // La carte 8 (filler) reçoit un profil réactif sans aucune étiquette.
+    const model = buildEngineModel(source({ profiles: new Map([...source().profiles, [8, { availability: 'reactive', groupId: null }]]) }));
+    const t8 = model.typeCardIds.indexOf(8);
+    expect(t8).toBeGreaterThanOrEqual(0);
+    expect(model.input.types[t8]).toMatchObject({ availability: 'reactive', categories: [] });
+    expect(model.unprofiledCardIds).toEqual([4]);
+    const prep = prepare(model.input);
+    const k = new Array(model.input.types.length).fill(0);
+    k[t8] = 2;
+    expect(evaluate(prep, 'first', k).ne).toBe(2); // tour adverse suivant
+    expect(evaluate(prep, 'second', k, t8).ne).toBe(1); // l'une des deux est la sixième : aucune fenêtre
+    expect(evaluate(prep, 'first', k).catCounts).toEqual([0, 0]);
+  });
+
   it('un plafond supprimé de la bibliothèque est ignoré ; le profil reste', () => {
     const model = buildEngineModel(source({ groups: [] }));
     expect(model.input.groups).toBeUndefined();

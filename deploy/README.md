@@ -293,7 +293,7 @@ docker compose -f deploy/docker-compose.local.yml up -d --build   # db (55450), 
 docker compose -f deploy/docker-compose.local.yml down -v         # démontage, volume ygo-local-pgdata compris
 ```
 
-Volume dédié initialisé par le schéma, 001 à 005 et `deploy/local/06-backoffice-login.local.sql` (mot
+Volume dédié initialisé par le schéma, 001 à 006 et `deploy/local/06-backoffice-login.local.sql` (mot
 de passe local du rôle restreint). Secrets en clair dans le fichier : valeurs locales, jamais
 réutilisées. Catalogue : le copier depuis la base de dev (`docker exec ygo-proba-db pg_dump -U ygo -d ygo
 --data-only -t cards -t catalog_version | docker exec -i ygo-local-db psql -U ygo -d ygo -q`) ou le charger

@@ -72,7 +72,7 @@ export default async function nonengine() {
   expect('bandeau : « Prochain clic : poser » sur la carte survolée', /Prochain clic : poser/.test(await banner().innerText()), await banner().innerText());
   await shot(page, 'nonengine-1440-avant-clic');
 
-  // Clic 1 : pose étiquette + profil (deux requêtes, l'étiquette d'abord — sinon le serveur refuse le profil).
+  // Clic 1 : pose étiquette + profil (deux requêtes, l'étiquette d'abord ; ordre conservé, le serveur n'exige plus d'étiquette depuis D14′).
   await tile(page, 'Combo Gamma').click();
   let r = await apiBecomes(GAMMA, { labels: ['Handtrap'], profile: 'early' });
   expect('API après le clic : Handtrap + early posés sur Combo Gamma', r.ok, r.last);

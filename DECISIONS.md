@@ -32,6 +32,38 @@ tranché en les appliquant.
   (127.0.0.1, port ≠ 5433, aucune écriture) ; le rapport d'écart par deck attend la partie C (la
   bibliothèque effective n'existe pas encore).
 
+### Partie B — contrat et moteur (16 septembre 2026)
+
+- **La porte « profil ET étiquette » est levée sur décision de l'utilisateur** (réponses Q3 / Q4 :
+  « seuls les profils sont réellement pertinents »). `evaluate.ts` : `nonEngine[i] = profile !==
+  undefined` ; une carte profilée sans étiquette entre dans U avec une signature sans catégorie
+  (`neSignatures` porte `{ cats: [] }`), donc dans aucun potentiel de catégorie ni d'union. Le cas de
+  référence Q1 de `chronology.test.ts` est **réécrit** et l'oracle `deckOracle.ts` étendu (`profile
+  === undefined` seul écarte une copie) : c'est une révision explicite du contrat §3 (règle datée),
+  pas une correction pour faire passer le code. Q5 (étiquette sans profil = 0, copies brutes
+  intactes) est inchangée, ainsi que l'avertissement « sans profil » du panneau et du comparateur.
+- **Une carte profilée devient un type suivi de `buildEngineModel`** même sans étiquette (sinon
+  le moteur ne la verrait jamais) ; `unprofiledCardIds` reste la liste des étiquetées sans profil.
+- **Cinquième profil `reactive`** (« Réactive », type Droll) : premier = tour adverse suivant ;
+  second = tour adverse initial seulement ; sixième carte = aucune fenêtre (`sixthSensitive`).
+  Ajouté au contrat (`AVAILABILITY_PROFILES`), au moteur (`capacities`), à l'oracle (`windows`,
+  N01) et à un nouveau deck de 10 cartes du pont B02 (réactive HOPT, réactive sans étiquette,
+  flexible, board breaker, starter) comparé à l'énumération physique.
+- **Gardes Q1 levées partout** : serveur (`PUT /library/flags` n'exige plus d'étiquette), store
+  (`setProfile`), grille (mode Profil ne saute plus les cartes sans étiquette, compteur « ignorées »
+  retiré), menu ⋯ de la carte (profils proposés à toute carte — relecture B). L'ordre « étiquette
+  puis profil » du mode Non-engine combiné est conservé (sans effet), et son geste « retirer » retire
+  toujours l'étiquette PUIS le profil devenu seul : c'est l'annulation du geste « poser », pas une
+  conséquence de l'ancienne porte (l'interface par profil seul est en partie D).
+- **`N` du comparateur et de l'export Excel = copies profilées** (`scenarioCounts`), plus les
+  copies étiquetées : la spec §7.6 le définit comme le nombre de non-engine, qui est désormais
+  « profilée ». Les cellules ne changent pas (elles viennent du moteur) ; seul l'en-tête suit la règle.
+- **Migration `006-annotation-defaults.sql`** ouverte en B avec la seule extension de la contrainte
+  CHECK de `card_flags.availability` (DDL idempotent hors journal, journalisée une fois) ; la partie
+  C l'étend avant tout déploiement. Branchée dans les deux compose, la séquence de `lib.sh` (deux
+  branches, avant 003, après 005), `check-migration.sql`, `web/e2e/run.mjs`,
+  `test-migration-sequence.sh` et les suites d'intégration (auth, persistence, purge).
+
 ## Back-office — hors numérotation, socle en lecture seule (16 septembre 2026)
 
 Plan validé en séance, consigné dans [docs/backoffice.md](docs/backoffice.md) (décisions 1 à 11,
