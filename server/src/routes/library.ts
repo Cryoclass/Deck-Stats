@@ -99,13 +99,15 @@ export async function libraryRoutes(app: FastifyInstance) {
   for (const method of ['POST','DELETE'] as const) app.route({ method, url: method === 'POST' ? '/pairs' : '/pairs/:id', handler: async (_req,reply) => reply.code(410).send({ error: 'Les paires sont enregistrées avec chaque deck. Rechargez cette application.' }) });
 
   // Catégorie = étiquette manuelle (Q4) ; la `relevance` historique n'est plus écrite (purgée par 003).
-  app.post<{ Body: { id?: string; name: string } }>('/categories', async (req,reply) => {
-    const { id, name } = req.body ?? {};
-    if (typeof name !== 'string' || !name.trim() || name.length > 200 || (id !== undefined && !uuidPattern.test(id))) throw new ConfigurationError('Catégorie invalide.');
+  // Audit 04 O5 : la clé est GLOBALE, l'identifiant est généré ici — un `id` envoyé par le client
+  // (le client officiel en envoie encore un, et relit l'objet créé) est ignoré, jamais une sonde.
+  app.post<{ Body: { name: string } }>('/categories', async (req,reply) => {
+    const { name } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim() || name.length > 200) throw new ConfigurationError('Catégorie invalide.');
     const result = await libraryWrite(requireUser(req).id, async (c) => {
       const existing = await c.query('select id,name,is_builtin from nonengine_categories where owner_id=$1 and name=$2', [requireUser(req).id,name.trim()]);
       if (existing.rows[0]) return existing.rows[0];
-      const { rows: [row] } = await c.query('insert into nonengine_categories (id,owner_id,name) values (coalesce($1::uuid,gen_random_uuid()),$2,$3) returning id,name,is_builtin', [id ?? null,requireUser(req).id,name.trim()]);
+      const { rows: [row] } = await c.query('insert into nonengine_categories (owner_id,name) values ($1,$2) returning id,name,is_builtin', [requireUser(req).id,name.trim()]);
       return row;
     });
     return reply.code(201).send(result);
@@ -141,10 +143,10 @@ export async function libraryRoutes(app: FastifyInstance) {
     if (name !== undefined || !partial) { if (typeof name !== 'string' || !name.trim() || name.length > 200) throw new ConfigurationError('Nom de plafond invalide.'); }
     if (cap !== undefined || !partial) { if (!Number.isInteger(cap) || Number(cap) < 1 || Number(cap) > 32767) throw new ConfigurationError('Limite par tour invalide : entier ≥ 1 attendu.'); }
   };
-  app.post<{ Body: { id?: string; name: string; cap_per_turn: number } }>('/groups', async (req,reply) => {
-    const { id, name, cap_per_turn } = req.body ?? {};
+  // Identifiant généré ici, `id` client ignoré (audit 04 O5, même règle que les étiquettes).
+  app.post<{ Body: { name: string; cap_per_turn: number } }>('/groups', async (req,reply) => {
+    const { name, cap_per_turn } = req.body ?? {};
     validGroup(name,cap_per_turn,false);
-    if (id !== undefined && !uuidPattern.test(id)) throw new ConfigurationError('Identifiant invalide.');
     const uid = requireUser(req).id;
     const row = await libraryWrite(uid, async (c) => {
       const existing = await c.query('select id,name,cap_per_turn from nonengine_groups where owner_id=$1 and name=$2', [uid,name.trim()]);
@@ -152,7 +154,7 @@ export async function libraryRoutes(app: FastifyInstance) {
         if (existing.rows[0].cap_per_turn !== cap_per_turn) throw new ConfigurationError('Un plafond de même nom a une autre limite.');
         return existing.rows[0];
       }
-      const { rows: [created] } = await c.query('insert into nonengine_groups (id,owner_id,name,cap_per_turn) values (coalesce($1::uuid,gen_random_uuid()),$2,$3,$4) returning id,name,cap_per_turn', [id ?? null,uid,name.trim(),cap_per_turn]);
+      const { rows: [created] } = await c.query('insert into nonengine_groups (owner_id,name,cap_per_turn) values ($1,$2,$3) returning id,name,cap_per_turn', [uid,name.trim(),cap_per_turn]);
       return created;
     });
     return reply.code(201).send(row);

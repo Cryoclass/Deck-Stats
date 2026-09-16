@@ -200,3 +200,27 @@ test('supprimer le deck d’un autre compte répond 404 et ne supprime rien ; le
   assert.equal(own.statusCode,200,own.body);assert.deepEqual(own.json(),{ ok:true });
   assert.equal((await inject('GET',`/api/decks/${id}`,{ session:a.session })).statusCode,404);
 });
+
+// ─── 4. Étiquettes et plafonds : identifiant généré par le serveur, jamais choisi par le client (04 O5) ───
+
+test('un `id` fourni par le client pour une étiquette ou un plafond est ignoré : aucune sonde d’existence entre comptes',async () => {
+  const catA=await inject('POST','/api/library/categories',{ session:a.session,payload:{ name:'Étiquette A' } });
+  assert.equal(catA.statusCode,201,catA.body);
+  const catId=catA.json().id as string;assert.match(catId,/^[0-9a-f-]{36}$/);
+  // B rejoue l'UUID de A (sonde P4 de l'audit : 500 « nonengine_categories_pkey » avant correction).
+  const probe=await inject('POST','/api/library/categories',{ session:b.session,payload:{ id:catId,name:'Sonde' } });
+  assert.equal(probe.statusCode,201,probe.body);assert.notEqual(probe.json().id,catId);assert.equal(probe.json().name,'Sonde');
+  const garbage=await inject('POST','/api/library/categories',{ session:b.session,payload:{ id:'pas-un-uuid',name:'Sonde 2' } });
+  assert.equal(garbage.statusCode,201,garbage.body);assert.match(garbage.json().id,/^[0-9a-f-]{36}$/);
+  const libA=await inject('GET','/api/library',{ session:a.session });
+  assert.deepEqual(libA.json().categories.find((c: { id: string }) => c.id===catId)?.name,'Étiquette A','étiquette de A intacte');
+
+  const groupA=await inject('POST','/api/library/groups',{ session:a.session,payload:{ name:'Plafond A',cap_per_turn:1 } });
+  assert.equal(groupA.statusCode,201,groupA.body);
+  const groupId=groupA.json().id as string;
+  const probeGroup=await inject('POST','/api/library/groups',{ session:b.session,payload:{ id:groupId,name:'Sonde',cap_per_turn:2 } });
+  assert.equal(probeGroup.statusCode,201,probeGroup.body);assert.notEqual(probeGroup.json().id,groupId);
+  const libB=await inject('GET','/api/library',{ session:b.session });
+  assert.deepEqual(libB.json().groups.map((g: { name: string; cap_per_turn: number }) => [g.name,g.cap_per_turn]),[['Sonde',2]]);
+  assert.equal((await query('select count(*)::int as n from nonengine_groups where id=$1',[groupId])).rows[0].n,1);
+});

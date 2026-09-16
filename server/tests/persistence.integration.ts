@@ -294,9 +294,11 @@ test('JSON import atomically merges global annotations (profiles and caps includ
 });
 
 test('global annotations persist across decks while cross-account category writes are rejected',async () => {
-  const id=randomUUID();
-  const cat=await app.inject({ method:'POST',url:'/library/categories',payload:{ id,name:'Manual' } });
-  assert.equal(cat.statusCode,201,cat.body);assert.equal(cat.json().id,id);
+  // Audit 04 O5 : l'identifiant est généré par le serveur ; celui envoyé par le client (le client
+  // officiel en envoie encore un) est ignoré. Garde complète dans auth.integration.ts.
+  const clientId=randomUUID();
+  const cat=await app.inject({ method:'POST',url:'/library/categories',payload:{ id:clientId,name:'Manual' } });
+  assert.equal(cat.statusCode,201,cat.body);const id=cat.json().id as string;assert.notEqual(id,clientId);assert.match(id,/^[0-9a-f-]{36}$/);
   const assigned=await app.inject({ method:'POST',url:'/library/card-categories',payload:{ card_id:100,category_id:id } });assert.equal(assigned.statusCode,201,assigned.body);
   const hopt=await app.inject({ method:'PUT',url:'/library/flags/100',payload:{ is_hopt:true } });assert.equal(hopt.statusCode,200,hopt.body);
   const forbidden=await app.inject({ method:'POST',url:'/library/card-categories',headers:{ 'x-test-owner':'other' },payload:{ card_id:100,category_id:id } });assert.equal(forbidden.statusCode,404);
