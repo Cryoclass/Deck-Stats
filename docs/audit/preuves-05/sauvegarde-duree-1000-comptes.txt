@@ -1,0 +1,6 @@
+# Étapes de backup.sh rejouées à la main sur le jeu synthétique de 1 000 comptes (base de 506 Mo, conteneur jetable)
+pg_dump | gzip = 10 s (archive 40 655 893 octets)
+restauration dans ygo_verify = 18 s
+empreinte (fingerprint.sql) de ygo_verify = 15 s
+empreinte de la base vivante = 17 s (backup.sh la calcule avant l'export puis après la restauration)
+total ≈ 77 s ; en déploiement, cette sauvegarde pré-migration se fait app ARRÊTÉE (deploy/lib.sh:360-374)

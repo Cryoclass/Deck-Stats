@@ -1,0 +1,428 @@
+PAGES MESURÉES 74
+
+=== PAIRES TEXTE/FOND OPAQUE — toutes (ratio, taille, occurrences, pages, exemples) ===
+KO  1.21  #1c2029 sur #0a0b0e   10px w700 n=   2 pages=2 | ↓S \ U→
+KO  1.29  #242832 sur #0f1116   10px w400 n=   6 pages=2 | C(D,5) mains / exact / sixième pioche identifiée
+KO  1.39  #272b35 sur #0a0b0e   10px w400 n=   6 pages=2 | Matrice départs théoriques × non-engine  / 0
+KO  1.39  #272b35 sur #0a0b0e   10px w700 n=  11 pages=2 | 0
+KO  1.4   #2a2e3a sur #0f1116   10px w400 n=  33 pages=2 | sixième pioche identifiée / exact / −1 : −1.25% / C(D,5) mains
+KO  1.53  #30353f sur #0f1116   12px w400 n=  20 pages=2 | 0 / — / brick 4.54% · E[red.] 0.06 / E[S]
+KO  1.56  #333a4a sur #151822   11px w400 n=   3 pages=1 | poser d’abord une étiquette non-engine / aucun
+KO  1.63  #8fbfa6 sur #469c6a   10px w400 n=   1 pages=1 | 19.6
+KO  1.66  #333a4a sur #0f1116    9px w400 n=  90 pages=5 | départs ≥1 (premier) / départs
+KO  1.66  #333a4a sur #0f1116   10px w400 n=  40 pages=9 | 15 sept. 26 / Entrée ajoute le premier résultat · Écha / main : 40 / passcode 9674034
+KO  1.66  #333a4a sur #0f1116   11px w400 n=  28 pages=16 | ✕ / source inconditionnelle / (optionnel)
+KO  1.66  #333a4a sur #0f1116   14px w400 n=   9 pages=1 | supprimer
+KO  1.66  #333a4a sur #0f1116   12px w400 n=   2 pages=1 | ✕
+KO  1.73  #333a4a sur #0a0b0e   10px w400 n=  28 pages=10 | enregistré 10:04 / deck vide
+KO  1.73  #333a4a sur #0a0b0e   10px w700 n=  14 pages=13 | ↓S \ U→
+KO  1.73  #333a4a sur #0a0b0e   11px w400 n=  12 pages=3 | Aucune carte. / Les decks et annotations sont propres à  / L'inscription nécessite un code d'invita
+KO  1.75  #3d414e sur #151822   14px w400 n= 145 pages=9 | +
+KO  1.75  #383e49 sur #0f1116   12px w400 n=  20 pages=2 | 0 / — / brick 2.20% · E[red.] 0.09 / E[S]
+KO  1.76  #8cb9a2 sur #419062   10px w400 n=   1 pages=1 | 18.0
+KO  1.91  #8ab29e sur #3c855b   10px w400 n=   1 pages=1 | 16.4
+KO  1.97  #3e4555 sur #0f1116   10px w400 n=  42 pages=13 | sixième pioche identifiée / exact / C(D,5) mains
+KO  1.97  #41454f sur #0f1116   12px w600 n=   2 pages=2 | Premier · 5 cartes / Second · 5 cartes + pioche
+KO  2.1   #4a5265 sur #1b1f2a   12px w500 n=  27 pages=10 | Enregistrer / Échanger / Chiffres à jour
+KO  2.1   #4a5265 sur #1b1f2a   10px w400 n=   9 pages=1 | étiquette
+KO  2.2   #035a3f sur #059669   11px w500 n=  16 pages=15 | enregistrer
+KO  2.2   #035a3f sur #059669   12px w500 n=   3 pages=1 | Ajouter
+KO  2.2   #035a3f sur #059669   14px w500 n=   3 pages=1 | Importer le texte
+KO  2.27  #4a5265 sur #151822   10px w400 n=   2 pages=1 | Profil non-engine (compte)
+KO  2.42  #4a5265 sur #0f1116   16px w400 n=  12 pages=5 | ✕ / +
+KO  2.42  #4a5265 sur #0f1116   11px w400 n= 124 pages=19 | Le delta se lit B − A : A est l'état de  / Effect Monster · Pyro · FIRE / entre / S
+KO  2.42  #4a5265 sur #0f1116   12px w500 n=  54 pages=11 | ▾ / 2 cartes
+KO  2.42  #4a5265 sur #0f1116   10px w400 n= 235 pages=14 | −1 : −1.25% / C(D,5) mains / exact / sixième pioche identifiée
+KO  2.42  #4a5265 sur #0f1116   14px w400 n=   9 pages=1 | +
+KO  2.52  #4a5265 sur #0a0b0e   11px w400 n=  84 pages=21 | probabilités & mains / en ligne / ▾ Extra / Side — éditables, exclus des c / 60 mains affichées
+KO  2.52  #4a5265 sur #0a0b0e    9px w500 n= 134 pages=9 | C
+KO  2.52  #4a5265 sur #0a0b0e   24px w400 n=  18 pages=9 | +
+KO  2.52  #4a5265 sur #0a0b0e   10px w400 n= 148 pages=17 | Ajouter / 3518 ms / Sources de start disponibles dans la mai / Matrice départs théoriques × non-engine 
+KO  2.52  #4a5265 sur #0a0b0e   10px w700 n=  78 pages=13 | 0
+KO  2.52  #4a5265 sur #0a0b0e   12px w400 n=  22 pages=3 | ▸ / probabilités & mains
+KO  2.66  #809a8f sur #2a5940   10px w400 n=   1 pages=1 | 10.6
+KO  2.77  #56585f sur #0a0b0e   11px w400 n=   6 pages=1 | + Ajouter / Fiche imprimable
+KO  2.77  #56585f sur #0a0b0e   12px w500 n=   6 pages=2 | ⇄ Comparer
+KO  2.8   #e8eaf0 sur #469c6a   10px w400 n=  14 pages=13 | 19.6 / 21.1
+KO  2.81  #595c64 sur #0f1116   11px w400 n=   2 pages=1 | Comparer au deck de base
+KO  2.86  #e8eaf0 sur #459a69   10px w400 n=   8 pages=7 | 20.8
+KO  2.89  #7d958b sur #264f39   10px w400 n=   1 pages=1 | 9.2
+KO  2.96  #5d5f64 sur #0f1116   12px w400 n=  10 pages=2 | 4.54% / 2.16 / 2.20% / 2.61
+KO  3     #596071 sur #0f1116   12px w400 n= 140 pages=13 | 0 / — / brick 2.20% · E[red.] 0.09 / E[S]
+KO  3.16  #7b8e87 sur #214332   10px w400 n=   1 pages=1 | 7.6
+KO  3.19  #737781 sur #252a37   12px w400 n=   4 pages=1 | +
+KO  3.22  #e8eaf0 sur #419062   10px w400 n=   6 pages=6 | 18.0
+KO  3.24  #7a8c86 sur #204030   10px w400 n=   1 pages=1 | 7.1
+KO  3.34  #3a715e sur #0f1116   20px w600 n=   2 pages=1 | 95.5%
+KO  3.51  #6b7488 sur #1b1f2a   10px w400 n=  28 pages=4 | 40 c. / 0 c.
+KO  3.51  #6b7488 sur #1b1f2a   11px w400 n=  44 pages=14 | 40 cartes / ×3 / ×
+KO  3.51  #6b7488 sur #1b1f2a   12px w400 n=  23 pages=11 | 13 / Extra 13 / 0
+KO  3.65  #7d808a sur #252a37   12px w600 n=   2 pages=2 | Second · 5 cartes + pioche / Premier · 5 cartes
+KO  3.73  #e8eaf0 sur #3c855b   10px w400 n=   6 pages=6 | 16.4
+KO  3.78  #6b7488 sur #151822   11px w400 n=  45 pages=16 | Second · 5 + pioche / Premier · 5
+KO  3.78  #6b7488 sur #151822   12px w400 n=  10 pages=4 | Premier · 5 / Profil inchangé / Inscription / Connexion
+KO  3.85  #737c7c sur #13221c   10px w400 n=   1 pages=1 | 3.1
+KO  3.92  #72797a sur #111c19   10px w400 n=   1 pages=1 | 2.3
+KO  3.94  #717778 sur #101816   10px w400 n=   1 pages=1 | 1.8
+KO  3.94  #717779 sur #101917   10px w400 n=   1 pages=1 | 1.9
+KO  3.94  #6e6f74 sur #0a0b0e   10px w400 n=   5 pages=1 | 0.0
+KO  3.95  #6e7175 sur #0b0e10   10px w400 n=   1 pages=1 | 0.3
+KO  3.95  #6f7175 sur #0b0f10   10px w400 n=   1 pages=1 | 0.5
+KO  3.96  #717378 sur #0f1116   12px w400 n=  10 pages=2 | 2.20% / 2.61 / 4.54% / 2.16
+KO  3.96  #707476 sur #0d1313   10px w400 n=   1 pages=1 | 1.0
+KO  3.96  #6f7175 sur #0c0f10   10px w400 n=   1 pages=1 | 0.5
+KO  4.03  #6b7488 sur #0f1116   16px w400 n= 451 pages=20 | ⋯ / ▶
+KO  4.03  #6b7488 sur #0f1116   11px w400 n=  20 pages=3 | A — référence / B — variante / Nouveau combo / Nom du deck
+KO  4.03  #6b7488 sur #0f1116   12px w500 n= 326 pages=17 | Combos & catégories / 0 / — / brick 4.54% · E[red.] 0.06
+KO  4.03  #6b7488 sur #0f1116   10px w400 n=   4 pages=1 | 3
+KO  4.03  #6b7488 sur #0f1116   14px w600 n=  12 pages=2 | n/d / …
+KO  4.2   #6b7488 sur #0a0b0e   12px w400 n=  63 pages=17 | ← Decks / 7 copies · 5 cartes · 17.5% du deck / n / importance non-engine
+KO  4.2   #6b7488 sur #0a0b0e   11px w400 n=  61 pages=16 | contexte / Les paires et leurs conditions appartien / Étiquettes non-engine (compte) / limite
+KO  4.2   #6b7488 sur #0a0b0e   14px w400 n=   4 pages=2 | Calcul initial des statistiques… / Importe un deck (fichier YDK ou liste co
+OK  4.61  #ffffff sur #5865f2   14px w500 n=   6 pages=2 | Se connecter avec Discord / Créer un compte avec Discord
+OK  5.11  #7e8595 sur #0f1116   12px w600 n=  14 pages=13 | Second · 5 cartes + pioche / Premier · 5 cartes
+OK  5.57  #000000 sur #059669   12px w500 n=  34 pages=13 | + Nouveau deck / Enregistrer / Télécharger le PDF
+OK  5.57  #000000 sur #059669   14px w500 n=   9 pages=3 | Comparer / Se connecter / Créer le compte
+OK  5.74  #666666 sur #ffffff   10px w400 n=   3 pages=1 | 15 septembre 2026 · ≥ 1 départ = P(S ≥ 1
+OK  5.74  #666666 sur #ffffff   11px w400 n=  50 pages=1 | ≥ 1 départ
+OK  5.77  #b88d20 sur #1b1815   11px w400 n=   3 pages=1 | ✕
+OK  5.93  #e8eaf0 sur #2e6245   10px w400 n=   8 pages=7 | 12.6
+OK  6.43  #9aa2b5 sur #1b1f2a   12px w400 n=   6 pages=2 | Main 40 / filtrer par requête
+OK  6.43  #9aa2b5 sur #1b1f2a   10px w400 n=   2 pages=2 | Recalcul…
+OK  6.67  #e8eaf0 sur #2a5940   10px w400 n=   6 pages=6 | 10.6
+OK  6.78  #e8eaf0 sur #2a583f   10px w400 n=   8 pages=7 | 11.2
+OK  6.83  #f87171 sur #0f1116   14px w600 n=  22 pages=2 | 5%
+OK  6.92  #9aa2b5 sur #151822   14px w400 n= 661 pages=9 | −
+OK  6.99  #065f46 sur #e7f8f2   12px w700 n=  18 pages=1 | + Entre
+OK  7.3   #991b1b sur #fdecec   12px w700 n=  18 pages=1 | − Sort
+OK  7.38  #9aa2b5 sur #0f1116   12px w500 n= 142 pages=10 | Lier combo / Sélection / Garder Impermanence pour Phantom of Yube
+OK  7.38  #9aa2b5 sur #0f1116   14px w400 n=   3 pages=1 | Annuler
+OK  7.69  #9aa2b5 sur #0a0b0e   14px w400 n=  12 pages=4 | Mes decks
+OK  7.69  #9aa2b5 sur #0a0b0e   12px w400 n=  67 pages=21 | E2E / Ryzeal / Sélection : −0 / +0 / Vide
+OK  7.69  #9aa2b5 sur #0a0b0e   11px w400 n=  16 pages=15 | + critère
+OK  7.72  #e8eaf0 sur #264f39   10px w400 n=   6 pages=6 | 9.2
+OK  8.21  #cfae42 sur #1b1815   11px w400 n=   3 pages=1 | ≥
+OK  8.52  #4d4d4d sur #ffffff   11px w400 n=   2 pages=1 | Aucun échange (deck de base)
+OK  8.61  #cdac42 sur #0f1116   11px w400 n=   9 pages=1 | requiert en deck :
+OK  8.91  #c7ccd8 sur #252a37   10px w600 n=  53 pages=20 | E / V
+OK  9.07  #e8eaf0 sur #214332   10px w400 n=   6 pages=6 | 7.6
+OK  9.14  #fca5a5 sur #25161b   12px w700 n=  16 pages=1 | − Sort
+OK  9.27  #72c0e5 sur #0a1319   11px w400 n=   2 pages=2 | Recalcul… Statistiques de la version pré
+OK  9.33  #fca5a5 sur #151822   12px w400 n=   1 pages=1 | Retirer du deck
+OK  9.46  #e8eaf0 sur #333a4a   11px w400 n=  45 pages=16 | Premier · 5 / Second · 5 + pioche
+OK  9.46  #e8eaf0 sur #333a4a   12px w400 n=   9 pages=3 | Second · 5 + pioche / Connexion / Inscription
+OK  9.51  #e8eaf0 sur #204030   10px w400 n=   6 pages=6 | 7.1
+OK  9.78  #000000 sur #f59e0b   11px w500 n=   3 pages=1 | Reprendre
+OK  10.23 #bdbfc4 sur #0f1116   12px w400 n=  70 pages=13 | 2.20% / 2.61 / 4.54% / 2.16
+OK  10.23 #c7ccd8 sur #1b1f2a   11px w400 n=   4 pages=1 | Maxx "C"
+OK  10.62 #7dd3fc sur #151822   12px w400 n=   1 pages=1 | ✓
+OK  10.75 #a7f3d0 sur #0f332b   11px w400 n=   2 pages=1 | ×1 → +1
+OK  10.86 #6ee7b7 sur #0f2221   12px w700 n=  16 pages=1 | + Entre
+OK  10.89 #000000 sur #a0c855   14px w700 n=  11 pages=1 | 9
+OK  10.89 #000000 sur #a0c855   12px w700 n=   4 pages=1 | 9
+OK  10.89 #fcd34d sur #2d210e   11px w400 n=   6 pages=2 | 39 cartes / 0 cartes
+OK  11.01 #c7ccd8 sur #151822   11px w500 n=   1 pages=1 | Snake-Eye Ash
+OK  11.01 #c7ccd8 sur #151822   12px w400 n=   6 pages=2 | Détails de la carte / Flexible / Précoce
+OK  11.03 #000000 sur #81ce70   14px w700 n=   7 pages=1 | 10
+OK  11.03 #000000 sur #81ce70   12px w700 n=   2 pages=1 | 10
+OK  11.19 #e8eaf0 sur #1b3428   10px w400 n=   8 pages=7 | 5.9
+OK  11.27 #e8eaf0 sur #1b3327   10px w400 n=   8 pages=7 | 5.8
+OK  11.39 #e7d27e sur #221a0e   12px w400 n=   3 pages=1 | Clique les cartes à basculer en Starter.
+OK  11.61 #e8eaf0 sur #1a3126   10px w400 n=   8 pages=7 | 5.5
+OK  11.74 #c7ccd8 sur #0f1116   14px w600 n=  18 pages=1 | 0 / 1
+OK  11.74 #c7ccd8 sur #0f1116   11px w400 n=   8 pages=2 | 0 / Recopier depuis second
+OK  11.74 #c7ccd8 sur #0f1116   11px w700 n=  18 pages=1 | Premier
+OK  11.92 #e8eaf0 sur #252a37   12px w500 n=  91 pages=16 | Annoter / Sélection / Voir ces mains / Combos & catégories
+OK  11.92 #e8eaf0 sur #252a37   12px w600 n=  14 pages=13 | Premier · 5 cartes / Second · 5 cartes + pioche
+OK  11.96 #fcd34d sur #221a0e   11px w400 n=  16 pages=15 | 1 carte non-engine sans profil, non comp / Deck de 0 cartes — hors bornes 40–60 (§D
+OK  12.24 #c7ccd8 sur #0a0b0e   12px w500 n=  12 pages=4 | ⇄ Comparer / 0.50 / + Ajouter une carte
+OK  12.24 #c7ccd8 sur #0a0b0e   12px w600 n=  17 pages=10 | Extra deck
+OK  12.24 #c7ccd8 sur #0a0b0e   11px w400 n=  17 pages=10 | + Ajouter
+OK  12.39 #6ee7b7 sur #0f1116   14px w600 n=  40 pages=3 | 95% / 5
+OK  12.39 #6ee7b7 sur #0f1116   12px w500 n=  28 pages=4 | Ouvrir
+OK  12.39 #6ee7b7 sur #0f1116   20px w600 n=  30 pages=14 | 95.5% / —
+OK  12.39 #6ee7b7 sur #0f1116   11px w400 n=   6 pages=1 | 5
+OK  12.63 #333333 sur #ffffff   12px w400 n=  11 pages=1 | Garder Impermanence pour Phantom of Yube
+OK  12.89 #e8eaf0 sur #162820   10px w400 n=   8 pages=7 | 4.2
+OK  13.1  #fcd34d sur #0f1116   12px w400 n=   5 pages=2 | 2 / Premier · 5 cartes : analyse indisponibl
+OK  13.1  #fcd34d sur #0f1116   11px w400 n=   2 pages=1 | plan incomplet — à terminer
+OK  13.64 #e8eaf0 sur #14221d   10px w400 n=   8 pages=7 | 3.4
+OK  13.65 #fcd34d sur #0a0b0e   12px w500 n=   9 pages=2 | Étiquetées sans profil — non comptées da / 1 copies · 1 cartes · 2.5% du deck / Matrice indisponible. Impossib
+OK  13.67 #a7f3d0 sur #0b1c1a   11px w400 n=   3 pages=1 | Prêt
+OK  13.73 #e8eaf0 sur #13221c   10px w400 n=  14 pages=13 | 3.1 / 3.3
+OK  13.85 #fde68a sur #221a0e   12px w400 n=   3 pages=1 | Modifications non enregistrées retrouvée
+OK  13.85 #fde68a sur #221a0e   11px w400 n=   3 pages=1 | Ignorer
+OK  13.85 #fde68a sur #221a0e   12px w600 n=   3 pages=1 | Mode Starter
+OK  14.2  #fde68a sur #1b1815   11px w400 n=   3 pages=1 | ▤ WANTED: Seeker of Sinful Spoils
+OK  14.42 #e8eaf0 sur #111d19   10px w400 n=   8 pages=7 | 2.6
+OK  14.52 #e8eaf0 sur #111c19   10px w400 n=   6 pages=6 | 2.3
+OK  14.6  #fde68a sur #1b150b   11px w400 n=   3 pages=1 | 0 modif.
+OK  14.73 #e8eaf0 sur #151822   11px w400 n= 408 pages=9 | 3 / 2
+OK  14.73 #e8eaf0 sur #151822   14px w400 n=   3 pages=1 | −
+OK  14.78 #fde68a sur #19130a   11px w400 n=   3 pages=1 | Terminer
+OK  14.87 #e8eaf0 sur #101917   10px w400 n=   6 pages=6 | 1.9
+OK  14.96 #e8eaf0 sur #101816   10px w400 n=   6 pages=6 | 1.8
+OK  15.61 #e8eaf0 sur #0d1313   10px w400 n=   6 pages=6 | 1.0
+OK  15.7  #e8eaf0 sur #0f1116   16px w600 n=  17 pages=4 | Comparer deux decks / Ajouter une carte / Yubel / Nouveau deck
+OK  15.7  #e8eaf0 sur #0f1116   14px w400 n=  11 pages=2 | Snake-Eye Oak / Snake-Eyes Poplar / Called by the Grave Snake-Eye Oak
+OK  15.7  #e8eaf0 sur #0f1116   12px w600 n=  19 pages=15 | Départs théoriques / Inventaire
+OK  15.7  #e8eaf0 sur #0f1116   12px w400 n=  89 pages=13 | 4.54% / 2.16 / Board breaker / 2.20%
+OK  15.7  #e8eaf0 sur #0f1116   14px w600 n=   7 pages=2 | Snake-Eye Ash / 95.5%
+OK  15.7  #e8eaf0 sur #0f1116   11px w600 n=  42 pages=1 | 95.5%
+OK  15.84 #e8eaf0 sur #0c1112   10px w400 n=   8 pages=7 | 0.8
+OK  15.87 #e8eaf0 sur #0c1011   10px w400 n=   8 pages=7 | 0.8
+OK  15.97 #e8eaf0 sur #0c0f11   10px w400 n=   8 pages=7 | 0.6
+OK  16.03 #e8eaf0 sur #0c0f10   10px w400 n=   6 pages=6 | 0.5
+OK  16.05 #e8eaf0 sur #0b0f10   10px w400 n=   6 pages=6 | 0.5
+OK  16.14 #e8eaf0 sur #0b0e10   10px w400 n=  14 pages=13 | 0.3 / 0.5
+OK  16.21 #e8eaf0 sur #0b0d0f   10px w400 n=  24 pages=7 | 0.3
+OK  16.35 #e8eaf0 sur #0a0b0e   10px w400 n=  78 pages=13 | 0.0
+OK  16.36 #e8eaf0 sur #0a0b0e   14px w700 n=  28 pages=19 | YGO / Probabilités
+OK  16.36 #e8eaf0 sur #0a0b0e   12px w500 n=  14 pages=2 | Pièces de combo 2-cartes / Garder Impermanence pour Phantom of Yube
+OK  16.36 #e8eaf0 sur #0a0b0e   16px w600 n=   3 pages=1 | Snake-Eye Fiendsmith — plans de side
+OK  16.36 #e8eaf0 sur #0a0b0e   18px w700 n=   6 pages=2 | YGO
+OK  21    #000000 sur #ffffff   16px w600 n=  13 pages=1 | Snake-Eye Fiendsmith — plans de side / Yubel
+OK  21    #000000 sur #ffffff   11px w700 n=  70 pages=1 | Premier / 95.5%
+OK  21    #000000 sur #ffffff   11px w400 n=   2 pages=1 | plan incomplet — à terminer
+
+=== TEXTES SUR IMAGE OU FOND TRANSLUCIDE (ratio = pire cas noir/blanc) ===
+KO  1.56  #333a4a sur #151822…#151822 11px | aucun | px-2 py-1 text-[11px] text-ink-600 | editor-card-menu-1440,editor-card-menu-768
+KO  1.56  #333a4a sur #151822…#151822 11px | poser d’abord une étiquette non-engine | px-2 py-1 text-[11px] text-ink-600 | editor-card-menu-360
+KO  1.66  #333a4a sur #0f1116…#0f1116 10px | Entrée ajoute le premier résultat · Écha |  | editor-add-card-1440,editor-add-card-768
+KO  1.66  #333a4a sur #0f1116…#0f1116 10px | main : 40 | tnum | editor-add-card-1440,editor-add-card-768
+KO  1.66  #333a4a sur #0f1116…#0f1116 10px | passcode 9674034 | tnum mt-2 text-[10px] text-ink-600 | editor-card-detail-360,editor-card-detail-768
+KO  1.73  #333a4a sur #0a0b0e…#0a0b0e 10px | enregistré 10:04 | text-[10px] text-ink-600 | editor-add-card-360,editor-menu-nonengine-360
+KO  2.1   #4a5265 sur #1b1f2a…#1b1f2a 12px | Enregistrer | flex items-center gap-1.5 rounded px-3 py-2 text-xs font-med | editor-add-card-360,editor-menu-nonengine-360
+KO  2.27  #4a5265 sur #151822…#151822 10px | Morte selon la position | px-2 py-0.5 text-[10px] uppercase tracking-wide text-ink-500 | editor-card-menu-1440,editor-card-menu-360,editor-card-menu-768
+KO  2.27  #4a5265 sur #151822…#151822 10px | Étiquette à poser | px-2 py-1 text-[10px] uppercase tracking-wide text-ink-500 | editor-menu-nonengine-1440,editor-menu-nonengine-360,editor-menu-nonengine-768
+KO  2.27  #4a5265 sur #151822…#151822 14px | ✕ | text-ink-500 hover:text-ink-200 | editor-toast-1440,editor-toast-360,editor-toast-768
+KO  2.42  #4a5265 sur #0f1116…#0f1116 10px | −1 : −0.17% | tnum min-w-0 flex-1 whitespace-nowrap text-center text-[10px | editor-add-card-1440
+KO  2.42  #4a5265 sur #0f1116…#0f1116 11px | Effect Monster · Pyro · FIRE | block truncate text-[11px] text-ink-500 | editor-add-card-1440,editor-add-card-768
+KO  2.42  #4a5265 sur #0f1116…#0f1116 12px | ▾ | text-ink-500 | editor-add-card-360,editor-menu-nonengine-360,editor-toast-360
+KO  2.42  #4a5265 sur #0f1116…#0f1116 16px | ✕ | flex h-8 w-8 items-center justify-center rounded text-ink-50 | editor-add-card-360,editor-card-detail-360,editor-card-detail-768
+KO  2.42  #4a5265 sur #0f1116…#0f1116 12px | recherche… | px-2 py-3 text-xs text-ink-500 | editor-add-card-360
+KO  2.52  #4a5265 sur #0a0b0e…#0a0b0e 11px | en ligne | flex items-center gap-1.5 text-[11px] text-ink-500 | editor-add-card-360,editor-menu-nonengine-360
+KO  2.52  #4a5265 sur #0a0b0e…#0a0b0e 9px | S | rounded border border-ink-700 bg-ink-950 px-1 text-[9px] lea | editor-add-card-360
+KO  2.52  #4a5265 sur #0a0b0e…#0a0b0e 9px | C | rounded border border-ink-700 bg-ink-950 px-1 text-[9px] lea | editor-menu-nonengine-360,editor-toast-360
+KO  3.51  #6b7488 sur #1b1f2a…#1b1f2a 11px | 40 cartes | tnum rounded px-1.5 py-0.5 text-[11px] bg-ink-800 text-ink-4 | editor-add-card-360,editor-menu-nonengine-360
+KO  3.78  #6b7488 sur #151822…#151822 11px | Second · 5 + pioche | px-2 py-1 text-[11px] tnum transition-colors text-ink-400 ho | editor-add-card-360,editor-menu-nonengine-360
+KO  3.78  #6b7488 sur #151822…#151822 12px | Profil inchangé | flex cursor-pointer items-center justify-between gap-3 round | editor-menu-nonengine-1440,editor-menu-nonengine-768
+KO  3.78  #6b7488 sur #151822…#151822 14px | Retirée : | text-ink-400 | editor-toast-1440,editor-toast-360,editor-toast-768
+KO  3.87  #6a6b6e sur #030304…#030304 10px | sort | pointer-events-none absolute bottom-0.5 right-0.5 rounded bg | editor-side-1440,editor-side-360,editor-side-768
+KO  4.03  #6b7488 sur #0f1116…#0f1116 11px | A — référence | mb-1 block text-[11px] uppercase tracking-wide text-ink-400 | compare-dialog-360
+KO  4.03  #6b7488 sur #0f1116…#0f1116 16px | ⋯ | flex h-8 w-8 shrink-0 items-center justify-center rounded le | editor-add-card-1440,editor-card-detail-1440
+KO  4.03  #6b7488 sur #0f1116…#0f1116 11px | Effect Monster · Pyro · FIRE | mt-0.5 text-[11px] text-ink-400 | editor-card-detail-1440,editor-card-detail-360,editor-card-detail-768
+KO  4.03  #6b7488 sur #0f1116…#0f1116 12px | Combos & catégories | shrink-0 whitespace-nowrap rounded px-3 py-1 text-xs font-me | editor-toast-360
+KO  4.2   #6b7488 sur #0a0b0e…#0a0b0e 12px | ← Decks | rounded px-2 py-1 text-xs text-ink-400 hover:bg-ink-800 hove | editor-add-card-360,editor-menu-nonengine-360
+KO  4.2   #6b7488 sur #0a0b0e…#0a0b0e 11px | contexte |  | editor-add-card-360,editor-menu-nonengine-360
+OK  5.57  #000000 sur #059669…#059669 12px | Annuler | rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text- | editor-toast-1440,editor-toast-360,editor-toast-768
+OK  5.57  #000000 sur #059669…#059669 12px | Enregistrer | flex items-center gap-1.5 rounded px-3 py-2 text-xs font-med | editor-toast-360
+OK  6.34  #000000 sur #0e96d4…#0e96d4 10px | Fx | rounded bg-sky-500/90 px-1 text-[10px] font-bold text-black | editor-add-card-1440,editor-add-card-360,editor-add-card-768
+OK  6.9   #000000 sur #10a876…#10a876 10px | S | rounded bg-emerald-500/90 px-1 text-[10px] font-bold text-bl | editor-add-card-1440,editor-add-card-768,editor-annoter-1440
+OK  6.92  #9aa2b5 sur #151822…#151822 14px | + | flex h-8 w-8 items-center justify-center text-sm text-ink-30 | editor-add-card-1440,editor-add-card-768,editor-card-detail-768
+OK  6.92  #9aa2b5 sur #151822…#151822 14px | − | flex h-8 w-8 items-center justify-center text-sm text-ink-30 | editor-add-card-768
+OK  7.38  #9aa2b5 sur #0f1116…#0f1116 12px | Starter | flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-m | editor-add-card-360
+OK  7.38  #9aa2b5 sur #0f1116…#0f1116 12px | If this card is Normal or Special Summon | mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-xs le | editor-card-detail-1440,editor-card-detail-360,editor-card-detail-768
+OK  7.38  #9aa2b5 sur #0f1116…#0f1116 12px | Condition | flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-m | editor-card-detail-360
+OK  7.38  #9aa2b5 sur #0f1116…#0f1116 12px | Lier combo | flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-m | editor-menu-nonengine-360,editor-toast-360
+OK  7.69  #9aa2b5 sur #0a0b0e…#0a0b0e 12px | E2E | max-w-[120px] truncate | editor-add-card-360,editor-menu-nonengine-360,editor-toast-360
+
+=== CIBLES TACTILES < 24 px (par largeur) ===
+-- 360 px : 16 cibles distinctes sous 24 px
+   11x20 <button> « ✕ » | text-ink-500 hover:text-ink-200 | editor-toast
+   13x24 <button> « ✕ » | text-ink-500 hover:text-ink-200 | editor-card-detail
+   69x16 <button> « ← Mes decks » | whitespace-nowrap text-xs text-ink-400 hover:text-ink-100 | compare,compare-synthese
+   16x16 <button> « Désactiver pour ce deck » | h-4 w-4 shrink-0 rounded-sm border border-emerald-400 bg-eme | editor-combos
+   96x16 <input> « 0.5 » | w-24 accent-emerald-500 | editor-mains
+   150x16 <button> « Départs théoriques » | min-w-[150px] text-center text-xs font-semibold text-ink-100 | editor-stats
+   102x16 <button> « Premier · 5 cartes » | rounded px-1 text-xs font-semibold text-ink-300 hover:text-i | editor-stats,editor-stats-bas
+   151x16 <button> « Second · 5 cartes + pioche » | rounded px-1 text-xs font-semibold bg-ink-700 text-ink-100 | editor-stats,editor-stats-bas
+   83x16 <button> « ← Plans de side » | whitespace-nowrap text-xs text-ink-400 hover:text-ink-100 | fiche
+   16x16 <input> « on » | h-4 w-4 accent-emerald-500 | fiche
+   17x17 <button> « ✕ » | shrink-0 rounded px-1 text-ink-600 hover:text-red-400 | editor-stats-bas
+   75x20 <button> « supprimer » | ml-auto rounded px-1.5 text-ink-600 hover:bg-red-500/10 hove | editor-combos
+   171x23 <select> « Départs théoriques Redondance Non-engine » | min-w-0 flex-1 rounded border border-ink-700 bg-ink-850 px-1 | editor-stats-bas
+   32x23 <input> « 1 » | tnum w-8 shrink-0 rounded border border-ink-700 bg-ink-850 p | editor-stats-bas
+   32x23 <input> « — » | tnum w-8 shrink-0 rounded border border-ink-700 bg-ink-850 p | editor-stats-bas
+   59x23 <button> « + critère » | mt-1.5 rounded border border-ink-700 px-2 py-0.5 text-[11px] | editor-stats-bas
+-- 768 px : 19 cibles distinctes sous 24 px
+   11x20 <button> « ✕ » | text-ink-500 hover:text-ink-200 | editor-toast
+   13x24 <button> « ✕ » | text-ink-500 hover:text-ink-200 | editor-card-detail
+   69x16 <button> « ← Mes decks » | whitespace-nowrap text-xs text-ink-400 hover:text-ink-100 | compare,compare-synthese
+   16x16 <button> « Désactiver pour ce deck » | h-4 w-4 shrink-0 rounded-sm border border-emerald-400 bg-eme | editor-combos
+   18x16 <button> « ✕ » | ml-auto rounded px-1 text-ink-600 hover:text-red-400 | editor-combos
+   96x16 <input> « 0.5 » | w-24 accent-emerald-500 | editor-mains
+   150x16 <button> « Départs théoriques » | min-w-[150px] text-center text-xs font-semibold text-ink-100 | editor-stats,editor-stats-bas
+   102x16 <button> « Premier · 5 cartes » | rounded px-1 text-xs font-semibold text-ink-300 hover:text-i | editor-stats,editor-stats-bas
+   151x16 <button> « Second · 5 cartes + pioche » | rounded px-1 text-xs font-semibold bg-ink-700 text-ink-100 | editor-stats,editor-stats-bas
+   83x16 <button> « ← Plans de side » | whitespace-nowrap text-xs text-ink-400 hover:text-ink-100 | fiche
+   16x16 <input> « on » | h-4 w-4 accent-emerald-500 | fiche
+   17x17 <button> « ✕ » | shrink-0 rounded px-1 text-ink-600 hover:text-red-400 | editor-stats,editor-stats-bas
+   75x20 <button> « supprimer » | ml-auto rounded px-1.5 text-ink-600 hover:bg-red-500/10 hove | editor-combos
+   48x22 <input> « 1 » | tnum w-12 rounded border border-ink-700 bg-ink-850 px-1 py-0 | editor-combos
+   48x23 <input> « 2 » | tnum w-12 rounded border border-ink-700 bg-ink-850 px-1 py-0 | editor-combos
+   579x23 <select> « Départs théoriques Redondance Non-engine » | min-w-0 flex-1 rounded border border-ink-700 bg-ink-850 px-1 | editor-stats,editor-stats-bas
+   32x23 <input> « 1 » | tnum w-8 shrink-0 rounded border border-ink-700 bg-ink-850 p | editor-stats,editor-stats-bas
+   32x23 <input> « — » | tnum w-8 shrink-0 rounded border border-ink-700 bg-ink-850 p | editor-stats,editor-stats-bas
+   59x23 <button> « + critère » | mt-1.5 rounded border border-ink-700 px-2 py-0.5 text-[11px] | editor-stats,editor-stats-bas
+-- 1440 px : 18 cibles distinctes sous 24 px
+   11x20 <button> « ✕ » | text-ink-500 hover:text-ink-200 | editor-toast
+   13x24 <button> « ✕ » | text-ink-500 hover:text-ink-200 | editor-card-detail
+   69x16 <button> « ← Mes decks » | whitespace-nowrap text-xs text-ink-400 hover:text-ink-100 | compare,compare-synthese
+   150x16 <button> « Départs théoriques » | min-w-[150px] text-center text-xs font-semibold text-ink-100 | editor-add-card,editor-annoter,editor-card-detail,editor-card-menu
+   102x16 <button> « Premier · 5 cartes » | rounded px-1 text-xs font-semibold bg-ink-700 text-ink-100 | editor-add-card,editor-annoter,editor-card-detail,editor-card-menu
+   16x16 <button> « Désactiver pour ce deck » | h-4 w-4 shrink-0 rounded-sm border border-emerald-400 bg-eme | editor-combos
+   18x16 <button> « ✕ » | ml-auto rounded px-1 text-ink-600 hover:text-red-400 | editor-combos
+   96x16 <input> « 0.5 » | w-24 accent-emerald-500 | editor-mains
+   83x16 <button> « ← Plans de side » | whitespace-nowrap text-xs text-ink-400 hover:text-ink-100 | fiche
+   16x16 <input> « on » | h-4 w-4 accent-emerald-500 | fiche
+   17x17 <button> « ✕ » | shrink-0 rounded px-1 text-ink-600 hover:text-red-400 | editor-add-card,editor-annoter,editor-card-detail,editor-card-menu
+   75x20 <button> « supprimer » | ml-auto rounded px-1.5 text-ink-600 hover:bg-red-500/10 hove | editor-combos
+   48x22 <input> « 1 » | tnum w-12 rounded border border-ink-700 bg-ink-850 px-1 py-0 | editor-combos
+   312x23 <select> « Départs théoriques Redondance Non-engine » | min-w-0 flex-1 rounded border border-ink-700 bg-ink-850 px-1 | editor-add-card,editor-annoter,editor-card-detail,editor-card-menu
+   32x23 <input> « 1 » | tnum w-8 shrink-0 rounded border border-ink-700 bg-ink-850 p | editor-add-card,editor-annoter,editor-card-detail,editor-card-menu
+   32x23 <input> « — » | tnum w-8 shrink-0 rounded border border-ink-700 bg-ink-850 p | editor-add-card,editor-annoter,editor-card-detail,editor-card-menu
+   59x23 <button> « + critère » | mt-1.5 rounded border border-ink-700 px-2 py-0.5 text-[11px] | editor-add-card,editor-annoter,editor-card-detail,editor-card-menu
+   48x23 <input> « 2 » | tnum w-12 rounded border border-ink-700 bg-ink-850 px-1 py-0 | editor-combos
+
+=== CIBLES 24–31 px à 360 (sous la recommandation 32 px / WCAG 2.5.5 44 px) ===
+58 cibles distinctes
+   214x24 <input> « Snake-Eye Fiendsmith v2 » | compare-dialog,home
+   214x24 <input> « Snake-Eye Fiendsmith » | compare-dialog,editor-add-card,editor-annoter
+   214x24 <input> « Deck B » | compare-dialog,home
+   61x24 <button> « ← Decks » | editor-add-card,editor-annoter,editor-brouillon
+   68x24 <button> « Annoter » | editor-add-card,editor-annoter,editor-brouillon
+   140x24 <button> « Combos & catégories » | editor-add-card,editor-annoter,editor-brouillon
+   99x24 <button> « Mur de mains » | editor-add-card,editor-annoter,editor-brouillon
+   78x24 <button> « Inventaire » | editor-add-card,editor-annoter,editor-brouillon
+   70x24 <button> « Sélection » | editor-add-card,editor-annoter,editor-brouillon
+   343x24 <button> « ▾ EXTRA / SIDE — ÉDITABLES, EXCLUS DES C » | editor-add-card,editor-vide
+   72x24 <button> « Reprendre » | editor-brouillon
+   95x24 <button> « Plans de side » | editor-combos,editor-inventaire,editor-mains
+   60x24 <button> « Ajouter » | editor-combos
+   191x24 <select> « ＋ et… Snake-Eye Ash Infinite Impermanenc » | editor-combos,editor-inventaire
+   36x24 <input> « 1 » | editor-inventaire
+   191x24 <select> « ou… Snake-Eye Ash Infinite Impermanence  » | editor-inventaire
+   24x24 <button> « ✕ » | editor-inventaire
+   77x24 <button> « Premier · 5 » | editor-mains
+   125x24 <button> « Second · 5 + pioche » | editor-mains
+   50x24 <select> « 30 60 120 240 » | editor-mains
+   109x24 <button> « filtrer par requête » | editor-mains
+   57x24 <button> « tri: note » | editor-mains
+   50x24 <button> « Stats » | editor-stats,editor-stats-bas
+   26x24 <button> « ▶ » | editor-stats
+   96x24 <button> « Voir ces mains » | editor-stats-bas
+   63x24 <button> « Annuler » | editor-toast
+   128x24 <input> « Deck vide » | editor-vide,home-vide,import-dialog
+   99x24 <button> « Créer un deck vide » | import-dialog
+   77x24 <button> « Connexion » | login,register
+   76x24 <button> « Inscription » | login,register
+   68x25 <button> « Premier · 5 » | editor-add-card,editor-annoter,editor-brouillon
+   112x25 <button> « Second · 5 + pioche » | editor-add-card,editor-annoter,editor-brouillon
+   53x25 <button> « Premier » | editor-side
+   52x25 <button> « Second » | editor-side
+   70x25 <button> « enregistrer » | editor-stats-bas
+   260x25 <input> « file » | import-dialog
+   102x26 <button> « Lier combo C » | editor-add-card,editor-annoter,editor-brouillon
+   72x26 <button> « HOPT H » | editor-add-card,editor-annoter,editor-brouillon
+   78x26 <button> « Starter S » | editor-add-card,editor-annoter,editor-brouillon
+   122x26 <button> « Non-engine ▾ N » | editor-add-card,editor-annoter,editor-brouillon
+   86x26 <button> « Profil ▾ D » | editor-add-card,editor-annoter,editor-brouillon
+   95x26 <button> « Condition P » | editor-add-card,editor-annoter,editor-brouillon
+   57x26 <button> « Ignorer » | editor-brouillon
+   96x27 <input> « nommer… » | editor-stats-bas
+   61x28 <button> « E E2E » | compare-dialog,editor-add-card,editor-annoter
+   211x28 <div> « Détails de la carte » | editor-card-menu
+   211x28 <div> « Retirer du deck » | editor-card-menu
+   133x28 <select> « carte A… Snake-Eye Ash Infinite Imperman » | editor-combos
+   133x28 <select> « carte B… Snake-Eye Ash Infinite Imperman » | editor-combos
+   210x28 <div> « Board breaker » | editor-menu-nonengine
+   210x28 <div> « Handtrap » | editor-menu-nonengine
+   210x28 <div> « Profil inchangé ✓ » | editor-menu-nonengine
+   210x28 <div> « Précoce » | editor-menu-nonengine
+   210x28 <div> « Flexible » | editor-menu-nonengine
+   210x28 <div> « Préparée » | editor-menu-nonengine
+   66x28 <button> « V Vide » | editor-vide,home-vide,import-dialog
+   318x29 <button> « Ouvrir » | compare-dialog,home,home-vide
+   129x30 <button> « + Ajouter une carte » | editor-vide
+
+=== TAILLES DE POLICE (éléments texte visibles, cumul par largeur) ===
+360 9px:239 (16%)  10px:322 (22%)  11px:246 (17%)  12px:420 (28%)  14px:156 (11%)  16px:89 (6%)  18px:2 (0%)  20px:2 (0%)  24px:1 (0%)
+768 9px:103 (4%)  10px:776 (31%)  11px:448 (18%)  12px:543 (21%)  14px:422 (17%)  16px:225 (9%)  18px:2 (0%)  20px:4 (0%)  24px:8 (0%)
+1440 9px:108 (3%)  10px:1384 (38%)  11px:536 (15%)  12px:856 (23%)  14px:476 (13%)  16px:254 (7%)  18px:2 (0%)  20px:26 (1%)  24px:9 (0%)
+
+=== PAR PAGE ===
+compare-1440                   textes=  0 KO=  0 (0%) cibles=3 <24=1 scrollW=1440/1440
+compare-360                    textes=  0 KO=  0 (0%) cibles=3 <24=1 scrollW=360/360
+compare-768                    textes=  0 KO=  0 (0%) cibles=3 <24=1 scrollW=768/768
+compare-dialog-1440            textes= 19 KO=  8 (42%) cibles=23 <24=0 scrollW=1440/1440
+compare-dialog-360             textes= 19 KO=  8 (42%) cibles=21 <24=0 scrollW=360/360
+compare-dialog-768             textes= 19 KO=  8 (42%) cibles=23 <24=0 scrollW=768/768
+compare-synthese-1440          textes=  0 KO=  0 (0%) cibles=3 <24=1 scrollW=1440/1440
+compare-synthese-360           textes=  0 KO=  0 (0%) cibles=3 <24=1 scrollW=360/360
+compare-synthese-768           textes=  0 KO=  0 (0%) cibles=3 <24=1 scrollW=768/768
+editor-add-card-1440           textes= 83 KO= 45 (54%) cibles=124 <24=7 scrollW=1440/1440
+editor-add-card-360            textes= 17 KO= 10 (59%) cibles=46 <24=0 scrollW=360/360
+editor-add-card-768            textes= 28 KO= 18 (64%) cibles=112 <24=0 scrollW=768/768
+editor-annoter-1440            textes= 78 KO= 43 (55%) cibles=117 <24=7 scrollW=1440/1440
+editor-annoter-360             textes= 20 KO= 12 (60%) cibles=44 <24=0 scrollW=360/360
+editor-annoter-768             textes= 24 KO= 16 (67%) cibles=105 <24=0 scrollW=768/768
+editor-brouillon-1440          textes= 30 KO= 17 (57%) cibles=107 <24=0 scrollW=1440/1440
+editor-brouillon-360           textes= 23 KO= 12 (52%) cibles=43 <24=0 scrollW=360/360
+editor-brouillon-768           textes= 25 KO= 14 (56%) cibles=106 <24=0 scrollW=768/768
+editor-card-detail-1440        textes= 81 KO= 45 (56%) cibles=118 <24=8 scrollW=1440/1440
+editor-card-detail-360         textes= 21 KO= 13 (62%) cibles=45 <24=1 scrollW=360/360
+editor-card-detail-768         textes= 24 KO= 16 (67%) cibles=106 <24=1 scrollW=768/768
+editor-card-menu-1440          textes= 80 KO= 45 (56%) cibles=119 <24=7 scrollW=1440/1440
+editor-card-menu-360           textes= 25 KO= 14 (56%) cibles=46 <24=0 scrollW=360/360
+editor-card-menu-768           textes= 26 KO= 18 (69%) cibles=107 <24=0 scrollW=768/768
+editor-combos-1440             textes= 80 KO= 45 (56%) cibles=42 <24=16 scrollW=1440/1440
+editor-combos-360              textes= 24 KO= 16 (67%) cibles=22 <24=6 scrollW=360/360
+editor-combos-768              textes= 28 KO= 20 (71%) cibles=31 <24=9 scrollW=768/768
+editor-inventaire-1440         textes= 82 KO= 40 (49%) cibles=42 <24=7 scrollW=1440/1440
+editor-inventaire-360          textes= 29 KO= 15 (52%) cibles=24 <24=0 scrollW=360/360
+editor-inventaire-768          textes= 31 KO= 15 (48%) cibles=31 <24=0 scrollW=768/768
+editor-mains-1440              textes= 78 KO= 37 (47%) cibles=30 <24=8 scrollW=1440/1440
+editor-mains-360               textes= 26 KO= 12 (46%) cibles=17 <24=1 scrollW=360/360
+editor-mains-768               textes= 26 KO= 12 (46%) cibles=19 <24=1 scrollW=768/768
+editor-menu-nonengine-1440     textes= 79 KO= 43 (54%) cibles=124 <24=7 scrollW=1440/1440
+editor-menu-nonengine-360      textes= 10 KO=  5 (50%) cibles=63 <24=0 scrollW=360/360
+editor-menu-nonengine-768      textes= 25 KO= 16 (64%) cibles=112 <24=0 scrollW=768/768
+editor-mode-starter-1440       textes= 82 KO= 43 (52%) cibles=118 <24=7 scrollW=1440/1440
+editor-mode-starter-360        textes= 25 KO= 13 (52%) cibles=42 <24=0 scrollW=360/360
+editor-mode-starter-768        textes= 27 KO= 15 (56%) cibles=105 <24=0 scrollW=768/768
+editor-panneau-bas-1440        textes= 78 KO= 40 (51%) cibles=117 <24=7 scrollW=1440/1440
+editor-side-1440               textes= 85 KO= 45 (53%) cibles=95 <24=7 scrollW=1440/1440
+editor-side-360                textes= 19 KO= 11 (58%) cibles=41 <24=0 scrollW=360/360
+editor-side-768                textes= 33 KO= 20 (61%) cibles=84 <24=0 scrollW=768/768
+editor-stats-360               textes= 39 KO= 29 (74%) cibles=15 <24=3 scrollW=360/360
+editor-stats-768               textes= 63 KO= 31 (49%) cibles=24 <24=8 scrollW=768/768
+editor-stats-bas-360           textes= 58 KO= 29 (50%) cibles=21 <24=7 scrollW=360/360
+editor-stats-bas-768           textes= 63 KO= 31 (49%) cibles=24 <24=8 scrollW=768/768
+editor-toast-1440              textes= 79 KO= 59 (75%) cibles=115 <24=8 scrollW=1440/1440
+editor-toast-360               textes= 12 KO=  7 (58%) cibles=55 <24=1 scrollW=360/360
+editor-toast-768               textes= 27 KO= 14 (52%) cibles=104 <24=1 scrollW=768/768
+editor-vide-1440               textes= 35 KO= 19 (54%) cibles=25 <24=6 scrollW=1440/1440
+editor-vide-360                textes= 19 KO= 11 (58%) cibles=14 <24=0 scrollW=360/360
+editor-vide-768                textes= 19 KO= 11 (58%) cibles=16 <24=0 scrollW=768/768
+fiche-1440                     textes= 16 KO=  6 (38%) cibles=4 <24=2 scrollW=1440/1440
+fiche-360                      textes= 14 KO=  5 (36%) cibles=4 <24=2 scrollW=360/360
+fiche-768                      textes= 16 KO=  6 (38%) cibles=4 <24=2 scrollW=768/768
+fiche-print-1440               textes= 11 KO=  0 (0%) cibles=0 <24=0 scrollW=1440/1440
+fiche-print-360                textes=  9 KO=  0 (0%) cibles=0 <24=0 scrollW=360/360
+fiche-print-768                textes= 11 KO=  0 (0%) cibles=0 <24=0 scrollW=768/768
+home-1440                      textes= 14 KO=  5 (36%) cibles=19 <24=0 scrollW=1440/1440
+home-360                       textes= 14 KO=  5 (36%) cibles=17 <24=0 scrollW=360/360
+home-768                       textes= 14 KO=  5 (36%) cibles=19 <24=0 scrollW=768/768
+home-vide-1440                 textes= 14 KO=  8 (57%) cibles=7 <24=0 scrollW=1440/1440
+home-vide-360                  textes= 14 KO=  8 (57%) cibles=7 <24=0 scrollW=360/360
+home-vide-768                  textes= 14 KO=  8 (57%) cibles=7 <24=0 scrollW=768/768
+import-dialog-1440             textes= 21 KO= 13 (62%) cibles=15 <24=0 scrollW=1440/1440
+import-dialog-360              textes= 21 KO= 13 (62%) cibles=15 <24=0 scrollW=360/360
+import-dialog-768              textes= 21 KO= 13 (62%) cibles=15 <24=0 scrollW=768/768
+login-1440                     textes=  9 KO=  5 (56%) cibles=6 <24=0 scrollW=1440/1440
+login-360                      textes=  9 KO=  5 (56%) cibles=6 <24=0 scrollW=360/360
+login-768                      textes=  9 KO=  5 (56%) cibles=6 <24=0 scrollW=768/768
+register-1440                  textes= 10 KO=  6 (60%) cibles=8 <24=0 scrollW=1440/1440
+register-360                   textes= 10 KO=  6 (60%) cibles=8 <24=0 scrollW=360/360
+register-768                   textes= 10 KO=  6 (60%) cibles=8 <24=0 scrollW=768/768

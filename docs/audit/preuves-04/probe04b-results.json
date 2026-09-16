@@ -1,0 +1,205 @@
+[
+  {
+    "id": "Q0",
+    "what": "comptes et sessions",
+    "at": "2026-09-15T11:32:53.458Z",
+    "inscriptions": {
+      "a": 201,
+      "b": 201,
+      "c": 201,
+      "d": 201
+    },
+    "A": true,
+    "B": true
+  },
+  {
+    "id": "Q1",
+    "what": "POST /api/decks : 23514 lignes, 977 Kio",
+    "at": "2026-09-15T11:33:54.422Z",
+    "status": 201,
+    "ms": 60884,
+    "loopMaxMs": 12,
+    "dbMaxMs": 134,
+    "samples": 8618
+  },
+  {
+    "id": "Q2",
+    "what": "12 × POST /api/decks (4 000 lignes, 163 Kio) simultanés ; B charge sa session pendant ce temps",
+    "at": "2026-09-15T11:34:31.118Z",
+    "seuleMs": 8663,
+    "rafaleMs": 28018,
+    "statuts": [
+      201
+    ],
+    "dureesMs": [
+      16335,
+      16094,
+      16375,
+      16226,
+      16391,
+      16191,
+      27962,
+      16318,
+      16215,
+      27997,
+      16414,
+      16319
+    ],
+    "meB_avantMs": 11,
+    "meB_pendant": {
+      "n": 1296,
+      "maxMs": 16126,
+      "statuts": [
+        200
+      ]
+    },
+    "boucleMaxMs": 94
+  },
+  {
+    "id": "Q3",
+    "what": "6000 paires (640 Kio) : création puis ré-enregistrement identique",
+    "at": "2026-09-15T11:35:02.768Z",
+    "creation": {
+      "status": 201,
+      "ms": 13269
+    },
+    "put": {
+      "status": 200,
+      "ms": 18289
+    },
+    "loopMaxMs": 10,
+    "dbMaxMs": 449,
+    "samples": 2303
+  },
+  {
+    "id": "Q4",
+    "what": "import : 20000 HOPT (107 Kio)",
+    "at": "2026-09-15T11:36:31.051Z",
+    "status": 201,
+    "ms": 88209,
+    "ecritureBibliothequePendantImport": {
+      "status": 200,
+      "ms": 86706,
+      "finiApresImportMs": 88222
+    }
+  },
+  {
+    "id": "Q5",
+    "what": "POST duplicate / logout sans JSON",
+    "at": "2026-09-15T11:36:32.185Z",
+    "textPlainVide": [
+      201,
+      {
+        "id": "c44d380f-4c25-487f-8632-01a6d19a1397",
+        "revision": 1
+      }
+    ],
+    "formulaireAvecChamp": [
+      415,
+      {
+        "statusCode": 415,
+        "code": "FST_ERR_CTP_INVALID_MEDIA_TYPE",
+        "error": "Unsupported Media Type",
+        "message": "Unsupported Media Type"
+      }
+    ],
+    "formulaireVide": [
+      415,
+      {
+        "statusCode": 415,
+        "code": "FST_ERR_CTP_INVALID_MEDIA_TYPE",
+        "error": "Unsupported Media Type",
+        "message": "Unsupported Media Type"
+      }
+    ],
+    "sansContentType": 201,
+    "decksAvant": 17,
+    "decksApres": 19,
+    "logoutFormulaire": 415
+  },
+  {
+    "id": "Q6",
+    "what": "deux sessions de C, déconnexion de la première",
+    "at": "2026-09-15T11:36:33.548Z",
+    "session1": 401,
+    "session2": 200
+  },
+  {
+    "id": "Q7",
+    "what": "SANS session : catalogue par /%61pi/",
+    "at": "2026-09-15T11:36:33.572Z",
+    "/api/cards/search?q=audit": {
+      "status": 401,
+      "body": "{\"error\":\"non authentifié\"}"
+    },
+    "/%61pi/cards/search?q=audit&limit=100": {
+      "status": 200,
+      "body": "[{\"id\":900000002,\"name\":\"Audit Card Beta\",\"type\":\"Spell Card\",\"race\":null,\"attribute\":null,\"atk\":null,\"def\":null,\"level\":null,\"description\":\"Texte d'effet synthétique B\",\"image_url\":null,\"image_url_small\":null,\"image_url"
+    },
+    "/%61pi/cards?ids=900000001,900000002": {
+      "status": 200,
+      "body": "[{\"id\":900000001,\"name\":\"Audit Card Alpha\",\"type\":\"Effect Monster\",\"race\":null,\"attribute\":null,\"atk\":null,\"def\":null,\"level\":null,\"description\":\"Texte d'effet synthétique A\",\"image_url\":null,\"image_url_small\":null,\"imag"
+    },
+    "/%61pi/cards/abc/image": {
+      "status": 400,
+      "body": "{\"error\":\"passcode invalide\"}"
+    },
+    "/%61pi/library": {
+      "status": 500,
+      "body": "{\"statusCode\":500,\"error\":\"Internal Server Error\",\"message\":\"requireUser appelé hors de la garde auth\"}"
+    },
+    "/%61pi/decks": {
+      "status": 500,
+      "body": "{\"statusCode\":500,\"error\":\"Internal Server Error\",\"message\":\"requireUser appelé hors de la garde auth\"}"
+    }
+  },
+  {
+    "id": "Q9",
+    "what": "relectures",
+    "at": "2026-09-15T11:36:33.737Z",
+    "deleteParB": [
+      200,
+      {
+        "ok": true
+      }
+    ],
+    "deckRelePourA": [
+      200,
+      "Deck de A"
+    ],
+    "apercuForge": 200,
+    "apercuRelu": {
+      "mainSize": 3,
+      "brickRate": 0,
+      "computedAt": "2030-01-01T00:00:00Z",
+      "engineVersion": "n-importe-quoi",
+      "startRateFirst": 1
+    },
+    "limitNegatif": [
+      500,
+      {
+        "statusCode": 500,
+        "code": "2201W",
+        "error": "Internal Server Error",
+        "message": "LIMIT must not be negative"
+      }
+    ],
+    "limitFraction": [
+      500,
+      {
+        "statusCode": 500,
+        "code": "22P02",
+        "error": "Internal Server Error",
+        "message": "invalid input syntax for type bigint: \"0.5\""
+      }
+    ]
+  },
+  {
+    "id": "Q8",
+    "what": "inscription avec un nom affiché de 100 Kio",
+    "at": "2026-09-15T11:36:34.551Z",
+    "status": 201,
+    "body": "(compte créé)",
+    "longueurRelue": 102400
+  }
+]

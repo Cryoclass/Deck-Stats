@@ -1,0 +1,21 @@
+# Caddy 2.11.4 (caddy:2-alpine) avec le bloc de deploy/README.md:75-79 rejoué en HTTP local (scripts/Caddyfile-reproduction),
+# devant l'image de production (TRUST_PROXY=1). 12 connexions depuis la même machine, chacune avec un X-Forwarded-For différent.
+$ for i in $(seq 1 12); do curl -s -o /dev/null -w '%{http_code}' -H "X-Forwarded-For: 198.51.100.$i" -H 'content-type: application/json' \
+    -d '{"email":"x@y.z","password":"12345678"}' http://127.0.0.1:55471/api/auth/login; done
+401 401 401 401 401 401 401 401 401 401 429 429
+# Journal de l'API : "remoteAddress":"172.26.0.1" pour toutes (adresse vue par Caddy, pas l'adresse forgée) :
+# Caddy ne transmet pas un X-Forwarded-For reçu d'un client non déclaré dans trusted_proxies ; la limite de 10/min par IP tient.
+
+# En-têtes de réponse à travers ce Caddy
+$ curl -s -D - -o /dev/null http://127.0.0.1:55471/
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Access-Control-Allow-Credentials: true
+Access-Control-Allow-Origin: http://localhost:8797
+Cache-Control: public, max-age=0
+Content-Length: 431
+Content-Type: text/html; charset=utf-8
+Etag: W/"1af-1a0a5467020"
+Last-Modified: Tue, 15 Sep 2026 13:34:12 GMT
+Via: 1.1 Caddy
+X-Robots-Tag: noindex, nofollow

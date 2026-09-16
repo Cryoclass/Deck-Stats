@@ -1,0 +1,14 @@
+# Forme exacte de la requête de deploy/fingerprint.sql:20 sur une table dont le texte dépasse 1 Go (base de travail jetable audit_fp)
+$ create table big (id int, payload text); insert into big select g, repeat(md5(g::text), 80) from generate_series(1, 430000) g;
+$ select count(*), pg_size_pretty(pg_total_relation_size('big')), sum(length(x::text)) from big x;
+430000|45 MB|1104558895
+$ select md5(coalesce(string_agg(x::text, E'\n' order by x::text), '')) from big x;
+ERROR:  out of memory
+DETAIL:  Cannot enlarge string buffer containing 1073740926 bytes by 2568 more bytes.
+(31 s ; base audit_fp supprimée ensuite)
+
+# Texte agrégé par table sur le jeu synthétique de 1 000 comptes (gen-data.sql)
+deck_side_plans|200000 lignes|16700000 octets
+deck_combo_pairs|200000 lignes|19200000 octets
+deck_cards|899609 lignes|48878769 octets
+deck_side_plan_cards|1199926 lignes|115192897 octets

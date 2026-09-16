@@ -1,0 +1,1167 @@
+[
+ {
+  "t": "2026-09-15T08:26:46.669Z",
+  "msg": "capture login-360"
+ },
+ {
+  "t": "2026-09-15T08:26:46.707Z",
+  "msg": "mesure login-360",
+  "textes": 9,
+  "echecsAA": 5,
+  "cibles": 6,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:26:47.371Z",
+  "msg": "capture register-360"
+ },
+ {
+  "t": "2026-09-15T08:26:47.389Z",
+  "msg": "mesure register-360",
+  "textes": 10,
+  "echecsAA": 6,
+  "cibles": 8,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:26:49.409Z",
+  "msg": "capture login-erreur-360"
+ },
+ {
+  "t": "2026-09-15T08:26:54.488Z",
+  "msg": "capture home-vide-360"
+ },
+ {
+  "t": "2026-09-15T08:26:54.506Z",
+  "msg": "mesure home-vide-360",
+  "textes": 14,
+  "echecsAA": 8,
+  "cibles": 7,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:26:55.136Z",
+  "msg": "capture import-dialog-360"
+ },
+ {
+  "t": "2026-09-15T08:26:55.161Z",
+  "msg": "mesure import-dialog-360",
+  "textes": 21,
+  "echecsAA": 13,
+  "cibles": 15,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:26:56.625Z",
+  "msg": "capture editor-vide-360"
+ },
+ {
+  "t": "2026-09-15T08:26:56.646Z",
+  "msg": "mesure editor-vide-360",
+  "textes": 19,
+  "echecsAA": 11,
+  "cibles": 14,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:05.277Z",
+  "msg": "capture home-360"
+ },
+ {
+  "t": "2026-09-15T08:27:05.300Z",
+  "msg": "mesure home-360",
+  "textes": 14,
+  "echecsAA": 5,
+  "cibles": 17,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:06.190Z",
+  "msg": "capture home-menu-deck-360"
+ },
+ {
+  "t": "2026-09-15T08:27:06.765Z",
+  "msg": "capture compare-dialog-360"
+ },
+ {
+  "t": "2026-09-15T08:27:06.786Z",
+  "msg": "mesure compare-dialog-360",
+  "textes": 20,
+  "echecsAA": 9,
+  "cibles": 21,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:07.616Z",
+  "msg": "capture account-menu-360"
+ },
+ {
+  "t": "2026-09-15T08:27:10.576Z",
+  "msg": "capture editor-annoter-360"
+ },
+ {
+  "t": "2026-09-15T08:27:10.642Z",
+  "msg": "mesure editor-annoter-360",
+  "textes": 24,
+  "echecsAA": 12,
+  "cibles": 44,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:11.579Z",
+  "msg": "capture editor-annoter-zones-360"
+ },
+ {
+  "t": "2026-09-15T08:27:12.484Z",
+  "msg": "capture editor-mode-starter-360"
+ },
+ {
+  "t": "2026-09-15T08:27:12.530Z",
+  "msg": "mesure editor-mode-starter-360",
+  "textes": 29,
+  "echecsAA": 13,
+  "cibles": 42,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:13.855Z",
+  "msg": "capture editor-mode-combo-360"
+ },
+ {
+  "t": "2026-09-15T08:27:14.917Z",
+  "msg": "capture editor-menu-nonengine-360"
+ },
+ {
+  "t": "2026-09-15T08:27:14.971Z",
+  "msg": "mesure editor-menu-nonengine-360",
+  "textes": 30,
+  "echecsAA": 15,
+  "cibles": 63,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:16.001Z",
+  "msg": "capture editor-card-menu-360"
+ },
+ {
+  "t": "2026-09-15T08:27:16.045Z",
+  "msg": "mesure editor-card-menu-360",
+  "textes": 32,
+  "echecsAA": 16,
+  "cibles": 46,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:16.998Z",
+  "msg": "capture editor-card-detail-360"
+ },
+ {
+  "t": "2026-09-15T08:27:17.036Z",
+  "msg": "mesure editor-card-detail-360",
+  "textes": 31,
+  "echecsAA": 16,
+  "cibles": 45,
+  "ciblesSous24": 1,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:19.586Z",
+  "msg": "capture editor-add-card-360"
+ },
+ {
+  "t": "2026-09-15T08:27:19.631Z",
+  "msg": "mesure editor-add-card-360",
+  "textes": 34,
+  "echecsAA": 21,
+  "cibles": 46,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:21.214Z",
+  "msg": "capture editor-toast-360"
+ },
+ {
+  "t": "2026-09-15T08:27:21.257Z",
+  "msg": "mesure editor-toast-360",
+  "textes": 29,
+  "echecsAA": 12,
+  "cibles": 55,
+  "ciblesSous24": 1,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:23.575Z",
+  "msg": "capture editor-stats-360"
+ },
+ {
+  "t": "2026-09-15T08:27:23.609Z",
+  "msg": "mesure editor-stats-360",
+  "textes": 39,
+  "echecsAA": 29,
+  "cibles": 15,
+  "ciblesSous24": 3,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:24.166Z",
+  "msg": "capture editor-stats-bas-360"
+ },
+ {
+  "t": "2026-09-15T08:27:24.214Z",
+  "msg": "mesure editor-stats-bas-360",
+  "textes": 58,
+  "echecsAA": 29,
+  "cibles": 21,
+  "ciblesSous24": 7,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:25.292Z",
+  "msg": "capture editor-combos-360"
+ },
+ {
+  "t": "2026-09-15T08:27:25.321Z",
+  "msg": "mesure editor-combos-360",
+  "textes": 24,
+  "echecsAA": 16,
+  "cibles": 22,
+  "ciblesSous24": 6,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:26.844Z",
+  "msg": "capture editor-mains-360"
+ },
+ {
+  "t": "2026-09-15T08:27:26.907Z",
+  "msg": "mesure editor-mains-360",
+  "textes": 27,
+  "echecsAA": 12,
+  "cibles": 17,
+  "ciblesSous24": 1,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:29.053Z",
+  "msg": "capture editor-inventaire-360"
+ },
+ {
+  "t": "2026-09-15T08:27:29.079Z",
+  "msg": "mesure editor-inventaire-360",
+  "textes": 30,
+  "echecsAA": 15,
+  "cibles": 24,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:30.578Z",
+  "msg": "capture editor-side-360"
+ },
+ {
+  "t": "2026-09-15T08:27:30.604Z",
+  "msg": "mesure editor-side-360",
+  "textes": 20,
+  "echecsAA": 12,
+  "cibles": 41,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:31.566Z",
+  "msg": "capture editor-side-selection-360"
+ },
+ {
+  "t": "2026-09-15T08:27:33.578Z",
+  "msg": "capture editor-dirty-360"
+ },
+ {
+  "t": "2026-09-15T08:27:35.930Z",
+  "msg": "capture editor-brouillon-360"
+ },
+ {
+  "t": "2026-09-15T08:27:36.004Z",
+  "msg": "mesure editor-brouillon-360",
+  "textes": 27,
+  "echecsAA": 12,
+  "cibles": 43,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:41.918Z",
+  "msg": "capture compare-360"
+ },
+ {
+  "t": "2026-09-15T08:27:42.116Z",
+  "msg": "capture compare-full-360"
+ },
+ {
+  "t": "2026-09-15T08:27:42.162Z",
+  "msg": "mesure compare-360",
+  "textes": 35,
+  "echecsAA": 13,
+  "cibles": 3,
+  "ciblesSous24": 1,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:42.680Z",
+  "msg": "capture compare-synthese-360"
+ },
+ {
+  "t": "2026-09-15T08:27:42.719Z",
+  "msg": "mesure compare-synthese-360",
+  "textes": 39,
+  "echecsAA": 17,
+  "cibles": 3,
+  "ciblesSous24": 1,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:48.093Z",
+  "msg": "capture fiche-360"
+ },
+ {
+  "t": "2026-09-15T08:27:48.696Z",
+  "msg": "capture fiche-full-360"
+ },
+ {
+  "t": "2026-09-15T08:27:48.716Z",
+  "msg": "mesure fiche-360",
+  "textes": 15,
+  "echecsAA": 5,
+  "cibles": 4,
+  "ciblesSous24": 2,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:27:49.420Z",
+  "msg": "capture fiche-print-full-360"
+ },
+ {
+  "t": "2026-09-15T08:27:49.440Z",
+  "msg": "mesure fiche-print-360",
+  "textes": 10,
+  "echecsAA": 0,
+  "cibles": 0,
+  "ciblesSous24": 0,
+  "scrollWidth": 360
+ },
+ {
+  "t": "2026-09-15T08:28:02.405Z",
+  "msg": "capture login-768"
+ },
+ {
+  "t": "2026-09-15T08:28:02.419Z",
+  "msg": "mesure login-768",
+  "textes": 9,
+  "echecsAA": 5,
+  "cibles": 6,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:02.977Z",
+  "msg": "capture register-768"
+ },
+ {
+  "t": "2026-09-15T08:28:02.988Z",
+  "msg": "mesure register-768",
+  "textes": 10,
+  "echecsAA": 6,
+  "cibles": 8,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:05.283Z",
+  "msg": "capture login-erreur-768"
+ },
+ {
+  "t": "2026-09-15T08:28:13.677Z",
+  "msg": "capture home-vide-768"
+ },
+ {
+  "t": "2026-09-15T08:28:13.696Z",
+  "msg": "mesure home-vide-768",
+  "textes": 14,
+  "echecsAA": 8,
+  "cibles": 7,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:14.426Z",
+  "msg": "capture import-dialog-768"
+ },
+ {
+  "t": "2026-09-15T08:28:14.447Z",
+  "msg": "mesure import-dialog-768",
+  "textes": 21,
+  "echecsAA": 13,
+  "cibles": 15,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:16.414Z",
+  "msg": "capture editor-vide-768"
+ },
+ {
+  "t": "2026-09-15T08:28:16.440Z",
+  "msg": "mesure editor-vide-768",
+  "textes": 19,
+  "echecsAA": 11,
+  "cibles": 16,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:24.525Z",
+  "msg": "capture home-768"
+ },
+ {
+  "t": "2026-09-15T08:28:24.545Z",
+  "msg": "mesure home-768",
+  "textes": 14,
+  "echecsAA": 5,
+  "cibles": 19,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:25.215Z",
+  "msg": "capture home-menu-deck-768"
+ },
+ {
+  "t": "2026-09-15T08:28:25.977Z",
+  "msg": "capture compare-dialog-768"
+ },
+ {
+  "t": "2026-09-15T08:28:25.999Z",
+  "msg": "mesure compare-dialog-768",
+  "textes": 19,
+  "echecsAA": 8,
+  "cibles": 23,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:26.743Z",
+  "msg": "capture account-menu-768"
+ },
+ {
+  "t": "2026-09-15T08:28:31.172Z",
+  "msg": "capture editor-annoter-768"
+ },
+ {
+  "t": "2026-09-15T08:28:31.235Z",
+  "msg": "mesure editor-annoter-768",
+  "textes": 29,
+  "echecsAA": 16,
+  "cibles": 105,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:32.143Z",
+  "msg": "capture editor-annoter-zones-768"
+ },
+ {
+  "t": "2026-09-15T08:28:33.058Z",
+  "msg": "capture editor-mode-starter-768"
+ },
+ {
+  "t": "2026-09-15T08:28:33.091Z",
+  "msg": "mesure editor-mode-starter-768",
+  "textes": 32,
+  "echecsAA": 15,
+  "cibles": 105,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:34.565Z",
+  "msg": "capture editor-mode-combo-768"
+ },
+ {
+  "t": "2026-09-15T08:28:35.667Z",
+  "msg": "capture editor-menu-nonengine-768"
+ },
+ {
+  "t": "2026-09-15T08:28:35.723Z",
+  "msg": "mesure editor-menu-nonengine-768",
+  "textes": 34,
+  "echecsAA": 18,
+  "cibles": 112,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:36.579Z",
+  "msg": "capture editor-card-menu-768"
+ },
+ {
+  "t": "2026-09-15T08:28:36.612Z",
+  "msg": "mesure editor-card-menu-768",
+  "textes": 37,
+  "echecsAA": 20,
+  "cibles": 107,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:37.792Z",
+  "msg": "capture editor-card-detail-768"
+ },
+ {
+  "t": "2026-09-15T08:28:37.822Z",
+  "msg": "mesure editor-card-detail-768",
+  "textes": 35,
+  "echecsAA": 19,
+  "cibles": 106,
+  "ciblesSous24": 1,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:39.691Z",
+  "msg": "capture editor-add-card-768"
+ },
+ {
+  "t": "2026-09-15T08:28:39.732Z",
+  "msg": "mesure editor-add-card-768",
+  "textes": 43,
+  "echecsAA": 22,
+  "cibles": 112,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:41.248Z",
+  "msg": "capture editor-toast-768"
+ },
+ {
+  "t": "2026-09-15T08:28:41.300Z",
+  "msg": "mesure editor-toast-768",
+  "textes": 36,
+  "echecsAA": 16,
+  "cibles": 104,
+  "ciblesSous24": 1,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:43.425Z",
+  "msg": "capture editor-stats-768"
+ },
+ {
+  "t": "2026-09-15T08:28:43.459Z",
+  "msg": "mesure editor-stats-768",
+  "textes": 63,
+  "echecsAA": 31,
+  "cibles": 24,
+  "ciblesSous24": 8,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:43.974Z",
+  "msg": "capture editor-stats-bas-768"
+ },
+ {
+  "t": "2026-09-15T08:28:44.014Z",
+  "msg": "mesure editor-stats-bas-768",
+  "textes": 63,
+  "echecsAA": 31,
+  "cibles": 24,
+  "ciblesSous24": 8,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:45.085Z",
+  "msg": "capture editor-combos-768"
+ },
+ {
+  "t": "2026-09-15T08:28:45.108Z",
+  "msg": "mesure editor-combos-768",
+  "textes": 28,
+  "echecsAA": 20,
+  "cibles": 31,
+  "ciblesSous24": 9,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:46.705Z",
+  "msg": "capture editor-mains-768"
+ },
+ {
+  "t": "2026-09-15T08:28:46.764Z",
+  "msg": "mesure editor-mains-768",
+  "textes": 27,
+  "echecsAA": 12,
+  "cibles": 19,
+  "ciblesSous24": 1,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:48.804Z",
+  "msg": "capture editor-inventaire-768"
+ },
+ {
+  "t": "2026-09-15T08:28:48.834Z",
+  "msg": "mesure editor-inventaire-768",
+  "textes": 32,
+  "echecsAA": 15,
+  "cibles": 31,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:50.909Z",
+  "msg": "capture editor-side-768"
+ },
+ {
+  "t": "2026-09-15T08:28:50.945Z",
+  "msg": "mesure editor-side-768",
+  "textes": 34,
+  "echecsAA": 21,
+  "cibles": 84,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:28:51.977Z",
+  "msg": "capture editor-side-selection-768"
+ },
+ {
+  "t": "2026-09-15T08:28:54.614Z",
+  "msg": "capture editor-dirty-768"
+ },
+ {
+  "t": "2026-09-15T08:28:58.247Z",
+  "msg": "capture editor-brouillon-768"
+ },
+ {
+  "t": "2026-09-15T08:28:58.305Z",
+  "msg": "mesure editor-brouillon-768",
+  "textes": 30,
+  "echecsAA": 14,
+  "cibles": 106,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:29:02.346Z",
+  "msg": "capture compare-768"
+ },
+ {
+  "t": "2026-09-15T08:29:02.594Z",
+  "msg": "capture compare-full-768"
+ },
+ {
+  "t": "2026-09-15T08:29:02.641Z",
+  "msg": "mesure compare-768",
+  "textes": 48,
+  "echecsAA": 16,
+  "cibles": 3,
+  "ciblesSous24": 1,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:29:03.232Z",
+  "msg": "capture compare-synthese-768"
+ },
+ {
+  "t": "2026-09-15T08:29:03.277Z",
+  "msg": "mesure compare-synthese-768",
+  "textes": 41,
+  "echecsAA": 18,
+  "cibles": 3,
+  "ciblesSous24": 1,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:29:05.433Z",
+  "msg": "capture fiche-768"
+ },
+ {
+  "t": "2026-09-15T08:29:06.294Z",
+  "msg": "capture fiche-full-768"
+ },
+ {
+  "t": "2026-09-15T08:29:06.345Z",
+  "msg": "mesure fiche-768",
+  "textes": 17,
+  "echecsAA": 6,
+  "cibles": 4,
+  "ciblesSous24": 2,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:29:07.418Z",
+  "msg": "capture fiche-print-full-768"
+ },
+ {
+  "t": "2026-09-15T08:29:07.444Z",
+  "msg": "mesure fiche-print-768",
+  "textes": 12,
+  "echecsAA": 0,
+  "cibles": 0,
+  "ciblesSous24": 0,
+  "scrollWidth": 768
+ },
+ {
+  "t": "2026-09-15T08:29:21.776Z",
+  "msg": "capture login-1440"
+ },
+ {
+  "t": "2026-09-15T08:29:21.791Z",
+  "msg": "mesure login-1440",
+  "textes": 9,
+  "echecsAA": 5,
+  "cibles": 6,
+  "ciblesSous24": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:29:22.377Z",
+  "msg": "capture register-1440"
+ },
+ {
+  "t": "2026-09-15T08:29:22.388Z",
+  "msg": "mesure register-1440",
+  "textes": 10,
+  "echecsAA": 6,
+  "cibles": 8,
+  "ciblesSous24": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:29:24.408Z",
+  "msg": "capture login-erreur-1440"
+ },
+ {
+  "t": "2026-09-15T08:29:37.774Z",
+  "msg": "capture home-vide-1440"
+ },
+ {
+  "t": "2026-09-15T08:29:37.810Z",
+  "msg": "mesure home-vide-1440",
+  "textes": 14,
+  "echecsAA": 8,
+  "cibles": 7,
+  "ciblesSous24": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:29:38.496Z",
+  "msg": "capture import-dialog-1440"
+ },
+ {
+  "t": "2026-09-15T08:29:38.530Z",
+  "msg": "mesure import-dialog-1440",
+  "textes": 21,
+  "echecsAA": 13,
+  "cibles": 15,
+  "ciblesSous24": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:29:41.825Z",
+  "msg": "capture editor-vide-1440"
+ },
+ {
+  "t": "2026-09-15T08:29:41.959Z",
+  "msg": "mesure editor-vide-1440",
+  "textes": 35,
+  "echecsAA": 19,
+  "cibles": 25,
+  "ciblesSous24": 6,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:29:55.515Z",
+  "msg": "capture home-1440"
+ },
+ {
+  "t": "2026-09-15T08:29:55.540Z",
+  "msg": "mesure home-1440",
+  "textes": 14,
+  "echecsAA": 5,
+  "cibles": 19,
+  "ciblesSous24": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:29:56.113Z",
+  "msg": "capture home-menu-deck-1440"
+ },
+ {
+  "t": "2026-09-15T08:29:56.661Z",
+  "msg": "capture compare-dialog-1440"
+ },
+ {
+  "t": "2026-09-15T08:29:56.688Z",
+  "msg": "mesure compare-dialog-1440",
+  "textes": 19,
+  "echecsAA": 8,
+  "cibles": 23,
+  "ciblesSous24": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:29:57.385Z",
+  "msg": "capture account-menu-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:04.375Z",
+  "msg": "capture editor-annoter-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:04.573Z",
+  "msg": "mesure editor-annoter-1440",
+  "textes": 83,
+  "echecsAA": 43,
+  "cibles": 117,
+  "ciblesSous24": 7,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:05.226Z",
+  "msg": "capture editor-annoter-zones-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:06.145Z",
+  "msg": "capture editor-mode-starter-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:06.324Z",
+  "msg": "mesure editor-mode-starter-1440",
+  "textes": 87,
+  "echecsAA": 43,
+  "cibles": 118,
+  "ciblesSous24": 7,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:07.730Z",
+  "msg": "capture editor-mode-combo-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:08.768Z",
+  "msg": "capture editor-menu-nonengine-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:08.908Z",
+  "msg": "mesure editor-menu-nonengine-1440",
+  "textes": 88,
+  "echecsAA": 45,
+  "cibles": 124,
+  "ciblesSous24": 7,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:09.656Z",
+  "msg": "capture editor-card-menu-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:09.769Z",
+  "msg": "mesure editor-card-menu-1440",
+  "textes": 91,
+  "echecsAA": 47,
+  "cibles": 119,
+  "ciblesSous24": 7,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:10.685Z",
+  "msg": "capture editor-card-detail-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:10.815Z",
+  "msg": "mesure editor-card-detail-1440",
+  "textes": 89,
+  "echecsAA": 47,
+  "cibles": 118,
+  "ciblesSous24": 8,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:12.476Z",
+  "msg": "capture editor-add-card-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:12.729Z",
+  "msg": "mesure editor-add-card-1440",
+  "textes": 98,
+  "echecsAA": 50,
+  "cibles": 124,
+  "ciblesSous24": 7,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:13.929Z",
+  "msg": "capture editor-toast-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:14.054Z",
+  "msg": "mesure editor-toast-1440",
+  "textes": 88,
+  "echecsAA": 61,
+  "cibles": 115,
+  "ciblesSous24": 8,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:19.008Z",
+  "msg": "capture editor-second-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:20.032Z",
+  "msg": "capture editor-combos-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:20.085Z",
+  "msg": "mesure editor-combos-1440",
+  "textes": 80,
+  "echecsAA": 45,
+  "cibles": 42,
+  "ciblesSous24": 16,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:21.277Z",
+  "msg": "capture editor-mains-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:21.357Z",
+  "msg": "mesure editor-mains-1440",
+  "textes": 79,
+  "echecsAA": 37,
+  "cibles": 30,
+  "ciblesSous24": 8,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:23.334Z",
+  "msg": "capture editor-inventaire-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:23.477Z",
+  "msg": "mesure editor-inventaire-1440",
+  "textes": 83,
+  "echecsAA": 40,
+  "cibles": 42,
+  "ciblesSous24": 7,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:25.146Z",
+  "msg": "capture editor-side-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:25.219Z",
+  "msg": "mesure editor-side-1440",
+  "textes": 86,
+  "echecsAA": 46,
+  "cibles": 95,
+  "ciblesSous24": 7,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:25.896Z",
+  "msg": "capture editor-side-selection-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:26.952Z",
+  "msg": "capture editor-panneau-bas-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:27.038Z",
+  "msg": "mesure editor-panneau-bas-1440",
+  "textes": 83,
+  "echecsAA": 40,
+  "cibles": 117,
+  "ciblesSous24": 7,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:28.796Z",
+  "msg": "capture editor-dirty-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:31.143Z",
+  "msg": "capture editor-brouillon-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:31.255Z",
+  "msg": "mesure editor-brouillon-1440",
+  "textes": 35,
+  "echecsAA": 17,
+  "cibles": 107,
+  "ciblesSous24": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:35.247Z",
+  "msg": "capture compare-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:35.357Z",
+  "msg": "capture compare-full-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:35.411Z",
+  "msg": "mesure compare-1440",
+  "textes": 50,
+  "echecsAA": 18,
+  "cibles": 3,
+  "ciblesSous24": 1,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:35.888Z",
+  "msg": "capture compare-synthese-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:35.969Z",
+  "msg": "mesure compare-synthese-1440",
+  "textes": 50,
+  "echecsAA": 18,
+  "cibles": 3,
+  "ciblesSous24": 1,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:38.434Z",
+  "msg": "capture fiche-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:38.808Z",
+  "msg": "capture fiche-full-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:38.830Z",
+  "msg": "mesure fiche-1440",
+  "textes": 17,
+  "echecsAA": 6,
+  "cibles": 4,
+  "ciblesSous24": 2,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:39.334Z",
+  "msg": "capture fiche-print-full-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:39.428Z",
+  "msg": "mesure fiche-print-1440",
+  "textes": 12,
+  "echecsAA": 0,
+  "cibles": 0,
+  "ciblesSous24": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "t": "2026-09-15T08:30:41.425Z",
+  "msg": "capture editor-introuvable-1440"
+ },
+ {
+  "t": "2026-09-15T08:30:45.780Z",
+  "msg": "capture login-1440-prefers-light"
+ },
+ {
+  "t": "2026-09-15T08:30:45.793Z",
+  "msg": "prefers-color-scheme: light → fond du body",
+  "bg": "rgb(10, 11, 14)"
+ },
+ {
+  "t": "2026-09-15T08:30:55.615Z",
+  "msg": "reflow 320 home",
+  "doc": 320,
+  "inner": 320,
+  "overflow": [
+   "BUTTON.flex h-16 gap-0.5 overflow-hidden bg-ink-950 px-2 ",
+   "BUTTON.flex h-16 gap-0.5 overflow-hidden bg-ink-950 px-2 "
+  ]
+ },
+ {
+  "t": "2026-09-15T08:30:57.489Z",
+  "msg": "capture home-320"
+ },
+ {
+  "t": "2026-09-15T08:31:01.031Z",
+  "msg": "reflow 320 editor-annoter",
+  "doc": 320,
+  "inner": 320,
+  "overflow": [
+   "INPUT.w-32 min-w-0 rounded bg-transparent px-1 py-0.5 te"
+  ]
+ },
+ {
+  "t": "2026-09-15T08:31:01.321Z",
+  "msg": "capture editor-annoter-320"
+ },
+ {
+  "t": "2026-09-15T08:31:11.562Z",
+  "msg": "reflow 320 compare",
+  "doc": 320,
+  "inner": 320,
+  "overflow": [
+   "SPAN.min-w-0 flex-1 basis-0 truncate text-xs text-ink-4",
+   "DIV.mb-2 truncate text-xs font-semibold text-ink-100",
+   "DIV.mb-2 truncate text-xs font-semibold text-ink-100"
+  ]
+ },
+ {
+  "t": "2026-09-15T08:31:11.866Z",
+  "msg": "capture compare-320"
+ },
+ {
+  "t": "2026-09-15T08:33:16.956Z",
+  "msg": "v2 modifiée : Snake-Eye Ash 3→2, Effect Veiler 1→2"
+ },
+ {
+  "t": "2026-09-15T08:33:17.082Z",
+  "msg": "recapture compare 360"
+ },
+ {
+  "t": "2026-09-15T08:33:17.082Z",
+  "msg": "recapture compare 768"
+ },
+ {
+  "t": "2026-09-15T08:33:17.082Z",
+  "msg": "recapture compare 1440"
+ },
+ {
+  "t": "2026-09-15T08:33:17.082Z",
+  "msg": "recapture compare 320"
+ },
+ {
+  "t": "2026-09-15T08:36:22.009Z",
+  "msg": "recapture compare 360"
+ },
+ {
+  "t": "2026-09-15T08:36:22.062Z",
+  "msg": "recapture compare 768"
+ },
+ {
+  "t": "2026-09-15T08:36:22.062Z",
+  "msg": "recapture compare 1440"
+ },
+ {
+  "t": "2026-09-15T08:36:22.062Z",
+  "msg": "recapture compare 320"
+ }
+]

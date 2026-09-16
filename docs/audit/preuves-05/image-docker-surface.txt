@@ -1,0 +1,26 @@
+# Image construite localement : docker build -f deploy/Dockerfile -t testhand-audit05-app:cff8a75 . (commit cff8a75, code identique à la prod 4cf9493)
+taille_octets=80092926 utilisateur="" cmd=[node server/dist/src/index.js] env=[PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin NODE_VERSION=22.23.2 YARN_VERSION=1.22.22 NODE_ENV=production PORT=8787 WEB_DIST=/app/web/dist]
+id: uid=0(root) gid=0(root) groups=0(root),0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10(wheel),11(floppy),20(dialout),26(tape),27(video)
+node v22.23.2 ; npm 10.9.8 ; npx /usr/local/bin/npx ; apk /sbin/apk ; wget /usr/bin/wget
+alpine 3.24.1
+153.0M	/app/node_modules
+2.1M	/app/web/dist
+340.0K	/app/server/dist
+dépendance du front présente dans l image serveur : exceljs
+dépendance du front présente dans l image serveur : jspdf
+dépendance du front présente dans l image serveur : react
+dépendance du front présente dans l image serveur : react-dom
+dépendance du front présente dans l image serveur : recharts
+dépendance du front présente dans l image serveur : @dnd-kit
+dépendance du front présente dans l image serveur : zustand
+dépendance du front présente dans l image serveur : lz-string
+fichiers .env dans l image : 0
+cartes sources .map du front : 0
+
+# docker scout quickview (15 sept. 2026)
+Policy status  FAILED  (3/7 policies met)
+Health score  D  (50%)
+ !      │ Image runs as the root user                    │                             
+ !      │ Fixable critical or high vulnerabilities found │    3C    27H     0M     0L  
+ v      │ No high-profile vulnerabilities                │    0C     0H     0M     0L  
+ v      │ No outdated base images                        │                             

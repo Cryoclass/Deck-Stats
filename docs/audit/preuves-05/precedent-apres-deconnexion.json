@@ -1,0 +1,8 @@
+{
+  "avant": "Deck privé de C | 1 |  | ",
+  "urlApresDeconnexion": "http://localhost:8797/decks",
+  "urlApresPrecedent": "http://localhost:8797/decks/5ffc7be1-3d6c-4e53-abb5-8229273595a7",
+  "champsApresPrecedent": " | ",
+  "pageDeConnexionAffichee": true,
+  "nomDuDeckVisible": false
+}

@@ -1,0 +1,26 @@
+@ répété         n=  1000        2.1 ms  match=false
+@ répété         n=  2000        3.8 ms  match=false
+@ répété         n=  4000       17.8 ms  match=false
+@ répété         n=  8000       80.0 ms  match=false
+@ répété         n= 16000      271.6 ms  match=false
+a@ répété        n=  1000        0.4 ms  match=false
+a@ répété        n=  2000        2.1 ms  match=false
+a@ répété        n=  4000        7.1 ms  match=false
+a@ répété        n=  8000       29.5 ms  match=false
+a@ répété        n= 16000      157.2 ms  match=false
+a (sans @)       n=  1000        0.0 ms  match=false
+a (sans @)       n=  2000        0.0 ms  match=false
+a (sans @)       n=  4000        0.0 ms  match=false
+a (sans @)       n=  8000        0.0 ms  match=false
+a (sans @)       n= 16000        0.1 ms  match=false
+a@b sans point   n=  1000        0.0 ms  match=false
+a@b sans point   n=  2000        0.0 ms  match=false
+a@b sans point   n=  4000        0.0 ms  match=false
+a@b sans point   n=  8000        0.1 ms  match=false
+a@b sans point   n= 16000        0.1 ms  match=false
+
+# Complément (commande node -e séparée, même expression, exécutée pendant que la campagne de mutations occupait le poste) :
+@ x 32000  →  2784 ms
+@ x 64000  → 10167 ms
+@ x 128000 → 37283 ms
+# Rapport durée / n² quasi constant (2,7 → 2,3 × 10⁻⁶ ms) : croissance quadratique.

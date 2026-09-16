@@ -1,0 +1,6 @@
+# Arrêt du conteneur de l'image de production (CMD ["node", "server/dist/src/index.js"], deploy/Dockerfile:28)
+$ docker exec testhand-audit05-app sh -c 'cat /proc/1/cmdline'
+PID 1 = node server/dist/src/index.js
+$ docker stop -t 10 testhand-audit05-app      (même délai par défaut que « docker compose stop app »)
+docker stop -t 10 : 12293 ms
+ExitCode=137      (137 = tué par SIGKILL à l'expiration du délai : SIGTERM ignoré, aucun arrêt gracieux)

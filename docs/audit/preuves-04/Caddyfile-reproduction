@@ -1,0 +1,7 @@
+# Reproduction locale du bloc documenté dans deploy/README.md:75-79, sans TLS (site :80 dans le
+# conteneur) et avec l'API de l'audit sur l'hôte à la place de ygo-app:8787.
+:80 {
+	encode zstd gzip
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy host.docker.internal:8796
+}

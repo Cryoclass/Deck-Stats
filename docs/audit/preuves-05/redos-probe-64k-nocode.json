@@ -1,0 +1,10 @@
+{
+  "emailLength": 64000,
+  "bodyBytes": 64073,
+  "registerStatus": 403,
+  "registerBody": "{\"error\":\"code d'invitation invalide\"}",
+  "registerMs": 17,
+  "healthBefore_maxMs": 56,
+  "healthDuring_maxMs": 12,
+  "healthProbesDuring": 14
+}

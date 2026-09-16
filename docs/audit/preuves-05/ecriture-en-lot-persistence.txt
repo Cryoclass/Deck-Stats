@@ -1,0 +1,4 @@
+# server/tests/persistence.integration.ts rejouée sur la copie où server/src/domain/deckRepository.ts est remplacé par scripts/deckRepository.experience-ecriture-en-lot.ts (base jetable 55433)
+ℹ tests 14
+ℹ pass 14
+ℹ fail 0

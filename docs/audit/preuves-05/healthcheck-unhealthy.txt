@@ -1,0 +1,4 @@
+# Docker ne redémarre pas un conteneur « unhealthy » (politique de docker-compose.prod.yml : restart unless-stopped)
+$ docker run -d --name testhand-audit05-hc --restart unless-stopped --health-cmd 'exit 1' --health-interval 2s --health-retries 2 --health-timeout 1s node:22-alpine sleep 300
+$ sleep 15; docker inspect testhand-audit05-hc --format 'état=… santé=… échecs_consécutifs=… redémarrages=… politique=…'
+état=running santé=unhealthy échecs_consécutifs=7 redémarrages=0 politique=unless-stopped

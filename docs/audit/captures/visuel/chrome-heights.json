@@ -1,0 +1,690 @@
+{
+ "360": {
+  "viewport": {
+   "w": 360,
+   "h": 780
+  },
+  "header": {
+   "top": 0,
+   "h": 118,
+   "w": 360
+  },
+  "nav": {
+   "top": 118,
+   "h": 37,
+   "w": 359
+  },
+  "navOverflowPx": 208,
+  "modebar": {
+   "top": 155,
+   "h": 103,
+   "w": 359
+  },
+  "firstTile": {
+   "top": 266,
+   "h": 232,
+   "w": 110
+  },
+  "tileImage": {
+   "top": 267,
+   "h": 158,
+   "w": 108
+  },
+  "gridColumns": 3,
+  "stepper": {
+   "top": 429,
+   "h": 32,
+   "w": 32
+  },
+  "menu": {
+   "top": 462,
+   "h": 32,
+   "w": 32
+  },
+  "delta": {
+   "top": 478,
+   "h": 0,
+   "w": 72,
+   "font": "10px",
+   "color": "rgb(74, 82, 101)"
+  },
+  "tabs": [
+   {
+    "t": "Annoter",
+    "top": 124,
+    "h": 24,
+    "w": 68
+   },
+   {
+    "t": "Combos & catégories",
+    "top": 124,
+    "h": 24,
+    "w": 140
+   },
+   {
+    "t": "Mur de mains",
+    "top": 124,
+    "h": 24,
+    "w": 99
+   },
+   {
+    "t": "Inventaire",
+    "top": 124,
+    "h": 24,
+    "w": 78
+   },
+   {
+    "t": "Plans de side",
+    "top": 124,
+    "h": 24,
+    "w": 95
+   },
+   {
+    "t": "Stats",
+    "top": 124,
+    "h": 24,
+    "w": 50
+   }
+  ],
+  "modes": [
+   {
+    "t": "Sélection",
+    "top": 162,
+    "h": 24,
+    "w": 70
+   },
+   {
+    "t": "Lier combo C",
+    "top": 161,
+    "h": 26,
+    "w": 102
+   },
+   {
+    "t": "HOPT H",
+    "top": 161,
+    "h": 26,
+    "w": 72
+   },
+   {
+    "t": "Starter S",
+    "top": 193,
+    "h": 26,
+    "w": 78
+   },
+   {
+    "t": "Non-engine ▾ N",
+    "top": 193,
+    "h": 26,
+    "w": 122
+   },
+   {
+    "t": "Profil ▾ D",
+    "top": 193,
+    "h": 26,
+    "w": 86
+   },
+   {
+    "t": "Condition P",
+    "top": 225,
+    "h": 26,
+    "w": 95
+   }
+  ],
+  "hdrBtns": [
+   {
+    "t": "← Decks",
+    "top": 8,
+    "h": 24,
+    "w": 61
+   },
+   {
+    "t": "Snake-Eye Fiendsmith",
+    "top": 8,
+    "h": 24,
+    "w": 128
+   },
+   {
+    "t": "Premier · 5",
+    "top": 39,
+    "h": 25,
+    "w": 68
+   },
+   {
+    "t": "Second · 5 + pioche",
+    "top": 39,
+    "h": 25,
+    "w": 112
+   },
+   {
+    "t": "Enregistrer",
+    "top": 77,
+    "h": 32,
+    "w": 83
+   },
+   {
+    "t": "E\nE2E",
+    "top": 79,
+    "h": 28,
+    "w": 61
+   }
+  ],
+  "chromeBeforeContent": 266,
+  "chromeShare": 0.341
+ },
+ "390": {
+  "viewport": {
+   "w": 390,
+   "h": 844
+  },
+  "header": {
+   "top": 0,
+   "h": 118,
+   "w": 390
+  },
+  "nav": {
+   "top": 118,
+   "h": 37,
+   "w": 389
+  },
+  "navOverflowPx": 178,
+  "modebar": {
+   "top": 155,
+   "h": 71,
+   "w": 389
+  },
+  "firstTile": {
+   "top": 234,
+   "h": 247,
+   "w": 120
+  },
+  "tileImage": {
+   "top": 235,
+   "h": 172,
+   "w": 118
+  },
+  "gridColumns": 3,
+  "stepper": {
+   "top": 412,
+   "h": 32,
+   "w": 32
+  },
+  "menu": {
+   "top": 445,
+   "h": 32,
+   "w": 32
+  },
+  "delta": {
+   "top": 461,
+   "h": 0,
+   "w": 82,
+   "font": "10px",
+   "color": "rgb(74, 82, 101)"
+  },
+  "tabs": [
+   {
+    "t": "Annoter",
+    "top": 124,
+    "h": 24,
+    "w": 68
+   },
+   {
+    "t": "Combos & catégories",
+    "top": 124,
+    "h": 24,
+    "w": 140
+   },
+   {
+    "t": "Mur de mains",
+    "top": 124,
+    "h": 24,
+    "w": 99
+   },
+   {
+    "t": "Inventaire",
+    "top": 124,
+    "h": 24,
+    "w": 78
+   },
+   {
+    "t": "Plans de side",
+    "top": 124,
+    "h": 24,
+    "w": 95
+   },
+   {
+    "t": "Stats",
+    "top": 124,
+    "h": 24,
+    "w": 50
+   }
+  ],
+  "modes": [
+   {
+    "t": "Sélection",
+    "top": 162,
+    "h": 24,
+    "w": 70
+   },
+   {
+    "t": "Lier combo C",
+    "top": 161,
+    "h": 26,
+    "w": 102
+   },
+   {
+    "t": "HOPT H",
+    "top": 161,
+    "h": 26,
+    "w": 72
+   },
+   {
+    "t": "Starter S",
+    "top": 161,
+    "h": 26,
+    "w": 78
+   },
+   {
+    "t": "Non-engine ▾ N",
+    "top": 193,
+    "h": 26,
+    "w": 122
+   },
+   {
+    "t": "Profil ▾ D",
+    "top": 193,
+    "h": 26,
+    "w": 86
+   },
+   {
+    "t": "Condition P",
+    "top": 193,
+    "h": 26,
+    "w": 95
+   }
+  ],
+  "hdrBtns": [
+   {
+    "t": "← Decks",
+    "top": 8,
+    "h": 24,
+    "w": 61
+   },
+   {
+    "t": "Snake-Eye Fiendsmith",
+    "top": 8,
+    "h": 24,
+    "w": 128
+   },
+   {
+    "t": "Premier · 5",
+    "top": 39,
+    "h": 25,
+    "w": 68
+   },
+   {
+    "t": "Second · 5 + pioche",
+    "top": 39,
+    "h": 25,
+    "w": 112
+   },
+   {
+    "t": "Enregistrer",
+    "top": 77,
+    "h": 32,
+    "w": 83
+   },
+   {
+    "t": "E\nE2E",
+    "top": 79,
+    "h": 28,
+    "w": 61
+   }
+  ],
+  "chromeBeforeContent": 234,
+  "chromeShare": 0.277
+ },
+ "768": {
+  "viewport": {
+   "w": 768,
+   "h": 1024
+  },
+  "header": {
+   "top": 0,
+   "h": 79,
+   "w": 768
+  },
+  "nav": {
+   "top": 79,
+   "h": 37,
+   "w": 767
+  },
+  "navOverflowPx": 0,
+  "modebar": {
+   "top": 116,
+   "h": 39,
+   "w": 767
+  },
+  "firstTile": {
+   "top": 163,
+   "h": 220,
+   "w": 102
+  },
+  "tileImage": {
+   "top": 164,
+   "h": 146,
+   "w": 100
+  },
+  "gridColumns": 7,
+  "stepper": {
+   "top": 315,
+   "h": 32,
+   "w": 32
+  },
+  "menu": {
+   "top": 348,
+   "h": 32,
+   "w": 32
+  },
+  "delta": {
+   "top": 364,
+   "h": 0,
+   "w": 64,
+   "font": "10px",
+   "color": "rgb(74, 82, 101)"
+  },
+  "tabs": [
+   {
+    "t": "Annoter",
+    "top": 85,
+    "h": 24,
+    "w": 68
+   },
+   {
+    "t": "Combos & catégories",
+    "top": 85,
+    "h": 24,
+    "w": 140
+   },
+   {
+    "t": "Mur de mains",
+    "top": 85,
+    "h": 24,
+    "w": 99
+   },
+   {
+    "t": "Inventaire",
+    "top": 85,
+    "h": 24,
+    "w": 78
+   },
+   {
+    "t": "Plans de side",
+    "top": 85,
+    "h": 24,
+    "w": 95
+   },
+   {
+    "t": "Stats",
+    "top": 85,
+    "h": 24,
+    "w": 50
+   }
+  ],
+  "modes": [
+   {
+    "t": "Sélection",
+    "top": 123,
+    "h": 24,
+    "w": 70
+   },
+   {
+    "t": "Lier combo C",
+    "top": 122,
+    "h": 26,
+    "w": 102
+   },
+   {
+    "t": "HOPT H",
+    "top": 122,
+    "h": 26,
+    "w": 72
+   },
+   {
+    "t": "Starter S",
+    "top": 122,
+    "h": 26,
+    "w": 78
+   },
+   {
+    "t": "Non-engine ▾ N",
+    "top": 122,
+    "h": 26,
+    "w": 122
+   },
+   {
+    "t": "Profil ▾ D",
+    "top": 122,
+    "h": 26,
+    "w": 86
+   },
+   {
+    "t": "Condition P",
+    "top": 122,
+    "h": 26,
+    "w": 95
+   }
+  ],
+  "hdrBtns": [
+   {
+    "t": "← Decks",
+    "top": 8,
+    "h": 24,
+    "w": 61
+   },
+   {
+    "t": "Snake-Eye Fiendsmith",
+    "top": 8,
+    "h": 24,
+    "w": 208
+   },
+   {
+    "t": "Premier · 5",
+    "top": 42,
+    "h": 25,
+    "w": 68
+   },
+   {
+    "t": "Second · 5 + pioche",
+    "top": 42,
+    "h": 25,
+    "w": 112
+   },
+   {
+    "t": "Enregistrer",
+    "top": 38,
+    "h": 32,
+    "w": 83
+   },
+   {
+    "t": "E\nE2E",
+    "top": 40,
+    "h": 28,
+    "w": 61
+   }
+  ],
+  "chromeBeforeContent": 163,
+  "chromeShare": 0.159
+ },
+ "1440": {
+  "viewport": {
+   "w": 1440,
+   "h": 900
+  },
+  "header": {
+   "top": 0,
+   "h": 49,
+   "w": 1440
+  },
+  "nav": {
+   "top": 49,
+   "h": 37,
+   "w": 939
+  },
+  "navOverflowPx": 0,
+  "modebar": {
+   "top": 86,
+   "h": 39,
+   "w": 939
+  },
+  "firstTile": {
+   "top": 133,
+   "h": 213,
+   "w": 97
+  },
+  "tileImage": {
+   "top": 134,
+   "h": 139,
+   "w": 95
+  },
+  "gridColumns": 9,
+  "stepper": {
+   "top": 278,
+   "h": 32,
+   "w": 32
+  },
+  "menu": {
+   "top": 311,
+   "h": 32,
+   "w": 32
+  },
+  "delta": {
+   "top": 327,
+   "h": 0,
+   "w": 59,
+   "font": "10px",
+   "color": "rgb(74, 82, 101)"
+  },
+  "tabs": [
+   {
+    "t": "Annoter",
+    "top": 55,
+    "h": 24,
+    "w": 68
+   },
+   {
+    "t": "Combos & catégories",
+    "top": 55,
+    "h": 24,
+    "w": 140
+   },
+   {
+    "t": "Mur de mains",
+    "top": 55,
+    "h": 24,
+    "w": 99
+   },
+   {
+    "t": "Inventaire",
+    "top": 55,
+    "h": 24,
+    "w": 78
+   },
+   {
+    "t": "Plans de side",
+    "top": 55,
+    "h": 24,
+    "w": 95
+   },
+   {
+    "t": "Stats",
+    "top": 0,
+    "h": 0,
+    "w": 0
+   }
+  ],
+  "modes": [
+   {
+    "t": "Sélection",
+    "top": 93,
+    "h": 24,
+    "w": 70
+   },
+   {
+    "t": "Lier combo C",
+    "top": 92,
+    "h": 26,
+    "w": 102
+   },
+   {
+    "t": "HOPT H",
+    "top": 92,
+    "h": 26,
+    "w": 72
+   },
+   {
+    "t": "Starter S",
+    "top": 92,
+    "h": 26,
+    "w": 78
+   },
+   {
+    "t": "Non-engine ▾ N",
+    "top": 92,
+    "h": 26,
+    "w": 122
+   },
+   {
+    "t": "Profil ▾ D",
+    "top": 92,
+    "h": 26,
+    "w": 86
+   },
+   {
+    "t": "Condition P",
+    "top": 92,
+    "h": 26,
+    "w": 95
+   }
+  ],
+  "hdrBtns": [
+   {
+    "t": "← Decks",
+    "top": 12,
+    "h": 24,
+    "w": 61
+   },
+   {
+    "t": "Snake-Eye Fiendsmith",
+    "top": 12,
+    "h": 24,
+    "w": 208
+   },
+   {
+    "t": "Premier · 5",
+    "top": 12,
+    "h": 25,
+    "w": 68
+   },
+   {
+    "t": "Second · 5 + pioche",
+    "top": 12,
+    "h": 25,
+    "w": 112
+   },
+   {
+    "t": "Enregistrer",
+    "top": 8,
+    "h": 32,
+    "w": 83
+   },
+   {
+    "t": "E\nE2E",
+    "top": 10,
+    "h": 28,
+    "w": 61
+   }
+  ],
+  "chromeBeforeContent": 133,
+  "chromeShare": 0.148
+ }
+}

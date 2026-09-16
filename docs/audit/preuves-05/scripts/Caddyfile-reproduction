@@ -1,0 +1,9 @@
+# Bloc de site de deploy/README.md:75-79, rejoué en HTTP local (TLS non reproduit).
+{
+	auto_https off
+}
+:80 {
+	encode zstd gzip
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy testhand-audit05-app:8787
+}

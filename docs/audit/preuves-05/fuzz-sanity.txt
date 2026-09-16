@@ -1,0 +1,6 @@
+B1   paires désactivées encore actives dans le calcul → divergences=235 / 23519 ; première : run 2 first redondance=0 moteur 0.0873015873015873 oracle 0.30158730158730157 :: {"deck":["A","B","B","B","D",
+B2   annotation « morte en premier / second » inversée à la construction du modèle → divergences=524 / 22895 ; première : run 1 first starts=0 moteur 0.08333333333333333 oracle 0.05952380952380952 :: {"deck":["B","B","C","E","E","F"
+E9   seaux fusionnés sans la redondance (requête « Redondance » fausse) → divergences=0 / 23849 ; première : 
+V1   non-HOPT : au plus 2 sommets par type → divergences=268 / 23222 ; première : run 2 first starts=2 moteur 0.11904761904761904 oracle 0.08333333333333333 :: {"deck":["A","B","B","B","D","D"
+V14  flexible non sensible à la sixième → divergences=17 / 23796 ; première : run 4 second U=2 moteur 0.015151515151515152 oracle 0.030303030303030304 :: {"deck":["B","B","D","D","E","E","
+LC1  cible absente du deck assimilée au type 0 → divergences=408 / 23348 ; première : run 1 first starts=0 moteur 0.023809523809523808 oracle 0.05952380952380952 :: {"deck":["B","B","C","E","E","F

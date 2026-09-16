@@ -1,0 +1,139 @@
+
+=== src/engine/compare.ts — lignes non exécutées : 105, 106
+  L105: throw new Error(`Comparaison impossible : la passe « ${pass.context} » ne correspond pas au scénario ${scenario}.`);
+  L106: }
+  branche branch #0 jamais prise L103: if (pass.total === 0) throw new Error(pass.unavailableReason ?? 'Analyse indisponible : tirage impossible.');
+  branche branch #0 jamais prise L104: if (pass.context !== contextOfScenario(scenario)) {
+  branche branch #0 jamais prise L109: const src = pass.crossMatrix[i] ?? [];
+  branche branch #0 jamais prise L112: row[Math.min(j, NUM_COLS - 1)] += src[j] ?? 0;
+  branche branch #0 jamais prise L136: for (const row of cells) for (let j = 0; j < NUM_COLS; j++) out[j] += row[j] ?? 0;
+  branche branch #0 jamais prise L147: for (let j = j0; j < NUM_COLS; j++) s += cells[i][j] ?? 0;
+  branche branch #0 jamais prise L291: deltas[sc] = A.cells.map((row, i) => row.map((v, j) => (B.cells[i][j] ?? 0) - v));
+
+=== src/engine/enumerate.ts — lignes non exécutées : aucune
+  branche branch #0 jamais prise L33: if (w === 0) return;
+  branche branch #0 jamais prise L95: if (total === 0) return 0;
+  branche branch #0 jamais prise L188: startsExactP[0] ?? 0,
+  branche branch #0 jamais prise L218: brick: startsExactP[0] ?? 0,
+  branche branch #0 jamais prise L191: startsExactP.slice(3).reduce((s, p) => s + (p ?? 0), 0),
+  branche branch #0 jamais prise L193: const meanStarts = startsExactP.reduce((s, p, i) => s + (p ?? 0) * i, 0);
+  branche branch #0 jamais prise L195: const meanNonEngine = nonEngineP.reduce((s, p, i) => s + (p ?? 0) * i, 0);
+  branche branch #0 jamais prise L202: mean: dist.reduce((s, p, i) => s + (p ?? 0) * i, 0),
+  branche branch #0 jamais prise L206: const crossMatrix = cross.map((row) => norm(row ?? []));
+  branche branch #0 jamais prise L239: if (t.copies <= 0) return { first: 0, second: 0 };
+  branche branch #0 jamais prise L248: first: first.total > 0 ? baseFirst - probStart(prepR, 'first') : 0,
+  branche branch #0 jamais prise L249: second: second.total > 0 ? baseSecond - probStart(prepR, 'second') : 0,
+
+=== src/engine/evaluate.ts — lignes non exécutées : 160, 161, 164, 165, 174, 175, 315, 316, 319, 320, 441
+  L160: throw new Error(`Profil de disponibilité inconnu : « ${String(profile)} ».`);
+  L161: }
+  L164: throw new Error('Plafond de groupe : référence hors du modèle.');
+  L165: }
+  L174: throw new Error('Catégorie non-engine : référence hors du modèle.');
+  L175: }
+  L315: throw new Error('Contexte second : la sixième carte doit être identifiée (index de type ou −1).');
+  L316: }
+  L319: throw new Error('Contexte premier : aucune sixième carte.');
+  L320: }
+  L441: if (!input.types[a].isStarter && !input.types[b].isStarter) return true;
+  branche branch #0 jamais prise L57: if (typeof value !== 'object' || value === null) throw invalidCondition('opérateur inconnu.');
+  branche branch #0 jamais prise L119: return copies[c.type] - (k[c.type] ?? 0) >= c.atLeast;
+  branche branch #0 jamais prise L136: if (a === b) continue; // auto-combo hors périmètre (§D)
+  branche branch #0 jamais prise L137: if (a < 0 || b < 0 || a >= n || b >= n) continue;
+  branche branch #0 jamais prise L159: if (profile !== undefined && !PROFILES.has(profile)) {
+  branche branch #0 jamais prise L163: if (!Number.isInteger(t.group) || t.group < 0 || t.group >= groups.length) {
+  branche branch #0 jamais prise L173: if (!Number.isInteger(c) || c < 0 || c >= input.categories.length) {
+  branche branch #0 jamais prise L145: throw new Error(`Plafond de groupe invalide (« ${g.id ?? gi} ») : entier ≥ 1 attendu.`);
+  branche branch #0 jamais prise L314: if (sixth === undefined || !Number.isInteger(sixth) || sixth < -1 || sixth >= prep.n) {
+  branche branch #0 jamais prise L317: if (sixth >= 0 && (k[sixth] ?? 0) < 1) throw new Error('Contexte second : la sixième carte doit figurer dans le tirage.');
+  branche branch #0 jamais prise L317: if (sixth >= 0 && (k[sixth] ?? 0) < 1) throw new Error('Contexte second : la sixième carte doit figurer dans le tirage.');
+  branche branch #0 jamais prise L318: } else if (sixth !== undefined && sixth !== -1) {
+  branche branch #0 jamais prise L438: if (a === b) continue;
+  branche branch #0 jamais prise L440: if (!hc) {
+
+=== src/engine/hand.ts — lignes non exécutées : 63, 64, 65, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 126, 127, 128, 129
+  L63: const draw = handSize;
+  L64: const hands: number[][] = [];
+  L65: for (let h = 0; h < count; h++) {
+  L67: for (let i = 0; i < draw; i++) {
+  L68: const j = i + Math.floor(Math.random() * (pool.length - i));
+  L69: const tmp = pool[i];
+  L70: pool[i] = pool[j];
+  L71: pool[j] = tmp;
+  L72: }
+  L73: hands.push(pool.slice(0, draw));
+  L74: }
+  L75: return hands;
+  L76: }
+  L126: }): SampledHand[] {
+  L127: const hands = drawHands(params.deck, params.context === 'first' ? 5 : 6, params.count);
+  L128: return evaluateHands({ ...params, hands });
+  L129: }
+  branche branch #0 jamais prise L34: const outcomes = pass.outcomes ?? pass.total;
+  branche branch #0 jamais prise L62: if (!Number.isInteger(handSize) || handSize < 1 || pool.length < handSize) return [];
+  branche branch #0 jamais prise L96: if (cards.length !== handSize) continue;
+
+=== src/engine/matching.ts — lignes non exécutées : aucune
+  branche branch #0 jamais prise L16: return i < j ? i * STRIDE + j : j * STRIDE + i;
+
+=== src/engine/query.ts — lignes non exécutées : 64
+  L64: return ctx.redundancy;
+  branche branch #0 jamais prise L63: case 'redundancy':
+
+=== src/lib/conditions.ts — lignes non exécutées : 19, 20, 25, 26, 29, 30, 31, 32, 33, 34, 35
+  L19: return null;
+  L20: }
+  L25: return node;
+  L26: }
+  L29: let node: ConditionNode | undefined = root;
+  L30: for (const i of path) {
+  L31: if (!node) return undefined;
+  L32: node = childrenOf(node)?.[i];
+  L33: }
+  L34: return node;
+  L35: }
+  branche branch #0 jamais prise L18: if (node.kind === 'or') return node.any;
+  branche branch #0 jamais prise L24: if (node.kind === 'or') return { kind: 'or', any: children };
+  branche branch #0 jamais prise L39: if (!root) return [];
+  branche branch #0 jamais prise L51: if (node.kind === 'remaining') return isRoot ? { kind: 'and', all: [node] } : node;
+  branche branch #0 jamais prise L56: if (node.kind === 'or' && children.length === 1) return isRoot ? { kind: 'and', all: children } : children[0];
+  branche branch #0 jamais prise L71: return out ? normalize(out, true) : null;
+  branche branch #0 jamais prise L66: if (!children) return node;
+  branche branch #0 jamais prise L83: return replaceAt(root, path, (group) => (childrenOf(group) ? withChildren(group, [...childrenOf(group)!, node]) : { kind: 'or', any: [group, node] }))
+  branche branch #0 jamais prise L102: return out ? normalize(out, true) : null;
+  branche branch #0 jamais prise L107: return replaceAt(root, path, (node) => (node.kind === 'remaining' ? { ...node, at_least: n } : node))!;
+
+=== src/lib/engineModel.ts — lignes non exécutées : aucune
+  branche branch #0 jamais prise L104: copies: mainCopies.get(id) ?? 0,
+
+=== src/lib/sidePlan.ts — lignes non exécutées : aucune
+  branche branch #0 jamais prise L57: const available = inSide.get(c.card_id) ?? 0;
+  branche branch #0 jamais prise L182: return node.kind === 'and' ? node.all.some((c) => alwaysFalse(c, copies)) : node.any.every((c) => alwaysFalse(c, copies));
+
+=== src/lib/statsViews.ts — lignes non exécutées : 69, 70, 71, 72, 73, 74, 75, 76, 77
+  L69: const cat = pass.perCategory.find((c) => c.id === viewId);
+  L70: if (!cat) return { buckets: [0, 0, 0, 0], color: '#5b8def', mean: 0, meanLabel: '' };
+  L71: return {
+  L72: buckets: toBuckets(cat.dist),
+  L73: color: '#5b8def',
+  L74: mean: cat.mean,
+  L75: meanLabel: 'E[copies]',
+  L76: };
+  L77: }
+  branche branch #0 jamais prise L28: const b0 = dist[0] ?? 0;
+  branche branch #0 jamais prise L29: const b1 = dist[1] ?? 0;
+  branche branch #0 jamais prise L30: const b2 = dist[2] ?? 0;
+  branche branch #0 jamais prise L32: for (let i = 3; i < dist.length; i++) b3 += dist[i] ?? 0;
+  branche branch #0 jamais prise L43: return dist.reduce((s, p, i) => s + (p ?? 0) * i, 0);
+  branche branch #0 jamais prise L50: pass.startsBuckets[0] ?? 0,
+  branche branch #0 jamais prise L51: pass.startsBuckets[1] ?? 0,
+  branche branch #0 jamais prise L52: pass.startsBuckets[2] ?? 0,
+  branche branch #0 jamais prise L53: pass.startsBuckets[3] ?? 0,
+  branche branch #0 jamais prise L68: }
+
+=== src/lib/summary.ts — lignes non exécutées : aucune
+  branche branch #0 jamais prise L13: export const ENGINE_VERSION: string = typeof __ENGINE_VERSION__ === 'string' ? __ENGINE_VERSION__ : 'unversioned';
+  branche branch #0 jamais prise L31: const buckets: [number, number, number, number] = [pass.startsBuckets[0] ?? 0, pass.startsBuckets[1] ?? 0, pass.startsBuckets[2] ?? 0, pass.startsBuck
+  branche branch #0 jamais prise L31: const buckets: [number, number, number, number] = [pass.startsBuckets[0] ?? 0, pass.startsBuckets[1] ?? 0, pass.startsBuckets[2] ?? 0, pass.startsBuck
+  branche branch #0 jamais prise L31: const buckets: [number, number, number, number] = [pass.startsBuckets[0] ?? 0, pass.startsBuckets[1] ?? 0, pass.startsBuckets[2] ?? 0, pass.startsBuck
+  branche branch #0 jamais prise L31: const buckets: [number, number, number, number] = [pass.startsBuckets[0] ?? 0, pass.startsBuckets[1] ?? 0, pass.startsBuckets[2] ?? 0, pass.startsBuck

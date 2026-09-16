@@ -1,0 +1,47 @@
+# première pile (P1–P7a)
+2026-09-15T09:26:05.184Z | ERREUR | GET /%61pi/decks | requireUser appelé hors de la garde auth
+2026-09-15T09:26:05.199Z | GET | /%61pi/decks | statut 500 | 17 ms
+2026-09-15T09:26:05.258Z | ERREUR | GET /%61pi/decks | requireUser appelé hors de la garde auth
+2026-09-15T09:26:05.260Z | GET | /%61pi/decks | statut 500 | 3 ms
+2026-09-15T09:26:05.853Z | ERREUR | POST /api/library/categories | duplicate key value violates unique constraint "nonengine_categories_pkey"
+2026-09-15T09:26:05.877Z | ERREUR | POST /api/library/groups | duplicate key value violates unique constraint "nonengine_groups_pkey"
+2026-09-15T09:26:11.489Z | POST | /api/decks | statut 201 | 5202 ms
+2026-09-15T09:26:13.116Z | ERREUR | GET /api/cards/search?q=ab&limit=-1 | LIMIT must not be negative
+2026-09-15T09:26:13.133Z | ERREUR | GET /api/cards/search?q=ab&limit=0.5 | invalid input syntax for type bigint: "0.5"
+2026-09-15T09:26:13.190Z | GET | /api/cards?ids=<1500 ids, 9014 car.> | statut 200 | 53 ms
+# seconde pile (Q0–Q9, Caddy)
+2026-09-15T11:33:54.403Z | POST | /api/decks | statut 201 | 60879 ms
+2026-09-15T11:34:03.092Z | POST | /api/decks | statut 201 | 8661 ms
+2026-09-15T11:34:19.189Z | POST | /api/decks | statut 201 | 16049 ms
+2026-09-15T11:34:19.294Z | POST | /api/decks | statut 201 | 16123 ms
+2026-09-15T11:34:19.323Z | POST | /api/decks | statut 201 | 16133 ms
+2026-09-15T11:34:19.328Z | POST | /api/decks | statut 201 | 16172 ms
+2026-09-15T11:34:19.335Z | GET | /api/auth/me | statut 200 | 16089 ms
+2026-09-15T11:34:19.424Z | POST | /api/decks | statut 201 | 16239 ms
+2026-09-15T11:34:19.428Z | POST | /api/decks | statut 201 | 16313 ms
+2026-09-15T11:34:19.433Z | POST | /api/decks | statut 201 | 16228 ms
+2026-09-15T11:34:19.472Z | POST | /api/decks | statut 201 | 16325 ms
+2026-09-15T11:34:19.493Z | POST | /api/decks | statut 201 | 16329 ms
+2026-09-15T11:34:19.527Z | POST | /api/decks | statut 201 | 16325 ms
+2026-09-15T11:34:31.066Z | POST | /api/decks | statut 201 | 27886 ms
+2026-09-15T11:34:31.107Z | POST | /api/decks | statut 201 | 27911 ms
+2026-09-15T11:34:44.456Z | POST | /api/decks | statut 201 | 13267 ms
+2026-09-15T11:35:02.749Z | PUT | /api/decks/fc52dadb-af32-4975-8440-a032770894ea | statut 200 | 18286 ms
+2026-09-15T11:36:31.039Z | POST | /api/decks/import | statut 201 | 88208 ms
+2026-09-15T11:36:31.050Z | PUT | /api/library/flags/999999 | statut 200 | 86705 ms
+2026-09-15T11:36:33.555Z | GET | /%61pi/cards/search?q=audit&limit=100 | statut 200 | 4 ms
+2026-09-15T11:36:33.558Z | GET | /%61pi/cards?ids=900000001,900000002 | statut 200 | 2 ms
+2026-09-15T11:36:33.560Z | GET | /%61pi/cards/abc/image | statut 400 | 0 ms
+2026-09-15T11:36:33.564Z | ERREUR | GET /%61pi/library | requireUser appelé hors de la garde auth
+2026-09-15T11:36:33.569Z | GET | /%61pi/library | statut 500 | 8 ms
+2026-09-15T11:36:33.570Z | ERREUR | GET /%61pi/decks | requireUser appelé hors de la garde auth
+2026-09-15T11:36:33.572Z | GET | /%61pi/decks | statut 500 | 2 ms
+2026-09-15T11:36:33.721Z | ERREUR | GET /api/cards/search?q=audit&limit=-1 | LIMIT must not be negative
+2026-09-15T11:36:33.736Z | ERREUR | GET /api/cards/search?q=audit&limit=0.5 | invalid input syntax for type bigint: "0.5"
+2026-09-15T11:37:05.905Z | GET | /%61pi/cards/search?q=audit | statut 200 | 5 ms
+2026-09-15T11:37:06.016Z | GET | /%61pi/cards?ids=900000001 | statut 200 | 3 ms
+2026-09-15T11:37:06.187Z | GET | /%61pi/cards/abc/image | statut 400 | 1 ms
+2026-09-15T11:37:06.356Z | ERREUR | GET /%61pi/decks | requireUser appelé hors de la garde auth
+2026-09-15T11:37:06.357Z | GET | /%61pi/decks | statut 500 | 1 ms
+2026-09-15T11:37:12.772Z | GET | /%61pi/cards/search?q=audit | statut 200 | 2 ms
+2026-09-15T11:37:12.878Z | GET | /%61pi/cards?ids=900000001 | statut 200 | 2 ms

@@ -1,0 +1,22 @@
+Sonde P7a — PUT /api/decks/:id avec deadFirst de 158 729 passcodes (≈ 1 Mio), pile jetable de l'audit 04.
+Relevés bruts pris dans PostgreSQL (conteneur testhand-audit04-db, 127.0.0.1:55460), heures UTC du 15/09/2026.
+
+# deck cible créé (decks.updated_at)
+dead|1|2026-09-15 09:26:30.894447+00
+
+# pg_stat_activity : pid | xact_start | durée | état
+177|2026-09-15 09:26:31.015592+00|00:06:09.814358|idle in transaction
+(09:34:44) 177|idle in transaction|00:08:14.58408|insert into deck_flags (deck_id,card_id,dead_first,dead_second) values ($1,$2,$3
+(09:35:1x) 177|idle in transaction|00:09:15.180517|insert into deck_flags (deck_id,card_id,dead_first,dead_seco
+
+# croissance du tas de deck_flags (lignes non validées)
+2026-09-15 09:35:56.554601+00|9076736|6135808
+2026-09-15 09:36:18.255569+00|9265152|6266880
+
+# fin : plus aucune transaction de plus de 10 s, lignes validées
+Tue Sep 15 09:36:43 UTC 2026
+158729
+
+# côté client : undici (fetch de Node 22) a abandonné à 300 s
+TypeError: fetch failed … [cause]: HeadersTimeoutError: Headers Timeout Error { code: 'UND_ERR_HEADERS_TIMEOUT' }
+(voir probe04-P1-P6-stdout.txt, fin du fichier)

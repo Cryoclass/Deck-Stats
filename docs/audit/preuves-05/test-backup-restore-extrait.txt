@@ -1,0 +1,67 @@
+==> conteneurs jetables testhand-bkp-src (127.0.0.1:55438) et testhand-bkp-dst (127.0.0.1:55439), sorties : <scratchpad>/audit05/mirror/deploy/out/test-backup-restore-20260915-140854
+==> 1. backup.sh (cron) sur la source
+  ✓ code 0
+  ✓ archive ygo-<horodatage>.sql.gz présente
+  ✓ ligne « sauvegarde ok » au format du cron
+  ✓ ligne « sauvegarde vérifiée » avec sha256 et empreinte
+  ✓ .sha256 présent et exact
+  ✓ .fingerprint présent
+  ✓ empreinte de l'archive = empreinte de la base source
+  ✓ ygo_verify supprimée après la vérification
+  ✓ la source est intacte
+==> 2. rétention : archives de plus de 14 jours du dossier racine, keep/ exclu
+  ✓ code 0
+  ✓ archive ancienne supprimée
+  ✓ ses compagnons supprimés
+  ✓ keep/ conservé hors rétention
+  ✓ archive récente conservée
+==> 3. backup.sh --pre-migration
+  ✓ code 0
+  ✓ archive keep/ygo-pre-migration-<horodatage>.sql.gz
+  ✓ ligne « sauvegarde vérifiée: keep/… »
+  ✓ .sha256 et .fingerprint présents
+  ✓ empreinte = base source
+==> 4. extension en échec partiel : la garde refuse BACKUP_VERIFY_DB=ygo (base servie)
+  ✓ code 1
+  ✓ ligne « sauvegarde ok » toujours écrite
+  ✓ ligne « sauvegarde NON vérifiée » avec la raison
+  ✓ archive conservée
+  ✓ aucun .fingerprint pour l'archive non vérifiée
+  ✓ la base servie n'a pas été touchée
+==> 5. restore.sh : refus sans .sha256, somme fausse, empreinte enregistrée fausse (M2)
+  ✓ 5a sans .sha256 : code 2
+  ✓ 5a message nommant le .sha256 absent
+  ✓ 5b somme fausse : code 2
+  ✓ 5b message « somme SHA-256 différente »
+  ✓ 5c fichier .fingerprint réellement altéré (globale)
+  ✓ 5c empreinte globale fausse : code 2
+  ✓ 5c message « ne porte pas l'empreinte enregistrée »
+  ✓ 5c fichier .fingerprint réellement altéré (table)
+  ✓ 5c empreinte table fausse : code 2
+  ✓ 5c message « ne porte pas l'empreinte enregistrée »
+  ✓ 5 la cible n'a pas été modifiée
+  ✓ 5 aucune base de travail restante
+  ✓ 5 aucune sauvegarde de sécurité créée
+==> 6. restore.sh --yes : la source restaurée dans la cible, sauvegarde de sécurité, base précédente
+  ✓ code 0
+  ✓ ligne « restauration ok »
+  ✓ empreinte de la cible identique à l'archive (ligne à ligne)
+  ✓ 4 decks
+  ✓ 4 paires globales
+  ✓ 19 cartes
+  ✓ sauvegarde de sécurité keep/ygo-pre-restauration-*
+  ✓ sa somme et son empreinte
+  ✓ son empreinte = état initial de la cible
+  ✓ base ygo_previous présente
+  ✓ aucune base de travail restante
+==> 7. retour arrière : restore.sh --yes sur la sauvegarde de sécurité
+  ✓ code 0
+  ✓ empreinte initiale de la cible retrouvée
+  ✓ 0 deck
+==> 8. archive sans .fingerprint : refusée, puis acceptée avec --without-fingerprint
+  ✓ 8a refus : code 2
+  ✓ 8a message nommant le .fingerprint absent
+  ✓ 8a cible intacte
+  ✓ 8b --without-fingerprint : code 0
+  ✓ 8b empreinte de la cible = source
+OK : toutes les gardes passent — journaux dans <scratchpad>/audit05/mirror/deploy/out/test-backup-restore-20260915-140854

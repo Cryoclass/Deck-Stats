@@ -1,0 +1,12 @@
+{"label":"réaliste : 14 types × 3 copies, deck 40","mode":"all","types":14,"deckSize":40,"ms":1,"total":0,"unavailable":"Composition ou taille de main invalide."}
+{"label":"20 starters × 1 copie, deck 40","mode":"all","types":20,"deckSize":40,"ms":255,"total":658008,"unavailable":null}
+{"label":"30 starters × 1 copie, deck 40","mode":"all","types":30,"deckSize":40,"ms":5667,"total":658008,"unavailable":null}
+{"label":"40 starters × 1 copie, deck 40","mode":"first","types":40,"deckSize":40,"ms":1769,"total":658008,"unavailable":null}
+{"label":"40 starters × 1 copie, deck 40","mode":"second","types":40,"deckSize":40,"ms":11198,"total":3838380,"unavailable":null}
+{"label":"0 type annoté, deck 1000 (taille acceptée par le serveur)","mode":"all","types":0,"deckSize":1000,"ms":2,"total":8250291250200,"unavailable":null}
+{"label":"0 type annoté, deck 1200","mode":"all","types":0,"deckSize":1200,"ms":0,"total":20563703400240,"unavailable":null}
+{"label":"réaliste : 13 types × 3 copies, deck 40","mode":"all","types":13,"deckSize":40,"ms":109,"total":658008,"unavailable":null,"secondUnavailable":null}
+{"label":"20 types × 3 copies, deck 60","mode":"all","types":20,"deckSize":60,"ms":935,"total":5461512,"unavailable":null,"secondUnavailable":null}
+{"label":"0 type annoté, deck 1000 (taille acceptée par le serveur)","mode":"all","types":0,"deckSize":1000,"ms":0,"total":8250291250200,"unavailable":null,"secondUnavailable":null}
+{"label":"0 type annoté, deck 1200","mode":"all","types":0,"deckSize":1200,"ms":0,"total":20563703400240,"unavailable":null,"secondUnavailable":"Ce tirage dépasse la précision entière prise en charge."}
+{"label":"40 starters × 1 copie, deck 40","mode":"all","types":40,"deckSize":40,"ms":50285,"total":658008,"unavailable":null,"secondUnavailable":null}

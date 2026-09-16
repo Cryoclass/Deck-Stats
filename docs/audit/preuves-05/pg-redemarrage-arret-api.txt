@@ -1,0 +1,18 @@
+# Redémarrage de PostgreSQL pendant que l'API tourne (serveur du dépôt, node --import tsx src/index.ts, base jetable 55470)
+# 1) GET /api/health → 200 ; 2) docker restart -t 2 testhand-audit05-db ; 3) GET /api/health → aucune réponse
+{"level":30,"time":1789479117449,"pid":21092,"hostname":"<poste>","msg":"Server listening at http://127.0.0.1:8798"}
+{"level":30,"time":1789479117451,"pid":21092,"hostname":"<poste>","msg":"Server listening at http://<adresse-réseau-local>:8798"}
+{"level":30,"time":1789479117451,"pid":21092,"hostname":"<poste>","msg":"Server listening at http://<adresse-réseau-local>:8798"}
+{"level":30,"time":1789479117451,"pid":21092,"hostname":"<poste>","msg":"Server listening at http://<adresse-réseau-local>:8798"}
+{"level":30,"time":1789479117451,"pid":21092,"hostname":"<poste>","msg":"Server listening at http://<adresse-réseau-local>:8798"}
+{"level":30,"time":1789479117451,"pid":21092,"hostname":"<poste>","msg":"API prête sur http://localhost:8798"}
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+error: terminating connection due to administrator command
+    at parseErrorMessage (C:\dev\Testhand\node_modules\pg-protocol\src\parser.ts:394:9)
+[…objet client pg tronqué…]
+
+Node.js v22.18.0
+PROCESSUS TERMINÉ code=1 à 13:32:01

@@ -1,0 +1,42 @@
+// Re-mesure (contraste, cibles, polices) des pages du comparateur, sans modifier le deck.
+import { createRequire } from 'node:module';
+import fs from 'node:fs';
+import path from 'node:path';
+const require = createRequire('C:/dev/Testhand/package.json');
+const { chromium } = require('playwright-core');
+const BASE = 'http://localhost:5174';
+const OUT = 'C:/dev/Testhand/docs/audit/captures/visuel';
+const ACC = { email: 'e2e@example.test', password: 'e2e-disposable-pass' };
+const DECK = 'Snake-Eye Fiendsmith';
+const src = fs.readFileSync('C:/Users/ccrepin/AppData/Local/Temp/claude/c--dev-Testhand/bcb8d50a-2cd4-45c2-a407-fa1d38dddc7d/scratchpad/audit-visuel.mjs', 'utf8');
+const a = src.indexOf('const SCAN = `') + 'const SCAN = `'.length;
+const b = src.indexOf('`;\nasync function measure');
+const SCAN = eval('`' + src.slice(a, b) + '`');
+const measures = JSON.parse(fs.readFileSync(path.join(OUT, 'mesures.json'), 'utf8'));
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+for (const cfg of [{ w: 360, h: 780, mobile: true }, { w: 768, h: 1024, mobile: true }, { w: 1440, h: 900, mobile: false }]) {
+  const context = await browser.newContext({ viewport: { width: cfg.w, height: cfg.h }, deviceScaleFactor: cfg.mobile ? 2 : 1, isMobile: cfg.mobile, hasTouch: cfg.mobile, baseURL: BASE, locale: 'fr-FR', colorScheme: 'dark' });
+  await context.request.post('/api/auth/login', { data: ACC });
+  const decks = await (await context.request.get('/api/decks')).json();
+  const id = decks.find((d) => d.name === DECK).id;
+  const v2 = decks.find((d) => d.name === DECK + ' v2').id;
+  const page = await context.newPage();
+  await page.goto(`/compare/${id}/${v2}`);
+  await page.waitForSelector('text=Synthèse', { timeout: 120000 });
+  await page.waitForTimeout(800);
+  const W = String(cfg.w);
+  measures[`compare-${W}`] = await page.evaluate(SCAN);
+  await page.locator('h2:has-text("Synthèse")').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  measures[`compare-synthese-${W}`] = await page.evaluate(SCAN);
+  const c = measures[`compare-${W}`].contrast;
+  console.log(W, 'textes', c.length, 'KO', c.filter((x) => !x.pass).length);
+  for (const x of c.filter((x) => !x.pass && !x.overImage && x.opaque)) console.log('  ', x.ratio, x.fg, 'sur', x.bg, x.size + 'px', 'n=' + x.n, '|', x.sample.slice(0, 40), '|', x.cls.slice(0, 50));
+  const s = measures[`compare-synthese-${W}`].contrast;
+  console.log(W, 'synthese textes', s.length, 'KO', s.filter((x) => !x.pass).length);
+  for (const x of s.filter((x) => !x.pass && !x.overImage && x.opaque)) console.log('  ', x.ratio, x.fg, 'sur', x.bg, x.size + 'px', 'n=' + x.n, '|', x.sample.slice(0, 40), '|', x.cls.slice(0, 50));
+  console.log(W, 'cibles<24', measures[`compare-${W}`].targets.filter((t) => Math.min(t.w, t.h) < 24).map((t) => `${t.label} ${t.w}x${t.h}`).join('; '));
+  await context.close();
+}
+await browser.close();
+fs.writeFileSync(path.join(OUT, 'mesures.json'), JSON.stringify(measures, null, 1));

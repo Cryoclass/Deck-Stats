@@ -1,0 +1,187 @@
+[
+  {
+    "t": 1789399995648,
+    "persona": "BROWSER",
+    "msg": "console.error",
+    "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "t": 1789399995651,
+    "persona": "BROWSER",
+    "msg": "console.error",
+    "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "t": 1789399995722,
+    "persona": "BROWSER",
+    "msg": "console.error",
+    "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "t": 1789399996418,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-00-login",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-00-login.png"
+  },
+  {
+    "t": 1789399996510,
+    "persona": "P3-mobile360",
+    "msg": "click: toggle Inscription"
+  },
+  {
+    "t": 1789399996742,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-01-register-filled",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-01-register-filled.png"
+  },
+  {
+    "t": 1789399996799,
+    "persona": "P3-mobile360",
+    "msg": "click: Créer le compte"
+  },
+  {
+    "t": 1789399998170,
+    "persona": "P3-mobile360",
+    "msg": "home reached after register",
+    "ms": 1427
+  },
+  {
+    "t": 1789399998318,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-02-home-after-register",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-02-home-after-register.png"
+  },
+  {
+    "t": 1789399998449,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-02b-home-empty-360",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-02b-home-empty-360.png"
+  },
+  {
+    "t": 1789399998566,
+    "persona": "P3-mobile360",
+    "msg": "click #3: + Importer un deck"
+  },
+  {
+    "t": 1789399998959,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-03-import-dialog-360",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-03-import-dialog-360.png"
+  },
+  {
+    "t": 1789399999031,
+    "persona": "P3-mobile360",
+    "msg": "click #4: Importer le texte"
+  },
+  {
+    "t": 1789399999756,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-04-editor-360-annotate-tab",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-04-editor-360-annotate-tab.png"
+  },
+  {
+    "t": 1789399999767,
+    "persona": "P3-mobile360",
+    "msg": "onglet Stats présent sous 1024px ?",
+    "hasStatsTab": 1
+  },
+  {
+    "t": 1789399999869,
+    "persona": "P3-mobile360",
+    "msg": "click #5: onglet Stats"
+  },
+  {
+    "t": 1789400000071,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-05-stats-tab-360",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-05-stats-tab-360.png"
+  },
+  {
+    "t": 1789400000168,
+    "persona": "P3-mobile360",
+    "msg": "click #6: onglet Combos & catégories"
+  },
+  {
+    "t": 1789400000363,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-06-tab-Comboscatgories-360",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-06-tab-Comboscatgories-360.png"
+  },
+  {
+    "t": 1789400000560,
+    "persona": "P3-mobile360",
+    "msg": "click #7: onglet Mur de mains"
+  },
+  {
+    "t": 1789400000827,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-06-tab-Murdemains-360",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-06-tab-Murdemains-360.png"
+  },
+  {
+    "t": 1789400000946,
+    "persona": "P3-mobile360",
+    "msg": "click #8: onglet Inventaire"
+  },
+  {
+    "t": 1789400001102,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-06-tab-Inventaire-360",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-06-tab-Inventaire-360.png"
+  },
+  {
+    "t": 1789400001168,
+    "persona": "P3-mobile360",
+    "msg": "click #9: onglet Plans de side"
+  },
+  {
+    "t": 1789400001303,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-06-tab-Plansdeside-360",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-06-tab-Plansdeside-360.png"
+  },
+  {
+    "t": 1789400001372,
+    "persona": "P3-mobile360",
+    "msg": "click #10: retour onglet Annoter"
+  },
+  {
+    "t": 1789400001410,
+    "persona": "P3-mobile360",
+    "msg": "boîte englobante \"+ Ajouter\" (cible tactile)",
+    "box": {
+      "x": 240.65625,
+      "y": 503.421875,
+      "width": 110.34375,
+      "height": 160.828125
+    }
+  },
+  {
+    "t": 1789400001436,
+    "persona": "P3-mobile360",
+    "msg": "boîte englobante bouton mode \"Starter\" (cible tactile)",
+    "box": {
+      "x": 8,
+      "y": 192.5,
+      "width": 77.609375,
+      "height": 26
+    }
+  },
+  {
+    "t": 1789400001503,
+    "persona": "P3-mobile360",
+    "msg": "click #11: ← Decks"
+  },
+  {
+    "t": 1789400001511,
+    "persona": "P3-mobile360",
+    "msg": "bouton ⇄ Comparer à 360px, un seul deck",
+    "disabled": true
+  },
+  {
+    "t": 1789400001690,
+    "persona": "SHOT",
+    "msg": "P3-mobile360-07-home-360-one-deck",
+    "file": "C:\\dev\\Testhand\\docs\\audit\\captures\\P3-mobile360-07-home-360-one-deck.png"
+  }
+]

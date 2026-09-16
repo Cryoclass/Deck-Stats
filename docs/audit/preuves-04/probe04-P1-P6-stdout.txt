@@ -1,0 +1,27 @@
+P1 inscriptions successives, même code, même IP {"A":201,"B":201,"C":201,"codeInvalide":403,"D":201,"E_sixieme":429,"E_body":{"statusCode":429,"error":"Too Many Requests","message":"Rate limit exceeded, retry in 10 minutes"}}
+P1b /api/auth/me de A (aucun rôle, aucun plan) {"status":200,"body":{"user":{"id":"9488a27e-4511-42d7-a8ea-259f6b85abd4","email":"a@audit.test","display_name":"a","providers":[],"has_password":true}}}
+P2 variantes de chemin SANS session {"/api/decks":{"status":401,"body":"{\"error\":\"non authentifié\"}"},"/%61pi/decks":{"status":500,"body":"{\"statusCode\":500,\"error\":\"Internal Server Error\",\"message\":\"requireUser appelé hors de la garde auth\"}"},"//api/decks":{"status":404,"body":"{\"message\":\"Route GET://api/decks not found\",\"error\":\"Not Found\",\"statusCode\":404}"},"/api/decks/":{"status":401,"body":"{\"error\"
+P2b variantes de chemin AVEC session de A {"/%61pi/decks":{"status":500,"body":"{\"statusCode\":500,\"error\":\"Internal Server Error\",\"message\":\"requireUser appelé hors de la garde auth\"}"},"/api/auth/%2e%2e/decks":{"status":404,"body":"{\"message\":\"Route GET:/api/auth/%2e%2e/decks not found\",\"error\":\"Not Found\",\"statusCode\":404}"}}
+P3 B agit sur les ressources de A {"get":404,"put":404,"patch":404,"duplicate":404,"summary":404,"delete":{"status":200,"body":{"ok":true}},"patchGroup":404,"deleteGroup":404,"deleteCategory":400,"assignToCategoryOfA":404,"flagWithGroupOfA":404,"configRefCategoryOfA":{"status":400,"body":{"statusCode":400,"error":"Bad Request","message":"Catégorie référencée absente : c383dfc5-1fe1-48a1-93cd-7a5255dc5932"}},"deckA_apres":{"status"
+P4 B crée une catégorie / un plafond avec l’UUID de ceux de A {"categorie":{"status":500,"body":{"statusCode":500,"code":"23505","error":"Internal Server Error","message":"duplicate key value violates unique constraint \"nonengine_categories_pkey\""}},"plafond":{"status":500,"body":{"statusCode":500,"code":"23505","error":"Internal Server Error","message":"duplicate key value violates unique constraint \"nonengine_groups_pkey\""}}}
+P5 valeurs absurdes {"notes900k":{"status":201,"ms":144},"name201":400,"nameHtml":{"status":201},"savedQueriesJunk":{"status":201,"champLibreRelu":["kind","libre"],"nomRequeteLongueur":100000},"deck3000cartes1000starters":{"status":201,"ms":5205,"KiB":46},"atLeast32767":201,"cardIdMaxSafe":201,"matchups32notes":{"status":201,"ms":684},"body1MiBplus":413,"summaryForged":200,"summaryForgedRelu":{"mainSize":3,"brickRate
+P6 rafales sans quota ni limite de débit {"decksCrees":300,"sur":300,"dernierStatut":201,"decksMs":8505,"categoriesCreees":500,"sur2":500,"catsMs":9153}
+node:internal/deps/undici/undici:13510
+      Error.captureStackTrace(err);
+            ^
+
+TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at async call (file:///C:/Users/ccrepin/AppData/Local/Temp/claude/c--dev-Testhand/0e9c3ef4-fa87-41e4-b305-b082d699fa8f/scratchpad/probe04.mjs:19:15)
+    at async probeWhile (file:///C:/Users/ccrepin/AppData/Local/Temp/claude/c--dev-Testhand/0e9c3ef4-fa87-41e4-b305-b082d699fa8f/scratchpad/probe04.mjs:137:13)
+    at async file:///C:/Users/ccrepin/AppData/Local/Temp/claude/c--dev-Testhand/0e9c3ef4-fa87-41e4-b305-b082d699fa8f/scratchpad/probe04.mjs:146:13 {
+  [cause]: HeadersTimeoutError: Headers Timeout Error
+      at FastTimer.onParserTimeout [as _onTimeout] (node:internal/deps/undici/undici:6249:32)
+      at Timeout.onTick [as _onTimeout] (node:internal/deps/undici/undici:2210:17)
+      at listOnTimeout (node:internal/timers:588:17)
+      at process.processTimers (node:internal/timers:523:7) {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+
+Node.js v22.18.0

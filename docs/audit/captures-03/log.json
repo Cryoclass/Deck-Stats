@@ -1,0 +1,44 @@
+{
+  "loginLegalMentions": false,
+  "loginLinks": [],
+  "register": 201,
+  "editorUrl": "http://localhost:8795/decks/62563875-cd0c-4e4f-9c76-abea68343050",
+  "editorAttribution": false,
+  "detailDialogImg": [
+    "https://images.ygoprodeck.com/images/cards_cropped/10045474.jpg"
+  ],
+  "relay": {
+    "status": 200,
+    "type": "image/jpeg",
+    "cache": "private, max-age=86400",
+    "bytes": 26325
+  },
+  "cookies": [
+    {
+      "name": "ygo_session",
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax",
+      "expires": 1791991457
+    }
+  ],
+  "localStorageKeys": [],
+  "indexedDB": [
+    "ygo-proba"
+  ],
+  "externalRequests": {
+    "images.ygoprodeck.com": {
+      "count": 23,
+      "types": [
+        "image"
+      ],
+      "paths": [
+        "/images/cards_small/<id>.jpg",
+        "/images/cards_cropped/<id>.jpg"
+      ],
+      "referers": [
+        "http://localhost:8795/"
+      ]
+    }
+  }
+}

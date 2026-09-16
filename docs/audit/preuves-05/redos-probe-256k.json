@@ -1,0 +1,10 @@
+{
+  "emailLength": 256000,
+  "bodyBytes": 256073,
+  "registerStatus": 400,
+  "registerBody": "{\"error\":\"email invalide\"}",
+  "registerMs": 43925,
+  "healthBefore_maxMs": 83,
+  "healthDuring_maxMs": 43906,
+  "healthProbesDuring": 14
+}

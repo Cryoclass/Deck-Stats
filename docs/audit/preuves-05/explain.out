@@ -1,0 +1,282 @@
+Pager usage is off.
+=== [A] resolveSession (session.ts:64-69)
+                                          QUERY PLAN                                          
+----------------------------------------------------------------------------------------------
+ Nested Loop (actual time=0.416..0.421 rows=1 loops=1)
+   Buffers: shared hit=3 read=3
+   ->  Index Scan using sessions_pkey on sessions s (actual time=0.369..0.373 rows=1 loops=1)
+         Index Cond: (token_hash = sha256(convert_to('tok500-1'::text, 'UTF8'::name)))
+         Buffers: shared read=3
+   ->  Index Scan using users_pkey on users u (actual time=0.040..0.040 rows=1 loops=1)
+         Index Cond: (id = s.user_id)
+         Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=169 read=8
+ Planning Time: 7.536 ms
+ Execution Time: 0.649 ms
+(12 rows)
+
+=== [B] GET /api/decks (decks.ts:85-89)
+                                                        QUERY PLAN                                                        
+--------------------------------------------------------------------------------------------------------------------------
+ Sort (actual time=10.967..10.972 rows=20 loops=1)
+   Sort Key: d.updated_at DESC
+   Sort Method: quicksort  Memory: 27kB
+   Buffers: shared hit=112 read=60
+   ->  HashAggregate (actual time=10.448..10.879 rows=20 loops=1)
+         Group Key: d.id
+         Batches: 1  Memory Usage: 24kB
+         Buffers: shared hit=109 read=60
+         ->  Nested Loop Left Join (actual time=0.075..9.356 rows=900 loops=1)
+               Buffers: shared hit=48 read=60
+               ->  Bitmap Heap Scan on decks d (actual time=0.037..0.144 rows=20 loops=1)
+                     Recheck Cond: (owner_id = 'aa2595fb-862b-427f-bae4-a77bf9ac426e'::uuid)
+                     Heap Blocks: exact=20
+                     Buffers: shared hit=22
+                     ->  Bitmap Index Scan on decks_owner (actual time=0.021..0.021 rows=20 loops=1)
+                           Index Cond: (owner_id = 'aa2595fb-862b-427f-bae4-a77bf9ac426e'::uuid)
+                           Buffers: shared hit=2
+               ->  Bitmap Heap Scan on deck_cards dc (actual time=0.416..0.433 rows=45 loops=20)
+                     Recheck Cond: (deck_id = d.id)
+                     Heap Blocks: exact=26
+                     Buffers: shared hit=26 read=60
+                     ->  Bitmap Index Scan on deck_cards_pkey (actual time=0.251..0.251 rows=45 loops=20)
+                           Index Cond: (deck_id = d.id)
+                           Buffers: shared hit=26 read=34
+         SubPlan 1
+           ->  Aggregate (actual time=0.046..0.046 rows=1 loops=20)
+                 Buffers: shared hit=61
+                 ->  Limit (actual time=0.017..0.020 rows=8 loops=20)
+                       Buffers: shared hit=61
+                       ->  Index Only Scan using deck_cards_pkey on deck_cards (actual time=0.016..0.018 rows=8 loops=20)
+                             Index Cond: ((deck_id = d.id) AND (zone = 'main'::text))
+                             Heap Fetches: 0
+                             Buffers: shared hit=61
+ Planning:
+   Buffers: shared hit=69 read=7
+ Planning Time: 2.337 ms
+ Execution Time: 11.538 ms
+(37 rows)
+
+=== [C] GET /api/library — affectations (library.ts:39)
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
+ Hash Join (actual time=0.819..27.015 rows=40 loops=1)
+   Hash Cond: (cc.category_id = c.id)
+   Buffers: shared hit=3 read=255
+   ->  Seq Scan on card_categories cc (actual time=0.043..20.404 rows=40000 loops=1)
+         Buffers: shared read=255
+   ->  Hash (actual time=0.048..0.051 rows=5 loops=1)
+         Buckets: 1024  Batches: 1  Memory Usage: 9kB
+         Buffers: shared hit=3
+         ->  Bitmap Heap Scan on nonengine_categories c (actual time=0.026..0.029 rows=5 loops=1)
+               Recheck Cond: (owner_id = 'aa2595fb-862b-427f-bae4-a77bf9ac426e'::uuid)
+               Heap Blocks: exact=1
+               Buffers: shared hit=3
+               ->  Bitmap Index Scan on nonengine_categories_owner_name (actual time=0.014..0.015 rows=5 loops=1)
+                     Index Cond: (owner_id = 'aa2595fb-862b-427f-bae4-a77bf9ac426e'::uuid)
+                     Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=33 read=4
+ Planning Time: 2.667 ms
+ Execution Time: 27.161 ms
+(19 rows)
+
+=== [D] invalidateOwnerSummaries avec carte (library.ts:17)
+BEGIN
+                                          QUERY PLAN                                           
+-----------------------------------------------------------------------------------------------
+ Update on decks (actual time=0.174..0.176 rows=0 loops=1)
+   Buffers: shared hit=22
+   ->  Nested Loop Semi Join (actual time=0.172..0.173 rows=0 loops=1)
+         Buffers: shared hit=22
+         ->  Bitmap Heap Scan on decks (actual time=0.171..0.171 rows=0 loops=1)
+               Recheck Cond: (owner_id = 'aa2595fb-862b-427f-bae4-a77bf9ac426e'::uuid)
+               Filter: (summary IS NOT NULL)
+               Rows Removed by Filter: 20
+               Heap Blocks: exact=20
+               Buffers: shared hit=22
+               ->  Bitmap Index Scan on decks_owner (actual time=0.104..0.105 rows=20 loops=1)
+                     Index Cond: (owner_id = 'aa2595fb-862b-427f-bae4-a77bf9ac426e'::uuid)
+                     Buffers: shared hit=2
+         ->  Index Scan using deck_cards_pkey on deck_cards (never executed)
+               Index Cond: ((deck_id = decks.id) AND (card_id = 10000135))
+ Planning:
+   Buffers: shared hit=22
+ Planning Time: 1.290 ms
+ Execution Time: 3.169 ms
+(19 rows)
+
+ROLLBACK
+=== [E] PUT /library/flags — étiquette présente ? (library.ts:76)
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=0.854..0.856 rows=0 loops=1)
+   Buffers: shared hit=3 read=2
+   ->  Nested Loop (actual time=0.852..0.853 rows=0 loops=1)
+         Buffers: shared hit=3 read=2
+         ->  Index Only Scan using card_categories_pkey on card_categories cc (actual time=0.851..0.851 rows=0 loops=1)
+               Index Cond: (card_id = 10000135)
+               Heap Fetches: 0
+               Buffers: shared hit=3 read=2
+         ->  Index Scan using nonengine_categories_pkey on nonengine_categories n (never executed)
+               Index Cond: (id = cc.category_id)
+               Filter: (owner_id = 'aa2595fb-862b-427f-bae4-a77bf9ac426e'::uuid)
+ Planning:
+   Buffers: shared hit=6
+ Planning Time: 0.490 ms
+ Execution Time: 0.912 ms
+(15 rows)
+
+=== [F] DELETE /library/categories/:id — cascade vers card_categories (library.ts:116)
+BEGIN
+                                                     QUERY PLAN                                                     
+--------------------------------------------------------------------------------------------------------------------
+ Delete on nonengine_categories (actual time=2.104..2.110 rows=1 loops=1)
+   Buffers: shared hit=7 read=3 dirtied=2
+   ->  Index Scan using nonengine_categories_pkey on nonengine_categories (actual time=0.220..0.224 rows=1 loops=1)
+         Index Cond: (id = '1b08e0a7-3eb4-4b21-b705-68f2c922aca8'::uuid)
+         Filter: ((NOT is_builtin) AND (owner_id = 'aa2595fb-862b-427f-bae4-a77bf9ac426e'::uuid))
+         Buffers: shared hit=2 read=1
+ Planning:
+   Buffers: shared hit=8
+ Planning Time: 0.308 ms
+ Trigger for constraint card_categories_category_id_fkey: time=5.211 calls=1
+ Execution Time: 7.450 ms
+(11 rows)
+
+ROLLBACK
+=== [G] recherche catalogue, 2 caractères (cards.ts:36-41)
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Limit (actual time=39.805..39.813 rows=30 loops=1)
+   Buffers: shared hit=8 read=606
+   ->  Sort (actual time=39.802..39.805 rows=30 loops=1)
+         Sort Key: ((lower(name) = 'ab'::text)) DESC, (length(name)), name
+         Sort Method: top-N heapsort  Memory: 51kB
+         Buffers: shared hit=8 read=606
+         ->  Seq Scan on cards (actual time=0.170..37.235 rows=960 loops=1)
+               Filter: (lower(name) ~~ '%ab%'::text)
+               Rows Removed by Filter: 13569
+               Buffers: shared read=606
+ Planning:
+   Buffers: shared hit=114 read=3
+ Planning Time: 17.769 ms
+ Execution Time: 40.011 ms
+(14 rows)
+
+=== [H] recherche catalogue, 5 caractères
+                                             QUERY PLAN                                              
+-----------------------------------------------------------------------------------------------------
+ Limit (actual time=19.632..19.641 rows=30 loops=1)
+   Buffers: shared hit=592 read=17
+   ->  Sort (actual time=19.630..19.633 rows=30 loops=1)
+         Sort Key: ((lower(name) = 'card a'::text)) DESC, (length(name)), name
+         Sort Method: top-N heapsort  Memory: 48kB
+         Buffers: shared hit=592 read=17
+         ->  Bitmap Heap Scan on cards (actual time=8.637..14.146 rows=921 loops=1)
+               Recheck Cond: (lower(name) ~~ '%card a%'::text)
+               Rows Removed by Index Recheck: 828
+               Heap Blocks: exact=585
+               Buffers: shared hit=592 read=17
+               ->  Bitmap Index Scan on cards_name_trgm (actual time=8.487..8.488 rows=1749 loops=1)
+                     Index Cond: (lower(name) ~~ '%card a%'::text)
+                     Buffers: shared hit=7 read=17
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.284 ms
+ Execution Time: 20.348 ms
+(18 rows)
+
+=== [I] suppression d’un compte (cascade complète, route future RGPD)
+BEGIN
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Delete on users (actual time=1.922..1.923 rows=0 loops=1)
+   Buffers: shared hit=16 read=1 dirtied=1
+   ->  Index Scan using users_pkey on users (actual time=1.555..1.560 rows=1 loops=1)
+         Index Cond: (id = 'aa2595fb-862b-427f-bae4-a77bf9ac426e'::uuid)
+         Buffers: shared hit=2 read=1
+ Planning Time: 0.092 ms
+ Trigger for constraint sessions_user_id_fkey on users: time=0.762 calls=1
+ Trigger for constraint user_identities_user_id_fkey on users: time=1.335 calls=1
+ Trigger for constraint decks_owner_id_fkey on users: time=1.212 calls=1
+ Trigger for constraint card_flags_owner_id_fkey on users: time=7.232 calls=1
+ Trigger for constraint nonengine_categories_owner_id_fkey on users: time=0.488 calls=1
+ Trigger for constraint nonengine_groups_owner_id_fkey on users: time=10.473 calls=1
+ Trigger for constraint deck_cards_deck_id_fkey on decks: time=9.075 calls=20
+ Trigger for constraint deck_starters_deck_id_fkey on decks: time=9.073 calls=20
+ Trigger for constraint deck_combo_pairs_deck_id_fkey on decks: time=6.394 calls=20
+ Trigger for constraint deck_flags_deck_id_fkey on decks: time=5.018 calls=20
+ Trigger for constraint deck_conditions_deck_id_fkey on decks: time=6.759 calls=20
+ Trigger for constraint deck_matchups_deck_id_fkey on decks: time=13.778 calls=20
+ Trigger for constraint card_categories_category_id_fkey on nonengine_categories: time=32.844 calls=5
+ Trigger for constraint card_flags_group_id_fkey on nonengine_groups: time=0.853 calls=2
+ Trigger for constraint deck_conditions_deck_id_source_pair_id_fkey on deck_combo_pairs: time=9.954 calls=200
+ Trigger for constraint deck_side_plans_deck_id_matchup_id_fkey on deck_matchups: time=9.970 calls=100
+ Trigger for constraint deck_side_plan_cards_deck_id_matchup_id_position_fkey on deck_side_plans: time=36.340 calls=200
+ Execution Time: 163.983 ms
+(24 rows)
+
+ROLLBACK
+=== [J] sessions expirées : purge éventuelle (aucun index sur expires_at)
+                              QUERY PLAN                              
+----------------------------------------------------------------------
+ Aggregate (actual time=1.970..1.972 rows=1 loops=1)
+   Buffers: shared hit=2 read=25
+   ->  Seq Scan on sessions (actual time=1.963..1.964 rows=0 loops=1)
+         Filter: (expires_at < now())
+         Rows Removed by Filter: 2000
+         Buffers: shared hit=2 read=25
+ Planning:
+   Buffers: shared hit=3
+ Planning Time: 1.130 ms
+ Execution Time: 2.014 ms
+(10 rows)
+
+=== tailles
+       relname        | total  |  index  
+----------------------+--------+---------
+ deck_side_plan_cards | 221 MB | 124 MB
+ deck_cards           | 106 MB | 54 MB
+ deck_combo_pairs     | 35 MB  | 19 MB
+ deck_side_plans      | 28 MB  | 15 MB
+ deck_conditions      | 23 MB  | 8456 kB
+ deck_matchups        | 14 MB  | 6376 kB
+ deck_starters        | 14 MB  | 6448 kB
+ cards                | 10 MB  | 5600 kB
+(8 rows)
+
+                   indexrelname                   | idx_scan 
+--------------------------------------------------+----------
+ app_migrations_pkey                              |        8
+ card_categories_pkey                             |        0
+ card_flags_group                                 |        0
+ card_flags_pkey                                  |    60000
+ cards_name_trgm                                  |        0
+ cards_pkey                                       |        0
+ catalog_version_pkey                             |        0
+ deck_cards_pkey                                  |   900000
+ deck_combo_pairs_deck_id_card_a_id_card_b_id_key |        0
+ deck_combo_pairs_pkey                            |        0
+ deck_conditions_deck_id_source_card_id_key       |        0
+ deck_conditions_deck_id_source_pair_id_key       |        0
+ deck_conditions_pkey                             |        0
+ deck_flags_pkey                                  |        0
+ deck_matchups_pkey                               |   200000
+ deck_side_plan_cards_pkey                        |  1200000
+ deck_side_plans_pkey                             |  1199926
+ deck_starters_pkey                               |        1
+ decks_owner                                      |        0
+ decks_pkey                                       |  1499544
+ nonengine_categories_owner_name                  |        0
+ nonengine_categories_pkey                        |    40000
+ nonengine_groups_owner_name                      |        0
+ nonengine_groups_pkey                            |        0
+ sessions_pkey                                    |        0
+ sessions_user                                    |        0
+ user_identities_pkey                             |        0
+ users_email_unique                               |        0
+ users_pkey                                       |    88868
+(29 rows)
+

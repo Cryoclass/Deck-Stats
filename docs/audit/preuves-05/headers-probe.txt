@@ -1,0 +1,91 @@
+### GET / (front statique)
+HTTP/1.1 200 OK
+access-control-allow-origin: http://localhost:8797
+access-control-allow-credentials: true
+accept-ranges: bytes
+cache-control: public, max-age=0
+last-modified: Tue, 15 Sep 2026 13:34:12 GMT
+etag: W/"1af-1a0a5467020"
+content-type: text/html; charset=utf-8
+content-length: 431
+Date: Tue, 15 Sep 2026 13:37:25 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+### GET /assets/index-l3jlVQsq.js
+HTTP/1.1 200 OK
+access-control-allow-origin: http://localhost:8797
+access-control-allow-credentials: true
+accept-ranges: bytes
+cache-control: public, max-age=0
+last-modified: Tue, 15 Sep 2026 13:34:12 GMT
+etag: W/"6e441-1a0a5467020"
+content-type: application/javascript; charset=utf-8
+content-length: 451649
+Date: Tue, 15 Sep 2026 13:37:25 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+### GET /api/health
+HTTP/1.1 200 OK
+access-control-allow-origin: http://localhost:8797
+access-control-allow-credentials: true
+content-type: application/json; charset=utf-8
+content-length: 111
+Date: Tue, 15 Sep 2026 13:37:25 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+### GET /api/decks sans session
+HTTP/1.1 401 Unauthorized
+access-control-allow-origin: http://localhost:8797
+access-control-allow-credentials: true
+content-type: application/json; charset=utf-8
+content-length: 28
+Date: Tue, 15 Sep 2026 13:37:25 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"error":"non authentifié"}
+### GET /%61pi/cards/search?q=card sans session
+HTTP 200, 46201 octets
+[{"id":10005329,"name":"Card 00003e3b9e53 25ad9ce1","type":"Effect Monster","race":null,"attribute":null,"atk":null,"def":null,"level":null,"description":"effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet effet e
+### Pré-vol CORS depuis une origine tierce
+HTTP/1.1 204 No Content
+access-control-allow-origin: http://localhost:8797
+access-control-allow-credentials: true
+access-control-allow-methods: GET,HEAD,PUT,PATCH,POST,DELETE
+vary: Access-Control-Request-Headers
+access-control-allow-headers: content-type
+content-length: 0
+Date: Tue, 15 Sep 2026 13:37:26 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+### Pré-vol CORS depuis APP_ORIGIN
+HTTP/1.1 204 No Content
+access-control-allow-origin: http://localhost:8797
+access-control-allow-credentials: true
+access-control-allow-methods: GET,HEAD,PUT,PATCH,POST,DELETE
+vary: Access-Control-Request-Headers
+access-control-allow-headers: content-type
+content-length: 0
+Date: Tue, 15 Sep 2026 13:37:26 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+### Inscription : attributs du cookie
+HTTP/1.1 201 Created
+access-control-allow-origin: http://localhost:8797
+access-control-allow-credentials: true
+x-ratelimit-limit: 5
+x-ratelimit-remaining: 4
+x-ratelimit-reset: 600
+content-type: application/json; charset=utf-8
+set-cookie: ygo_session=aTWNvP5EOZSxpNfPjZ0XX0mvg5gAbag4YBh_QOPQFHY; Path=/; Expires=Thu, 15 Oct 2026 13:37:26 GMT; HttpOnly; Secure; SameSite=Lax
+content-length: 108
+Date: Tue, 15 Sep 2026 13:37:26 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"user":{"id":"53d512e8-0adb-4c7a-beae-e42ab49ba1db","email":"cookie@audit05.test","display_name":"cookie"}}

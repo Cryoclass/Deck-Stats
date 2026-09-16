@@ -1,0 +1,46 @@
+{
+  "inscriptions": [
+    201,
+    201
+  ],
+  "deck de A": {
+    "status": 201,
+    "cookie": "",
+    "json": {
+      "id": "91f2dc98-19c7-41ac-9162-1dea314df562",
+      "revision": 1
+    }
+  },
+  "étape 1 : A voit son deck": 1,
+  "sessions de A supprimées": 3,
+  "étape 2 : URL au moment du 401": "http://localhost:8797/decks/91f2dc98-19c7-41ac-9162-1dea314df562",
+  "étape 3 : compte connecté selon /api/auth/me": "b1789480324676@audit05.test",
+  "étape 3 : URL": "http://localhost:8797/decks/91f2dc98-19c7-41ac-9162-1dea314df562",
+  "étape 3 : le nom « Deck secret de A » est affiché": true,
+  "étape 3 : tuiles des cartes de A visibles": "20 / 20",
+  "étape 3 : GET /api/decks/<deck de A> avec la session de B": 404,
+  "étape 3 : message « Deck introuvable » affiché": true,
+  "appels API observés": [
+    "GET /api/auth/me → 401",
+    "GET /api/auth/providers → 200",
+    "POST /api/auth/login → 200",
+    "GET /api/decks → 200",
+    "GET /api/library → 200",
+    "GET /api/library → 200",
+    "GET /api/decks/91f2dc98-19c7-41ac-9162-1dea314df562 → 200",
+    "PUT /api/decks/91f2dc98-19c7-41ac-9162-1dea314df562/summary → 200",
+    "GET /api/auth/me → 200",
+    "GET /api/library → 200",
+    "GET /api/library → 200",
+    "GET /api/decks/91f2dc98-19c7-41ac-9162-1dea314df562 → 200",
+    "GET /api/cards → 200",
+    "GET /api/cards/search → 401",
+    "GET /api/auth/providers → 200",
+    "POST /api/auth/login → 200",
+    "GET /api/library → 200",
+    "GET /api/library → 200",
+    "GET /api/decks/91f2dc98-19c7-41ac-9162-1dea314df562 → 404",
+    "GET /api/auth/me → 200",
+    "GET /api/decks/91f2dc98-19c7-41ac-9162-1dea314df562 → 404"
+  ]
+}

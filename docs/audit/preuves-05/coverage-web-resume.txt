@@ -1,0 +1,91 @@
+
+## src/App.tsx  lignes 0/30 = 0.0 %  branches 0/1 = 0.0 %
+src/App.tsx                                  L      0  B      0  F      0  (0/30)
+
+## src/components  lignes 78/4611 = 1.7 %  branches 8/30 = 26.7 %
+src/components/AccountMenu.tsx               L    3.5  B    100  F      0  (2/57)
+src/components/AddCardDialog.tsx             L      0  B      0  F      0  (0/132)
+src/components/AnnotationGrid.tsx            L      0  B      0  F      0  (0/357)
+src/components/annotationModes.ts            L      0  B    100  F    100  (0/25)
+src/components/CardDetailDialog.tsx          L      0  B      0  F      0  (0/34)
+src/components/CardImage.tsx                 L      0  B      0  F      0  (0/11)
+src/components/CardMenu.tsx                  L      0  B      0  F      0  (0/167)
+src/components/CardTile.tsx                  L      0  B      0  F      0  (0/183)
+src/components/ComboList.tsx                 L      0  B      0  F      0  (0/238)
+src/components/ComparePage.tsx               L      0  B      0  F      0  (0/369)
+src/components/ConditionEditor.tsx           L      0  B      0  F      0  (0/111)
+src/components/EditorPage.tsx                L      0  B      0  F      0  (0/144)
+src/components/HandWall.tsx                  L      0  B      0  F      0  (0/197)
+src/components/Header.tsx                    L  14.11  B    100  F      0  (12/85)
+src/components/HomePage.tsx                  L      0  B      0  F      0  (0/289)
+src/components/ImportDialog.tsx              L      0  B      0  F      0  (0/233)
+src/components/Inventory.tsx                 L      0  B      0  F      0  (0/279)
+src/components/LoginPage.tsx                 L      0  B      0  F      0  (0/185)
+src/components/ModeBar.tsx                   L      0  B      0  F      0  (0/172)
+src/components/QueryMode.tsx                 L   1.26  B    100  F      0  (3/238)
+src/components/SidePlanner.tsx               L      0  B      0  F      0  (0/469)
+src/components/SideSheet.tsx                 L      0  B      0  F      0  (0/252)
+src/components/StatsPanel.tsx                L  22.17  B  77.77  F     20  (55/248)
+src/components/Toast.tsx                     L      0  B      0  F      0  (0/28)
+src/components/ui.tsx                        L   7.79  B    100  F      0  (6/77)
+src/components/ZoneCardTile.tsx              L      0  B      0  F      0  (0/31)
+
+## src/engine  lignes 947/978 = 96.8 %  branches 445/483 = 92.1 %
+src/engine/binomial.ts                       L    100  B    100  F    100  (16/16)
+src/engine/compare.ts                        L  99.18  B  91.25  F    100  (242/244)
+src/engine/enumerate.ts                      L    100  B  89.28  F    100  (193/193)
+src/engine/evaluate.ts                       L  96.48  B   92.3  F    100  (302/313)
+src/engine/hand.ts                           L  77.92  B  88.46  F     80  (60/77)
+src/engine/index.ts                          L    100  B    100  F    100  (1/1)
+src/engine/matching.ts                       L    100  B  96.66  F    100  (66/66)
+src/engine/query.ts                          L  98.52  B   97.5  F    100  (67/68)
+src/engine/types.ts                          L    100  B    100  F    100  (0/0)
+
+## src/engine/reference  lignes 307/311 = 98.7 %  branches 215/232 = 92.7 %
+src/engine/reference/deckOracle.ts           L  98.63  B  90.98  F    100  (145/147)
+src/engine/reference/monteCarlo.ts           L    100  B  95.45  F    100  (48/48)
+src/engine/reference/oracle.ts               L  98.27  B  94.31  F    100  (114/116)
+
+## src/lib  lignes 1050/1501 = 70.0 %  branches 566/620 = 91.3 %
+src/lib/api.ts                               L  46.06  B    100  F   3.33  (41/89)
+src/lib/auth.tsx                             L   8.51  B    100  F      0  (4/47)
+src/lib/colors.ts                            L      0  B    100  F    100  (0/46)
+src/lib/comparison.ts                        L    100  B  83.33  F    100  (53/53)
+src/lib/conditions.ts                        L  87.77  B  88.88  F  94.44  (79/90)
+src/lib/deckConfiguration.ts                 L    100  B     84  F    100  (39/39)
+src/lib/draft.ts                             L  16.32  B  83.33  F  14.28  (8/49)
+src/lib/engineModel.ts                       L    100  B  98.24  F    100  (82/82)
+src/lib/exportComparison.ts                  L   95.7  B  96.72  F     90  (290/303)
+src/lib/exportDeck.ts                        L  82.14  B  91.89  F  66.66  (46/56)
+src/lib/fmt.ts                               L  88.88  B    100  F  83.33  (8/9)
+src/lib/matchups.ts                          L    100  B  91.42  F    100  (81/81)
+src/lib/nonEngine.ts                         L    100  B    100  F    100  (3/3)
+src/lib/router.tsx                           L      0  B      0  F      0  (0/40)
+src/lib/sidePlan.ts                          L    100  B  97.75  F    100  (99/99)
+src/lib/sideSheet.ts                         L    100  B    100  F    100  (25/25)
+src/lib/sideSheetPdf.ts                      L  22.85  B  70.58  F     50  (56/245)
+src/lib/statsViews.ts                        L  81.25  B  47.36  F    100  (39/48)
+src/lib/summary.ts                           L    100  B  86.48  F    100  (22/22)
+src/lib/ydk.ts                               L    100  B    100  F    100  (68/68)
+src/lib/zones.ts                             L    100  B    100  F     50  (7/7)
+
+## src/main.tsx  lignes 0/9 = 0.0 %  branches 0/1 = 0.0 %
+src/main.tsx                                 L      0  B      0  F      0  (0/9)
+
+## src/store  lignes 442/585 = 75.6 %  branches 185/218 = 84.9 %
+src/store/deckStore.ts                       L   82.3  B  85.25  F  73.61  (442/537)
+src/store/selectors.ts                       L      0  B      0  F      0  (0/48)
+
+## src/types.ts  lignes 21/27 = 77.8 %  branches 0/0 = 0.0 %
+src/types.ts                                 L  77.77  B    100  F      0  (21/27)
+
+## src/vite-env.d.ts  lignes 0/0 = 0.0 %  branches 1/1 = 100.0 %
+src/vite-env.d.ts                            L    100  B    100  F    100  (0/0)
+
+## src/worker  lignes 159/182 = 87.4 %  branches 54/67 = 80.6 %
+src/worker/client.ts                         L      0  B      0  F      0  (0/4)
+src/worker/computeClient.ts                  L    100  B  88.09  F  93.75  (97/97)
+src/worker/engine.worker.ts                  L      0  B      0  F      0  (0/18)
+src/worker/fakeWorker.ts                     L  98.41  B  73.91  F    100  (62/63)
+
+TOTAL lignes {"total":8234,"covered":3004,"skipped":0,"pct":36.48} branches {"total":1653,"covered":1474,"skipped":0,"pct":89.17}
