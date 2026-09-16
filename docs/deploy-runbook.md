@@ -321,13 +321,13 @@ bo.scratchrecode.com {
 }
 ```
 
-Ne redémarrer Caddy **qu'après B4** (le conteneur `ygo-admin` doit exister sur `edge`, sinon
+Le service `caddy` de goldfish est déclaré avec un TTY : `exec -T` est obligatoire (`exec … < /dev/null` répond « cannot attach stdin to a TTY-enabled container », constaté à la mise en ligne du 16 septembre 2026). Ne redémarrer Caddy **qu'après B4** (le conteneur `ygo-admin` doit exister sur `edge`, sinon
 Caddy répond 502 et journalise des erreurs de résolution) :
 
 ```bash
 cd ~/apps/goldfish/deploy
-docker compose --env-file .env.prod -f docker-compose.prod.yml exec caddy caddy validate --config /etc/caddy/Caddyfile < /dev/null
-docker compose --env-file .env.prod -f docker-compose.prod.yml exec caddy caddy reload --config /etc/caddy/Caddyfile < /dev/null
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T caddy caddy validate --config /etc/caddy/Caddyfile
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
 ```
 
 ### B3. `.env.prod` (T1)
