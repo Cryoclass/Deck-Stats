@@ -1,5 +1,92 @@
 # Décisions & écarts vs. document de référence
 
+## Audit freemium — décisions et vérifications de prod, 16 septembre 2026
+
+Matériaux dans [docs/audit/](docs/audit/). Six points tranchés à partir de constats faits sur la
+production, pas sur le poste.
+
+### D1. Verrou 1 (visuels et textes Konami) : pas de courrier
+
+Pas de demande écrite à Konami ni à NAS : exposition disproportionnée au stade actuel (produit non
+ouvert, noindex, aucun revenu). Le verrou est traité par son volet opérationnel :
+
+- cache disque du relais (DON-A1), zéro requête navigateur vers images.ygoprodeck.com ;
+- le paywall porte sur les capacités du moteur, jamais sur les artworks ni sur l'accès aux cartes.
+  Invariant à respecter dans `entitlements.ts` et dans l'export PDF ;
+- attribution et non-affiliation en pied de page, en-tête d'app et en-tête du PDF (DON-A8) ;
+- plan de repli sans artwork (DON-A3 + A4 + A6, 9 à 13 j) tenu prêt derrière un flag, non développé
+  tant que le seuil ci-dessous n'est pas atteint.
+
+Seuil de réévaluation, où la question « retirer les visuels ou demander » se rouvre : ouverture
+publique de l'inscription, OU **N abonnements payants actifs, avec N = 1000 € / prix mensuel de
+l'abonnement** — soit 250 à 4 €, 400 à 2,50 €. Compteur relevé à chaque déploiement.
+
+Le seuil est exprimé en revenu, pas en nombre d'abonnés, parce que c'est le revenu qui rend
+l'exposition disproportionnée dans l'autre sens : tant qu'un éventuel conflit coûte plus cher que
+ce que le produit rapporte, il n'y a rien à défendre ; passé ~1000 € par mois, la question du
+courrier (ou du retrait des visuels) redevient un arbitrage économique ordinaire. Le prix n'étant
+pas fixé, la formule est plus robuste qu'un nombre : elle survit à un changement de tarif.
+
+**Non couvert** : les comptes gratuits. Le seuil ne se déclenche que sur des abonnements payants,
+alors que l'exposition au verrou 1 suit la visibilité, pas le revenu. Un produit à 10 000 comptes
+gratuits et 0 abonné ne franchit aucun seuil. Le déclencheur « ouverture publique de l'inscription »
+couvre le cas le plus probable, mais pas une croissance par bouche-à-oreille sur invitations.
+Question ouverte : faut-il un second seuil en comptes créés, toutes formules confondues ?
+
+Élément aggravant relevé ce jour : la garde contournée (D3) sert le corpus complet des textes
+d'effet à un inconnu en une requête. L'exposition assumée ici suppose que la garde tient ; elle doit
+donc être couverte par un test d'intégration, pas seulement corrigée.
+
+**Posture assumée** : c'est un arbitrage de risque, pas une mise en conformité. Le verrou 1 reste
+ouvert et la décision est de le porter en connaissance de cause tant que le produit reste fermé.
+
+### D2. DON-B6 tranché : l'hébergeur est OVH, pas Azure
+
+`analysis.scratchrecode.com` → 137.74.172.32, plage OVH SAS. Le brief disait Azure (confusion
+probable avec le pipeline Azure d'un autre projet). Politique de confidentialité, registre des
+traitements et contrat de sous-traitance se font sur OVH. DON-B6 clos.
+
+### D3. PER-O1 confirmé en prod, à travers le vrai Caddy
+
+`/api/cards/search` → 401 ; `/%61pi/cards/search` → 200 et 16 617 octets de catalogue avec les
+textes d'effet, sans session. Caddy ne normalise pas le chemin. Cause : Fastify décode le chemin
+avant de router, la garde compare la chaîne brute de `req.url` via `startsWith('/api/')`.
+
+Correctif retenu : garde décidée sur la route résolue, avec `config: { public: true }` pour
+`/api/health` et `/api/auth/*`. Contredit DECISIONS.md:1214-1216 et server/AGENTS.md:9, qui
+redeviennent vrais une fois le correctif posé.
+
+Non tranché : PER-G4 (relais d'images atteignable par la même voie). Le test du 16/09 portait sur un
+chemin inexistant et a renvoyé le fallback SPA — faux positif, à rejouer sur la route réelle.
+
+### D4. COD-C10 confirmé : aucun en-tête de sécurité en prod
+
+`curl -sD -` sur la racine : ni HSTS, ni CSP, ni X-Content-Type-Options, ni Referrer-Policy, ni
+frame-ancestors. Le 308 http→https est la seule protection et ne couvre pas la première visite. À
+ajouter dans le Caddyfile. Referrer-Policy prioritaire tant que des requêtes partent vers le CDN.
+
+### D5. COD-C4 : le volet disque est clos, le volet RGPD reste ouvert
+
+`/etc/docker/daemon.json` porte json-file max-size 10m / max-file 3, appliqué à `ygo-app`
+(`docker inspect`). Plafond réel 30 Mo par conteneur, disque à 18 % de 38 Go. Le scénario « disque
+plein, PostgreSQL s'arrête » est écarté et la demi-journée chiffrée par le volet 03 pour les
+journaux tombe à zéro.
+
+Restent dus : durée de conservation des IP et URL journalisées (DON-B5), sonde externe et alerte
+hors VPS. AGENTS.md:60 (« L'app ne journalise pas les requêtes ») est faux, à corriger.
+
+### D6. COD-C5 / DON-P2a : rétention correcte, un seul lieu, dumps de test à purger
+
+`backup.sh` applique une rétention de 14 jours sur les archives datées (ligne 61) ; cron vérifié,
+trois nuits consécutives avec contrôle sha256. Le mécanisme est sain. Restent dus :
+
+- copie chiffrée hors VPS en fin de `backup.sh` (rclone) ;
+- 7 dumps de prod en clair hors rétention dans `deploy/out/test-migration-sequence-20260909-*/backups/keep/`,
+  contenant emails et hachages (cf. backup.sh:4) : à chiffrer ou supprimer, et à exclure des sorties
+  de test à l'avenir ;
+- rétention explicite pour `keep/`, exclu de la ligne 59 par construction ;
+- les deux crons de sauvegarde (goldfish et ygo-proba) partent à 03:17 : décaler goldfish à 03:47.
+
 ## Plans de side — retouche de la fiche (lisibilité, PDF téléchargé), 11 septembre 2026
 
 Demande de l'utilisateur après le déploiement de l'étape 10 ; « la fiche seulement » (ni l'onglet
@@ -1561,3 +1648,180 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
   ajoutant des tests. 12 tests ; persistance 14 et purge 11 inchangés.
 - **Hors lot, constaté sans corriger.** `bodyLimit` des routes publiques ; en-têtes de
   sécurité (C10) ; pool et délais SQL (C3) ; fuite du store après un 401 (C2).
+
+## Offre freemium — périmètre gratuit / payant, prix, monétisation (16 septembre 2026)
+
+Tranché en séance, à partir des propositions du volet 04 (§4.2 matrice, §4.3 quotas, §5 axes). Ces
+propositions étaient annoncées « à trancher » : là où les nombres diffèrent, **ce qui suit fait foi**
+et les tableaux de l'audit redeviennent ce qu'ils sont, des points de départ. Trois lignes sont
+contredites, elles sont nommées en F1, F3 et F4.
+
+### F1. Une seule limite visible : le nombre de decks. Gratuit = 1 deck personnel
+
+L'offre doit s'énoncer en une phrase — « gratuit = un deck ». Le comparateur n'est donc **pas** une
+fonction verrouillée : il devient mécaniquement inatteignable entre deux decks à soi, puisqu'il en
+faut deux. Deux règles séparées (« 2 decks mais pas de comparaison ») donneraient un bouton grisé
+avec le matériel sous les yeux : ça se lit comme une punition, pas comme une démonstration.
+
+Contredit le §4.3, qui proposait **3 decks** « pour que le comparateur reste utilisable en gratuit ».
+Raison du refus : c'est précisément l'inverse qu'il faut faire. Le geste qui déclenche l'achat, dans
+cet outil, c'est la **variante** — « est-ce que je passe de 3 à 2 Maxx C ? ». Il demande un second
+deck et le comparateur. Donner le second deck sans le comparateur, c'est donner la moitié du geste
+et confisquer la conclusion : le pire endroit où couper.
+
+Rétrogradation : les decks au-delà du quota passent en **lecture seule**, jamais supprimés — cas
+déjà couvert par la règle de non-augmentation du §4.1 (principe 3). Un compte gratuit qui possède
+déjà un deck peut toujours le modifier ; sinon le gratuit devient un piège. Suppression libre et
+immédiate, pour qu'essayer autre chose ne demande pas de détruire son travail.
+
+**Non tranché** : des emplacements « archivés en lecture seule » au-delà du deck actif, qui
+enlèveraient l'essentiel de la frustration sans rendre la limite poreuse.
+
+### F2. Un ou deux decks de référence, en lecture seule, hors quota
+
+Maintenus par l'exploitant (compte admin), non modifiables, **ne comptant pas dans le quota**. Le
+compte gratuit peut donc utiliser le comparateur — son deck contre la référence — et travailler ses
+plans de side contre elle.
+
+Ce n'est pas une démo bridée, c'est une fonction : « compare ton deck au deck méta de référence ».
+Utile en soi, et c'est la démonstration la plus convaincante possible du comparateur, l'utilisateur
+voit exactement ce qu'il achètera. La ligne « Comparateur à l'écran : gratuit » du §4.2 est donc
+tenue, mais par ce biais-là.
+
+Coût assumé : un deck de référence périme avec le méta. Plafond de 1 à 2, vieillissement accepté.
+Distinct de l'axe X7 (« démo sans compte ») : ici la démonstration est **dans** le compte gratuit,
+pas anonyme — cohérent avec F6.
+
+### F3. Plans de side : 3 adversaires en gratuit, 32 en payant (MATCHUPS_MAX)
+
+Contredit le §4.3 et l'axe X4, qui proposaient **1 adversaire « découverte »**. Trop peu : à un seul
+adversaire la fiche n'a plus de forme, donc elle ne s'imprime pas, donc elle ne circule pas — et la
+circulation de la fiche est un canal d'acquisition (F4). À 3, le gratuit couvre les gros decks du
+méta, reste réellement utilisable, et la forme du produit est visible.
+
+Conséquence de rendu : la fiche d'un compte gratuit sort **3 cadres pleins**, jamais 7 cadres à
+trous, plus une ligne discrète sur les adversaires supplémentaires. Une fiche à trous ne s'imprime
+pas.
+
+### F4. Les exports restent gratuits, et signés
+
+Contredit le §4.2, qui plaçait l'export Excel du comparateur et la fiche / PDF **en payant**.
+Raison : ces fichiers sont le principal canal d'acquisition d'un outil de niche. Une fiche qui
+circule sur un Discord de locale est de la publicité gratuite ; la verrouiller, c'est payer pour ne
+pas être vu.
+
+- Gratuit : mention « fait avec Testhand » + lien, en pied de fiche, dans le PDF et dans le classeur
+  Excel. Payant : mention retirée.
+- **Prérequis technique créé par cette décision** : ouvrir le PDF à tous les comptes expose le relais
+  d'images à beaucoup plus de monde. Le cache disque du relais (audit 03 A1, porte O6) cesse d'être
+  une optimisation et devient une **condition d'ouverture**, avec la limite de débit du relais
+  appliquée aussi au gratuit.
+- Invariant D1 préservé : le paywall ne porte ni sur les artworks ni sur l'accès aux cartes.
+
+### F5. Abonnement seul, 3 à 4 € par mois — jamais d'achat à vie
+
+Aucune offre « à vie », pas même en lancement pour les premiers inscrits. Motif décisif et explicite :
+l'exploitant doit pouvoir **couper le VPS** sans devoir rien à personne. Une offre à vie promet ce
+qui ne peut pas être tenu — les coûts continuent, le revenu est figé à zéro, et ~40 % de ces offres
+disparaissent en moins de trois ans. L'abonnement, lui, s'arrête en cessant de facturer.
+
+Contrepartie inscrite aux CGU : **préavis + export complet des données** avant fermeture. Les moyens
+existent déjà (archive JSON v2, YDK, Excel, PDF) : c'est la clause de sortie, elle est déjà outillée.
+
+- Mensuel 3 à 4 €, annuel ~30 € (remise ~20 %). Montant exact non figé.
+- Ancrage du marché, et non du conseil SaaS : Moxfield 1 $/mois, Archidekt 2 $/mois (Patreon, retire
+  la pub). Le conseil indie usuel (19 à 49 $/mois) est du **B2B**, sans objet pour un public de
+  joueurs — à 10 €/mois l'offre paraîtrait absurde à qui connaît ces outils.
+- Plancher à 3 € pour une raison de frais : à ce montant, la part fixe de Stripe (~0,25 € + %)
+  représente ~10 % du paiement mensuel, ~1 % en annuel. À ces prix, la **fréquence** de facturation
+  pèse autant que le prix ; l'annuel est donc proposé d'emblée (30 à 50 % des inscrits le prennent
+  quand on le leur propose, et il réduit le churn).
+- Ordre de grandeur assumé : conversion freemium 2 à 5 % (2,6 % toutes catégories). À ~1 000 comptes
+  gratuits, 4 % et 3 €, cela fait ~120 €/mois : l'hébergement et le domaine, pas un revenu. C'est
+  conforme à l'objectif posé (salarié par ailleurs) et cohérent avec le seuil de D1 — N = 1000 € /
+  prix mensuel, soit 250 abonnés à 4 € — qui ne sera donc pas approché de sitôt.
+
+### F6. Compte obligatoire dès le gratuit ; OAuth Discord d'abord, Google ensuite
+
+Pas d'usage anonyme : sans compte, pas de deck persisté, le modèle ne tient pas. Discord en premier,
+c'est là que vit la communauté (les routes discord/start et discord/callback existent déjà).
+
+Réserves notées :
+
+- L'inscription obligatoire est une friction placée **avant** le moment de bascule ; OAuth est ce qui
+  la ramène à deux clics. Ce n'est pas gratuit à écrire : l'authentification actuelle est
+  email / mot de passe avec sessions maison, l'ajout est un vrai lot.
+- Elle suppose la fin du code d'invitation et la vérification d'email (audit PAR-01, O12).
+- **Écarté : revendre des statistiques d'utilisateurs.** Base légale lourde (RGPD) et, sur une
+  communauté de niche où les gens se connaissent, un risque de réputation disproportionné. Ce qui est
+  retenu à la place, sans risque et avec plus de valeur : des **statistiques agrégées et anonymes**
+  sur le méta (« 62 % des decks X jouent 3 Maxx C »), publiables — un levier d'acquisition, pas un
+  produit à vendre.
+
+### F7. Pas de publicité. Bouton de soutien, emplacement sponsor en réserve
+
+La publicité display est écartée, pour des raisons d'arithmétique et non de principe :
+
+- un **CMP certifié Google, intégré au TCF de l'IAB**, est obligatoire dans l'EEE depuis janvier 2024
+  pour servir de la publicité personnalisée — pas un bandeau maison ; il faut l'ordonnancer avant
+  l'app au démarrage de la SPA, et le tenir ;
+- AdSense valide du **contenu indexable** : l'app est derrière un login et noindex, l'acceptation
+  est improbable. Les réseaux alternatifs demandent plus (Carbon Ads 10 000 pages vues/mois sur
+  invitation, EthicalAds ~50 000 et un public tech) ;
+- une SPA n'a presque pas de pages vues — l'utilisateur reste 20 minutes sur le même écran, et les
+  changements de route n'en sont pas ;
+- le RPM du contenu francophone est sous 0,50 $ / 1 000 impressions.
+
+Estimation : 5 à 15 €/mois, contre un bandeau de consentement à chaque visite, du RGPD, et un encart
+qui casse la charte sombre. **Quatre abonnés rapportent davantage.**
+
+Conséquences :
+
+- **« sans pub » ne doit pas figurer dans l'argumentaire payant** : on ne vend pas le retrait de ce
+  qui n'existe pas, et l'y mettre obligerait à poser une publicité dont on ne veut pas.
+- **Bouton de soutien** (paiement unique, type Ko-fi) : retenu, sans cookie tiers ni CMP. C'est le
+  modèle de Moxfield et Archidekt, et il s'adresse à qui ne s'abonnera jamais. Réserve exprimée en
+  séance — cumuler don et abonnement est inhabituel : si une des deux pièces doit sauter, c'est le
+  bouton, jamais l'abonnement, et il peut être différé après le lancement.
+- **Emplacement sponsor** servi depuis le VPS (une image, un lien, aucun cookie tiers, donc aucun
+  CMP), vendu à la main à une boutique, une chaîne ou un organisateur : gardé en réserve. Un seul
+  sponsor à 30 €/mois écrase la publicité programmatique.
+- **Affiliation cartes écartée pour l'instant** : le parrainage Cardmarket est plafonné à 10 €/mois
+  (symbolique), TCGplayer paie de vraies commissions mais vise un marché américain (attribution au
+  premier clic, 48 h) que ce public n'utilise pas. La seule voie sérieuse serait un partenariat API
+  Cardmarket, qui se négocie.
+- **Réexamen de la publicité** seulement au-delà de ~50 000 pages vues/mois **avec du trafic public
+  indexable** — ce qui supposerait l'axe X2 (pages de decks partageables), lequel serait alors un
+  levier de référencement et de publicité d'un coup. Pas aujourd'hui.
+
+### F8. Ce que le gratuit garde entier
+
+Annotations, moteur exact, conditions ET / OU, profils, HOPT, plafonds, mode Requête, non-engine,
+extra et side : **aucun paywall**. C'est le moment de bascule du produit, et le calcul tourne dans le
+navigateur — il ne coûte rien au serveur. Conforme au §4.2 (D10 : « cœur de la valeur du produit :
+pas de paywall »).
+
+Formulation de l'invariant : le paywall porte sur le **volume** (nombre de decks, nombre de plans) et
+sur la **mention** apposée aux exports. Jamais sur la précision des chiffres, jamais sur les
+artworks (D1).
+
+### Questions ouvertes
+
+1. Emplacements « archivés en lecture seule » au-delà du deck actif (F1) : à trancher.
+2. Prix exact (3 ou 4 €) et remise annuelle exacte (F5).
+3. Quotas du §4.3 non repris ici — requêtes enregistrées (3 / deck), étiquettes (2 + 3), plafonds
+   (5). À réexaminer sous la règle « une seule limite visible » de F1 : un quota qui mordrait sur le
+   moteur contredirait F8.
+4. Bouton de soutien au lancement ou différé (F7).
+5. Second seuil en comptes créés pour D1 : inchangé, toujours ouvert.
+
+### Repères externes utilisés
+
+Conversion freemium : [daydream](https://www.withdaydream.com/library/insights/freemium-conversion-rate),
+[Guru Startups](https://www.gurustartups.com/reports/freemium-to-paid-conversion-rate-benchmarks).
+Prix du marché TCG : [Moxfield](https://www.patreon.com/moxfield), [Archidekt](https://www.patreon.com/archidekt).
+Offres à vie : [The Bootstrapped Founder](https://thebootstrappedfounder.com/lifetime-deals-and-saas-businesses/).
+Consentement publicitaire : [Google, exigences CMP EEE / UK / Suisse](https://support.google.com/adsense/answer/13554116?hl=en).
+RPM : [benchmarks par niche et pays](https://www.techconda.com/2026/02/adsense-rpm-benchmarks.html).
+Affiliation : [Cardmarket, partenariats et API](https://help.cardmarket.com/en/api-partnerships),
+[TCGplayer Affiliate](https://docs.tcgplayer.com/docs/tcgplayer-affiliate-program).
