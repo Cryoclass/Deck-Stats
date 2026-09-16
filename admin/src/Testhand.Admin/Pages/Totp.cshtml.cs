@@ -58,6 +58,7 @@ public sealed class TotpModel(TotpRepository totp, SecretBox box, SessionService
         Enrolling = true;
         var b32 = Base32.Encode(secret);
         SecretGroups = string.Join(' ', Enumerable.Range(0, (b32.Length + 3) / 4).Select(i => b32.Substring(i * 4, Math.Min(4, b32.Length - i * 4))));
-        QrSvg = Qr.Svg(TotpUri.Build("Testhand " + options.Host, me.Email, secret));
+        // Émetteur = hôte sans port (un « : » est interdit dans le libellé otpauth).
+        QrSvg = Qr.Svg(TotpUri.Build("Testhand " + options.Host.Split(':')[0], me.Email, secret));
     }
 }

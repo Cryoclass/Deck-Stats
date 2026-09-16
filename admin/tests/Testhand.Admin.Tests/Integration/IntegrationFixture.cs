@@ -67,7 +67,7 @@ public sealed class IntegrationFixture : IAsyncLifetime
         Environment.SetEnvironmentVariable("BACKOFFICE_DATABASE_URL", SiteUrl);
         Environment.SetEnvironmentVariable("BACKOFFICE_TOTP_KEY", Convert.ToBase64String(Enumerable.Range(1, 32).Select(i => (byte)i).ToArray()));
         Environment.SetEnvironmentVariable("BACKOFFICE_ENV", "DEV");
-        Environment.SetEnvironmentVariable("BACKOFFICE_HOST", "test.local");
+        Environment.SetEnvironmentVariable("BACKOFFICE_HOST", "test.local:8443");  // avec port : l'émetteur du QR doit le retirer
         Environment.SetEnvironmentVariable("BACKOFFICE_TRUST_PROXY", null);
         Factory = NewFactory();
         Site = Db.CreateDataSource(SiteUrl);
