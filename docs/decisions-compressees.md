@@ -289,3 +289,10 @@ Source : DECISIONS.md (raisonnement complet). Ce fichier ne le remplace pas : to
 - Cible : 3 adversaires par page A4, 4 si les plans sont petits (remplace « 7 sur une page », D15) ; un bloc n'est jamais coupé entre deux pages.
 - « Télécharger le PDF » remplace « Imprimer » : jsPDF chargé à la demande, mise en page en mm (`lib/sideSheetPdf.ts`), texte ramené au Latin-1 ; `@media print` conservé (`print-exact`).
 - Relais `GET /api/cards/:id/image` (CDN sans CORS) : adresse amont fixe, passcode numérique strict, authentifié ; 400 / 404 / 502 ; image illisible = cadre nommé dans le PDF.
+
+## Audit — lot 1 : garde, inscription, erreurs, identifiants (16 septembre 2026)
+- 04 O1 : garde sur la route résolue (`req.routeOptions.config`), privée par défaut, `config: { public: true }` explicite (health, register, login, providers, logout, discord start / callback) ; `/me` et déliaison Discord derrière la garde ; `requireUser` dans le catalogue ; front statique marqué public dans un plugin encapsulé avec son 404 (un `onRoute` racine ouvrait toute route ajoutée après — pris par le test) ; 404 sans route résolue laissé passer.
+- Fabrique `buildApp()` (`server/src/app.ts`), `index.ts` n'écoute plus qu'elle ; suite `auth.integration.ts` sur l'app réelle, en tête de `test:integration`, tests rouges avant correctif, base réinitialisée à la fin, budgets de débit réels (5 inscriptions / 10 connexions).
+- 05 C1 : email borné à 254 caractères avant la regex ; pas de `bodyLimit` abaissé dans ce lot (la preuve exige que 64 000 « @ » atteignent le gestionnaire → 400 en 1,5 ms).
+- 04 O10 : `setErrorHandler` — 4xx à `statusCode` gardent leur message, le reste 500 « erreur interne » (journal seulement), jamais de code SQL ; `limit` entier 1..100 ou 400 ; `DELETE /decks/:id` → 404 si rien supprimé.
+- 04 O5 : `id` client des étiquettes / plafonds ignoré (pas refusé : client officiel inchangé), `gen_random_uuid()` ; persistence.integration lit l'id du serveur.

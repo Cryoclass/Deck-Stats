@@ -18,7 +18,7 @@ Complète AGENTS.md (commandes, règles, pièges). Sémantique métier : regles-
 | --- | --- |
 | `db/schema.sql` | Schéma idempotent (catalogue, comptes, decks, bibliothèque, tables historiques), rejoué à chaque déploiement |
 | `db/migrations/NNN-*.sql` | Migrations transactionnelles journalisées dans `app_migrations` : 001 et 002 additives ; 003 (étape 8) purge le modèle historique après simulation (GUC `testhand.purge_mode`) et acceptation par empreinte (`testhand.purge_accept`) |
-| `server/src/index.ts` | Fastify : CORS, cookies, rate-limit, garde globale, `/api/health`, service du front en prod (`WEB_DIST`) |
+| `server/src/app.ts` | Fabrique `buildApp()` : CORS, cookies, rate-limit, garde globale (`auth/guard.ts`, route résolue, privée par défaut), gestionnaire d'erreurs, `/api/health`, service du front en prod (`WEB_DIST`) ; `index.ts` ne fait qu'écouter |
 | `server/src/env.ts`, `db.ts` | Chargement du `.env` racine ; pool pg, `query`, `tx` ; bigint → Number |
 | `server/src/auth/` | scrypt, sessions (SHA-256 du token), création de compte + catégories de base |
 | `server/src/domain/` | `deckConfiguration.ts` (contrat v2 pur, partagé avec le web : cartes, starters, paires, conditions ET/OU par source, `upgradeConfiguration` pour les documents antérieurs à l'étape 5B), `deckArchive.ts` (JSON v2 avec profils et plafonds), `deckRepository.ts` (SQL des configurations) |

@@ -130,11 +130,16 @@ Remove-Item Env:TEST_DATABASE_URL
 ```
 
 `--rm` supprime ce conteneur après l'arrêt ; les données du montage tmpfs sont
-jetables. Un second passage exige de recréer ce conteneur. La suite initialise le
-schéma historique, sème des fixtures, éprouve une migration invalide puis valide,
-rejoue la migration et utilise les vraies routes Fastify et transactions PostgreSQL.
-Elle ne contacte ni Supabase ni le VPS. Les tests authentifient des comptes fictifs
-dans leur propre serveur d'injection ; ils ne remplacent pas une recette de connexion.
+jetables. Un second passage exige de recréer ce conteneur. La chaîne joue d'abord
+`auth.integration.ts` (audit, lot 1 : l'application réelle par `buildApp`, garde
+d'authentification, inscription hostile, erreurs, identifiants ; elle réinitialise la
+base à la fin), puis `persistence.integration.ts`, qui initialise le schéma
+historique, sème des fixtures, éprouve une migration invalide puis valide, rejoue la
+migration et utilise les vraies routes Fastify et transactions PostgreSQL, puis
+`purge.integration.ts`. Rien ne contacte Supabase ni le VPS. Les suites de
+persistance et de purge authentifient des comptes fictifs dans leur propre serveur
+d'injection ; seule la suite `auth` exerce la garde, les cookies et les limites de
+débit réels.
 
 ## Migration 003 — purge du modèle historique (étape 8, partie A)
 

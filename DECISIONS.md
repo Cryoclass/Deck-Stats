@@ -1511,3 +1511,53 @@ fois) pour un effet visible nul côté panneau et ambigu côté requête. Tests 
 - **À retenir** : un bind-mount de **fichier** (et non de dossier) ne suit pas les
   remplacements par renommage — ce que font `git`, `sed -i`, et la plupart des
   éditeurs. Ne jamais compter dessus pour du contenu qui évolue.
+
+## Audit — lot 1 : garde, inscription, erreurs, identifiants (16 septembre 2026)
+
+- **Garde décidée sur la route résolue, privée par défaut (04 O1).** `req.url` est le
+  chemin brut ; Fastify route sur le chemin décodé, donc `/%61pi/cards/search` sautait la
+  garde (confirmé en prod à travers Caddy). La garde lit `req.routeOptions.config` : une
+  route est publique si et seulement si elle porte `config: { public: true }` ; sans marque,
+  session exigée. Publiques : `/api/health`, `register`, `login`, `providers`, `logout`,
+  `discord/start`, `discord/callback` (le visiteur n'a que le cookie d'état ; la liaison
+  résout sa session elle-même). `/me` et la déliaison Discord passent par la garde : même
+  401 qu'avant, une résolution de session en moins. `requireUser` ajouté aux trois routes
+  du catalogue (défense en profondeur, comme decks et library).
+- **Front statique dans un plugin encapsulé.** Première version : un hook `onRoute` posé
+  sur l'instance racine juste avant `@fastify/static`. Le test « route ajoutée sans marque
+  après la fabrique » l'a pris en défaut : ce hook marquait publique toute route
+  enregistrée après lui. Le marquage vit donc dans un plugin encapsulé avec le
+  gestionnaire 404 (repli SPA, `reply.sendFile` décoré dans ce contexte). Le gestionnaire
+  404 de Fastify traverse aussi les hooks ; sans route résolue (`routeOptions.url`
+  absent), la garde le laisse passer : il ne rend qu'index.html ou un 404 JSON.
+- **Fabrique `buildApp()` (`server/src/app.ts`).** L'app était construite au niveau module
+  avec `listen` : intestable. `index.ts` n'écoute plus qu'une app rendue par la fabrique ;
+  la configuration est lue dans l'environnement à l'appel, pas au chargement.
+- **Email borné à 254 caractères AVANT la regex (05 C1).** `/^\S+@\S+\.\S+$/` coûte n² sur
+  une chaîne de « @ » et gèle la boucle d'événements (8,7 s pour 64 000 « @ » dans la
+  suite, 44 s pour 256 000 contre l'image de prod). La preuve exigée (64 000 « @ » → 400 en
+  moins de 50 ms) impose que ce corps ATTEIGNE le gestionnaire : aucun `bodyLimit`
+  abaissé sur les routes d'authentification dans ce lot (le corps JSON de 1 Mio se lit en
+  temps linéaire, ce n'est pas un gel). Mesuré : 1,5 ms.
+- **Gestionnaire d'erreurs générique (04 O10).** Une erreur à `statusCode` 4xx garde son
+  message (`ConfigurationError` 400, `error(404, …)`, 413 / 429 / JSON invalide de Fastify
+  et de ses plugins — la limite de débit lève une erreur 429 et passe par lui) ; tout le
+  reste répond 500 `{ error: 'erreur interne' }`, détail dans le journal seulement. Le
+  corps ne porte plus `code`, `statusCode` ni `message` de Fastify : le client lit `error`
+  (il lisait déjà `error` à défaut de `message`). `limit` de la recherche : entier 1..100
+  ou 400 (le client officiel n'envoie jamais `limit`). `DELETE /decks/:id` : rien de
+  supprimé → 404 (contrat « deck d'autrui → 404, jamais 403 » ; un faux 200 le trahissait).
+- **Identifiant des étiquettes et plafonds généré par le serveur (04 O5).** L'`id` client
+  est ignoré, pas refusé : le client officiel en envoie encore un et relit l'objet créé ;
+  refuser casserait tous les clients déployés pour rien. `persistence.integration.ts`
+  exigeait l'identifiant client : il lit désormais celui du serveur (test d'intégration,
+  pas un test de référence).
+- **Suite `server/tests/auth.integration.ts`, en tête de `npm run test:integration`.**
+  Tests écrits avant les correctifs, chacun rouge sur le code d'origine (200 sur
+  `/%61pi/…`, 8 692 ms d'inscription, 500 avec code SQL, 200 sur la suppression d'autrui,
+  500 « pkey » sur la sonde d'UUID). Elle réinitialise la base jetable à la fin si elle
+  porte ses fixtures, pour que `persistence` enchaîne sur le même conteneur. Budgets de
+  débit réels par IP (5 inscriptions / 10 min, 10 connexions / min) : à respecter en
+  ajoutant des tests. 12 tests ; persistance 14 et purge 11 inchangés.
+- **Hors lot, constaté sans corriger.** `bodyLimit` des routes publiques ; en-têtes de
+  sécurité (C10) ; pool et délais SQL (C3) ; fuite du store après un 401 (C2).
