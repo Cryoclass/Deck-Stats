@@ -1,5 +1,37 @@
 # Décisions & écarts vs. document de référence
 
+## Annotations par défaut — HOPT et profils pré-remplis (16 septembre 2026)
+
+Plan validé en séance, consigné dans [docs/annotations-par-defaut.md](docs/annotations-par-defaut.md)
+(inventaire prouvé, décisions D1–D15 et révisions D3′/D4′/D5′/D7′/D14′, règles R1–R7, réponses Q1–Q9,
+découpage A–D). Les décisions validées ne sont pas reprises ici ; ce qui suit est ce que l'agent a
+tranché en les appliquant.
+
+### Partie A — détection (16 septembre 2026)
+
+- **Limites cherchées dans une fenêtre, pas dans une phrase.** Un découpage en phrases sur « . » coupe
+  les noms à point (« D.D. Crow », « U.A. ») : 87 limites par nom perdues sur le catalogue. La détection
+  lit « You can only use / activate … » jusqu'à la borne temporelle la plus proche (`once per turn`,
+  `per Duel`, `once per Chain`, `once that turn`, `per turn`), bornée par « ; » et « ● », et vérifie
+  que la carte s'y nomme (littéralement, sinon par un segment entre guillemets ÉGAL au nom normalisé :
+  balises `<…>`, ponctuation, pluriel — jamais par inclusion ni hors guillemets, relecture A).
+  Une fenêtre finissant par « twice / thrice per turn » n'est pas une limite à 1 (Gatling Ogre).
+- **Une invocation limitée par nom (`summonOnce`) n'est pas un HOPT.** Réponse Q2 (Black Chaos) ; la
+  classe reste reportée par l'inventaire pour le référent. Coût connu : Abominable Unchained Soul.
+- **Le profil réactif se déduit de la clause de déclenchement** (avant le deux-points) : si elle nomme
+  l'adversaire comme acteur, la carte ne sert que pendant son tour (Veiler, Nibiru, Droll, Kuriboh,
+  Artifact Lancea, Herald of Orange Light) ; sinon flexible (Ash, Ghost Ogre, D.D. Crow). Les jetons
+  nommés et les parenthèses ne comptent pas comme condition d'archétype (Nibiru).
+- **Faux positifs et manqués nommés dans le test**, jamais corrigés par une liste (R2) : Griffoh et
+  The Iris Swordsoul détectés ; Kurikara, Bystial, PSY-Framegear Gamma manqués.
+- **Fixtures de textes réels dans le dépôt** (`server/tests/fixtures/card-texts*.json`,
+  `played-choices.json`) : textes du catalogue et choix d'un compte numéroté, aucun email ni
+  identifiant de compte. Le test garde la correspondance exacte avec les choix existants : toute
+  régression de règle nomme la carte.
+- **Rapport d'inventaire** (`scripts/annotations-report.ts`) : mêmes gardes que `recompute-check.ts`
+  (127.0.0.1, port ≠ 5433, aucune écriture) ; le rapport d'écart par deck attend la partie C (la
+  bibliothèque effective n'existe pas encore).
+
 ## Back-office — hors numérotation, socle en lecture seule (16 septembre 2026)
 
 Plan validé en séance, consigné dans [docs/backoffice.md](docs/backoffice.md) (décisions 1 à 11,

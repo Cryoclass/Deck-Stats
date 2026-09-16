@@ -1,0 +1,884 @@
+[
+ {
+  "id": 83443619,
+  "name": "Crystron Smiger",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "You can target 1 face-up card you control; you cannot Special Summon monsters from the Extra Deck for the rest of this turn, except Machine-Type Synchro Monsters, also, destroy that card, and if you do, Special Summon 1 \"Crystron\" Tuner from your Deck. You can banish this card from your Graveyard; add 1 \"Crystron\" Spell/Trap Card from your Deck to your hand. You can only use 1 \"Crystron Smiger\" effect per turn, and only once that turn."
+ },
+ {
+  "id": 84192580,
+  "name": "Mulcharmy Purulia",
+  "type": "Effect Monster",
+  "race": "Aqua",
+  "description": "If you control no cards (Quick Effect): You can discard this card; apply these effects this turn.\r\n● Each time your opponent Normal or Special Summons a monster(s) from the hand, immediately draw 1 card.\r\n● Once, during this End Phase, if the number of cards in your hand is more than the number of cards your opponent controls +6, you must randomly shuffle cards from your hand into the Deck so the number in your hand equals the number your opponent controls +6.\r\nYou can only activate 1 other \"Mulcharmy\" monster effect, the turn you activate this effect."
+ },
+ {
+  "id": 84211599,
+  "name": "Pot of Prosperity",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Banish 3 or 6 cards of your choice from your Extra Deck, face-down; for the rest of this turn after this card resolves, any damage your opponent takes is halved, also excavate cards from the top of your Deck equal to the number of cards banished, add 1 excavated card to your hand, place the rest on the bottom of your Deck in any order. You can only activate 1 \"Pot of Prosperity\" per turn. You cannot draw cards by card effects the turn you activate this card."
+ },
+ {
+  "id": 84433129,
+  "name": "Star Ryzeal",
+  "type": "Effect Monster",
+  "race": "Pyro",
+  "description": "You can Special Summon this card (from your hand) by detaching 1 material from a monster you control. If Summoned this way, you cannot Special Summon from the Extra Deck for the rest of this turn, except Rank 4 Xyz Monsters. You can only Special Summon \"Star Ryzeal\" once per turn this way. If this card is Special Summoned: You can Set 1 \"Ryzeal\" Spell/Trap from your Deck. You can only use this effect of \"Star Ryzeal\" once per turn."
+ },
+ {
+  "id": 85106525,
+  "name": "Bonfire",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Add 1 Level 4 or lower Pyro monster from your Deck to your hand. You can only activate 1 \"Bonfire\" per turn."
+ },
+ {
+  "id": 85119159,
+  "name": "Onomatopickup",
+  "type": "Spell Card",
+  "race": "Continuous",
+  "description": "When this card is activated: You can add 1 \"Onomat\" card from your Deck to your hand, except \"Onomatopickup\". You can target 1 \"Zubaba\", \"Gagaga\", \"Gogogo\", or \"Dododo\" monster you control; all monsters you currently control become that monster's Level until the end of this turn (even if this card leaves the field). You can only use this effect of \"Onomatopickup\" once per turn. You can only activate 1 \"Onomatopickup\" per turn."
+ },
+ {
+  "id": 85976588,
+  "name": "Elfnote Fortuna",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "You can Special Summon this card (from your hand) to your center Main Monster Zone. You can only Special Summon \"Elfnote Fortuna\" once per turn this way. You can only use each of the following effects of \"Elfnote Fortuna\" once per turn. During your Main Phase: You can place 1 \"Elfnote\" Continuous Trap from your hand or Deck, face-up on your field. During your opponent's turn (Quick Effect): You can switch the locations of this card in your Main Monster Zone and the monster in your center Main Monster Zone, then you can return 1 face-up Spell/Trap on the field to the hand."
+ },
+ {
+  "id": 88554436,
+  "name": "Unchained Soul of Shyama",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "You can target 1 card you control; destroy it, then you can destroy 1 Spell/Trap on the field. If this card is in your GY: You can target 1 Fiend monster or 1 face-down card you control; destroy it, and if you do, Special Summon this card, but place it on the bottom of the Deck when it leaves the field. You can only use each effect of \"Unchained Soul of Shyama\" once per turn."
+ },
+ {
+  "id": 88570003,
+  "name": "Dark Magician, the Pharaoh's Servant",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "This card's name becomes \"Dark Magician\" while on the field or in the GY. You can only use 1 of the following effects of \"Dark Magician, the Pharaoh's Servant\" per turn, and only once that turn. If this card is in your hand: You can reveal 1 Spell in your hand; Special Summon this card, then you can Set 1 Spell/Trap that mentions \"Dark Magician\" from your Deck. (Quick Effect): You can discard 1 Spell; destroy all Spells/Traps your opponent controls."
+ },
+ {
+  "id": 90351981,
+  "name": "Orcustrated Babel",
+  "type": "Spell Card",
+  "race": "Field",
+  "description": "You can activate the effects of \"Orcust\" monsters in your GY, or of Link Monsters you control with \"Orcust\" in their original names, as Quick Effects. During your Main Phase, if this card is in your GY, except the turn it was sent to the GY: You can send 1 card from your hand to the GY; add this card to your hand."
+ },
+ {
+  "id": 91025875,
+  "name": "K9-ØØ Lupis",
+  "type": "Effect Monster",
+  "race": "Beast-Warrior",
+  "description": "An Xyz Monster that has this card as material gains this effect.\r\n● Your opponent cannot target this card with card effects.\r\nYou can only use each of the following effects of \"K9-ØØ Lupis\" once per turn. During the Main Phase, if your opponent has activated a monster effect in the hand or GY this turn (Quick Effect): You can Special Summon this card from your hand or GY, but banish it when it leaves the field. During your opponent's turn, you can (Quick Effect): Immediately after this effect resolves, Xyz Summon using this card you control."
+ },
+ {
+  "id": 91800273,
+  "name": "Dimension Shifter",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "If you have no cards in your GY (Quick Effect): You can send this card from your hand to the GY; until the end of the next turn, any card sent to the GY is banished instead."
+ },
+ {
+  "id": 92221402,
+  "name": "Chaotic Elements",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Add 1 Level 5 or higher monster (LIGHT or DARK, Pyro or Aqua) from your Deck or GY to your hand, then if you have 3 or more Pyro and/or Aqua monsters in your GY, you can destroy 1 card on the field. If your opponent controls a monster (LIGHT or DARK, Pyro or Aqua): You can banish this card from your GY, then target 1 monster your opponent controls; take control of it until the End Phase. You can only use each effect of \"Chaotic Elements\" once per turn."
+ },
+ {
+  "id": 92248362,
+  "name": "K9-17 Izuna",
+  "type": "Effect Monster",
+  "race": "Warrior",
+  "description": "If your opponent has 2 or more cards in their hand, you can Normal Summon this card without Tributing. You can only use each of the following effects of \"K9-17 Izuna\" once per turn. During the Main Phase, if your opponent has activated a monster effect in the hand or GY this turn (Quick Effect): You can Special Summon this card from your hand. If this card is Normal or Special Summoned: You can send 1 \"K9\" card from your Deck to the GY, except \"K9-17 Izuna\"."
+ },
+ {
+  "id": 94145021,
+  "name": "Droll & Lock Bird",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "If a card(s) is added from the Main Deck to your opponent's hand, except during the Draw Phase (Quick Effect): You can send this card from your hand to the GY; for the rest of this turn, cards cannot be added from either player's Main Deck to the hand."
+ },
+ {
+  "id": 94845588,
+  "name": "The Hallowed Azamina",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Reveal 1 \"Azamina\" Fusion Monster in your Extra Deck, and for every 4 Levels it has (round down), send 1 \"Sinful Spoils\" card from your hand and/or field to the GY (if face-down, reveal it), then Special Summon that revealed monster. (This is treated as a Fusion Summon.) If this card is in the GY: You can target 1 \"Azamina\" monster you control or in your GY; shuffle it into the Deck, and if you do, add this card to your hand. You can only use this effect of \"The Hallowed Azamina\" once per turn."
+ },
+ {
+  "id": 95136979,
+  "name": "Unchained Ogre Shara",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "During the Main Phase (Quick Effect): You can discard this card; Special Summon 1 Fiend monster from your hand, then destroy 1 card you control. If a card(s) on the field is destroyed by card effect, except by the effect of \"Unchained Ogre Shara\", or by battle, while this card is in your GY: You can Special Summon this card (but place it on the bottom of the Deck when it leaves the field) or add it to your hand. You can only use each effect of \"Unchained Ogre Shara\" once per turn."
+ },
+ {
+  "id": 95492061,
+  "name": "Manju of the Ten Thousand Hands",
+  "type": "Effect Monster",
+  "race": "Fairy",
+  "description": "When this card is Normal or Flip Summoned: You can add 1 Ritual Monster or 1 Ritual Spell from your Deck to your hand."
+ },
+ {
+  "id": 95515789,
+  "name": "Blazing Cartesia, the Virtuous",
+  "type": "Tuner Monster",
+  "race": "Spellcaster",
+  "description": "If you control \"Fallen of Albaz\" or it is in your GY: You can Special Summon this card from your hand. During the Main Phase (Quick Effect): You can Fusion Summon 1 Level 8 or higher Fusion Monster from your Extra Deck, using monsters from your hand or field as material. During the End Phase, if a Fusion Monster(s) was sent to your GY this turn: You can add this card from the GY to your hand. You can only use each effect of \"Blazing Cartesia, the Virtuous\" once per turn."
+ },
+ {
+  "id": 97268402,
+  "name": "Effect Veiler",
+  "type": "Tuner Monster",
+  "race": "Spellcaster",
+  "description": "During your opponent's Main Phase (Quick Effect): You can send this card from your hand to the GY, then target 1 Effect Monster your opponent controls; negate the effects of that face-up monster your opponent controls, until the end of this turn."
+ },
+ {
+  "id": 97462632,
+  "name": "Griffoh",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "(Quick Effect): You can discard this card, then activate 1 of these effects;\r\n● The next battle or effect damage you take this turn will become 0.\r\n● Set 1 Quick-Play Spell or Trap that mentions \"Light and Darkness Ritual\" from your Deck. It can be activated this turn.\r\nYou can only use this effect of \"Griffoh\" once per turn. If you Ritual Summon exactly 1 Level 8 Ritual Monster with a card effect that requires use of monsters, this card can be used as the entire Tribute."
+ },
+ {
+  "id": 97631303,
+  "name": "Magicians' Souls",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "You can send up to 2 Spells/Traps from your hand and/or field to the GY; draw that many cards. If this card is in your hand: You can send 1 Level 6 or higher Spellcaster monster from your Deck to the GY, then activate 1 of these effects;\r\n● Special Summon this card.\r\n● Send this card to the GY, then, you can Special Summon 1 \"Dark Magician\" or 1 \"Dark Magician Girl\" from your GY.\r\nYou can only use each effect of \"Magicians' Souls\" once per turn."
+ },
+ {
+  "id": 98476659,
+  "name": "Pot of Sloth",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Draw cards equal to the number of cards your opponent controls, then if you drew 2 or more cards, place cards from your hand on the bottom of the Deck in any order, equal to the number you drew -1. For the rest of this turn after this card resolves, you cannot activate \"Pot of Sloth\"."
+ },
+ {
+  "id": 98684220,
+  "name": "Black Chaos",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "Cannot be Normal Summoned/Set. Must be Special Summoned (from your hand) by shuffling 1 Spellcaster or Warrior Ritual Monster from your hand or GY into the Deck. You can only Special Summon \"Black Chaos\" once per turn this way. You can discard this card; place 1 Continuous Trap that mentions \"Light and Darkness Ritual\" from your Deck or GY, face-up on your field. While you have a Ritual Spell in your GY, this card is unaffected by your opponent's activated effects. Once per turn, during your Main Phase: You can banish 2 cards your opponent controls."
+ },
+ {
+  "id": 99471856,
+  "name": "Crystron Tristaros",
+  "type": "Tuner Monster",
+  "race": "Machine",
+  "description": "When your opponent activates a card or effect (Quick Effect): You can Special Summon 1 \"Crystron\" monster from your Deck, except \"Crystron Tristaros\", then immediately after this effect resolves, Synchro Summon 1 Machine Synchro Monster using monsters you control, including that monster. You can banish this card from your GY; destroy 1 Synchro Monster you control, and if you do, Special Summon 2 \"Crystron\" monsters from your Deck, also you cannot Special Summon from the Extra Deck for the rest of this turn, except Machine monsters. You can only use each effect of \"Crystron Tristaros\" once per turn."
+ },
+ {
+  "id": 46986420,
+  "name": "Dark Magician",
+  "type": "Normal Monster",
+  "race": "Spellcaster",
+  "description": "''The ultimate wizard in terms of attack and defense.''"
+ },
+ {
+  "id": 27412542,
+  "name": "Abomination's Prison",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Add 1 \"Unchained\" card from your Deck to your hand. If this Set card is destroyed by card effect: You can Special Summon 1 \"Unchained\" monster from your Deck. You can only use each effect of \"Abomination's Prison\" once per turn."
+ },
+ {
+  "id": 703897,
+  "name": "Orcust Crescendo",
+  "type": "Trap Card",
+  "race": "Counter",
+  "description": "When a Spell/Trap Card, or monster effect, is activated while you control an \"Orcust\" Link Monster: Negate the activation, and if you do, banish that card. You can banish this card from your GY; add to your hand 1 of your DARK Machine monsters that is banished or in your Deck. You cannot Special Summon monsters the turn you activate this effect, except DARK Machine monsters. You can only use 1 \"Orcust Crescendo\" effect per turn, and only once that turn."
+ },
+ {
+  "id": 81439173,
+  "name": "Foolish Burial",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Send 1 monster from your Deck to the GY."
+ },
+ {
+  "id": 93898740,
+  "name": "Unchained Syncretism",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "Target 2 face-up monsters on the field, including an \"Unchained Soul\" Link Monster you control; immediately after this effect resolves, Link Summon 1 Fiend monster using only those 2 monsters. If this Set card is destroyed by card effect: You can Special Summon 1 \"Unchained\" monster from your Deck. You can only use each effect of \"Unchained Syncretism\" once per turn."
+ },
+ {
+  "id": 1966438,
+  "name": "Abominable Unchained Soul",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "You can only Special Summon \"Abominable Unchained Soul(s)\" once per turn. If a card(s) you control is destroyed by battle or card effect: You can Special Summon this card from your hand. If this card is Special Summoned: You can discard 1 card; destroy 1 card on the field. Once per turn, during the End Phase, if this card is in the GY because it was destroyed on the field and sent there this turn: You can Special Summon this card, but place it on the bottom of the Deck when it leaves the field."
+ },
+ {
+  "id": 1984618,
+  "name": "Nadir Servant",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Send 1 monster from your Extra Deck to the GY, then add 1 \"Dogmatika\" monster or \"Fallen of Albaz\" from your Deck or GY to your hand, that has ATK less than or equal to that sent monster in the GY, also, for the rest of this turn after this card resolves, you cannot Special Summon monsters from the Extra Deck. You can only activate 1 \"Nadir Servant\" per turn."
+ },
+ {
+  "id": 3422200,
+  "name": "Crystron Sulfefnir",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "If this card is in your hand or Graveyard: You can discard 1 \"Crystron\" card, except \"Crystron Sulfefnir\"; Special Summon this card in Defense Position, then destroy 1 card you control. If this card on the field is destroyed by battle or card effect: You can Special Summon 1 \"Crystron\" monster from your Deck in Defense Position. You can only use each effect of \"Crystron Sulfefnir\" once per turn."
+ },
+ {
+  "id": 3739500,
+  "name": "Ruler of the End of the World",
+  "type": "Ritual Effect Monster",
+  "race": "Fiend",
+  "description": "You can Ritual Summon this card with an \"End of the World\" card. This card's name becomes \"Demise, King of Armageddon\" while in the hand or on the field. You can only use each of the following effects of \"Ruler of the End of the World\" once per turn. You can reveal this card in your hand, pay 2000 LP, then banish 1 Ritual Spell from your Deck; apply that card's activation effect that Ritual Summons a monster. You can pay 2000 LP; destroy all other cards on the field, then this card gains 2900 ATK."
+ },
+ {
+  "id": 4334811,
+  "name": "Scrap Recycler",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "When this card is Normal or Special Summoned: You can send 1 Machine monster from your Deck to the GY. Once per turn: You can shuffle 2 Level 4 EARTH Machine monsters from your GY into the Deck; draw 1 card."
+ },
+ {
+  "id": 6325660,
+  "name": "Dominus Spark",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "During the turn in which your opponent has activated a monster effect in the hand or GY, you can activate this card from your hand. Target 1 monster your opponent controls; banish it, then if you have no Traps in your GY, your opponent can Special Summon 1 monster from their hand. If you activated this card from your hand, you cannot activate the effects of EARTH, WATER, FIRE, and WIND monsters for the rest of this Duel. You can only activate 1 \"Dominus Spark\" per turn."
+ },
+ {
+  "id": 6595475,
+  "name": "Onomatopaira",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "You can only activate 1 \"Onomatopaira\" per turn. Send 1 card from your hand to the GY; add up to 2 of these monsters from your Deck to your hand (you cannot add 2 from the same category).\n● 1 \"Zubaba\" monster\n● 1 \"Gagaga\" monster\n● 1 \"Gogogo\" monster\n● 1 \"Dododo\" monster"
+ },
+ {
+  "id": 6798031,
+  "name": "Ryzeal Cross",
+  "type": "Spell Card",
+  "race": "Field",
+  "description": "You cannot Xyz Summon monsters with the same name as a card you control. You can target 2 \"Ryzeal\" cards in your GY, except \"Ryzeal Cross\"; place them on the bottom of the Deck in any order, then draw 1 card. You can only use this effect of \"Ryzeal Cross\" once per turn. Once per turn, when a monster effect activated by your opponent resolves, you can detach 1 material from a \"Ryzeal\" Xyz Monster you control, and if you do, negate that effect."
+ },
+ {
+  "id": 7477101,
+  "name": "Seventh Tachyon",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Reveal 1 \"Number\" Xyz Monster in your Extra Deck that has a number between \"101\" and \"107\" in its name; add 1 monster from your Deck to your hand with the same Type or Attribute as that monster, and the same Level as that monster's Rank, then place 1 card from your hand on top of the Deck, also for the rest of this turn after this card resolves, you cannot Special Summon from the Extra Deck, except Xyz Monsters. You can only activate 1 \"Seventh Tachyon\" per turn."
+ },
+ {
+  "id": 8633261,
+  "name": "Ice Ryzeal",
+  "type": "Effect Monster",
+  "race": "Pyro",
+  "description": "You can Special Summon this card (from your hand) by sending 1 card from your hand or field to the GY. If Summoned this way, you cannot Special Summon from the Extra Deck for the rest of this turn, except Rank 4 Xyz Monsters. You can only Special Summon \"Ice Ryzeal\" once per turn this way. If this card is Normal Summoned: You can Special Summon 1 \"Ryzeal\" monster from your Deck, except \"Ice Ryzeal\". You can only use this effect of \"Ice Ryzeal\" once per turn."
+ },
+ {
+  "id": 10045474,
+  "name": "Infinite Impermanence",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "Target 1 face-up monster your opponent controls; negate its effects (until the end of this turn), then, if this card was Set before activation and is on the field at resolution, for the rest of this turn all other Spell/Trap effects in this column are negated. If you control no cards, you can activate this card from your hand."
+ },
+ {
+  "id": 10266279,
+  "name": "Junoldo the Shadespirit Power Patron",
+  "type": "Pendulum Effect Monster",
+  "race": "Fiend",
+  "description": "[ Pendulum Effect ] \nIf a \"Power Patron\" or \"Elfnote\" monster(s) is Special Summoned to your field, while this card is in your Pendulum Zone (except during the Damage Step): You can destroy this card, and if you do, draw 2 cards, then discard 1 card. You can only use this effect of \"Junoldo the Shadespirit Power Patron\" once per turn.\n\n[ Monster Effect ] \n(This card is always treated as an \"Elfnote\" card.)\r\nYou can banish the top 3 cards of your Deck, face-down; destroy this card, and if you do, Special Summon 1 \"Junora the Power Patron of Tuning\" from your Extra Deck (this is treated as a Synchro Summon). If this card is added to your Extra Deck face-up: You can add 1 \"Power Patron\" or \"Elfnote\" card from your face-up Extra Deck or GY to your hand, except \"Junoldo the Shadespirit Power Patron\". You can only use each effect of \"Junoldo the Shadespirit Power Patron\" once per turn."
+ },
+ {
+  "id": 10604644,
+  "name": "Therion \"King\" Regulus",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "You can only use each of the following effects of \"Therion \"King\" Regulus\" once per turn.\r\n● You can target 1 \"Therion\" monster or 1 Machine monster in your GY; Special Summon this card from your hand, and if you do, equip that monster to this card.\r\n● When your opponent activates a card or effect (Quick Effect): You can send 1 \"Therion\" Monster Card from your hand or face-up field to the GY; negate that effect.\r\nA \"Therion\" monster equipped with this card gains 700 ATK, also it can activate the 2nd effect listed above as if it were \"Therion \"King\" Regulus\"."
+ },
+ {
+  "id": 12375297,
+  "name": "Elfnote Power Patron",
+  "type": "Tuner Monster",
+  "race": "Fiend",
+  "description": "You cannot Special Summon from the Extra Deck, except Synchro Monsters. You can only use each of the following effects of \"Elfnote Power Patron\" once per turn. During the Main Phase (Quick Effect): You can target 1 monster in your center Main Monster Zone; increase its Level by 3 (until the end of this turn), then immediately after this effect resolves, you can Synchro Summon 1 \"Elfnote\" Synchro Monster or 1 \"Junora the Power Patron of Tuning\". If this card is sent to the GY as Synchro Material: You can add 1 \"Elfnote\" card from your Deck to your hand."
+ },
+ {
+  "id": 13048472,
+  "name": "Pre-Preparation of Rites",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Add 1 Ritual Spell from your Deck to your hand, and add 1 Ritual Monster from your Deck or GY to your hand whose name is listed on that Ritual Spell. You can only activate 1 \"Pre-Preparation of Rites\" per turn."
+ },
+ {
+  "id": 13332685,
+  "name": "Ame no Habakiri no Mitsurugi",
+  "type": "Ritual Effect Monster",
+  "race": "Reptile",
+  "description": "You can Ritual Summon this card with \"Mitsurugi Ritual\". Monsters your opponent controls lose 800 ATK. You can reveal this card in your hand; Special Summon 1 \"Mitsurugi\" monster from your Deck, then Tribute 1 monster you control. You can only use this effect of \"Ame no Habakiri no Mitsurugi\" once per Duel. If this card is Tributed: You can add 1 \"Mitsurugi\" card from your Deck to your hand, except \"Ame no Habakiri no Mitsurugi\", then you can Special Summon this card. You can only use this effect of \"Ame no Habakiri no Mitsurugi\" once per turn."
+ },
+ {
+  "id": 13597785,
+  "name": "Elfnote Lucina",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "You can Special Summon this card (from your hand) to your center Main Monster Zone. You can only Special Summon \"Elfnote Lucina\" once per turn this way. You can only use each of the following effects of \"Elfnote Lucina\" once per turn. During your Main Phase: You can add 1 \"Elfnote\" monster from your Deck to your hand, except \"Elfnote Lucina\". During your opponent's turn (Quick Effect): You can switch the locations of this card in your Main Monster Zone and the monster in your center Main Monster Zone, then you can return 1 Level 6 or lower monster your opponent controls to the hand."
+ },
+ {
+  "id": 14558127,
+  "name": "Ash Blossom & Joyous Spring",
+  "type": "Tuner Monster",
+  "race": "Zombie",
+  "description": "When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that effect.\r\n● Add a card from the Deck to the hand.\r\n● Special Summon from the Deck.\r\n● Send a card from the Deck to the GY.\r\nYou can only use this effect of \"Ash Blossom & Joyous Spring\" once per turn."
+ },
+ {
+  "id": 17751597,
+  "name": "Branded Retribution",
+  "type": "Trap Card",
+  "race": "Counter",
+  "description": "When a Spell/Trap Card, or monster effect, is activated that includes an effect that Special Summons a monster(s): Return to the Extra Deck, 1 face-up Fusion Monster you control, or 2 Fusion Monsters in your GY, that mention \"Fallen of Albaz\" as material, and if you do, negate the activation, and if you do that, destroy that card. You can banish this card from your GY, then target 1 \"Branded\" Spell/Trap in your GY, except \"Branded Retribution\"; add it to your hand. You can only use 1 \"Branded Retribution\" effect per turn, and only once that turn."
+ },
+ {
+  "id": 17954937,
+  "name": "Mitsurugi Great Purification",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "When your opponent activates a card or effect: Tribute 1 Level 5 or higher Reptile monster; negate that effect, and if you do, destroy that card. You can banish this card from your GY, then target 1 Reptile monster in your GY; Special Summon it, and if you do, Tribute 1 other monster you control. You can only use 1 \"Mitsurugi Great Purification\" effect per turn, and only once that turn."
+ },
+ {
+  "id": 18176525,
+  "name": "Mitsurugi no Mikoto, Saji",
+  "type": "Effect Monster",
+  "race": "Reptile",
+  "description": "If this card is Normal or Special Summoned, or if this card is Tributed: You can add 1 \"Mitsurugi\" Spell/Trap from your Deck to your hand. If another Reptile monster(s) you control would be destroyed by battle or card effect, you can Tribute this card instead. You can only use each effect of \"Mitsurugi no Mikoto, Saji\" once per turn."
+ },
+ {
+  "id": 19096726,
+  "name": "Tri-Brigade Mercourier",
+  "type": "Effect Monster",
+  "race": "Winged Beast",
+  "description": "When your opponent activates a monster effect, while you control a Fusion Monster that mentions \"Fallen of Albaz\" as material (Quick Effect): You can send this card from your hand or face-up field to the GY; negate that effect. If this card is banished: You can add from your Deck to your hand, 1 \"Fallen of Albaz\", or 1 monster that mentions it, except \"Tri-Brigade Mercourier\". You can only use each effect of \"Tri-Brigade Mercourier\" once per turn."
+ },
+ {
+  "id": 19304410,
+  "name": "Tri-Brigade Springans Kitt",
+  "type": "Effect Monster",
+  "race": "Beast",
+  "description": "If you control a \"Tri-Brigade\" or \"Springans\" monster, except \"Tri-Brigade Springans Kitt\": You can Special Summon this card from your hand. If this card is sent to the GY: You can Special Summon 1 of the following monsters from your GY in Defense Position, except \"Tri-Brigade Springans Kitt\".\r\n● \"Tri-Brigade\" monster ● \"Springans\" monster\r\n● \"Fallen of Albaz\" or 1 monster that mentions it\r\nYou can only use each effect of \"Tri-Brigade Springans Kitt\" once per turn."
+ },
+ {
+  "id": 19899073,
+  "name": "Ame no Murakumo no Mitsurugi",
+  "type": "Ritual Effect Monster",
+  "race": "Reptile",
+  "description": "You can Ritual Summon this card with \"Mitsurugi Ritual\". If this card is Special Summoned: You can destroy all monsters your opponent controls. When your opponent activates a card or effect (Quick Effect): You can activate this effect; your opponent can discard 1 card, or that effect is negated. If this card is Tributed: You can add 1 \"Mitsurugi\" card from your Deck to your hand, except \"Ame no Murakumo no Mitsurugi\", then you can Special Summon this card. You can only use each effect of \"Ame no Murakumo no Mitsurugi\" once per turn."
+ },
+ {
+  "id": 21441617,
+  "name": "Orcust Cymbal Skeleton",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "You can banish this card from your GY, then target 1 \"Orcust\" monster in your GY, except \"Orcust Cymbal Skeleton\"; Special Summon it, also you cannot Special Summon monsters for the rest of this turn, except DARK monsters. You can only use this effect of \"Orcust Cymbal Skeleton\" once per turn."
+ },
+ {
+  "id": 22283204,
+  "name": "The Gaze of Timaeus",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Target 1 \"Dark Magician\" or \"Dark Magician Girl\" in your field or GY; Fusion Summon 1 Fusion Monster from your Extra Deck that mentions that monster as material, by shuffling it into the Deck as material (this is treated as a Fusion Summon with \"The Eye of Timaeus\"), but banish it during the End Phase of the next turn. You can only activate 1 \"The Gaze of Timaeus\" per turn."
+ },
+ {
+  "id": 23720856,
+  "name": "Zubababancho Gagagacoat",
+  "type": "Effect Monster",
+  "race": "Warrior",
+  "description": "If you control a \"Zubaba\" or \"Gagaga\" monster except \"Zubababancho Gagagacoat\", while this card is in your hand: You can Special Summon this card. You can target 1 \"Gogogo\" or \"Dododo\" monster in your GY; Special Summon it, also you cannot Special Summon monsters from the Extra Deck for the rest of this turn, except Xyz Monsters. You can only use each effect of \"Zubababancho Gagagacoat\" once per turn."
+ },
+ {
+  "id": 24088928,
+  "name": "Skull Archfiend of Chaos",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "If this card is in your hand or GY: You can target 3 other cards in the GYs and/or face-up banishment, including a card that mentions \"Light and Darkness Ritual\"; place them on the bottom of the Deck in any order, and if you do, Special Summon this card. If this card is sent to the GY: You can send 1 Ritual Spell from your hand or Deck to the GY; add 1 Ritual Monster whose name is mentioned on that card from your Deck to your hand. You can only use each effect of \"Skull Archfiend of Chaos\" once per turn."
+ },
+ {
+  "id": 24092792,
+  "name": "Elfnotes: Rhapsodia of Madness",
+  "type": "Trap Card",
+  "race": "Continuous",
+  "description": "While you control a monster in your center Main Monster Zone, your opponent's monsters cannot attack, except to attack that monster. You can send 1 monster from your hand or field to the GY, then target 1 \"Elfnote\" monster in your GY with a different original Attribute; Special Summon it, then if you control a Synchro Monster, you can negate the effects of 1 face-up card your opponent controls until the end of this turn. You can only use this effect of \"Elfnotes: Rhapsodia of Madness\" once per turn."
+ },
+ {
+  "id": 24224830,
+  "name": "Called by the Grave",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Target 1 monster in your opponent's GY; banish it, and if you do, until the end of the next turn, its effects are negated, as well as the activated effects and effects on the field of monsters with the same original name."
+ },
+ {
+  "id": 24461358,
+  "name": "Ragged Records of Rites",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Reveal 1 Ritual Spell from your hand or Deck, and if you do, add 1 monster from your Deck to your hand that mentions that Spell's name. If a face-up Ritual Monster(s) you control leaves the field by card effect while this card is in your GY, and you do not control any face-up monsters, other than Ritual Monsters (except during the Damage Step): You can add this card from your GY to your hand. You can only use each effect of \"Ragged Records of Rites\" once per turn."
+ },
+ {
+  "id": 24749710,
+  "name": "Mind Shuffle",
+  "type": "Trap Card",
+  "race": "Continuous",
+  "description": "During either player's turn: You can add 1 monster that mentions \"Light and Darkness Ritual\" from your Deck to your hand, then discard 1 card. You can only use this effect of \"Mind Shuffle\" once per turn. When your opponent activates a card or effect: You can return 1 Level 7 or higher monster you control to the hand; Special Summon 1 monster that mentions \"Light and Darkness Ritual\" from your hand, with a different name than the returned monster, ignoring its Summoning conditions. You cannot activate these effects of \"Mind Shuffle\" in the same Chain."
+ },
+ {
+  "id": 25311006,
+  "name": "Triple Tactics Talent",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "If your opponent has activated a monster effect during your Main Phase this turn: Activate 1 of these effects;\r\n● Draw 2 cards.\r\n● Take control of 1 monster your opponent controls until the End Phase.\r\n● Look at your opponent's hand, and choose 1 card from it to shuffle into the Deck.\r\nYou can only activate 1 \"Triple Tactics Talent\" per turn."
+ },
+ {
+  "id": 25451383,
+  "name": "Albion the Shrouded Dragon",
+  "type": "Effect Monster",
+  "race": "Dragon",
+  "description": "This card's name becomes \"Fallen of Albaz\" while on the field or in the GY. If this card is in your hand or GY: You can send 1 \"Fallen of Albaz\" or 1 \"Branded\" Spell/Trap from your hand or Deck to the GY; apply the following effect based on where you sent it from.\r\n● Hand: Special Summon this card.\r\n● Deck: Place this card on the bottom of the Deck, then, if you placed this card from your hand, draw 1 card.\r\nYou can only use this effect of \"Albion the Shrouded Dragon\" once per turn."
+ },
+ {
+  "id": 25661743,
+  "name": "Prohibited Power Patron Portal - Terminus",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Send 1 \"Power Patron\" monster from your Deck/Extra Deck to the GY, then you can add 1 DARK Fairy monster from your Deck to your hand, also you cannot declare attacks for the rest of this turn, except with \"Power Patron\" monsters. At the start of the Damage Step, if your \"Power Patron\" monster battles an opponent's monster: You can banish this card from your GY; banish (face-down) that opponent's monster. You can only use each effect of \"Prohibited Power Patron Portal - Terminus\" once per turn."
+ },
+ {
+  "id": 25865565,
+  "name": "Crystron Sulfador",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "If this card is in your hand or GY: You can target 1 \"Crystron\" card you control; destroy it, and if you do, Special Summon this card, also you cannot Special Summon from the Extra Deck for the rest of this turn, except Machine monsters. If this card is Normal or Special Summoned: You can send up to 2 \"Crystron\" cards with different names from your Deck to the GY, except \"Crystron Sulfador\". You can only use each effect of \"Crystron Sulfador\" once per turn."
+ },
+ {
+  "id": 26236560,
+  "name": "Unchained Twins - Aruha",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "You can target 1 card you control; you cannot Special Summon monsters for the rest of this turn, except Fiend monsters, also destroy the targeted card, and if you do, Special Summon this card from your hand. If this card on the field is destroyed by card effect, except \"Unchained Twins - Aruha\", or by battle: You can Special Summon 1 \"Unchained\" monster from your hand or Deck, except \"Unchained Twins - Aruha\". You can only use each effect of \"Unchained Twins - Aruha\" once per turn."
+ },
+ {
+  "id": 28642461,
+  "name": "K9-66a Jokul",
+  "type": "Effect Monster",
+  "race": "Aqua",
+  "description": "If your opponent has 2 or more cards in their hand, you can Normal Summon this card without Tributing. You can only use each of the following effects of \"K9-66a Jokul\" once per turn. You can reveal this card and 1 other Level 5 monster in your hand; Special Summon both, but they cannot be used as material for the Xyz Summon of a LIGHT monster. During your Main Phase: You can add 1 non-Aqua \"K9\" monster from your Deck to your hand."
+ },
+ {
+  "id": 29948294,
+  "name": "Branded in High Spirits",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Reveal 1 monster in your hand and send 1 Level 8 Fusion Monster from your Extra Deck to the GY with the same Type that has 2500 ATK or DEF, then you can apply this effect.\r\n● Discard the revealed monster, and if you do, add 1 \"Fallen of Albaz\", or 1 monster that mentions it, from your Deck to your hand.\r\nDuring the End Phase, if a Fusion Monster was sent to your GY this turn: You can add this card from the GY to your hand. You can only use 1 \"Branded in High Spirits\" effect per turn, and only once that turn."
+ },
+ {
+  "id": 30271097,
+  "name": "The Fallen & The Virtuous",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "(This card is always treated as a \"Branded\" and \"Dogmatika\" card.)\r\nActivate 1 of these effects;\r\n● Send 1 monster that mentions \"Fallen of Albaz\" from your Extra Deck to the GY, then target 1 face-up card on the field; destroy it.\r\n● If you have an \"Ecclesia\" monster in your field or GY: Target 1 monster in either GY; Special Summon it to your field.\r\nYou can only activate 1 \"The Fallen & The Virtuous\" per turn."
+ },
+ {
+  "id": 31531914,
+  "name": "Unchained Ogre Shma",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "If this card is Normal Summoned: You can Special Summon 1 Level 4 or lower \"Unchained\" monster from your Deck, except \"Unchained Ogre Shma\", then destroy 1 card you control, also you cannot Special Summon for the rest of this turn, except Fiend monsters. If this card on the field is destroyed by card effect, except \"Unchained Ogre Shma\", or by battle: You can Special Summon 1 \"Unchained\" monster from your hand or Deck, except \"Unchained Ogre Shma\". You can only use each effect of \"Unchained Ogre Shma\" once per turn."
+ },
+ {
+  "id": 31552317,
+  "name": "Crystron Inclusion",
+  "type": "Spell Card",
+  "race": "Continuous",
+  "description": "When this card is activated: You can add 1 \"Crystron\" card from your Deck to your hand, except \"Crystron Inclusion\". The first time each \"Crystron\" monster you control would be destroyed by battle each turn, it is not destroyed. You can banish this card from your GY, then target 1 \"Crystron\" monster in your GY; Special Summon it. You can only use this effect of \"Crystron Inclusion\" once per turn. You can only activate 1 \"Crystron Inclusion\" per turn."
+ },
+ {
+  "id": 31588572,
+  "name": "Unchained Twins - Sarama",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "You can target 1 \"Unchained\" card in your GY, except \"Unchained Twins - Sarama\"; Set it to your field, then destroy 1 card you control. If this card on the field is destroyed by card effect, except \"Unchained Twins - Sarama\", or by battle: You can Special Summon 1 \"Unchained\" monster from your hand or Deck, except \"Unchained Twins - Sarama\". You can only use each effect of \"Unchained Twins - Sarama\" once per turn."
+ },
+ {
+  "id": 33599853,
+  "name": "Light and Darkness Ritual",
+  "type": "Spell Card",
+  "race": "Ritual",
+  "description": "This card can be used to Ritual Summon \"Magician of Dark Chaos - Black Chaos\" or \"Black Luster Soldier - Soldier of Light and Darkness\". You must also Tribute monsters from your hand or field, and/or banish monsters from your GY, whose total Levels equal or exceed its Level. If this card is in your GY: You can add this card and 1 card that mentions \"Light and Darkness Ritual\" from your GY to your hand. You can only use this effect of \"Light and Darkness Ritual\" once per turn."
+ },
+ {
+  "id": 34022970,
+  "name": "Ext Ryzeal",
+  "type": "Effect Monster",
+  "race": "Pyro",
+  "description": "You can Special Summon this card (from your hand) by sending 1 Xyz Monster from your Extra Deck to the GY. If Summoned this way, you cannot Special Summon from the Extra Deck for the rest of this turn, except Rank 4 Xyz Monsters. You can only Special Summon \"Ext Ryzeal\" once per turn this way. If this card is Normal or Special Summoned and you control no other face-up monsters, except Level/Rank 4 monsters: You can add 1 FIRE Thunder monster from your Deck to your hand. You can only use this effect of \"Ext Ryzeal\" once per turn."
+ },
+ {
+  "id": 35844557,
+  "name": "Sword Ryzeal",
+  "type": "Effect Monster",
+  "race": "Thunder",
+  "description": "If you have a \"Ryzeal\" monster in your field or GY, you can Special Summon this card (from your hand). If Summoned this way, you cannot Special Summon from the Extra Deck for the rest of this turn, except Rank 4 Xyz Monsters. You can only Special Summon \"Sword Ryzeal\" once per turn this way. If this card is Normal or Special Summoned: You can add 1 LIGHT Pyro monster from your Deck to your hand. You can only use this effect of \"Sword Ryzeal\" once per turn."
+ },
+ {
+  "id": 35886170,
+  "name": "Gogogo Goblindbergh",
+  "type": "Effect Monster",
+  "race": "Warrior",
+  "description": "When this card is Normal Summoned: You can Special Summon 1 non-Warrior \"Gogogo\" monster from your hand, Deck, or GY, then if this card is in Attack Position, change it to Defense Position, also for the rest of this turn, you cannot Special Summon from the Extra Deck, except Xyz Monsters. If this card is detached from an Xyz Monster to activate that monster's effect: You can add 1 \"Dododo\" monster from your Deck to your hand. You can only use each effect of \"Gogogo Goblindbergh\" once per turn."
+ },
+ {
+  "id": 36637374,
+  "name": "Branded Opening",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Discard 1 card, then take 1 \"Despia\" monster from your Deck, and either add it to your hand or Special Summon it in Defense Position, also for the rest of this turn after this card resolves, you cannot Special Summon monsters from the Extra Deck, except Fusion Monsters. If a Fusion Monster(s) you control would be destroyed by card effect, you can banish this card from your GY instead. You can only use each effect of \"Branded Opening\" once per turn."
+ },
+ {
+  "id": 40366667,
+  "name": "Dominus Impulse",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "If your opponent controls a card, you can activate this card from your hand. When a card or effect is activated that includes an effect that Special Summons a monster(s): Negate that effect, then if you have a Trap in your GY, destroy that card. If you activated this card from your hand, you cannot activate the effects of LIGHT, EARTH, and WIND monsters for the rest of this Duel. You can only activate 1 \"Dominus Impulse\" per turn."
+ },
+ {
+  "id": 40543231,
+  "name": "Mitsurugi no Mikoto, Aramasa",
+  "type": "Effect Monster",
+  "race": "Reptile",
+  "description": "If this card is Normal or Special Summoned, or if this card is Tributed: You can add 1 \"Mitsurugi\" monster from your Deck to your hand, except \"Mitsurugi no Mikoto, Aramasa\". If another Reptile monster(s) you control would be destroyed by battle or card effect, you can Tribute this card instead. You can only use each effect of \"Mitsurugi no Mikoto, Aramasa\" once per turn."
+ },
+ {
+  "id": 41165831,
+  "name": "Unchained Soul of Sharvara",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "During the Main Phase, if this card is in your hand (Quick Effect): You can target 1 Fiend monster or 1 face-down card you control; destroy it, and if you do, Special Summon this card, but while it is face-up in the Monster Zone, you cannot Special Summon monsters, except Fiend monsters. If this card is sent to the GY: You can Set 1 \"Unchained\" Spell/Trap directly from your Deck. You can only use each effect of \"Unchained Soul of Sharvara\" once per turn."
+ },
+ {
+  "id": 41350417,
+  "name": "Dark Magical Curtain",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Each player can Special Summon 1 DARK Spellcaster monster from their hand or Deck (but neither player can activate their effects this turn), then if you Special Summoned a monster whose original name is \"Dark Magician\" or \"Dark Magician Girl\", you can add 1 Spell/Trap that mentions \"Dark Magician\" from your Deck to your hand, except \"Dark Magical Curtain\". You can only activate 1 \"Dark Magical Curtain\" per turn."
+ },
+ {
+  "id": 42141493,
+  "name": "Mulcharmy Fuwalos",
+  "type": "Effect Monster",
+  "race": "Winged Beast",
+  "description": "If you control no cards (Quick Effect): You can discard this card; apply these effects this turn.\r\n● Each time your opponent Special Summons a monster(s) from the Deck and/or Extra Deck, immediately draw 1 card.\r\n● Once, during this End Phase, if the number of cards in your hand is more than the number of cards your opponent controls +6, you must randomly shuffle cards from your hand into the Deck so the number in your hand equals the number your opponent controls +6.\r\nYou can only activate 1 other \"Mulcharmy\" monster effect, the turn you activate this effect."
+ },
+ {
+  "id": 44001993,
+  "name": "Magician of Dark Chaos - Black Chaos",
+  "type": "Ritual Effect Monster",
+  "race": "Spellcaster",
+  "description": "You can Ritual Summon this card with \"Light and Darkness Ritual\". Unaffected by your opponent's activated effects, unless they target this card, also Spells/Traps you control cannot be destroyed, or banished, by your opponent's card effects. You can only use each of the following effects of \"Magician of Dark Chaos - Black Chaos\" once per turn. If this card is Special Summoned: You can add 1 Spell from your GY to your hand. You can target 1 card your opponent controls; banish it face-down."
+ },
+ {
+  "id": 44362883,
+  "name": "Branded Fusion",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Fusion Summon 1 Fusion Monster that mentions \"Fallen of Albaz\" as material from your Extra Deck, using 2 monsters from your hand, Deck, or field as material. You cannot Special Summon from the Extra Deck, except Fusion Monsters, the turn you activate this card. You can only activate 1 \"Branded Fusion\" per turn."
+ },
+ {
+  "id": 45171524,
+  "name": "Mitsurugi Prayers",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "When you activate this card, you can also Tribute 1 Reptile monster in your hand or field; apply 1 of these effects, or if you Tributed a monster at activation, you can apply both effects in sequence.\r\n● Add 1 \"Mitsurugi\" monster from your Deck to your hand.\r\n● Take 800 damage, then you can Special Summon 1 \"Mitsurugi\" monster from your hand or GY, but it cannot attack directly.\r\nYou can only activate 1 \"Mitsurugi Prayers\" per turn."
+ },
+ {
+  "id": 45883110,
+  "name": "Guiding Quem, the Virtuous",
+  "type": "Tuner Monster",
+  "race": "Spellcaster",
+  "description": "(This card is always treated as a \"Dogmatika\" and \"Despia\" card.)\r\nIf this card is Normal or Special Summoned: You can send 1 \"Fallen of Albaz\" or 1 card that mentions it from your Deck to the GY. If a card(s) leaves the Extra Deck (except during the Damage Step): You can target 1 \"Fallen of Albaz\", or 1 monster that mentions it, in your GY, except \"Guiding Quem, the Virtuous\"; Special Summon it. You can only use each effect of \"Guiding Quem, the Virtuous\" once per turn."
+ },
+ {
+  "id": 48130397,
+  "name": "Super Polymerization",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Discard 1 card; Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters from either field as Fusion Material. Neither player can activate cards or effects in response to this card's activation."
+ },
+ {
+  "id": 49721684,
+  "name": "Mitsurugi Mirror",
+  "type": "Spell Card",
+  "race": "Ritual",
+  "description": "This card can be used to Ritual Summon any Reptile Ritual Monster from your hand or GY. You must also Tribute Reptile monsters from your hand or field whose total Levels equal or exceed the Level of the Ritual Monster. If \"Ame no Murakumo no Mitsurugi\", \"Futsu no Mitama no Mitsurugi\", or \"Ame no Habakiri no Mitsurugi\" you control is Tributed, while this card is in your GY: You can shuffle this card into the Deck. You can only use each effect of \"Mitsurugi Mirror\" once per turn."
+ },
+ {
+  "id": 50073633,
+  "name": "Celtic Mystic",
+  "type": "Effect Monster",
+  "race": "Warrior",
+  "description": "If this card is Normal or Special Summoned: You can reveal your entire hand, and if you revealed a card that mentions \"Light and Darkness Ritual\", you can draw 3 cards, then discard 2 cards, also for the rest of this turn, you can only Special Summon once from the Extra Deck. You can Tribute this card; Special Summon 1 Ritual Monster that mentions \"Light and Darkness Ritual\" from your hand. You can only use each effect of \"Celtic Mystic\" once per turn."
+ },
+ {
+  "id": 53417695,
+  "name": "Escape of the Unchained",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "Target 1 \"Unchained\" monster you control and 1 card on the field; destroy both. If this Set card is destroyed by card effect: You can Special Summon 1 \"Unchained\" monster from your Deck. You can only use each effect of \"Escape of the Unchained\" once per turn."
+ },
+ {
+  "id": 53624265,
+  "name": "Unchained Twins - Rakea",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "(Quick Effect): You can target 1 card you control; destroy it, also you cannot Special Summon monsters for the rest of this turn, except Fiend monsters. If this card on the field is destroyed by card effect, except \"Unchained Twins - Rakea\", or by battle: You can Special Summon 1 \"Unchained\" monster from your hand or Deck, except \"Unchained Twins - Rakea\". You can only use each effect of \"Unchained Twins - Rakea\" once per turn."
+ },
+ {
+  "id": 53792930,
+  "name": "K9-X Forced Release",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "During the Main Phase: Target 1 \"K9\" Xyz Monster you control; Special Summon from your Extra Deck, 1 \"K9\" Xyz Monster with a different name, by using that monster you control (this is treated as an Xyz Summon, transfer its materials to the Summoned monster), then you can destroy 1 card your opponent controls. At the end of the Battle Phase, if your \"K9\" monster battled this turn: You can Set this card from your GY. You can only use each effect of \"K9-X Forced Release\" once per turn."
+ },
+ {
+  "id": 53829527,
+  "name": "Crystron Cluster",
+  "type": "Trap Card",
+  "race": "Continuous",
+  "description": "\"Crystron\" cards you control cannot be banished by your opponent's card effects. You can target 1 face-up card on the field, or you can target 2 if you control a \"Crystron\" Synchro Monster; shuffle 1 \"Crystron\" card from your GY or banishment into the Deck, except \"Crystron Cluster\", and if you do, destroy the targeted card(s). You can only use this effect of \"Crystron Cluster\" once per turn."
+ },
+ {
+  "id": 55031170,
+  "name": "K9-66b Lantern",
+  "type": "Effect Monster",
+  "race": "Pyro",
+  "description": "If your opponent has 2 or more cards in their hand, you can Normal Summon this card without Tributing. You can only use each of the following effects of \"K9-66b Lantern\" once per turn. If this card is in your hand: You can target 1 Level 5 non-Pyro \"K9\" monster in your GY; Special Summon both it and this card, but they cannot be used as material for the Xyz Summon of a LIGHT monster. During your Main Phase: You can add 1 \"K9\" Spell/Trap from your Deck to your hand."
+ },
+ {
+  "id": 55088578,
+  "name": "Onomatokage",
+  "type": "Effect Monster",
+  "race": "Reptile",
+  "description": "(This card is always treated as a \"Zubaba\", \"Gagaga\", \"Gogogo\", and \"Dododo\" card.)\r\nIf you control a \"Zubaba\", \"Gagaga\", \"Gogogo\", or \"Dododo\" monster and this card is in your hand or GY: You can Special Summon this card, but banish it when it leaves the field. You can banish this card from your GY; return up to 2 Xyz Monsters from your GY to the Extra Deck. You can only use each effect of \"Onomatokage\" once per turn."
+ },
+ {
+  "id": 55273560,
+  "name": "Incredible Ecclesia, the Virtuous",
+  "type": "Tuner Monster",
+  "race": "Spellcaster",
+  "description": "If your opponent controls more monsters than you do, you can Special Summon this card (from your hand). You can only Special Summon \"Incredible Ecclesia, the Virtuous\" once per turn this way. You can only use each of the following effects of \"Incredible Ecclesia, the Virtuous\" once per turn. During the Main Phase (Quick Effect): You can Tribute this card; Special Summon 1 \"Swordsoul\" monster or 1 \"Fallen of Albaz\" from your hand or Deck. During the End Phase, if a Fusion Monster(s) was sent to your GY this turn: Add this card from the GY to your hand."
+ },
+ {
+  "id": 55397172,
+  "name": "Futsu no Mitama no Mitsurugi",
+  "type": "Ritual Effect Monster",
+  "race": "Reptile",
+  "description": "You can Ritual Summon this card with \"Mitsurugi Ritual\". If your opponent Special Summons a monster(s) (except during the Damage Step): You can target 1 Reptile monster in your GY, except \"Futsu no Mitama no Mitsurugi\"; Special Summon it. You can only activate this effect of \"Futsu no Mitama no Mitsurugi\" once per Chain. If this card is Tributed: You can add 1 \"Mitsurugi\" card from your Deck to your hand, except \"Futsu no Mitama no Mitsurugi\", then you can Special Summon this card. You can only use this effect of \"Futsu no Mitama no Mitsurugi\" once per turn."
+ },
+ {
+  "id": 56651978,
+  "name": "Elfnote Regina",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "If this card is in your hand (Quick Effect): You can send 1 other \"Elfnote\" card from your hand or face-up field to the GY; Special Summon this card. If this card is Normal or Special Summoned to the center Main Monster Zone: You can Special Summon 1 \"Elfnote\" monster from your Deck, except \"Elfnote Regina\". If this card is sent to the GY as Synchro Material: You can add this card to your hand. You can only use each effect of \"Elfnote Regina\" once per turn."
+ },
+ {
+  "id": 57835716,
+  "name": "Orcust Harp Horror",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "You can banish this card from your GY; Special Summon 1 \"Orcust\" monster from your Deck, except \"Orcust Harp Horror\", also you cannot Special Summon monsters for the rest of this turn, except DARK monsters. You can only use this effect of \"Orcust Harp Horror\" once per turn."
+ },
+ {
+  "id": 59438930,
+  "name": "Ghost Ogre & Snow Rabbit",
+  "type": "Tuner Monster",
+  "race": "Psychic",
+  "description": "When a monster on the field activates its effect, or when a Spell/Trap that is already face-up on the field activates its effect (Quick Effect): You can send this card from your hand or field to the GY; destroy that card on the field. You can only use this effect of \"Ghost Ogre & Snow Rabbit\" once per turn."
+ },
+ {
+  "id": 59581480,
+  "name": "Elfnote Tinia",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "You can Special Summon this card (from your hand) to your center Main Monster Zone. You can only Special Summon \"Elfnote Tinia\" once per turn this way. You can only use each of the following effects of \"Elfnote Tinia\" once per turn. During your Main Phase: You can place 1 \"Elfnote\" Continuous Spell from your Deck face-up on your field. During your opponent's turn (Quick Effect): You can switch the locations of this card in your Main Monster Zone and the monster in your center Main Monster Zone, then you can banish (face-up) 1 random card from your opponent's hand, until the End Phase."
+ },
+ {
+  "id": 60303688,
+  "name": "Dogmatika Ecclesia, the Virtuous",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "Cannot be destroyed by battle with a monster Special Summoned from the Extra Deck. You can only use each of the following effects of \"Dogmatika Ecclesia, the Virtuous\" once per turn. If a monster Special Summoned from the Extra Deck is on the field: You can Special Summon this card from your hand. If this card is Normal or Special Summoned: You can activate this effect; add 1 \"Dogmatika\" card from your Deck to your hand, except \"Dogmatika Ecclesia, the Virtuous\", also you cannot Special Summon monsters from the Extra Deck for the rest of this turn."
+ },
+ {
+  "id": 62880279,
+  "name": "Dodododo Warrior",
+  "type": "Effect Monster",
+  "race": "Warrior",
+  "description": "You can send 1 \"Dododo\" monster from your Deck to the GY; Special Summon this card from your hand (its Level becomes 4, also its ATK becomes 1800), also you cannot Special Summon from the Extra Deck for the rest of this turn, except Xyz Monsters. If this card is detached from an Xyz Monster to activate that monster's effect: You can add 1 \"Zubaba\" monster from your Deck to your hand. You can only use each effect of \"Dodododo Warrior\" once per turn."
+ },
+ {
+  "id": 62962630,
+  "name": "Aluber the Jester of Despia",
+  "type": "Effect Monster",
+  "race": "Fairy",
+  "description": "If this card is Normal or Special Summoned: You can add 1 \"Branded\" Spell/Trap from your Deck to your hand. If a face-up Fusion Monster you control is destroyed by battle, or leaves the field because of an opponent's card effect, while this card is in your GY: You can target 1 Effect Monster your opponent controls; Special Summon this card, and if you do, negate the targeted monster's effects until the end of this turn. You can only use 1 \"Aluber the Jester of Despia\" effect per turn, and only once that turn."
+ },
+ {
+  "id": 64491754,
+  "name": "Elfnotes: Welcome Home",
+  "type": "Spell Card",
+  "race": "Continuous",
+  "description": "The monster in your center Main Monster Zone cannot be destroyed by card effects. You can send 1 monster from your hand or field to the GY; Special Summon 1 \"Elfnote\" monster with a different original Attribute from your Deck in Defense Position, also you cannot Special Summon from the Extra Deck for the rest of this turn, except Synchro Monsters. You can only use this effect of \"Elfnotes: Welcome Home\" once per turn."
+ },
+ {
+  "id": 65681983,
+  "name": "Crossout Designator",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Declare 1 card name; banish 1 of that declared card from your Main Deck, and if you do, negate its effects, as well as the activated effects and effects on the field of cards with the same original name, until the end of this turn. You can only activate 1 \"Crossout Designator\" per turn."
+ },
+ {
+  "id": 66328392,
+  "name": "Deception of the Sinful Spoils",
+  "type": "Spell Card",
+  "race": "Continuous",
+  "description": "You can Tribute 1 monster from your hand or field; add 1 \"Azamina\" card from your Deck to your hand. If a monster(s) is sent to your opponent's GY, and you control an \"Azamina\" monster (except during the Damage Step): You can make your opponent lose 1500 LP, and if you do, gain 1500 LP. During the End Phase, if this card is in the GY because it was sent there from the Spell & Trap Zone this turn while face-up: You can Set it. You can only use each effect of \"Deception of the Sinful Spoils\" once per turn."
+ },
+ {
+  "id": 67803035,
+  "name": "Reincarnation of the Unchained",
+  "type": "Spell Card",
+  "race": "Continuous",
+  "description": "When this card is activated: You can add 1 \"Unchained\" Spell (except \"Reincarnation of the Unchained\") or 1 \"Abomination's Prison\" from your Deck to your hand. Once per turn: You can target up to 3 \"Unchained\" cards in your GY, except \"Reincarnation of the Unchained\"; shuffle them into the Deck, then you can destroy other cards you control up to the number shuffled. You can only activate 1 \"Reincarnation of the Unchained\" per turn."
+ },
+ {
+  "id": 68468459,
+  "name": "Fallen of Albaz",
+  "type": "Effect Monster",
+  "race": "Dragon",
+  "description": "If this card is Normal or Special Summoned (except during the Damage Step): You can discard 1 card; Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters on either field as Fusion Material, including this card, but you cannot use other monsters you control as Fusion Material. You can only use this effect of \"Fallen of Albaz\" once per turn."
+ },
+ {
+  "id": 68625623,
+  "name": "Unchained Malevolent Magistrate Kamura",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "You can target up to 3 cards you control; destroy them, and if you do, Special Summon this card from your hand, then you can apply any of the following effects, in sequence, based on the original types of the destroyed cards.\r\n● Monster: Draw 1 card.\r\n● Spell: Change the battle position of 1 monster on the field.\r\n● Trap: Destroy 1 other card on the field.\r\nIf this card on the field is destroyed by card effect: You can destroy all monsters on the field. You can only use each effect of \"Unchained Malevolent Magistrate Kamura\" once per turn."
+ },
+ {
+  "id": 69811710,
+  "name": "Girsu, the Orcust Mekk-Knight",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "If this card is Normal or Special Summoned: You can send 1 \"Orcust\" or \"World Legacy\" card from your Deck to the GY, then, if there are 2 or more other cards in this card's column, treat this card as a Tuner this turn. If you control no other monsters: You can Special Summon 1 \"World Legacy Token\" (Machine/DARK/Level 1/ATK 0/DEF 0) to both players' fields in Defense Position. You can only use each effect of \"Girsu, the Orcust Mekk-Knight\" once per turn."
+ },
+ {
+  "id": 70088809,
+  "name": "Fydraulis Harmonia",
+  "type": "Tuner Monster",
+  "race": "Dragon",
+  "description": "When a monster your opponent controls activates its effect (Quick Effect): You can reveal this card in your hand and up to 5 Synchro Monsters in your Extra Deck; apply all of these effects in sequence, based on the number revealed, also you cannot activate the effects of monsters Special Summoned from the Extra Deck until the end of your next turn after this effect resolves, except Synchro Monsters.\r\n● 2+: Special Summon this card. ● 4+: Send 1 revealed Synchro Monster to the GY. ● 6: Destroy 1 monster your opponent controls.\r\nYou can only use this effect of \"Fydraulis Harmonia\" once per turn."
+ },
+ {
+  "id": 70405001,
+  "name": "Black Luster Soldier - Soldier of Light and Darkness",
+  "type": "Ritual Effect Monster",
+  "race": "Warrior",
+  "description": "You can Ritual Summon this card with \"Light and Darkness Ritual\". Unaffected by your opponent's activated effects, unless they target this card, also cannot be destroyed by battle. You can only use each of the following effects of \"Black Luster Soldier - Soldier of Light and Darkness\" once per turn. If this card is Special Summoned: You can target 1 card your opponent controls; banish it. When this card destroys an opponent's monster by battle: You can make this card gain 1500 ATK, and if you do, it can make a second attack in a row."
+ },
+ {
+  "id": 70488851,
+  "name": "Vidolium the Unstable Power Patron of Unity",
+  "type": "Pendulum Effect Monster",
+  "race": "Fairy",
+  "description": "[ Pendulum Effect ] \nYou can activate 1 of these effects;\r\n● Destroy this card, and if you do, Special Summon 1 \"Power Patron\" monster from your hand or GY.\r\n● Destroy this card, also for the rest of this turn, \"Power Patron\" monsters you control whose original Level is 12 gain 5000 ATK.\r\nYou can only use this effect of \"Vidolium the Unstable Power Patron of Unity\" once per turn.\n\n[ Monster Effect ] \nCannot be Normal Summoned/Set. Must be Special Summoned (from your Extra Deck or GY) by returning 3 monsters (1 Fusion, 1 Synchro, and 1 Xyz) from your face-up field and/or GY to the Extra Deck. Unaffected by monster effects, except \"Power Patron\" monsters. If this card is added to your Extra Deck face-up: You can add 1 \"Power Patron\" card from your Deck to your hand. You can only use this effect of \"Vidolium the Unstable Power Patron of Unity\" once per turn. If this card is Special Summoned: Banish (face-down) all cards in the GYs."
+ },
+ {
+  "id": 72238166,
+  "name": "Node Ryzeal",
+  "type": "Effect Monster",
+  "race": "Thunder",
+  "description": "If you have an Xyz Monster in your field or GY, you can Special Summon this card (from your hand). If Summoned this way, you cannot Special Summon from the Extra Deck for the rest of this turn, except Rank 4 Xyz Monsters. You can only Special Summon \"Node Ryzeal\" once per turn this way. You can send 1 card from your hand or field to the GY, then target 1 \"Ryzeal\" monster in your GY, except \"Node Ryzeal\"; Special Summon it in Defense Position, but negate its effects. You can only use this effect of \"Node Ryzeal\" once per turn."
+ },
+ {
+  "id": 72270339,
+  "name": "Diabellstar the Black Witch",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "You can Special Summon this card (from your hand) by sending 1 card from your hand or field to the GY. You can only Special Summon \"Diabellstar the Black Witch\" once per turn this way. You can only use each of the following effects of \"Diabellstar the Black Witch\" once per turn. If this card is Normal or Special Summoned: You can Set 1 \"Sinful Spoils\" Spell/Trap directly from your Deck. During your opponent's turn, if this card is sent from its owner's hand or field to the GY: You can send 1 card from your hand or field to the GY, and if you do, Special Summon this card."
+ },
+ {
+  "id": 73642296,
+  "name": "Ghost Belle & Haunted Mansion",
+  "type": "Tuner Monster",
+  "race": "Zombie",
+  "description": "When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that activation.\r\n● Add a card(s) from the GY to the hand, Deck, and/or Extra Deck.\r\n● Special Summon a Monster Card(s) from the GY.\r\n● Banish a card(s) from the GY.\r\nYou can only use this effect of \"Ghost Belle & Haunted Mansion\" once per turn."
+ },
+ {
+  "id": 73819701,
+  "name": "Fallen of the White Dragon",
+  "type": "Effect Monster",
+  "race": "Dragon",
+  "description": "(This card is always treated as \"Fallen of Albaz\".)\r\nIf this card is in your hand: You can send 1 monster that mentions \"Fallen of Albaz\" from your Extra Deck to the GY; Special Summon this card, also you cannot Special Summon from the Extra Deck for the rest of this turn, except Level 8 Fusion or Synchro Monsters. If this card is Normal or Special Summoned: You can Special Summon 1 \"Ecclesia\" monster from your hand, Deck, or GY. You can only use each effect of \"Fallen of the White Dragon\" once per turn."
+ },
+ {
+  "id": 80181649,
+  "name": "\"A Case for K9\"",
+  "type": "Spell Card",
+  "race": "Continuous",
+  "description": "When this card is activated: You can add 1 \"K9\" monster from your Deck to your hand. \"K9\" monsters you control gain 900 ATK during any turn in which your opponent has activated a monster effect in the hand or GY. If this card in the Spell & Trap Zone is destroyed by card effect: You can Set 1 \"K9\" Quick-Play Spell from your Deck or GY. You can only use this effect of \"\"A Case for K9\"\" once per turn. You can only activate 1 \"\"A Case for K9\"\" per turn."
+ },
+ {
+  "id": 80801743,
+  "name": "Abominable Chamber of the Unchained",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "Special Summon 1 \"Unchained\" monster from your hand or GY. If this Set card is destroyed by card effect: You can Special Summon 1 \"Unchained\" monster from your Deck. You can only use each effect of \"Abominable Chamber of the Unchained\" once per turn."
+ },
+ {
+  "id": 80845034,
+  "name": "WANTED: Seeker of Sinful Spoils",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Add 1 \"Diabellstar\" monster from your Deck or GY to your hand. During your Main Phase: You can banish this card from your GY, then target 1 of your \"Sinful Spoils\" Spells/Traps that is banished or in your GY, except \"WANTED: Seeker of Sinful Spoils\"; place it on the bottom of the Deck, then draw 1 card. You can only use each effect of \"WANTED: Seeker of Sinful Spoils\" once per turn."
+ },
+ {
+  "id": 81560239,
+  "name": "Mitsurugi Ritual",
+  "type": "Spell Card",
+  "race": "Ritual",
+  "description": "This card can be used to Ritual Summon any Reptile Ritual Monster. Activate 1 of these effects (but you can only use each effect of \"Mitsurugi Ritual\" once per turn);\r\n● Ritual Summon 1 Reptile Ritual Monster from your Deck, by Tributing Reptile monsters from your hand or field whose total Levels equal the Level of the Ritual Monster.\r\n● Ritual Summon 1 Reptile Ritual Monster from your hand, by Tributing up to 2 Reptile monsters from your hand, Deck, or field, whose total Levels equal the Level of the Ritual Monster."
+ },
+ {
+  "id": 82489470,
+  "name": "The Golden Swordsoul",
+  "type": "Tuner Monster",
+  "race": "Spellcaster",
+  "description": "When a monster declares an attack: You can Special Summon this card from your hand, and if you do, negate that attack, then, if you control a Fusion Monster that mentions \"Fallen of Albaz\" as material, you can destroy the monster that declared that attack. If a monster is banished face-up (except during the Damage Step): You can banish this card from your field or GY; Special Summon 1 LIGHT Spellcaster monster from your hand or GY whose ATK equals its own DEF. You can only use this effect of \"The Golden Swordsoul\" once per turn."
+ },
+ {
+  "id": 82782870,
+  "name": "Mitsurugi no Mikoto, Kusanagi",
+  "type": "Effect Monster",
+  "race": "Reptile",
+  "description": "If this card is Normal or Special Summoned, or if this card is Tributed: You can target 1 \"Mitsurugi\" card in your GY or banishment, except \"Mitsurugi no Mikoto, Kusanagi\"; add it to your hand. If another Reptile monster(s) you control would be destroyed by battle or card effect, you can Tribute this card instead. You can only use each effect of \"Mitsurugi no Mikoto, Kusanagi\" once per turn."
+ },
+ {
+  "id": 97556336,
+  "name": "Medius the Pure",
+  "type": "Effect Monster",
+  "race": "Fairy",
+  "description": "If this card is Normal or Special Summoned: You can add to your hand, or Special Summon, 1 \"Power Patron\" monster from your Deck. If this card is in your GY: You can shuffle 1 monster from your hand or face-up field into the Deck, and if you do, Special Summon this card, but banish it when it leaves the field. You can only use each effect of \"Medius the Pure\" once per turn."
+ }
+]

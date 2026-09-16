@@ -1,0 +1,1049 @@
+[
+ {
+  "id": 42141493,
+  "name": "Mulcharmy Fuwalos",
+  "decks": 16,
+  "maxCopies": 3,
+  "hoptChoice": false,
+  "labels": [
+   "Dead First"
+  ]
+ },
+ {
+  "id": 24224830,
+  "name": "Called by the Grave",
+  "decks": 13,
+  "maxCopies": 1,
+  "hoptChoice": false,
+  "labels": [
+   "Board Disruption"
+  ]
+ },
+ {
+  "id": 24461358,
+  "name": "Ragged Records of Rites",
+  "decks": 11,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 14558127,
+  "name": "Ash Blossom & Joyous Spring",
+  "decks": 10,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 40366667,
+  "name": "Dominus Impulse",
+  "decks": 10,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 30271097,
+  "name": "The Fallen & The Virtuous",
+  "decks": 10,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": [
+   "Board Disruption"
+  ]
+ },
+ {
+  "id": 18176525,
+  "name": "Mitsurugi no Mikoto, Saji",
+  "decks": 9,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 19899073,
+  "name": "Ame no Murakumo no Mitsurugi",
+  "decks": 9,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 45171524,
+  "name": "Mitsurugi Prayers",
+  "decks": 9,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 13332685,
+  "name": "Ame no Habakiri no Mitsurugi",
+  "decks": 9,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 40543231,
+  "name": "Mitsurugi no Mikoto, Aramasa",
+  "decks": 9,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 82782870,
+  "name": "Mitsurugi no Mikoto, Kusanagi",
+  "decks": 9,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 81560239,
+  "name": "Mitsurugi Ritual",
+  "decks": 9,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 48130397,
+  "name": "Super Polymerization",
+  "decks": 9,
+  "maxCopies": 3,
+  "hoptChoice": false,
+  "labels": [
+   "Board Disruption"
+  ]
+ },
+ {
+  "id": 84192580,
+  "name": "Mulcharmy Purulia",
+  "decks": 8,
+  "maxCopies": 3,
+  "hoptChoice": null,
+  "labels": [
+   "Dead First"
+  ]
+ },
+ {
+  "id": 49721684,
+  "name": "Mitsurugi Mirror",
+  "decks": 8,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 17954937,
+  "name": "Mitsurugi Great Purification",
+  "decks": 7,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 13048472,
+  "name": "Pre-Preparation of Rites",
+  "decks": 7,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 33599853,
+  "name": "Light and Darkness Ritual",
+  "decks": 6,
+  "maxCopies": 2,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 70405001,
+  "name": "Black Luster Soldier - Soldier of Light and Darkness",
+  "decks": 6,
+  "maxCopies": 1,
+  "hoptChoice": false,
+  "labels": []
+ },
+ {
+  "id": 55397172,
+  "name": "Futsu no Mitama no Mitsurugi",
+  "decks": 6,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 24088928,
+  "name": "Skull Archfiend of Chaos",
+  "decks": 6,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 44001993,
+  "name": "Magician of Dark Chaos - Black Chaos",
+  "decks": 6,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 94145021,
+  "name": "Droll & Lock Bird",
+  "decks": 6,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 97462632,
+  "name": "Griffoh",
+  "decks": 6,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 24749710,
+  "name": "Mind Shuffle",
+  "decks": 6,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 25311006,
+  "name": "Triple Tactics Talent",
+  "decks": 6,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": [
+   "Board Disruption"
+  ]
+ },
+ {
+  "id": 98684220,
+  "name": "Black Chaos",
+  "decks": 6,
+  "maxCopies": 3,
+  "hoptChoice": false,
+  "labels": []
+ },
+ {
+  "id": 97631303,
+  "name": "Magicians' Souls",
+  "decks": 5,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 69811710,
+  "name": "Girsu, the Orcust Mekk-Knight",
+  "decks": 3,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 81439173,
+  "name": "Foolish Burial",
+  "decks": 3,
+  "maxCopies": 1,
+  "hoptChoice": false,
+  "labels": []
+ },
+ {
+  "id": 703897,
+  "name": "Orcust Crescendo",
+  "decks": 3,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 21441617,
+  "name": "Orcust Cymbal Skeleton",
+  "decks": 3,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 98476659,
+  "name": "Pot of Sloth",
+  "decks": 3,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": [
+   "Dead First"
+  ]
+ },
+ {
+  "id": 57835716,
+  "name": "Orcust Harp Horror",
+  "decks": 3,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 90351981,
+  "name": "Orcustrated Babel",
+  "decks": 3,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 6325660,
+  "name": "Dominus Spark",
+  "decks": 2,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": [
+   "Board breaker",
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 10045474,
+  "name": "Infinite Impermanence",
+  "decks": 2,
+  "maxCopies": 3,
+  "hoptChoice": null,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 25451383,
+  "name": "Albion the Shrouded Dragon",
+  "decks": 2,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 29948294,
+  "name": "Branded in High Spirits",
+  "decks": 2,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 55273560,
+  "name": "Incredible Ecclesia, the Virtuous",
+  "decks": 2,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 59438930,
+  "name": "Ghost Ogre & Snow Rabbit",
+  "decks": 2,
+  "maxCopies": 2,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 60303688,
+  "name": "Dogmatika Ecclesia, the Virtuous",
+  "decks": 2,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 65681983,
+  "name": "Crossout Designator",
+  "decks": 2,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": [
+   "Board Disruption"
+  ]
+ },
+ {
+  "id": 66328392,
+  "name": "Deception of the Sinful Spoils",
+  "decks": 2,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 68468459,
+  "name": "Fallen of Albaz",
+  "decks": 2,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 70088809,
+  "name": "Fydraulis Harmonia",
+  "decks": 2,
+  "maxCopies": 3,
+  "hoptChoice": null,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 72270339,
+  "name": "Diabellstar the Black Witch",
+  "decks": 2,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 73642296,
+  "name": "Ghost Belle & Haunted Mansion",
+  "decks": 2,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 73819701,
+  "name": "Fallen of the White Dragon",
+  "decks": 2,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 80845034,
+  "name": "WANTED: Seeker of Sinful Spoils",
+  "decks": 2,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 84211599,
+  "name": "Pot of Prosperity",
+  "decks": 2,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 91800273,
+  "name": "Dimension Shifter",
+  "decks": 2,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 94845588,
+  "name": "The Hallowed Azamina",
+  "decks": 2,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 95515789,
+  "name": "Blazing Cartesia, the Virtuous",
+  "decks": 2,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 44362883,
+  "name": "Branded Fusion",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 23720856,
+  "name": "Zubababancho Gagagacoat",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 45883110,
+  "name": "Guiding Quem, the Virtuous",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 46986420,
+  "name": "Dark Magician",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 22283204,
+  "name": "The Gaze of Timaeus",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 19304410,
+  "name": "Tri-Brigade Springans Kitt",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 50073633,
+  "name": "Celtic Mystic",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 53417695,
+  "name": "Escape of the Unchained",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 53624265,
+  "name": "Unchained Twins - Rakea",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 53792930,
+  "name": "K9-X Forced Release",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 53829527,
+  "name": "Crystron Cluster",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 55031170,
+  "name": "K9-66b Lantern",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 55088578,
+  "name": "Onomatokage",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 92221402,
+  "name": "Chaotic Elements",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 19096726,
+  "name": "Tri-Brigade Mercourier",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 56651978,
+  "name": "Elfnote Regina",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": false,
+  "labels": []
+ },
+ {
+  "id": 17751597,
+  "name": "Branded Retribution",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 92248362,
+  "name": "K9-17 Izuna",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 59581480,
+  "name": "Elfnote Tinia",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 93898740,
+  "name": "Unchained Syncretism",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 62880279,
+  "name": "Dodododo Warrior",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 62962630,
+  "name": "Aluber the Jester of Despia",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 64491754,
+  "name": "Elfnotes: Welcome Home",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": false,
+  "labels": []
+ },
+ {
+  "id": 4334811,
+  "name": "Scrap Recycler",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 1966438,
+  "name": "Abominable Unchained Soul",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 67803035,
+  "name": "Reincarnation of the Unchained",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 95136979,
+  "name": "Unchained Ogre Shara",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 68625623,
+  "name": "Unchained Malevolent Magistrate Kamura",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 13597785,
+  "name": "Elfnote Lucina",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 95492061,
+  "name": "Manju of the Ten Thousand Hands",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 12375297,
+  "name": "Elfnote Power Patron",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 70488851,
+  "name": "Vidolium the Unstable Power Patron of Unity",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 72238166,
+  "name": "Node Ryzeal",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 99471856,
+  "name": "Crystron Tristaros",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 97268402,
+  "name": "Effect Veiler",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": null,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 3739500,
+  "name": "Ruler of the End of the World",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 80181649,
+  "name": "\"A Case for K9\"",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 80801743,
+  "name": "Abominable Chamber of the Unchained",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 97556336,
+  "name": "Medius the Pure",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 10604644,
+  "name": "Therion \"King\" Regulus",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 10266279,
+  "name": "Junoldo the Shadespirit Power Patron",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 8633261,
+  "name": "Ice Ryzeal",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 82489470,
+  "name": "The Golden Swordsoul",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 7477101,
+  "name": "Seventh Tachyon",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 83443619,
+  "name": "Crystron Smiger",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 6798031,
+  "name": "Ryzeal Cross",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 3422200,
+  "name": "Crystron Sulfefnir",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 84433129,
+  "name": "Star Ryzeal",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 85106525,
+  "name": "Bonfire",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 85119159,
+  "name": "Onomatopickup",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 85976588,
+  "name": "Elfnote Fortuna",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": []
+ },
+ {
+  "id": 88554436,
+  "name": "Unchained Soul of Shyama",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 88570003,
+  "name": "Dark Magician, the Pharaoh's Servant",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 6595475,
+  "name": "Onomatopaira",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 91025875,
+  "name": "K9-ØØ Lupis",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": [
+   "Handtrap"
+  ]
+ },
+ {
+  "id": 1984618,
+  "name": "Nadir Servant",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 28642461,
+  "name": "K9-66a Jokul",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 31531914,
+  "name": "Unchained Ogre Shma",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 31552317,
+  "name": "Crystron Inclusion",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 31588572,
+  "name": "Unchained Twins - Sarama",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 27412542,
+  "name": "Abomination's Prison",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 34022970,
+  "name": "Ext Ryzeal",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 35844557,
+  "name": "Sword Ryzeal",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 35886170,
+  "name": "Gogogo Goblindbergh",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 36637374,
+  "name": "Branded Opening",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 26236560,
+  "name": "Unchained Twins - Aruha",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 25865565,
+  "name": "Crystron Sulfador",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 41165831,
+  "name": "Unchained Soul of Sharvara",
+  "decks": 1,
+  "maxCopies": 2,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 41350417,
+  "name": "Dark Magical Curtain",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 25661743,
+  "name": "Prohibited Power Patron Portal - Terminus",
+  "decks": 1,
+  "maxCopies": 3,
+  "hoptChoice": true,
+  "labels": []
+ },
+ {
+  "id": 24092792,
+  "name": "Elfnotes: Rhapsodia of Madness",
+  "decks": 1,
+  "maxCopies": 1,
+  "hoptChoice": null,
+  "labels": []
+ }
+]

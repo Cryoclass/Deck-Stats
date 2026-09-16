@@ -42,6 +42,20 @@ Hors de la numérotation des étapes : c'est un outil d'exploitation, pas une fo
 | A — socle | Migration `005-backoffice.sql` (`users.role`, tables `backoffice_*`, rôle PostgreSQL `testhand_backoffice` à privilèges par colonne, journal en ajout seul par déclencheur) ; `deploy/backoffice-role.sh` (simulation par défaut, `--apply` journalisé) ; séquence de `lib.sh` (005 dans les deux branches, arrêt d'`admin`, mot de passe du rôle, pré-création du rôle à la restauration) et `check-migration.sql` ; cas 005 de `test-migration-sequence.sh` ; solution .NET avec scrypt (RFC 7914 + hachages Node), TOTP (RFC 6238), chiffrement du secret, politique de session, tests unitaires. Tag `backoffice-a-ok`. | ✅ Terminée le 16 sept. 2026 — 005 (rôle `testhand_backoffice` NOLOGIN à privilèges par colonne, déclencheur d'ajout seul, rejeu défensif), `backoffice-role.sh` + `.sql` (GUC, simulation, `--apply` journalisé `cli`), `lib.sh` (005 dans les deux branches avant 003, `ensure_backoffice_role`, `backoffice_db_login`, `users` reformée contrôlée), `check-migration.sql` (garanties du rôle vérifiées à chaque déploiement), cas « F sans 005 » et J de `test-migration-sequence.sh` (86 gardes A–J), scrypt / TOTP / base32 / AES-GCM / session en C# (150 tests unitaires, RFC 7914 vecteurs 1–3 + 8 hachages Node, RFC 6238 + 4226) ; typecheck, build, 254 web + 14 serveur, 12 + 14 + 11 PostgreSQL, 10 scénarios e2e, répétition conforme ; mutations détectées (docs/backoffice.md §10). |
 | B — site | Razor Pages (connexion, TOTP, tableau de bord, comptes, fiche, journal) branchées avec le rôle restreint ; tests d'intégration sur 55442 (refus sans session / cookie joueur / compte `user` / sans TOTP / après 8 h / après retrait du rôle ; une ligne de journal par consultation ; aucun contenu de deck ; compatibilité scrypt) ; charte « corpo, factuel » clair / sombre (`docs/design-backoffice.md`) ; garde navigateur 360 / 1440 ; image, service Compose, runbook « première mise en ligne du back-office ». Tag `backoffice-ok`. | ✅ Terminée le 16 sept. 2026 — Razor Pages (`/login`, `/totp`, `/`, `/comptes`, `/comptes/:id`, `/journal`, `/logout`, `/health`) avec le rôle restreint, journal explicite par page, en-têtes CSP sans inline, thème clair / sombre retenu, bandeau PRODUCTION / DEV ; 16 tests d'intégration sur 55442 (refus sans session / cookie joueur / user / sans TOTP / 8 h / rôle retiré, une ligne par consultation, aucun contenu de deck ni privilège, scrypt Node, débit, ligne de commande) ; garde navigateur 49 / 49 à 1440 et 360 ; `Dockerfile.admin`, service `admin`, runbook B0–B7, README §10, charte `docs/design-backoffice.md` ; mutations détectées (docs/backoffice.md §10). |
 
+## Hors numérotation — annotations par défaut (HOPT et profils pré-remplis)
+
+Plan validé le 16 septembre 2026 : [docs/annotations-par-defaut.md](annotations-par-defaut.md)
+(inventaire prouvé sur le catalogue et l'archive du 8 septembre, décisions D1–D15 et révisions,
+règles R1–R7, réponses Q1–Q9, découpage A–D). Trois couches : détection textuelle → référence posée
+par un référent → choix du compte.
+
+| Partie | Résultat vérifiable attendu | Statut |
+| --- | --- | --- |
+| A — détection | `server/src/domain/cardDefaults.ts` (pur, partagé, dans `__ENGINE_VERSION__`), fixtures de textes réels, tests d'accord avec les choix existants, `scripts/annotations-report.ts` | ✅ Terminée le 16 sept. 2026 — HOPT `byName` seul (4 623 cartes du catalogue), profils par 4 gabarits (réactive / flexible / précoce + plafond Mulcharmy / board breaker), 97 des 99 HOPT du compte expert retrouvés sur 126 cartes jouées, 7 tests, 6 mutations détectées (docs/annotations-par-defaut.md §12). |
+| B — contrat et moteur | Profil `reactive` (contrat §3, moteur, oracle, libellés), porte profil / étiquette levée (cas Q1 réécrit sur décision, garde serveur), tag `annotations-b-ok` | À faire |
+| C — modèle et persistance | Migration 006 (rôle `referent`, `is_hopt` nullable, `nonengine_choice`, groupe fourni de base, `card_references` + journal, résumés à NULL), routes, `effectiveLibrary.ts`, archive JSON, `prune-stale-cards`, `backoffice-role.sh`, séquence de déploiement, rapport d'écart, tag `annotations-c-ok` | À faire |
+| D — interface | Pastilles d'origine, retour au défaut, bandeau, mode Non-engine par profil, formulaire et page de référence, e2e `defaults`, docs, tag `annotations-d-ok` | À faire |
+
 ## Reports connus (à reprendre dans l'étape indiquée)
 
 - ~~Étape 9 (questions ouvertes de 7B)~~ : **traités en 9A** (docs/etape-9.md) — mur compact, Nouvelles mains 32 px, Δ 10 px, densité close à 96 px (mesure 84 px consignée), arbre ET/OU profond validé. Aucun test React dans le dépôt ; les gardes navigateur sont dans `web/e2e/` (hors `npm test`, Docker et Chrome requis) et mesurent le rendu de Chrome avec la police système de Windows.
@@ -51,6 +65,16 @@ Hors de la numérotation des étapes : c'est un outil d'exploitation, pas une fo
 ## Compte rendu de la dernière étape
 
 À mettre à jour en fin de chaque tâche (remplacer le contenu, l'historique reste dans docs/etapes-*.md et git).
+
+- **Date** : 16 septembre 2026.
+- **Étape** : hors numérotation, annotations par défaut, partie A (docs/annotations-par-defaut.md §12). Tag `annotations-a-ok`, rien poussé.
+- **Livré** : `server/src/domain/cardDefaults.ts` (détection HOPT par fenêtre de limite, nom littéral ou normalisé ; profils par 4 gabarits, jamais « préparée » ; `summonOnce` reporté sans HOPT), entrée du module dans `__ENGINE_VERSION__`, fixtures de textes réels (84 cartes choisies, 126 cartes jouées, choix d'un compte numéroté), `server/tests/cardDefaults.test.ts` (7 tests), `scripts/annotations-report.ts` (base jetable, `--out`).
+- **Vérifications exécutées** : `npm run typecheck`, `npm run build -w web`, `node scripts/test-quiet.mjs`, rapport sur la restauration jetable de l'archive du 8 septembre (55446, détruite), 6 mutations détectées.
+- **Non fait / reporté** : parties B, C, D ; rapport d'écart par deck (attend la bibliothèque effective de C). Aucune commande vers le VPS ni la base de dev.
+- **Décisions ajoutées** : DECISIONS.md, section « Annotations par défaut » ; résumé dans docs/decisions-compressees.md.
+- **Prochaine action** : partie B (profil `reactive`, porte levée) selon docs/annotations-par-defaut.md §11.
+
+Compte rendu précédent (back-office, même jour, conservé pour la lecture de la passation) :
 
 - **Date** : 16 septembre 2026.
 - **Étape** : hors numérotation, back-office (socle en lecture seule), parties A et B (docs/backoffice.md §10). Tags `backoffice-a-ok` et `backoffice-ok`, rien poussé.

@@ -18,6 +18,9 @@ function engineVersion(): string {
     .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
     .map((f) => path.join(engineDir, f));
   files.push(path.join(src, 'lib', 'engineModel.ts'), path.join(src, 'lib', 'conditions.ts'), path.join(src, 'lib', 'summary.ts'));
+  // Annotations par défaut (D1, D8) : la détection depuis le texte des cartes détermine l'entrée du
+  // moteur au même titre que la bibliothèque ; toute règle qui change périme les aperçus.
+  files.push(path.resolve(src, '..', '..', 'server', 'src', 'domain', 'cardDefaults.ts'));
   const h = createHash('sha1');
   for (const f of files.sort()) {
     h.update(path.basename(f));

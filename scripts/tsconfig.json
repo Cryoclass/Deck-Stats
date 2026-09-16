@@ -13,5 +13,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "files": ["recompute-check.ts"]
+  "files": ["recompute-check.ts", "annotations-report.ts"]
 }

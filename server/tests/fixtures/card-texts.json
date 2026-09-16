@@ -1,0 +1,590 @@
+[
+ {
+  "id": 84192580,
+  "name": "Mulcharmy Purulia",
+  "type": "Effect Monster",
+  "race": "Aqua",
+  "description": "If you control no cards (Quick Effect): You can discard this card; apply these effects this turn.\r\n● Each time your opponent Normal or Special Summons a monster(s) from the hand, immediately draw 1 card.\r\n● Once, during this End Phase, if the number of cards in your hand is more than the number of cards your opponent controls +6, you must randomly shuffle cards from your hand into the Deck so the number in your hand equals the number your opponent controls +6.\r\nYou can only activate 1 other \"Mulcharmy\" monster effect, the turn you activate this effect."
+ },
+ {
+  "id": 84211599,
+  "name": "Pot of Prosperity",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Banish 3 or 6 cards of your choice from your Extra Deck, face-down; for the rest of this turn after this card resolves, any damage your opponent takes is halved, also excavate cards from the top of your Deck equal to the number of cards banished, add 1 excavated card to your hand, place the rest on the bottom of your Deck in any order. You can only activate 1 \"Pot of Prosperity\" per turn. You cannot draw cards by card effects the turn you activate this card."
+ },
+ {
+  "id": 86039057,
+  "name": "Tasuke Knight",
+  "type": "Effect Monster",
+  "race": "Warrior",
+  "description": "When an opponent's monster declares an attack, while you have no cards in your hand and this card is in your Graveyard: You can Special Summon this card from your Graveyard, then end the Battle Phase. You can only use this effect of \"Tasuke Knight\" once per Duel."
+ },
+ {
+  "id": 87126721,
+  "name": "Mulcharmy Meowls",
+  "type": "Effect Monster",
+  "race": "Beast",
+  "description": "If you control no cards (Quick Effect): You can discard this card; apply these effects this turn.\r\n● Each time your opponent Special Summons a monster(s) from any GY(s) or banishment, immediately draw 1 card.\r\n● Once, during this End Phase, if the number of cards in your hand is more than the number of cards your opponent controls +6, you must randomly shuffle cards from your hand into the Deck so the number in your hand equals the number your opponent controls +6.\r\nYou can only activate 1 other \"Mulcharmy\" monster effect, the turn you activate this effect."
+ },
+ {
+  "id": 87640391,
+  "name": "Migratory Zereort",
+  "type": "Effect Monster",
+  "race": "Winged Beast",
+  "description": "If a WATER Xyz Monster is on the field: You can Special Summon this card from your hand. During your Main Phase: You can detach 1 Xyz Material from a monster you control, then you can Special Summon 1 Level 3 or 4 WATER monster from your hand or GY, but its effects are negated, also if it is used for the Xyz Summon of a WATER monster this turn, it can be treated as a Level 5 monster. You can only use each effect of \"Zereort Migrator\" once per turn."
+ },
+ {
+  "id": 88931417,
+  "name": "Gatling Ogre",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "You can send any number of face-down cards from your Spell & Trap Zone to the GY; inflict 800 damage to your opponent for each, also your opponent takes no damage from non-Fiend monsters' effects for the rest of this turn. You can only use this effect of \"Gatling Ogre\" thrice per turn. Once per turn, when this card is targeted for an attack: You can inflict 500 damage to your opponent for each Attack Position monster they control, then end the Battle Phase."
+ },
+ {
+  "id": 90351981,
+  "name": "Orcustrated Babel",
+  "type": "Spell Card",
+  "race": "Field",
+  "description": "You can activate the effects of \"Orcust\" monsters in your GY, or of Link Monsters you control with \"Orcust\" in their original names, as Quick Effects. During your Main Phase, if this card is in your GY, except the turn it was sent to the GY: You can send 1 card from your hand to the GY; add this card to your hand."
+ },
+ {
+  "id": 91800273,
+  "name": "Dimension Shifter",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "If you have no cards in your GY (Quick Effect): You can send this card from your hand to the GY; until the end of the next turn, any card sent to the GY is banished instead."
+ },
+ {
+  "id": 92559258,
+  "name": "Servant of Endymion",
+  "type": "Pendulum Effect Monster",
+  "race": "Spellcaster",
+  "description": "[ Pendulum Effect ] \nEach time a Spell Card is activated, place 1 Spell Counter on this card when that Spell resolves. You can remove 3 Spell Counters from this card; Special Summon both this card from your Pendulum Zone and 1 monster from your Deck with 1000 or more ATK that you can place a Spell Counter on, and if you do, place 1 Spell Counter on each.\n\n[ Monster Effect ] \nYou can only Special Summon \"Servant(s) of Endymion\" once per turn. This card with a Spell Counter can attack directly. Once per opponent's turn (Quick Effect): You can discard 1 card; place 1 Spell Counter on each card you control that you can place a Spell Counter on. If this card in the Monster Zone is destroyed: You can place this card in your Pendulum Zone, then place the same number of Spell Counters on it that it had as a monster."
+ },
+ {
+  "id": 94145021,
+  "name": "Droll & Lock Bird",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "If a card(s) is added from the Main Deck to your opponent's hand, except during the Draw Phase (Quick Effect): You can send this card from your hand to the GY; for the rest of this turn, cards cannot be added from either player's Main Deck to the hand."
+ },
+ {
+  "id": 94722358,
+  "name": "Maliss <C> MTP-07",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "You can activate this card the turn it was Set, by banishing 1 face-up \"Maliss\" monster you control. Add 1 \"Maliss\" monster from your Deck to your hand, then if you control a \"Maliss\" Link Monster, you can banish 1 card on the field. You can only activate 1 \"Maliss MTP-07\" per turn."
+ },
+ {
+  "id": 95492061,
+  "name": "Manju of the Ten Thousand Hands",
+  "type": "Effect Monster",
+  "race": "Fairy",
+  "description": "When this card is Normal or Flip Summoned: You can add 1 Ritual Monster or 1 Ritual Spell from your Deck to your hand."
+ },
+ {
+  "id": 97045737,
+  "name": "Dominus Purge",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "If your opponent controls a card, you can activate this card from your hand. When a card or effect is activated that includes an effect that adds a card(s) from the Deck to the hand: Negate that effect, then if you have a Trap in your GY, destroy that card. If you activated this card from your hand, you cannot activate the effects of DARK, WATER, and FIRE monsters for the rest of this Duel. You can only activate 1 \"Dominus Purge\" per turn."
+ },
+ {
+  "id": 97268402,
+  "name": "Effect Veiler",
+  "type": "Tuner Monster",
+  "race": "Spellcaster",
+  "description": "During your opponent's Main Phase (Quick Effect): You can send this card from your hand to the GY, then target 1 Effect Monster your opponent controls; negate the effects of that face-up monster your opponent controls, until the end of this turn."
+ },
+ {
+  "id": 97462632,
+  "name": "Griffoh",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "(Quick Effect): You can discard this card, then activate 1 of these effects;\r\n● The next battle or effect damage you take this turn will become 0.\r\n● Set 1 Quick-Play Spell or Trap that mentions \"Light and Darkness Ritual\" from your Deck. It can be activated this turn.\r\nYou can only use this effect of \"Griffoh\" once per turn. If you Ritual Summon exactly 1 Level 8 Ritual Monster with a card effect that requires use of monsters, this card can be used as the entire Tribute."
+ },
+ {
+  "id": 98476659,
+  "name": "Pot of Sloth",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Draw cards equal to the number of cards your opponent controls, then if you drew 2 or more cards, place cards from your hand on the bottom of the Deck in any order, equal to the number you drew -1. For the rest of this turn after this card resolves, you cannot activate \"Pot of Sloth\"."
+ },
+ {
+  "id": 98684220,
+  "name": "Black Chaos",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "Cannot be Normal Summoned/Set. Must be Special Summoned (from your hand) by shuffling 1 Spellcaster or Warrior Ritual Monster from your hand or GY into the Deck. You can only Special Summon \"Black Chaos\" once per turn this way. You can discard this card; place 1 Continuous Trap that mentions \"Light and Darkness Ritual\" from your Deck or GY, face-up on your field. While you have a Ritual Spell in your GY, this card is unaffected by your opponent's activated effects. Once per turn, during your Main Phase: You can banish 2 cards your opponent controls."
+ },
+ {
+  "id": 20450925,
+  "name": "Hanewata",
+  "type": "Tuner Monster",
+  "race": "Fairy",
+  "description": "(Quick Effect): You can discard this card; you take no effect damage this turn."
+ },
+ {
+  "id": 46986420,
+  "name": "Dark Magician",
+  "type": "Normal Monster",
+  "race": "Spellcaster",
+  "description": "''The ultimate wizard in terms of attack and defense.''"
+ },
+ {
+  "id": 35261759,
+  "name": "Pot of Desires",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Banish 10 cards from the top of your Deck, face-down; draw 2 cards. You can only activate 1 \"Pot of Desires\" per turn."
+ },
+ {
+  "id": 81439173,
+  "name": "Foolish Burial",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Send 1 monster from your Deck to the GY."
+ },
+ {
+  "id": 90764875,
+  "name": "Gorgonic Ghoul",
+  "type": "Effect Monster",
+  "race": "Rock",
+  "description": "If you control a \"Gorgonic Ghoul\": You can pay 300 LP; Special Summon this card from your hand. You can use the effect of \"Gorgonic Ghoul\" up to twice per turn."
+ },
+ {
+  "id": 96907086,
+  "name": "Earthbound Whirlwind",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "If you control an \"Earthbound Immortal\" monster: Destroy all Spell and Trap Cards your opponent controls."
+ },
+ {
+  "id": 4334811,
+  "name": "Scrap Recycler",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "When this card is Normal or Special Summoned: You can send 1 Machine monster from your Deck to the GY. Once per turn: You can shuffle 2 Level 4 EARTH Machine monsters from your GY into the Deck; draw 1 card."
+ },
+ {
+  "id": 8267140,
+  "name": "Cosmic Cyclone",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Pay 1000 LP, then target 1 Spell/Trap on the field; banish it."
+ },
+ {
+  "id": 9674034,
+  "name": "Snake-Eye Ash",
+  "type": "Effect Monster",
+  "race": "Pyro",
+  "description": "If this card is Normal or Special Summoned: You can add 1 Level 1 FIRE monster from your Deck to your hand. You can send 2 face-up cards you control to the GY, including this card; Special Summon 1 \"Snake-Eye\" monster from your hand or Deck, except \"Snake-Eye Ash\". You can only use each effect of \"Snake-Eye Ash\" once per turn."
+ },
+ {
+  "id": 10045474,
+  "name": "Infinite Impermanence",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "Target 1 face-up monster your opponent controls; negate its effects (until the end of this turn), then, if this card was Set before activation and is on the field at resolution, for the rest of this turn all other Spell/Trap effects in this column are negated. If you control no cards, you can activate this card from your hand."
+ },
+ {
+  "id": 10604644,
+  "name": "Therion \"King\" Regulus",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "You can only use each of the following effects of \"Therion \"King\" Regulus\" once per turn.\r\n● You can target 1 \"Therion\" monster or 1 Machine monster in your GY; Special Summon this card from your hand, and if you do, equip that monster to this card.\r\n● When your opponent activates a card or effect (Quick Effect): You can send 1 \"Therion\" Monster Card from your hand or face-up field to the GY; negate that effect.\r\nA \"Therion\" monster equipped with this card gains 700 ATK, also it can activate the 2nd effect listed above as if it were \"Therion \"King\" Regulus\"."
+ },
+ {
+  "id": 12580477,
+  "name": "Raigeki",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Destroy all monsters your opponent controls."
+ },
+ {
+  "id": 14087893,
+  "name": "Book of Moon",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Target 1 face-up monster on the field; change that target to face-down Defense Position."
+ },
+ {
+  "id": 14532163,
+  "name": "Lightning Storm",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "If you control no face-up cards: Activate 1 of these effects;\r\n● Destroy all Attack Position monsters your opponent controls.\r\n● Destroy all Spells and Traps your opponent controls.\r\nYou can only activate 1 \"Lightning Storm\" per turn."
+ },
+ {
+  "id": 14558127,
+  "name": "Ash Blossom & Joyous Spring",
+  "type": "Tuner Monster",
+  "race": "Zombie",
+  "description": "When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that effect.\r\n● Add a card from the Deck to the hand.\r\n● Special Summon from the Deck.\r\n● Send a card from the Deck to the GY.\r\nYou can only use this effect of \"Ash Blossom & Joyous Spring\" once per turn."
+ },
+ {
+  "id": 15693423,
+  "name": "Evenly Matched",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "At the end of the Battle Phase, if your opponent controls more cards than you do: You can make your opponent banish cards from their field face-down so they control the same number of cards as you do. If you control no cards, you can activate this card from your hand."
+ },
+ {
+  "id": 17266660,
+  "name": "Herald of Orange Light",
+  "type": "Tuner Monster",
+  "race": "Fairy",
+  "description": "When your opponent activates a monster effect (Quick Effect): You can send this card and 1 other Fairy monster from your hand to the GY; negate the activation, and if you do, destroy it."
+ },
+ {
+  "id": 18144506,
+  "name": "Harpie's Feather Duster",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Destroy all Spell and Trap Cards your opponent controls."
+ },
+ {
+  "id": 18144507,
+  "name": "Harpie's Feather Duster",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Destroy all Spell and Trap Cards your opponent controls."
+ },
+ {
+  "id": 18176525,
+  "name": "Mitsurugi no Mikoto, Saji",
+  "type": "Effect Monster",
+  "race": "Reptile",
+  "description": "If this card is Normal or Special Summoned, or if this card is Tributed: You can add 1 \"Mitsurugi\" Spell/Trap from your Deck to your hand. If another Reptile monster(s) you control would be destroyed by battle or card effect, you can Tribute this card instead. You can only use each effect of \"Mitsurugi no Mikoto, Saji\" once per turn."
+ },
+ {
+  "id": 18964575,
+  "name": "Swift Scarecrow",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "When an opponent's monster declares a direct attack (Quick Effect): You can discard this card; negate the attack, then end the Battle Phase."
+ },
+ {
+  "id": 23002292,
+  "name": "Red Reboot",
+  "type": "Trap Card",
+  "race": "Counter",
+  "description": "When your opponent activates a Trap Card: Negate the activation, and if you do, Set that card face-down, then they can Set 1 other Trap directly from their Deck. For the rest of this turn after this card resolves, your opponent cannot activate Trap Cards. You can activate this card from your hand by paying half your LP."
+ },
+ {
+  "id": 23434538,
+  "name": "Maxx \"C\"",
+  "type": "Effect Monster",
+  "race": "Insect",
+  "description": "During either player's turn: You can send this card from your hand to the Graveyard; this turn, each time your opponent Special Summons a monster(s), immediately draw 1 card. You can only use 1 \"Maxx \"C\"\" per turn."
+ },
+ {
+  "id": 24224830,
+  "name": "Called by the Grave",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Target 1 monster in your opponent's GY; banish it, and if you do, until the end of the next turn, its effects are negated, as well as the activated effects and effects on the field of monsters with the same original name."
+ },
+ {
+  "id": 24299458,
+  "name": "Forbidden Droplet",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Send any number of other cards from your hand and/or field to the GY; choose that many Effect Monsters your opponent controls, and until the end of this turn, their ATK is halved, also their effects are negated. In response to this card's activation, your opponent cannot activate cards, or the effects of cards, with the same original type (Monster/Spell/Trap) as the cards sent to the GY to activate this card. You can only activate 1 \"Forbidden Droplet\" per turn."
+ },
+ {
+  "id": 24461358,
+  "name": "Ragged Records of Rites",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Reveal 1 Ritual Spell from your hand or Deck, and if you do, add 1 monster from your Deck to your hand that mentions that Spell's name. If a face-up Ritual Monster(s) you control leaves the field by card effect while this card is in your GY, and you do not control any face-up monsters, other than Ritual Monsters (except during the Damage Step): You can add this card from your GY to your hand. You can only use each effect of \"Ragged Records of Rites\" once per turn."
+ },
+ {
+  "id": 24508238,
+  "name": "D.D. Crow",
+  "type": "Effect Monster",
+  "race": "Winged Beast",
+  "description": "(Quick Effect): You can discard this card to the GY, then target 1 card in your opponent's GY; banish that target."
+ },
+ {
+  "id": 25137581,
+  "name": "Sneaky \"C\"",
+  "type": "Effect Monster",
+  "race": "Insect",
+  "description": "When your opponent Special Summons a monster(s) (except during the Damage Step): You can Special Summon this card from your hand in face-down Defense Position, and if you do, during the End Phase of this turn, change it to face-up Defense Position. You can only use this effect of \"Sneaky \"C\"\" once per turn. If this card is flipped face-up during the End Phase: Destroy all Special Summoned monsters on the field."
+ },
+ {
+  "id": 25311006,
+  "name": "Triple Tactics Talent",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "If your opponent has activated a monster effect during your Main Phase this turn: Activate 1 of these effects;\r\n● Draw 2 cards.\r\n● Take control of 1 monster your opponent controls until the End Phase.\r\n● Look at your opponent's hand, and choose 1 card from it to shuffle into the Deck.\r\nYou can only activate 1 \"Triple Tactics Talent\" per turn."
+ },
+ {
+  "id": 27204311,
+  "name": "Nibiru, the Primal Being",
+  "type": "Effect Monster",
+  "race": "Rock",
+  "description": "During the Main Phase, if your opponent Normal or Special Summoned 5 or more monsters this turn (Quick Effect): You can Tribute as many face-up monsters on the field as possible, and if you do, Special Summon this card from your hand, then Special Summon 1 \"Primal Being Token\" (Rock/LIGHT/Level 11/ATK ?/DEF ?) to your opponent's field. (This Token's ATK/DEF become the combined original ATK/DEF of the Tributed monsters.) You can only use this effect of \"Nibiru, the Primal Being\" once per turn."
+ },
+ {
+  "id": 27918365,
+  "name": "World Legacy - \"World Crown\"",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "You can Special Summon this card (from your hand) in Defense Position to your zone a Link Monster points to. You can only Special Summon \"World Legacy - \"World Crown\"\" once per turn this way. When a monster on the field that was Special Summoned from the Extra Deck activates its effect (Quick Effect): You can Tribute this card; negate the activation, and if you do, destroy it. If this Normal Summoned/Set card is Tributed: You can add 1 \"World Legacy\" Spell/Trap from your Deck to your hand. You can only use this effect of \"World Legacy - \"World Crown\"\" once per turn."
+ },
+ {
+  "id": 32909498,
+  "name": "Kashtira Fenrir",
+  "type": "Effect Monster",
+  "race": "Psychic",
+  "description": "If you control no monsters, you can Special Summon this card (from your hand). You can only use each of the following effects of \"Kashtira Fenrir\" once per turn. During your Main Phase: You can add 1 \"Kashtira\" monster from your Deck to your hand. When this card declares an attack, or if your opponent activates a monster effect (except during the Damage Step): You can target 1 face-up card your opponent controls; banish it, face-down."
+ },
+ {
+  "id": 33599853,
+  "name": "Light and Darkness Ritual",
+  "type": "Spell Card",
+  "race": "Ritual",
+  "description": "This card can be used to Ritual Summon \"Magician of Dark Chaos - Black Chaos\" or \"Black Luster Soldier - Soldier of Light and Darkness\". You must also Tribute monsters from your hand or field, and/or banish monsters from your GY, whose total Levels equal or exceed its Level. If this card is in your GY: You can add this card and 1 card that mentions \"Light and Darkness Ritual\" from your GY to your hand. You can only use this effect of \"Light and Darkness Ritual\" once per turn."
+ },
+ {
+  "id": 33854624,
+  "name": "Bystial Magnamhut",
+  "type": "Effect Monster",
+  "race": "Dragon",
+  "description": "You can target 1 LIGHT or DARK monster in either GY; banish it, and if you do, Special Summon this card from your hand. This is a Quick Effect if your opponent controls a monster. If this card is Special Summoned: You can activate this effect; during the End Phase of this turn, add 1 Dragon monster from your Deck or GY to your hand, except \"Bystial Magnamhut\". You can only use each effect of \"Bystial Magnamhut\" once per turn."
+ },
+ {
+  "id": 34267821,
+  "name": "Artifact Lancea",
+  "type": "Effect Monster",
+  "race": "Fairy",
+  "description": "You can Set this card from your hand to your Spell & Trap Zone as a Spell. During your opponent's turn, if this Set card in the Spell & Trap Zone is destroyed and sent to your GY: Special Summon it. During your opponent's turn (Quick Effect): You can Tribute this card from your hand or face-up field; neither player can banish cards for the rest of this turn."
+ },
+ {
+  "id": 35405755,
+  "name": "Kurikara Divincarnate",
+  "type": "Effect Monster",
+  "race": "Fairy",
+  "description": "Cannot be Normal Summoned/Set. Must be Special Summoned (from your hand) by Tributing all face-up monsters on the field that activated their effects this turn in your opponent's Monster Zone. Gains 1500 ATK for each monster Tributed to Special Summon this card. During your End Phase: You can target 1 monster in your opponent's GY; Special Summon it to your field. You can only use this effect of \"Kurikara Divincarnate\" once per turn."
+ },
+ {
+  "id": 38814750,
+  "name": "PSY-Framegear Gamma",
+  "type": "Tuner Monster",
+  "race": "Psychic",
+  "description": "Cannot be Normal Summoned/Set. Must be Special Summoned by a card effect. When your opponent activates a monster effect while you control no monsters (Quick Effect): You can Special Summon both this card from your hand and 1 \"PSY-Frame Driver\" from your hand, Deck, or GY, and if you do, negate that activation, and if you do that, destroy that monster. During the End Phase, banish the face-up monsters Special Summoned by this effect."
+ },
+ {
+  "id": 40366667,
+  "name": "Dominus Impulse",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "If your opponent controls a card, you can activate this card from your hand. When a card or effect is activated that includes an effect that Special Summons a monster(s): Negate that effect, then if you have a Trap in your GY, destroy that card. If you activated this card from your hand, you cannot activate the effects of LIGHT, EARTH, and WIND monsters for the rest of this Duel. You can only activate 1 \"Dominus Impulse\" per turn."
+ },
+ {
+  "id": 40605147,
+  "name": "Solemn Strike",
+  "type": "Trap Card",
+  "race": "Counter",
+  "description": "When a monster(s) would be Special Summoned, OR a monster effect is activated: Pay 1500 LP; negate the Summon or activation, and if you do, destroy that card."
+ },
+ {
+  "id": 40640057,
+  "name": "Kuriboh",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "During damage calculation, if your opponent's monster attacks (Quick Effect): You can discard this card; you take no battle damage from that battle."
+ },
+ {
+  "id": 42141493,
+  "name": "Mulcharmy Fuwalos",
+  "type": "Effect Monster",
+  "race": "Winged Beast",
+  "description": "If you control no cards (Quick Effect): You can discard this card; apply these effects this turn.\r\n● Each time your opponent Special Summons a monster(s) from the Deck and/or Extra Deck, immediately draw 1 card.\r\n● Once, during this End Phase, if the number of cards in your hand is more than the number of cards your opponent controls +6, you must randomly shuffle cards from your hand into the Deck so the number in your hand equals the number your opponent controls +6.\r\nYou can only activate 1 other \"Mulcharmy\" monster effect, the turn you activate this effect."
+ },
+ {
+  "id": 42541548,
+  "name": "Coach Goblin",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "While this card is face-up on your side of the field, you can return 1 Normal Monster Card in your hand to the bottom of your Deck during your End Phase to draw 1 card from your Deck. You can only use this effect once per turn."
+ },
+ {
+  "id": 44146295,
+  "name": "Mirrorjade the Iceblade Dragon",
+  "type": "Fusion Monster",
+  "race": "Wyrm",
+  "description": "\"Fallen of Albaz\" + 1 Fusion, Synchro, Xyz, or Link Monster\r\nYou can only control 1 \"Mirrorjade the Iceblade Dragon\". Once per turn (Quick Effect): You can send 1 Fusion Monster from your Extra Deck to the GY that mentions \"Fallen of Albaz\" as material; banish 1 monster on the field, also this card cannot use this effect next turn. If this Fusion Summoned card in its owner's control leaves the field because of an opponent's card: You can destroy all monsters your opponent controls during the End Phase of this turn."
+ },
+ {
+  "id": 44466810,
+  "name": "Lord of the Tachyon Galaxy",
+  "type": "Trap Card",
+  "race": "Normal",
+  "description": "If you control a \"Galaxy-Eyes Tachyon Dragon\" monster, you can activate this card from your hand. During the Battle Phase: Detach 1 material from your \"Galaxy-Eyes\" Xyz Monster; shuffle all monsters your opponent controls into the Deck that were Normal or Special Summoned this turn. If you control a \"Number C\" monster, this card's activation and effect cannot be negated. You can only activate 1 \"Lord of the Tachyon Galaxy\" per turn."
+ },
+ {
+  "id": 45171524,
+  "name": "Mitsurugi Prayers",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "When you activate this card, you can also Tribute 1 Reptile monster in your hand or field; apply 1 of these effects, or if you Tributed a monster at activation, you can apply both effects in sequence.\r\n● Add 1 \"Mitsurugi\" monster from your Deck to your hand.\r\n● Take 800 damage, then you can Special Summon 1 \"Mitsurugi\" monster from your hand or GY, but it cannot attack directly.\r\nYou can only activate 1 \"Mitsurugi Prayers\" per turn."
+ },
+ {
+  "id": 46502744,
+  "name": "Retaliating \"C\"",
+  "type": "Effect Monster",
+  "race": "Insect",
+  "description": "During either player's turn, when your opponent activates a Spell Card that includes an effect that Special Summons a monster(s): You can Special Summon this card from your hand. If Summoned this way, while this card is face-up on the field, any card sent to the Graveyard is banished instead. If this card is sent from the field to the Graveyard: You can add 1 EARTH Insect-Type monster with 1500 or less ATK from your Deck to your hand, except \"Retaliating \"C\"\"."
+ },
+ {
+  "id": 46986414,
+  "name": "Dark Magician",
+  "type": "Normal Monster",
+  "race": "Spellcaster",
+  "description": "''The ultimate wizard in terms of attack and defense.''"
+ },
+ {
+  "id": 48130397,
+  "name": "Super Polymerization",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Discard 1 card; Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters from either field as Fusion Material. Neither player can activate cards or effects in response to this card's activation."
+ },
+ {
+  "id": 53129443,
+  "name": "Dark Hole",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Destroy all monsters on the field."
+ },
+ {
+  "id": 54693926,
+  "name": "Dark Ruler No More",
+  "type": "Spell Card",
+  "race": "Normal",
+  "description": "Negate the effects of all face-up monsters your opponent currently controls, until the end of this turn, also, for the rest of this turn after this card resolves, your opponent takes no damage. Neither player can activate monster effects in response to this card's activation."
+ },
+ {
+  "id": 56651978,
+  "name": "Elfnote Regina",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "If this card is in your hand (Quick Effect): You can send 1 other \"Elfnote\" card from your hand or face-up field to the GY; Special Summon this card. If this card is Normal or Special Summoned to the center Main Monster Zone: You can Special Summon 1 \"Elfnote\" monster from your Deck, except \"Elfnote Regina\". If this card is sent to the GY as Synchro Material: You can add this card to your hand. You can only use each effect of \"Elfnote Regina\" once per turn."
+ },
+ {
+  "id": 59438930,
+  "name": "Ghost Ogre & Snow Rabbit",
+  "type": "Tuner Monster",
+  "race": "Psychic",
+  "description": "When a monster on the field activates its effect, or when a Spell/Trap that is already face-up on the field activates its effect (Quick Effect): You can send this card from your hand or field to the GY; destroy that card on the field. You can only use this effect of \"Ghost Ogre & Snow Rabbit\" once per turn."
+ },
+ {
+  "id": 60764609,
+  "name": "Fiendsmith Engraver",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "You can discard this card; add 1 \"Fiendsmith\" Spell/Trap from your Deck to your hand. You can target 1 \"Fiendsmith\" Equip Card you control and 1 monster on the field; send them to the GY. If this card is in your GY: You can shuffle 1 other LIGHT Fiend monster from your GY into the Deck/Extra Deck; Special Summon this card. You can only use each effect of \"Fiendsmith Engraver\" once per turn."
+ },
+ {
+  "id": 62849088,
+  "name": "The Iris Swordsoul",
+  "type": "Effect Monster",
+  "race": "Spellcaster",
+  "description": "During the Main Phase, if a monster, whose effects are negated, is on the field (Quick Effect): You can Special Summon this card from your hand. If your opponent Special Summons a monster(s) (except during the Damage Step): You can activate 1 of these effects based on where it was Special Summoned from;\r\n● Hand: Special Summon 1 monster from your hand. ● Deck: Draw 2 cards.\r\n● Extra Deck: Destroy 1 of those monsters Special Summoned from the Extra Deck.\r\nYou can only use each effect of \"The Iris Swordsoul\" once per turn."
+ },
+ {
+  "id": 63288573,
+  "name": "Sky Striker Ace - Kagari",
+  "type": "Link Monster",
+  "race": "Machine",
+  "description": "1 non-FIRE \"Sky Striker Ace\" monster\r\nIf this card is Special Summoned: You can target 1 \"Sky Striker\" Spell in your GY; add it to your hand. Gains 100 ATK for each Spell in your GY. You can only Special Summon \"Sky Striker Ace - Kagari(s)\" once per turn."
+ },
+ {
+  "id": 64491754,
+  "name": "Elfnotes: Welcome Home",
+  "type": "Spell Card",
+  "race": "Continuous",
+  "description": "The monster in your center Main Monster Zone cannot be destroyed by card effects. You can send 1 monster from your hand or field to the GY; Special Summon 1 \"Elfnote\" monster with a different original Attribute from your Deck in Defense Position, also you cannot Special Summon from the Extra Deck for the rest of this turn, except Synchro Monsters. You can only use this effect of \"Elfnotes: Welcome Home\" once per turn."
+ },
+ {
+  "id": 65681983,
+  "name": "Crossout Designator",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Declare 1 card name; banish 1 of that declared card from your Main Deck, and if you do, negate its effects, as well as the activated effects and effects on the field of cards with the same original name, until the end of this turn. You can only activate 1 \"Crossout Designator\" per turn."
+ },
+ {
+  "id": 67750322,
+  "name": "Skull Meister",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "When a card effect is activated in your opponent's GY (Quick Effect): You can send this card from your hand to the GY; negate that effect."
+ },
+ {
+  "id": 69272449,
+  "name": "Maliss <P> White Rabbit",
+  "type": "Effect Monster",
+  "race": "Cyberse",
+  "description": "You take no damage from battles involving \"Maliss\" Link Monsters that point to this card. You can only use each of the following effects of \"Maliss White Rabbit\" once per turn. If this card is Normal or Special Summoned: You can Set 1 \"Maliss\" Trap from your Deck with a different name than the cards in your GY. If this card is banished: You can pay 300 LP; Special Summon it, also you cannot Special Summon from the Extra Deck for the rest of this turn, except Link Monsters."
+ },
+ {
+  "id": 70095154,
+  "name": "Cyber Dragon",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "If only your opponent controls a monster, you can Special Summon this card (from your hand)."
+ },
+ {
+  "id": 70405001,
+  "name": "Black Luster Soldier - Soldier of Light and Darkness",
+  "type": "Ritual Effect Monster",
+  "race": "Warrior",
+  "description": "You can Ritual Summon this card with \"Light and Darkness Ritual\". Unaffected by your opponent's activated effects, unless they target this card, also cannot be destroyed by battle. You can only use each of the following effects of \"Black Luster Soldier - Soldier of Light and Darkness\" once per turn. If this card is Special Summoned: You can target 1 card your opponent controls; banish it. When this card destroys an opponent's monster by battle: You can make this card gain 1500 ATK, and if you do, it can make a second attack in a row."
+ },
+ {
+  "id": 73443672,
+  "name": "Underworld Circle",
+  "type": "Spell Card",
+  "race": "Continuous",
+  "description": "Activate this card if both players have 5 or more monsters in their GYs; destroy as many monsters on the field as possible, then each player banishes (face-down) as many monsters from their Deck as possible, then you can Special Summon 1 Normal Monster from your GY. Once per turn, during the Standby Phase: Activate this effect; each player can Special Summon 1 monster from their GY, ignoring its Summoning conditions, but banish it when it leaves the field. You can only activate 1 \"Underworld Circle\" per Duel."
+ },
+ {
+  "id": 73602965,
+  "name": "Arias the Labrynth Butler",
+  "type": "Effect Monster",
+  "race": "Fiend",
+  "description": "During the Main Phase (Quick Effect): You can send this card from your hand or field to the GY; Special Summon 1 \"Labrynth\" monster, or Set 1 Normal Trap, from your hand. The Set Normal Trap can be activated this turn. When your opponent activates a card or effect in response to your card or effect activation of a Normal Trap or a \"Labrynth\" card, except \"Arias the Labrynth Butler\" (Quick Effect): You can activate this effect in the GY; Special Summon this card. You can only use each effect of \"Arias the Labrynth Butler\" once per turn."
+ },
+ {
+  "id": 73642296,
+  "name": "Ghost Belle & Haunted Mansion",
+  "type": "Tuner Monster",
+  "race": "Zombie",
+  "description": "When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that activation.\r\n● Add a card(s) from the GY to the hand, Deck, and/or Extra Deck.\r\n● Special Summon a Monster Card(s) from the GY.\r\n● Banish a card(s) from the GY.\r\nYou can only use this effect of \"Ghost Belle & Haunted Mansion\" once per turn."
+ },
+ {
+  "id": 75416738,
+  "name": "Traptrix Arachnocampa",
+  "type": "Effect Monster",
+  "race": "Insect",
+  "description": "Unaffected by the effects of \"Hole\" Normal Traps. The first time each Set card in your Spell & Trap Zone would be destroyed by card effect each turn, it is not destroyed. During the Main Phase, if you control a \"Traptrix\" monster (Quick Effect): You can Special Summon this card from your hand, also you cannot Special Summon monsters from the Extra Deck for the rest of this turn, except Insect or Plant monsters. You can only use this effect of \"Traptrix Arachnocampa\" once per turn."
+ },
+ {
+  "id": 77456448,
+  "name": "Spell Shattering Sword",
+  "type": "Spell Card",
+  "race": "Quick-Play",
+  "description": "Activate 1 of these effects;\r\n● Destroy all face-up Spells your opponent controls.\r\n● Target 1 face-up monster your opponent controls; show 1 \"Light and Darkness Ritual\" from your hand or GY, then change that monster's ATK to 0, also negate its effects.\r\n If this card in its owner's possession is destroyed by an opponent's card: You can destroy 1 card in your opponent's hand (at random) or field. You can only activate 1 \"Spell-Shattering Sword\" per turn."
+ },
+ {
+  "id": 81275020,
+  "name": "Speedroid Terrortop",
+  "type": "Effect Monster",
+  "race": "Machine",
+  "description": "If you control no monsters, you can Special Summon this card (from your hand). When this card is Normal or Special Summoned: You can add 1 \"Speedroid\" monster from your Deck to your hand, except \"Speedroid Terrortop\". You can only use this effect of \"Speedroid Terrortop\" once per turn."
+ }
+]

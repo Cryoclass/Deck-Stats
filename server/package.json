@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "test": "node --import tsx --test tests/configuration.test.ts",
+    "test": "node --import tsx --test tests/configuration.test.ts tests/cardDefaults.test.ts",
     "test:integration": "node --import tsx --test tests/auth.integration.ts && node --import tsx --test tests/persistence.integration.ts && node --import tsx --test tests/purge.integration.ts",
     "dev": "tsx watch src/index.ts",
     "migrate": "tsx scripts/migrate-cards.ts",
