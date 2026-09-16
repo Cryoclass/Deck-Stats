@@ -1,5 +1,62 @@
 # Décisions & écarts vs. document de référence
 
+## Back-office — hors numérotation, socle en lecture seule (16 septembre 2026)
+
+Plan validé en séance, consigné dans [docs/backoffice.md](docs/backoffice.md) (décisions 1 à 11,
+choix techniques T1 à T16, modèle et privilèges, découpage A / B). Les décisions validées ne sont
+pas reprises ici ; ce qui suit est ce que l'agent a tranché en les appliquant.
+
+- **Rôle PostgreSQL dédié `testhand_backoffice`, privilèges par colonne, créé par la migration 005.**
+  L'exigence « l'admin ne lit pas les decks » et « journal en ajout seul » doit tenir malgré un bug
+  du back-office : le site se connecte avec un rôle qui n'a `SELECT` que sur les colonnes qu'il
+  affiche (`decks` : `id`, `owner_id`, dates ; `sessions` : sans `token_hash` ; `user_identities` :
+  sans `provider_user_id`), aucun privilège sur les tables de contenu (`deck_cards`, conditions,
+  plans de side, bibliothèque, catalogue), `INSERT` + `SELECT` seuls sur `backoffice_audit`, et un
+  déclencheur refuse `UPDATE` / `DELETE` / `TRUNCATE` sur le journal à tout le monde, propriétaire
+  compris. Vérifié tenable dans cette architecture à trois conditions prises en charge : le mot de
+  passe du rôle est posé par le déploiement et non par la migration (`backoffice_db_login`,
+  `BACKOFFICE_DB_PASSWORD` dans `.env.prod`) ; `pg_dump` émettant les `GRANT`, tout cluster neuf qui
+  reçoit une archive pré-crée le rôle en `NOLOGIN` (`restore_into_scratch_db`, `rehearsal.sh`) ; le
+  service `admin` est arrêté pendant la séquence de migration et la restauration.
+- **Attribution du rôle admin par `deploy/backoffice-role.sh` (bash + SQL à GUC, comme 003), pas par
+  un sous-programme .NET.** Le rôle web n'ayant aucune écriture sur `users`, un sous-programme dans
+  le conteneur du site aurait exigé les identifiants du propriétaire dans ce conteneur, ce qui
+  annule la garantie. Le script passe par `db_exec` de `lib.sh` (`docker compose exec` sous le
+  capot, ou `TESTHAND_DB_CONTAINER`), simule par défaut, écrit avec `--apply` et journalise dans la
+  même transaction (`source = 'cli'`).
+- **scrypt et TOTP implémentés en C#, sans paquet** : PBKDF2 natif + Salsa20/8 + BlockMix + ROMix,
+  format `scrypt:N:r:p:sel:clé` lu tel quel, prouvés par les vecteurs 1 à 3 de la RFC 7914 (le 4e
+  demande 1 Gio) et par des hachages produits par `server/src/auth/password.ts` (fixture générée) ;
+  TOTP RFC 6238 (SHA-1, 30 s, 6 chiffres, ± 1 pas, anti-rejeu par dernier pas accepté) prouvé par
+  les vecteurs de la RFC. Seul paquet ajouté : QRCoder (MIT, C# pur) pour le QR d'enrôlement.
+- **Secret TOTP chiffré AES-256-GCM** par `BACKOFFICE_TOTP_KEY` (32 octets, base64, dans `.env.prod`) :
+  un dump ne livre pas le second facteur. Perte de la clé = ré-enrôlement (question ouverte Q1).
+- **Session absolue de 8 h sans glissement** : `expires_at` écrite une fois ; rôle relu par
+  jointure à chaque requête ; TOTP en attente = seules `/totp` et `/logout` répondent ; cookie
+  `th_backoffice` (HttpOnly, Secure hors DEV, SameSite=Strict), jamais `ygo_session`.
+- **Journalisation explicite** : chaque page appelle `Audit.Record` avant de rendre ; `/health`
+  (réponse `ok`, sans détail) n'est pas une consultation. « Dernière connexion » affiche
+  l'ouverture de la session encore active la plus récente, sinon « — » (Q2 : une vraie date
+  demanderait une écriture côté serveur Node, hors périmètre).
+- **En-têtes posés par l'app** (CSP stricte sans inline, nosniff, Referrer-Policy no-referrer,
+  X-Robots-Tag noindex, frame-ancestors none, Cache-Control no-store) et rappelés dans le bloc
+  Caddy, qui garde HSTS. Le thème passe donc par `/js/theme.js`, pas par un script inline.
+- **Contrôle « tables intactes » adapté à 005** : `users` change de forme quand 005 est appliquée
+  par la séquence (colonne ajoutée) ; le contrôle exige alors effectif identique et tous les rôles
+  à `user`, et reste strict quand 005 est déjà journalisée. `check-migration.sql` vérifie aussi que
+  le rôle existe et n'a **aucun** privilège sur les tables de contenu.
+- **Ports jetables** : 55442 (tests d'intégration .NET, `testhand-backoffice-db`), 55443 + 8795
+  (garde navigateur, `testhand-backoffice-e2e-db`).
+- **Relecture de la partie A (sous-agent à contexte neuf), corrections retenues** : le rejeu de 005
+  retire aussi les attributs du rôle (`nosuperuser`, `nocreatedb`, `nocreaterole`, `nobypassrls`,
+  `noinherit`) et les appartenances larges (`ygo`, `pg_read_all_data`, `pg_write_all_data`,
+  `pg_read_all_settings`, `pg_read_all_stats`) ; le déclencheur d'ajout seul est `ENABLE ALWAYS`
+  (tient en `session_replication_role = replica`) ; le mot de passe du rôle passe par l'entrée
+  standard de psql, jamais en argument ; `restore.sh` tolère un service `admin` sans conteneur ;
+  les variables `BACKOFFICE_*` du compose acceptent une valeur vide (le back-office ne bloque jamais
+  le déploiement de l'app, Q5) ; `test-backup-restore.sh` archive une source à 005 pour exercer la
+  pré-création du rôle dans le cluster neuf. Fenêtre du contrôle `users` consignée en Q4.
+
 ## Audit freemium — décisions et vérifications de prod, 16 septembre 2026
 
 Matériaux dans [docs/audit/](docs/audit/). Six points tranchés à partir de constats faits sur la

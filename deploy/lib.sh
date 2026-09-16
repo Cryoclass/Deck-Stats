@@ -20,6 +20,9 @@
 #   Codes : 0 ok ; 1 échec avant 003 (ancienne app relancée, base intacte) ou 003 en échec (app
 #   relancée sans 003) ; 2 contrôle après migration en échec (app laissée ARRÊTÉE, commande de
 #   restauration affichée) ; 3 rapport refusé (app relancée sans 003, Q8).
+#   Le back-office (service `admin`, docs/backoffice.md) écrit dans backoffice_audit à chaque
+#   requête : hook_stop_app doit l'arrêter avec l'app (sinon la sauvegarde pré-migration vérifiée
+#   en mode keep échoue, « la base a bougé »), et 005 se rejoue avant 003 comme 004.
 #   Crochets à définir par l'appelant : hook_stop_app, hook_start_app (nouvelle app),
 #   hook_start_old_app (conteneur précédent), hook_app_left_stopped <commande de restauration>,
 #   hook_backup <dossier> (lance backup.sh --pre-migration et pose PRE_MIGRATION_ARCHIVE ;
@@ -36,6 +39,11 @@ PREVIOUS_DB=${RESTORE_PREVIOUS_DB:-ygo_previous}
 # que 003 est seule à modifier (comparaison après 002 → après 003).
 KEPT_ACROSS_SEQUENCE='cards catalog_version users user_identities sessions deck_cards deck_starters card_categories'
 TOUCHED_BY_003='app_migrations card_flags nonengine_categories combo_pairs deck_pair_exclusions deck_start_requirements deck_requirements'
+# Back-office (docs/backoffice.md, T3, T15) : rôle PostgreSQL restreint créé NOLOGIN par 005 ; la
+# migration 005 ajoute `users.role`, donc `users` change de FORME (pas d'effectif) la première fois
+# qu'elle s'applique — le contrôle de bout en bout en tient compte (check_after_migration).
+BACKOFFICE_ROLE=testhand_backoffice
+RESHAPED_BY_005='users'
 # Git Bash (MSYS) réécrit les chemins absolus passés à Docker (« mount path must be absolute ») :
 # conversion désactivée pour tout le script ; les chemins destinés à Node passent alors par
 # host_path (cygpath), Node n'étant pas MSYS.
@@ -132,11 +140,37 @@ scratch_db_guard() {  # <nom> : refuse la base servie, la base précédente et l
 }
 drop_scratch_db() { scratch_db_guard "$1" || return 0; db_exec dropdb -U "$DB_USER" --if-exists "$1" >/dev/null 2>&1 || true; }
 drop_verify_db() { drop_scratch_db "$VERIFY_DB"; }
+# ensure_backoffice_role : le rôle testhand_backoffice existe (NOLOGIN, sans privilège) dans le
+# cluster courant. Nécessaire AVANT toute restauration d'archive prise après 005 : pg_dump émet les
+# GRANT vers ce rôle et psql s'arrête (ON_ERROR_STOP) s'il n'existe pas — un conteneur jetable, une
+# base de vérification d'un cluster neuf, une répétition. Sans effet si le rôle existe déjà.
+ensure_backoffice_role() {
+  printf 'do $$ begin if not exists (select 1 from pg_roles where rolname = %s) then create role %s nologin; end if; end $$;\n' "'$BACKOFFICE_ROLE'" "$BACKOFFICE_ROLE" \
+    | db_exec psql -U "$DB_USER" -d postgres -v ON_ERROR_STOP=1 -q -f - > /dev/null
+}
+# backoffice_db_login <mot de passe> : pose LOGIN et le mot de passe du rôle du site (T3). Hors
+# migration parce qu'une migration versionnée ne porte aucun secret ; rejoué à chaque déploiement
+# (idempotent). Le mot de passe voyage par l'ENTRÉE STANDARD de psql (apostrophes doublées), jamais
+# en argument de ligne de commande (visible dans `ps`) ; l'image postgres ne journalise pas les
+# instructions (log_statement = none), l'ALTER ROLE n'apparaît donc pas dans ses journaux.
+backoffice_db_login() {
+  local pw=${1:-}
+  [ -n "$pw" ] || { warn "backoffice_db_login : mot de passe vide, rôle laissé NOLOGIN"; return 1; }
+  pw=${pw//\'/\'\'}
+  printf "alter role %s with login password '%s';\n" "$BACKOFFICE_ROLE" "$pw" \
+    | db_exec psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -q -f - > /dev/null
+}
+# env_prod_value <clé> : valeur d'une clé de deploy/.env.prod (sans guillemets), vide si absente.
+env_prod_value() { [ -r "$LIB_DIR/.env.prod" ] || return 0; sed -n "s/^$1=//p" "$LIB_DIR/.env.prod" | tail -n 1; }
+
 restore_into_scratch_db() {  # <archive> <base> : recrée la base de travail et y restaure l'archive (gunzip | psql)
   local archive=$1 db=$2 err
   VERIFY_ERROR=
   scratch_db_guard "$db" || return 1
   err=$(mktemp)
+  if ! ensure_backoffice_role 2> "$err"; then
+    VERIFY_ERROR="rôle $BACKOFFICE_ROLE impossible à créer : $(tail -n 2 "$err" | tr '\n' ' ')"; rm -f "$err"; return 1
+  fi
   if ! db_exec dropdb -U "$DB_USER" --if-exists "$db" >/dev/null 2> "$err"; then
     VERIFY_ERROR="suppression de $db impossible : $(tail -n 2 "$err" | tr '\n' ' ')"; rm -f "$err"; return 1
   fi
@@ -318,9 +352,25 @@ check_after_migration() {
       else echo "OK|003 n'a touché que ses propres objets (décks, cartes, starters, paires, conditions, drapeaux par deck, profils intacts)" >> "$out/check-migration.txt"; fi
     fi
   else
-    d=$(fingerprint_diff "$out/fingerprint-0.txt" "$out/fingerprint-3.txt" --only "$KEPT_ACROSS_SEQUENCE" | tr '\n' ' '); d=${d% }
+    # 005 appliquée par CETTE séquence (absente du journal avant) : `users` porte une colonne de
+    # plus, son md5 change sans qu'une ligne ait bougé. Pour elle : effectif identique et tous les
+    # rôles à `user` (personne n'a pu en attribuer un pendant la séquence) ; les autres tables
+    # restent comparées strictement. 005 déjà journalisée avant : `users` strictement intacte.
+    local kept=$KEPT_ACROSS_SEQUENCE reshaped= n0 n3 badrole
+    if [ -s "$out/inventory-before-journal.txt" ] && ! grep -q '005-backoffice' "$out/inventory-before-journal.txt"; then
+      reshaped=$RESHAPED_BY_005
+      for t in $reshaped; do kept=$(printf '%s\n' $kept | grep -vx "$t" | tr '\n' ' '); done; kept=${kept% }
+      for t in $reshaped; do
+        n0=$(sed -n "s/^$t|\([0-9]*\)|.*/\1/p" "$out/fingerprint-0.txt"); n3=$(sed -n "s/^$t|\([0-9]*\)|.*/\1/p" "$out/fingerprint-3.txt")
+        badrole=$(db_query "select count(*) from $t where role <> 'user'" 2>/dev/null || echo '?')
+        if [ -z "$n0" ] || [ "$n0" != "$n3" ]; then echo "KO|005 appliquée par cette séquence : $t devait garder son effectif (${n0:-absente} avant, ${n3:-absente} après)" >> "$out/check-migration.txt"
+        elif [ "$badrole" != 0 ]; then echo "KO|005 appliquée par cette séquence : $t devait n'avoir que des rôles « user », $badrole autre(s)" >> "$out/check-migration.txt"
+        else echo "OK|005 appliquée par cette séquence : $t reformée (colonne role ajoutée), effectif $n0 identique, tous les rôles « user »" >> "$out/check-migration.txt"; fi
+      done
+    fi
+    d=$(fingerprint_diff "$out/fingerprint-0.txt" "$out/fingerprint-3.txt" --only "$kept" | tr '\n' ' '); d=${d% }
     if [ -n "$d" ]; then echo "KO|tables qui devaient rester intactes de bout en bout et qui ont changé : $d" >> "$out/check-migration.txt"
-    else echo "OK|tables intactes de bout en bout (effectif et contenu) : $KEPT_ACROSS_SEQUENCE" >> "$out/check-migration.txt"; fi
+    else echo "OK|tables intactes de bout en bout (effectif et contenu) : $kept" >> "$out/check-migration.txt"; fi
     if [ -s "$out/fingerprint-2.txt" ]; then
       d=$(fingerprint_diff "$out/fingerprint-2.txt" "$out/fingerprint-3.txt" --except "$TOUCHED_BY_003" | tr '\n' ' '); d=${d% }
       if [ -n "$d" ]; then echo "KO|003 a modifié des tables hors de son périmètre : $d" >> "$out/check-migration.txt"
@@ -380,13 +430,14 @@ run_migration_sequence() {  # <dossier de sortie> <interactive | auto | empreint
   # `deck_requirements` (intermédiaire v2 que 003 supprime), et 003 refuse alors tout rejeu
   # (« objet historique réapparu »). Après 003, leurs objets sont définitifs ; seul le schéma
   # (bloc historique conditionnel, D1) se rejoue à chaque déploiement.
-  # 004 (étape 10) est additive et indépendante de 003 : elle se rejoue dans les DEUX cas, avant
-  # l'empreinte-2 pour que le contrôle « 003 n'a touché que ses propres objets » compare deux
-  # empreintes portant déjà ses tables (sinon elles seraient vues « absentes avant »).
-  local files='db/schema.sql db/migrations/001-deck-configuration.sql db/migrations/002-profiles-and-conditions.sql db/migrations/004-side-plans.sql'
+  # 004 (étape 10) et 005 (back-office) sont additives et indépendantes de 003 : elles se rejouent
+  # dans les DEUX cas, avant l'empreinte-2 pour que le contrôle « 003 n'a touché que ses propres
+  # objets » compare deux empreintes portant déjà leurs tables (sinon elles seraient vues
+  # « absentes avant »).
+  local files='db/schema.sql db/migrations/001-deck-configuration.sql db/migrations/002-profiles-and-conditions.sql db/migrations/004-side-plans.sql db/migrations/005-backoffice.sql'
   if grep -q '003-purge-legacy' "$out/inventory-before-journal.txt"; then
     seq_log "003 déjà journalisée : 001 et 002 ne se rejouent plus (001 recréerait deck_requirements), schéma et migrations additives postérieures seulement"
-    files='db/schema.sql db/migrations/004-side-plans.sql'
+    files='db/schema.sql db/migrations/004-side-plans.sql db/migrations/005-backoffice.sql'
   fi
   for f in $files; do
     seq_log "rejeu par stdin : $f"

@@ -1,0 +1,35 @@
+@page "/totp"
+@model Testhand.Admin.Pages.TotpModel
+@{
+    ViewData["Title"] = "Second facteur";
+}
+<div class="narrow">
+    <h1 class="title">Second facteur</h1>
+    @if (Model.Enrolling)
+    {
+        <p class="meta">Premier accès de ce compte : enregistrer ce secret dans l'application d'authentification, puis saisir le code affiché. L'enrôlement n'est confirmé qu'au premier code juste.</p>
+        <div class="enrol">
+            <div class="qr" aria-hidden="false">@Html.Raw(Model.QrSvg)</div>
+            <div>
+                <div class="field-label">Secret (base32)</div>
+                <code class="secret">@Model.SecretGroups</code>
+                <div class="meta">SHA-1 · 6 chiffres · 30 s · émetteur @Options.Host</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p class="meta">Code à 6 chiffres de l'application d'authentification. Un code ne sert qu'une fois.</p>
+    }
+    @if (Model.Error is not null)
+    {
+        <div class="banner neg" role="alert">@Model.Error</div>
+    }
+    <form method="post" class="form">
+        <div class="field">
+            <label for="Code">Code</label>
+            <input id="Code" name="Code" type="text" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" required maxlength="6" autofocus />
+        </div>
+        <button type="submit" class="btn primary">Valider</button>
+    </form>
+</div>

@@ -251,6 +251,41 @@ arrière par `restore.sh`, puis démonte. Rapport : `deploy/out/rehearsal-<horod
 Le dossier `deploy/out/` est ignoré par git et contient des archives complètes : ne pas le
 partager.
 
+## 10. Back-office — admin.scratchrecode.com (docs/backoffice.md)
+
+Site d'administration séparé (`admin/`, .NET 10, Razor Pages), en lecture seule dans ce lot :
+connexion par mot de passe du compte + TOTP obligatoire, session de 8 h absolues, tableau de bord,
+comptes, fiche, journal. Il se connecte à la même base avec le rôle PostgreSQL **restreint**
+`testhand_backoffice` (migration 005 : `SELECT` par colonne, aucun privilège sur le contenu des
+decks, journal `backoffice_audit` en ajout seul) — jamais avec `ygo`.
+
+- Service Compose `admin` (`ygo-admin`, `deploy/Dockerfile.admin`, port interne 8080, réseau
+  `edge`, **aucun `ports:`**), joint par un bloc du Caddyfile goldfish (runbook B2, avec les
+  en-têtes ; HSTS côté Caddy, CSP et le reste côté site).
+- `.env.prod` : `BACKOFFICE_DB_PASSWORD` (hexadécimal, `openssl rand -hex 24` ; posé sur le rôle par `deploy.sh` juste avant le démarrage des conteneurs :
+  `backoffice_db_login` de `lib.sh` ; sans lui le rôle reste NOLOGIN), `BACKOFFICE_TOTP_KEY`
+  (32 octets base64, chiffre les secrets TOTP ; la perdre = ré-enrôler), `BACKOFFICE_HOST`.
+- `deploy.sh` et `restore.sh` arrêtent `admin` avec `app` (le journal bouge à chaque requête).
+  Le montage de `05-backoffice.sql` recrée le conteneur `db` au premier déploiement (volume
+  conservé).
+- Rôle admin d'un compte — **le seul chemin**, jamais une page :
+
+  ```bash
+  cd ~/apps/ygo-proba/deploy
+  bash backoffice-role.sh grant <email>            # simulation : rapport, rien écrit
+  bash backoffice-role.sh grant <email> --apply    # écrit + ligne backoffice_audit (role.grant, cli)
+  bash backoffice-role.sh revoke <email> --apply
+  bash backoffice-role.sh list
+  ```
+
+  Le compte doit avoir un mot de passe (un compte Discord seul ne peut pas se connecter). Un
+  retrait coupe la session admin à sa requête suivante (rôle relu à chaque requête).
+- Archives : `pg_dump` émet les `GRANT` vers `testhand_backoffice` ; `restore.sh`,
+  `rehearsal.sh` et la vérification des sauvegardes pré-créent le rôle dans un cluster neuf
+  (`ensure_backoffice_role`). Le déclencheur d'ajout seul est dans l'archive.
+- Première mise en ligne : [docs/deploy-runbook.md](../docs/deploy-runbook.md), variante B0–B7
+  (DNS, Caddy, `.env.prod`, `deploy.sh`, rôle et enrôlement, contrôles, retour arrière).
+
 ## Exploitation courante
 
 ```bash

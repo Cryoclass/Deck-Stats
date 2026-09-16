@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@ViewData["Title"] · Testhand back-office</title>
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/site.css" />
+    <script src="/js/theme.js"></script>
+</head>
+<body>
+    <div class="env @(Options.IsProduction ? "env-prod" : "env-dev")" role="status">@Options.EnvironmentLabel · @Options.Host</div>
+    <header class="topbar">
+        <a class="brand" href="/">Testhand · Back-office</a>
+        @if (Current.IsAuthenticated)
+        {
+            <nav class="nav" aria-label="Sections">
+                <a href="/" class="@(ViewData["Nav"] as string == "dashboard" ? "active" : "")">Tableau de bord</a>
+                <a href="/comptes" class="@(ViewData["Nav"] as string == "comptes" ? "active" : "")">Comptes</a>
+                <a href="/journal" class="@(ViewData["Nav"] as string == "journal" ? "active" : "")">Journal</a>
+            </nav>
+        }
+        <div class="topbar-right">
+            @if (Current.Session is { } s)
+            {
+                <span class="who" title="Session ouverte @Fmt.Date(s.CreatedAt), expire @Fmt.Date(s.ExpiresAt)">@s.Email</span>
+            }
+            <button type="button" id="theme-toggle" class="btn small" aria-live="polite">Thème</button>
+            @if (Current.Session is not null)
+            {
+                <form method="post" action="/logout" class="inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn small">Déconnexion</button>
+                </form>
+            }
+        </div>
+    </header>
+    <main class="page">
+        @RenderBody()
+    </main>
+    <footer class="foot">Back-office en lecture seule · aucune donnée de deck n'est lue ici (rôle PostgreSQL restreint) · session de 8 h, non prolongée</footer>
+</body>
+</html>

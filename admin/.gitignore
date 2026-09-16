@@ -1,0 +1,4 @@
+bin/
+obj/
+TestResults/
+e2e/out/

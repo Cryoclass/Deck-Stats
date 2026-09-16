@@ -1,0 +1,20 @@
+# Back-office (docs/backoffice.md, T14) : build .NET 10 → runtime ASP.NET minimal, utilisateur non
+# root, port interne 8080. Aucune ressource externe au moment de l'exécution ; l'image ne contient
+# ni le SDK ni les tests. Contexte de build = racine du dépôt (comme deploy/Dockerfile).
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
+WORKDIR /src
+# Manifestes seuls d'abord : la restauration NuGet est mise en cache tant qu'ils ne changent pas.
+COPY admin/src/Testhand.Admin/Testhand.Admin.csproj admin/src/Testhand.Admin/
+RUN dotnet restore admin/src/Testhand.Admin/Testhand.Admin.csproj
+COPY admin/src/Testhand.Admin admin/src/Testhand.Admin
+RUN dotnet publish admin/src/Testhand.Admin/Testhand.Admin.csproj -c Release -o /app --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
+WORKDIR /app
+COPY --from=build /app .
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080 \
+    DOTNET_EnableDiagnostics=0
+# `app` existe dans l'image de base (uid 1654) : aucun privilège dans le conteneur.
+USER app
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "Testhand.Admin.dll"]

@@ -1,0 +1,17 @@
+@page
+@model Testhand.Admin.Pages.IndexModel
+@{
+    ViewData["Title"] = "Tableau de bord";
+    ViewData["Nav"] = "dashboard";
+    var d = Model.Data;
+}
+<h1 class="title">Tableau de bord</h1>
+<p class="meta">Chiffres lus à l'instant de la page, jamais mis en cache.</p>
+<section class="kpis" aria-label="Indicateurs">
+    <div class="kpi"><div class="kpi-label">Comptes</div><div class="kpi-value num">@Fmt.Num(d.Accounts)</div><div class="kpi-note">dont @Fmt.Num(d.Admins) admin</div></div>
+    <div class="kpi"><div class="kpi-label">Créés sur 7 jours</div><div class="kpi-value num">@Fmt.Num(d.Created7Days)</div><div class="kpi-note">date de création du compte</div></div>
+    <div class="kpi"><div class="kpi-label">Créés sur 30 jours</div><div class="kpi-value num">@Fmt.Num(d.Created30Days)</div><div class="kpi-note">date de création du compte</div></div>
+    <div class="kpi"><div class="kpi-label">Sessions actives</div><div class="kpi-value num">@Fmt.Num(d.ActiveSessions)</div><div class="kpi-note">sessions de l'app non expirées à cet instant</div></div>
+    <div class="kpi"><div class="kpi-label">Decks</div><div class="kpi-value num">@Fmt.Num(d.Decks)</div><div class="kpi-note">nombre seulement, contenu jamais lu</div></div>
+    <div class="kpi"><div class="kpi-label">Catalogue</div><div class="kpi-value">@(d.Catalog?.Version ?? "—")</div><div class="kpi-note">@(d.Catalog is { } c ? $"{Fmt.Num(c.LocalCards)} cartes · copié le {Fmt.DateShort(c.MigratedAt)}" : "aucune version enregistrée")</div></div>
+</section>

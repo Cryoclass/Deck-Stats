@@ -11,8 +11,8 @@ declare
   t text;
   names text[];
 begin
-  -- Journal : 001, 002 et 003 journalisées.
-  foreach t in array array['001-deck-configuration', '002-profiles-and-conditions', '003-purge-legacy', '004-side-plans'] loop
+  -- Journal : 001 à 005 journalisées.
+  foreach t in array array['001-deck-configuration', '002-profiles-and-conditions', '003-purge-legacy', '004-side-plans', '005-backoffice'] loop
     if to_regclass('public.app_migrations') is null then ok := false;
     else execute 'select exists (select 1 from app_migrations where id = $1)' into ok using t; end if;
     insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|journal ' || t || (case when ok then ' : journalisée' else ' : ABSENTE du journal' end));
@@ -29,11 +29,11 @@ begin
   insert into check_rows (line) values ((case when n = 0 then 'OK' else 'KO' end) || '|colonnes historiques (relevance, dead_first, dead_second) : ' || n || ' présente(s), 0 attendue');
 
   -- Objets v2 : tables et colonnes que la nouvelle app lit.
-  foreach t in array array['deck_combo_pairs', 'deck_conditions', 'deck_flags', 'nonengine_groups', 'deck_cards', 'deck_starters', 'card_flags', 'nonengine_categories', 'card_categories', 'deck_matchups', 'deck_side_plans', 'deck_side_plan_cards'] loop
+  foreach t in array array['deck_combo_pairs', 'deck_conditions', 'deck_flags', 'nonengine_groups', 'deck_cards', 'deck_starters', 'card_flags', 'nonengine_categories', 'card_categories', 'deck_matchups', 'deck_side_plans', 'deck_side_plan_cards', 'backoffice_totp', 'backoffice_sessions', 'backoffice_audit'] loop
     ok := to_regclass('public.' || t) is not null;
     insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|table v2 ' || t || (case when ok then ' : présente' else ' : ABSENTE' end));
   end loop;
-  foreach t in array array['decks.revision', 'card_flags.availability', 'card_flags.group_id', 'decks.params', 'decks.summary'] loop
+  foreach t in array array['decks.revision', 'card_flags.availability', 'card_flags.group_id', 'decks.params', 'decks.summary', 'users.role'] loop
     select count(*) into n from information_schema.columns
      where table_schema = 'public' and table_name = split_part(t, '.', 1) and column_name = split_part(t, '.', 2);
     insert into check_rows (line) values ((case when n = 1 then 'OK' else 'KO' end) || '|colonne v2 ' || t || (case when n = 1 then ' : présente' else ' : ABSENTE' end));
@@ -59,6 +59,49 @@ begin
   if to_regclass('public.deck_combo_pairs') is not null then
     execute $q$ select count(*) from deck_combo_pairs $q$ into n;
     insert into check_rows (line) values ('OK|paires locales : ' || n);
+  end if;
+
+  -- Back-office (docs/backoffice.md §4) : le rôle PostgreSQL du site existe, ne lit du deck que
+  -- ses métadonnées, n'a aucun privilège sur les tables de contenu, ne peut ni modifier `users`
+  -- ni effacer le journal ; le déclencheur d'ajout seul est en place. Ces lignes sont la
+  -- vérification, à chaque déploiement, des deux garanties du back-office.
+  ok := exists (select 1 from pg_roles where rolname = 'testhand_backoffice');
+  insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|rôle testhand_backoffice' || (case when ok then ' : présent' else ' : ABSENT' end));
+  if ok then
+    n := 0;
+    foreach t in array array['deck_cards', 'deck_starters', 'deck_combo_pairs', 'deck_conditions', 'deck_flags', 'deck_matchups', 'deck_side_plans', 'deck_side_plan_cards', 'card_flags', 'nonengine_categories', 'nonengine_groups', 'card_categories', 'cards', 'app_migrations'] loop
+      if to_regclass('public.' || t) is not null and (
+           has_table_privilege('testhand_backoffice', 'public.' || t, 'select, insert, update, delete, truncate, references, trigger')
+           or exists (select 1 from information_schema.column_privileges where grantee = 'testhand_backoffice' and table_schema = 'public' and table_name = t)) then
+        n := n + 1;
+        insert into check_rows (line) values ('KO|rôle testhand_backoffice : privilège INTERDIT sur la table de contenu ' || t);
+      end if;
+    end loop;
+    if n = 0 then insert into check_rows (line) values ('OK|rôle testhand_backoffice : aucun privilège sur les tables de contenu (deck_cards, conditions, plans de side, bibliothèque, catalogue, journal des migrations)'); end if;
+    if to_regclass('public.decks') is not null then
+      ok := not has_column_privilege('testhand_backoffice', 'public.decks', 'name', 'select')
+        and not has_column_privilege('testhand_backoffice', 'public.decks', 'notes', 'select')
+        and not has_column_privilege('testhand_backoffice', 'public.decks', 'params', 'select')
+        and not has_column_privilege('testhand_backoffice', 'public.decks', 'summary', 'select')
+        and not has_table_privilege('testhand_backoffice', 'public.decks', 'insert, update, delete');
+      insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|rôle testhand_backoffice : decks.name / notes / params / summary ' || (case when ok then 'illisibles, aucune écriture' else 'LISIBLES OU MODIFIABLES' end));
+    end if;
+    if to_regclass('public.users') is not null then
+      ok := not has_table_privilege('testhand_backoffice', 'public.users', 'insert, update, delete')
+        and not exists (select 1 from information_schema.column_privileges where grantee = 'testhand_backoffice' and table_schema = 'public' and table_name = 'users' and privilege_type <> 'SELECT');
+      insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|rôle testhand_backoffice : users en lecture seule' || (case when ok then '' else ' — ÉCRITURE POSSIBLE' end));
+    end if;
+    if to_regclass('public.sessions') is not null then
+      ok := not has_column_privilege('testhand_backoffice', 'public.sessions', 'token_hash', 'select');
+      insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|rôle testhand_backoffice : sessions.token_hash ' || (case when ok then 'illisible' else 'LISIBLE' end));
+    end if;
+    if to_regclass('public.backoffice_audit') is not null then
+      ok := not has_table_privilege('testhand_backoffice', 'public.backoffice_audit', 'update, delete, truncate')
+        and exists (select 1 from pg_trigger where tgname = 'backoffice_audit_append_only' and tgrelid = 'public.backoffice_audit'::regclass and not tgisinternal);
+      insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|journal backoffice_audit en ajout seul (ni update / delete / truncate pour le rôle, déclencheur présent)' || (case when ok then '' else ' — GARANTIE ROMPUE' end));
+      execute 'select count(*) from backoffice_audit' into n;
+      insert into check_rows (line) values ('OK|lignes du journal du back-office : ' || n);
+    end if;
   end if;
 
   -- Un rejeu du schéma ne doit plus rien recréer : le bloc historique de schema.sql est

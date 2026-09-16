@@ -17,6 +17,7 @@ services:
       - ./db/migrations/002-profiles-and-conditions.sql:/docker-entrypoint-initdb.d/02-profiles-and-conditions.sql:ro
       - ./db/migrations/003-purge-legacy.sql:/docker-entrypoint-initdb.d/03-purge-legacy.sql:ro
       - ./db/migrations/004-side-plans.sql:/docker-entrypoint-initdb.d/04-side-plans.sql:ro
+      - ./db/migrations/005-backoffice.sql:/docker-entrypoint-initdb.d/05-backoffice.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ygo -d ygo"]
       interval: 5s

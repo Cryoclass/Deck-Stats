@@ -1,0 +1,44 @@
+/* Tokens du back-office — docs/design-backoffice.md §2. Seule source de couleurs et de tailles :
+   aucune valeur en dur ailleurs. Clair par défaut (système), sombre par préférence système ou
+   par data-theme="dark" (js/theme.js). */
+:root {
+  color-scheme: light;
+  --fs-meta: 12px; --fs-body: 13px; --fs-value: 14px; --fs-head: 16px; --fs-title: 20px; --fs-kpi: 28px;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+  --qr-bg: #ffffff; --qr-fg: #000000; /* le QR reste noir sur blanc dans les deux thèmes (lecteurs) */
+  --r: 2px; --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-6: 24px; --row: 32px; --ctl: 32px;
+
+  --bg-page: #f3f4f6; --bg-surface: #ffffff; --bg-sunken: #e9ebef; --bg-hover: #eef2f8;
+  --border: #d3d7de; --border-strong: #aeb5c0;
+  --text-1: #14171c; --text-2: #3f4652; --text-3: #6b7381;
+  --accent: #1f4e9c; --accent-hover: #183f80; --accent-fg: #ffffff; --focus: #1f4e9c;
+  --ok-bg: #e6f4ea; --ok-bd: #8ccf9c; --ok-fg: #14532d;
+  --warn-bg: #fff4dc; --warn-bd: #efc36c; --warn-fg: #7a4b00;
+  --neg-bg: #fbe7e7; --neg-bd: #e69b9b; --neg-fg: #7f1d1d;
+  --info-bg: #e8f0fb; --info-bd: #9dbbe8; --info-fg: #1e3a8a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg-page: #15181d; --bg-surface: #1c2027; --bg-sunken: #111419; --bg-hover: #232934;
+    --border: #2c333e; --border-strong: #414a58;
+    --text-1: #e9ecf1; --text-2: #b6bdc9; --text-3: #8790a0;
+    --accent: #6c9ee8; --accent-hover: #88b1ee; --accent-fg: #0e1420; --focus: #88b1ee;
+    --ok-bg: rgb(52 211 153 / .12); --ok-bd: #2f8a5f; --ok-fg: #8fe0b5;
+    --warn-bg: rgb(245 158 11 / .12); --warn-bd: #a26f0e; --warn-fg: #f5cc7a;
+    --neg-bg: rgb(239 68 68 / .12); --neg-bd: #a33a3a; --neg-fg: #f3a3a3;
+    --info-bg: rgb(96 165 250 / .12); --info-bd: #3b6fb8; --info-fg: #a9c7f5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-page: #15181d; --bg-surface: #1c2027; --bg-sunken: #111419; --bg-hover: #232934;
+  --border: #2c333e; --border-strong: #414a58;
+  --text-1: #e9ecf1; --text-2: #b6bdc9; --text-3: #8790a0;
+  --accent: #6c9ee8; --accent-hover: #88b1ee; --accent-fg: #0e1420; --focus: #88b1ee;
+  --ok-bg: rgb(52 211 153 / .12); --ok-bd: #2f8a5f; --ok-fg: #8fe0b5;
+  --warn-bg: rgb(245 158 11 / .12); --warn-bd: #a26f0e; --warn-fg: #f5cc7a;
+  --neg-bg: rgb(239 68 68 / .12); --neg-bd: #a33a3a; --neg-fg: #f3a3a3;
+  --info-bg: rgb(96 165 250 / .12); --info-bd: #3b6fb8; --info-fg: #a9c7f5;
+}

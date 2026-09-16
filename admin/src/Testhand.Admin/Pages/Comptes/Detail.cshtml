@@ -1,0 +1,36 @@
+@page "/comptes/{id:guid}"
+@model Testhand.Admin.Pages.Comptes.DetailModel
+@{
+    ViewData["Title"] = "Compte";
+    ViewData["Nav"] = "comptes";
+    var a = Model.Account;
+}
+<p class="meta"><a href="/comptes">← Comptes</a></p>
+<h1 class="title">@a.Email</h1>
+<p class="meta">Métadonnées du compte et sessions de l'app encore actives. Le contenu des decks n'est jamais lu ici (rôle PostgreSQL restreint).</p>
+<section class="kpis" aria-label="Métadonnées">
+    <div class="kpi"><div class="kpi-label">Nom affiché</div><div class="kpi-value">@a.DisplayName</div></div>
+    <div class="kpi"><div class="kpi-label">Identifiant</div><div class="kpi-value mono small">@a.Id</div></div>
+    <div class="kpi"><div class="kpi-label">Création</div><div class="kpi-value">@Fmt.Date(a.CreatedAt)</div></div>
+    <div class="kpi"><div class="kpi-label">Rôle</div><div class="kpi-value">@if (a.Role == "admin") { <span class="tag ok">admin</span> } else { <span class="tag">user</span> }</div><div class="kpi-note">se change en ligne de commande seulement</div></div>
+    <div class="kpi"><div class="kpi-label">Decks</div><div class="kpi-value num">@Fmt.Num(a.DeckCount)</div><div class="kpi-note">nombre seulement</div></div>
+    <div class="kpi"><div class="kpi-label">Moyens de connexion</div><div class="kpi-value">@(string.Join(", ", new[] { a.HasPassword ? "mot de passe" : null, a.Providers }.Where(x => !string.IsNullOrEmpty(x))) is { Length: > 0 } c ? c : "—")</div></div>
+    <div class="kpi"><div class="kpi-label">Dernière session active</div><div class="kpi-value">@Fmt.Date(a.LastSessionAt)</div><div class="kpi-note">ouverture de la session encore active la plus récente</div></div>
+</section>
+<h2 class="head">Sessions actives de l'app (@Model.Sessions.Count)</h2>
+<div class="table-wrap">
+<table class="grid">
+    <thead><tr><th>Appareil (agent utilisateur)</th><th>Ouverte le</th><th>Expire le</th></tr></thead>
+    <tbody>
+    @if (Model.Sessions.Count == 0)
+    {
+        <tr><td colspan="3" class="empty">Aucune session active. Les sessions fermées ou expirées sont supprimées : la base n'en garde pas trace.</td></tr>
+    }
+    @foreach (var s in Model.Sessions)
+    {
+        <tr><td title="@s.UserAgent">@Fmt.Ua(s.UserAgent)</td><td class="date">@Fmt.Date(s.CreatedAt)</td><td class="date">@Fmt.Date(s.ExpiresAt)</td></tr>
+    }
+    </tbody>
+</table>
+</div>
+<p class="meta"><a href="/journal?cible=@a.Id">Journal du back-office concernant ce compte</a></p>

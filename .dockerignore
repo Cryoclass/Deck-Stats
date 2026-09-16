@@ -12,3 +12,7 @@ deploy/.env.prod
 *.log
 coverage
 .vite
+# Back-office : sorties de build locales (Windows) jamais copiées par-dessus la restauration du conteneur.
+admin/**/bin
+admin/**/obj
+admin/e2e/out
