@@ -1,0 +1,45 @@
+{
+  "generatedBy": "server/src/auth/password.ts",
+  "entries": [
+    {
+      "password": "password",
+      "hash": "scrypt:131072:8:1:8p0Uznm2nlUg8wGHtRZNUw==:VBZbCwI4DGp9NR3jdWnfSyjJjw7vKEFax+rRNqiVseZIoP4YwaRELw3XBu+PIpqrb4DFlZ3UfOXPU0UEh7gdaA==",
+      "matches": true
+    },
+    {
+      "password": "correct horse battery staple",
+      "hash": "scrypt:131072:8:1:ZyAkf7dGoub/Nnr2EQIRsg==:1kVDlF9yBBl64DQAjZTTa0K7PBS/Nd9sOxiTvb/c3RNQ2ZXlEY/KniA4v7Ociag0yvDNi+gjUByiUSJ0/LyjWg==",
+      "matches": true
+    },
+    {
+      "password": "été à Paris, ça marche",
+      "hash": "scrypt:131072:8:1:Mz5dEXWDQ6UutfQxzGhl7w==:TDrQhWiWSfrg7tteDvFSsFhxb+ChpnbmDF6tLRotu7GuYh6YCEaYY0wLYNxjGheog6LjnPKliX9cjPykPAYKKg==",
+      "matches": true
+    },
+    {
+      "password": "main de 5 cartes 🃏🎴",
+      "hash": "scrypt:131072:8:1:88nVQ6z8AWgnUhNS9m2VeA==:wdkgG2KdOBHvOoJ0HAMZyXhh676bBatFiMVOyAyiAg4xb1jI0aBJSQeEpv1W00J87TrTe/zCU8Jlb9c5nlxVpw==",
+      "matches": true
+    },
+    {
+      "password": "Lorem-ipsum-0123456789-Lorem-ipsum-0123456789-Lorem-ipsum-0123456789-Lorem-ipsum-0123456789-Lorem-ipsum-0123456789-Lorem-ipsum-0123456789-Lorem-ipsum-0123456789-Lorem-ipsum-0123456789-Lorem-ipsum-0123",
+      "hash": "scrypt:131072:8:1:klimKLpLYltjNMe66Udqdg==:WfBYJFGAPPWyz3GgXOAriiK2WC6cFCOcljbIhUVzelqYc7Y8aAE60o/1kLHQqCy5+juz2RcfRm0gpZF8Fui0pg==",
+      "matches": true
+    },
+    {
+      "password": "",
+      "hash": "scrypt:131072:8:1:D3FpHjaiCMR69VaaAZCPjg==:H6+t9AEt4NoPA84klDqwhivzZ64mQn1+rKJr2wDy7DbVr/VgIli2WwMBjuATPntepjdixWt1EgczejqIWJKLwA==",
+      "matches": true
+    },
+    {
+      "password": "hunter3",
+      "hash": "scrypt:131072:8:1:0M4Qil7MDvhb0tjvXgQuUw==:cALUt6Gwh8Rhf+USQikBGuNMekko4VFAOe7PRDxcqx78yc6B+ADfyxSGBhryTWhwLXrGtcKeMFLzQKQt/du58g==",
+      "matches": false
+    },
+    {
+      "password": "ete",
+      "hash": "scrypt:131072:8:1:+nulm0BSo6TbbMDbzCCzAg==:okgtJZDZAsezRPPi9X4vPLMXwd+RzeB+Edpmx4MXz7AjwMX/UqjbAv6egz8bkg2UNv5RJu7VPsPtq+efD7jArg==",
+      "matches": false
+    }
+  ]
+}

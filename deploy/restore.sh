@@ -43,8 +43,8 @@ if [ -n "${TESTHAND_DB_CONTAINER:-}" ]; then
   app_start() { :; }
 else
   dc() { docker compose --env-file .env.prod -f docker-compose.prod.yml "$@"; }
-  app_stop() { dc stop app; }
-  app_start() { dc start app; dc ps; }
+  app_stop() { dc stop app admin; }          # le back-office écrit dans backoffice_audit : arrêté aussi
+  app_start() { dc start app; dc start admin || true; dc ps; }   # admin absent au premier déploiement : toléré
 fi
 
 say "1–2. Contrôle de l'archive : $ARCHIVE"

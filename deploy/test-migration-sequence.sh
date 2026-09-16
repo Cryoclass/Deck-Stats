@@ -15,6 +15,9 @@
 #   F. --accept avec l'empreinte de la simulation → code 0, 003 journalisée, contrôles OK ; rejeu →
 #      code 0, « déjà appliquée », aucune nouvelle acceptation ; puis base à 003 SANS 004 (état de
 #      la production avant l'étape 10) → 004 appliquée par la branche post-003, sans question ;
+#      puis base à 004 SANS 005 ni rôle PostgreSQL (état de la production avant le back-office) →
+#      005 appliquée par la branche post-003, rôle créé, `users` reformée à effectif identique et
+#      rôles « user », contrôles OK ;
 #   G. base vide (« départ à vide », 8C) en mode interactif sans terminal → code 0 sans question
 #      (une question aurait rendu 3), 001 à 004 journalisées, 0 ligne purgée, contrôle
 #      « base vide au départ » OK ; rejeu → code 0, « déjà journalisée », base identique ;
@@ -27,7 +30,11 @@
 #      socket et les journaux à cet instant (« init process complete » absent = fenêtre ouverte,
 #      l'ancienne attente aurait accepté) ; db_ready ne rend la main qu'avec le serveur définitif
 #      annoncé ; la séquence lancée aussitôt finit en code 0 (003 journalisée par initdb, aucune
-#      question), aucun « shutting down » dans ses sorties.
+#      question), aucun « shutting down » dans ses sorties ;
+#   J. (back-office) ligne de commande backoffice-role.sh sur la base de I : simulation sans
+#      écriture, --apply journalisé (backoffice_audit, source cli), rien à appliquer au rejeu,
+#      retrait, liste, compte inconnu refusé (code 1) ; le journal refuse toute suppression ; le
+#      rôle testhand_backoffice n'a aucun privilège sur deck_cards et ne lit pas decks.name.
 # Sorties dans deploy/out/test-migration-sequence-<horodatage>/ (ignoré par git). Conteneur
 # supprimé à la fin (--rm), y compris en cas d'échec. Jamais la base de dev (5433).
 set -euo pipefail
@@ -107,7 +114,7 @@ simulate_003() {
 run_seq auto
 expect "B code 1" test "$RC" = 1
 expect "B app démarrée sans 003 (stop, start-new)" hooks_are "stop start-new"
-expect "B journal 001, 002 et 004 seulement" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans'
+expect "B journal 001, 002, 004 et 005 seulement" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans,005-backoffice'
 expect "B refus nominatif dans 003-simulation.txt.err" grep_file 'jamais converti' "$CASE_OUT/003-simulation.txt.err"
 expect "B journal : « 003 refusée ou en erreur en simulation »" grep_file '003 refusée ou en erreur en simulation' "$CASE_OUT/journal.txt"
 
@@ -123,7 +130,7 @@ run_003() {
 run_seq auto
 expect "C code 1 (le code 0 de psql sans marqueur n'est pas un succès)" test "$RC" = 1
 expect "C journal : « marqueur « SIMULATION TERMINÉE » absent »" grep_file 'marqueur « SIMULATION TERMINÉE » absent' "$CASE_OUT/journal.txt"
-expect "C 003 non journalisée" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans'
+expect "C 003 non journalisée" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans,005-backoffice'
 expect "C app démarrée sans 003" hooks_are "stop start-new"
 expect "C la table combo_pairs existe encore" test "$(db_query "select to_regclass('public.combo_pairs') is not null")" = t
 
@@ -133,7 +140,7 @@ run_seq 00000000000000000000000000000000
 expect "D code 3" test "$RC" = 3
 expect "D app démarrée sans 003" hooks_are "stop start-new"
 expect "D journal : « différente du rapport »" grep_file 'différente du rapport' "$CASE_OUT/journal.txt"
-expect "D 003 non journalisée, combo_pairs conservée" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans' -a "$(db_query 'select count(*) from combo_pairs')" = 4
+expect "D 003 non journalisée, combo_pairs conservée" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,004-side-plans,005-backoffice' -a "$(db_query 'select count(*) from combo_pairs')" = 4
 SIM_FP_D=$SIM_FP
 expect "D empreinte de la simulation capturée" bash -c "printf '%s' '$SIM_FP_D' | grep -Eq '^[0-9a-f]{32}$'"
 
@@ -155,7 +162,7 @@ expect "E l'archive pré-migration nommée existe avec sa somme et son empreinte
 begin_case F
 run_seq "$SIM_FP_D"
 expect "F code 0" test "$RC" = 0
-expect "F 001 à 004 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans'
+expect "F 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
 expect "F 004 : les trois tables des plans de side existent" test "$(db_query "select count(*) from pg_tables where schemaname = 'public' and tablename in ('deck_matchups', 'deck_side_plans', 'deck_side_plan_cards')")" = 3
 expect "F app démarrée (stop, start-new)" hooks_are "stop start-new"
 expect "F journal : empreinte fournie identique" grep_file 'empreinte fournie identique au rapport' "$CASE_OUT/journal.txt"
@@ -177,16 +184,35 @@ run_seq interactive
 expect "F sans 004 : code 0 sans question" test "$RC" = 0
 expect "F sans 004 : 003 « déjà journalisée »" grep_file 'déjà journalisée' "$CASE_OUT/journal.txt"
 expect "F sans 004 : 004 rejouée par la branche post-003" grep_file 'rejeu par stdin : db/migrations/004-side-plans.sql' "$CASE_OUT/journal.txt"
-expect "F sans 004 : 001 à 004 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans'
+expect "F sans 004 : 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
 expect "F sans 004 : les trois tables des plans de side existent" test "$(db_query "select count(*) from pg_tables where schemaname = 'public' and tablename in ('deck_matchups', 'deck_side_plans', 'deck_side_plan_cards')")" = 3
 expect "F sans 004 : aucun KO dans check-migration.txt" not grep_file '^KO\|' "$CASE_OUT/check-migration.txt"
+# F, base à 004 SANS 005 ni rôle PostgreSQL : l'état de la production avant le back-office. Seule
+# preuve que la branche « 003 déjà journalisée » rejoue 005, crée le rôle, et que le contrôle de
+# bout en bout accepte `users` reformée (colonne role ajoutée) à effectif identique.
+db_query "drop owned by testhand_backoffice; drop role testhand_backoffice; drop table backoffice_audit, backoffice_sessions, backoffice_totp; drop function backoffice_audit_refuse; alter table users drop column role; delete from app_migrations where id = '005-backoffice'" > /dev/null
+USERS_F=$(db_query 'select count(*) from users')
+CASE_OUT="$OUT/case-F-sans-005"; mkdir -p "$CASE_OUT"; HOOKS="$CASE_OUT/hooks.txt"; : > "$HOOKS"
+run_seq interactive
+expect "F sans 005 : code 0 sans question" test "$RC" = 0
+expect "F sans 005 : 005 rejouée par la branche post-003" grep_file 'rejeu par stdin : db/migrations/005-backoffice.sql' "$CASE_OUT/journal.txt"
+expect "F sans 005 : 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
+expect "F sans 005 : rôle testhand_backoffice créé, NOLOGIN" test "$(db_query "select rolcanlogin from pg_roles where rolname = 'testhand_backoffice'")" = f
+expect "F sans 005 : users reformée à effectif identique ($USERS_F), rôles « user » (contrôle OK nominatif)" grep_file "^OK\|005 appliquée par cette séquence : users reformée \(colonne role ajoutée\), effectif $USERS_F identique, tous les rôles « user »" "$CASE_OUT/check-migration.txt"
+expect "F sans 005 : users hors de la liste stricte, les autres tables intactes" grep_file '^OK\|tables intactes de bout en bout \(effectif et contenu\) : cards catalog_version user_identities sessions deck_cards deck_starters card_categories' "$CASE_OUT/check-migration.txt"
+expect "F sans 005 : aucun KO dans check-migration.txt" not grep_file '^KO\|' "$CASE_OUT/check-migration.txt"
+FP_F5=$(db_fingerprint | fingerprint_global)
+CASE_OUT="$OUT/case-F-rejeu-005"; mkdir -p "$CASE_OUT"; HOOKS="$CASE_OUT/hooks.txt"; : > "$HOOKS"
+run_seq interactive
+expect "F rejeu après 005 : code 0, base identique, users strictement intacte" test "$RC" = 0 -a "$(db_fingerprint | fingerprint_global)" = "$FP_F5"
+expect "F rejeu après 005 : liste stricte complète (users comprise)" grep_file '^OK\|tables intactes de bout en bout \(effectif et contenu\) : cards catalog_version users user_identities' "$CASE_OUT/check-migration.txt"
 
 # ─── G. base vide (« départ à vide », 8C) : aucune question, 003 journalisée, contrôles OK ───
 begin_case G empty
 expect "G base vide au départ (aucune table dans public)" test "$(db_query "select count(*) from pg_tables where schemaname = 'public'")" = 0
 run_seq interactive
 expect "G code 0 sans question (aucun terminal : une question aurait rendu 3)" test "$RC" = 0
-expect "G 001 à 004 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans'
+expect "G 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
 expect "G app démarrée (stop, start-new)" hooks_are "stop start-new"
 expect "G journal : « rien à purger : aucune acceptation requise »" grep_file 'rien à purger : aucune acceptation requise' "$CASE_OUT/journal.txt"
 expect "G purge appliquée : 0 ligne" grep_file 'PURGE APPLIQUÉE : 003-purge-legacy journalisée, 0 ligne' "$CASE_OUT/003-apply.txt"
@@ -229,7 +255,7 @@ docker create --name "$CONTAINER" --label purpose=testhand-step8 --rm --tmpfs /v
   -p "127.0.0.1:$PORT:5432" postgres:17-alpine > /dev/null
 for f in db/schema.sql:00-schema.sql db/migrations/001-deck-configuration.sql:01-deck-configuration.sql \
          db/migrations/002-profiles-and-conditions.sql:02-profiles-and-conditions.sql db/migrations/003-purge-legacy.sql:03-purge-legacy.sql \
-         db/migrations/004-side-plans.sql:04-side-plans.sql; do
+         db/migrations/004-side-plans.sql:04-side-plans.sql db/migrations/005-backoffice.sql:05-backoffice.sql; do
   docker cp "$(host_path "$ROOT_DIR/${f%%:*}")" "$CONTAINER:/docker-entrypoint-initdb.d/${f##*:}"
 done
 docker cp "$(host_path "$CASE_OUT/98-slow.sql")" "$CONTAINER:/docker-entrypoint-initdb.d/98-slow.sql"
@@ -259,11 +285,41 @@ expect "I à la sortie de db_ready : « init process complete » suivi du second
 expect "I 98-slow.sql joué par l'entrypoint (fenêtre prolongée de 6 s)" grep_file 'running /docker-entrypoint-initdb.d/98-slow.sql' "$CASE_OUT/container-logs/at-db-ready.txt"
 expect "I séquence lancée aussitôt : code 0" test "$RC" = 0
 expect "I 003 déjà journalisée par initdb : aucune question" grep_file 'déjà journalisée' "$CASE_OUT/journal.txt"
-expect "I 001 à 004 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans'
+expect "I 001 à 005 journalisées" test "$(journal_now)" = '001-deck-configuration,002-profiles-and-conditions,003-purge-legacy,004-side-plans,005-backoffice'
 expect "I app démarrée (stop, start-new)" hooks_are "stop start-new"
 expect "I aucun « shutting down » dans les sorties de la séquence" not bash -c "grep -rq 'shutting down' '$CASE_OUT' --exclude-dir=container-logs"
 expect "I aucun KO dans check-migration.txt" not grep_file '^KO\|' "$CASE_OUT/check-migration.txt"
 
+# ─── J. ligne de commande du rôle admin (back-office, docs/backoffice.md T9) sur la base de I ───
+CASE_OUT="$OUT/case-J"; mkdir -p "$CASE_OUT"
+db_query "insert into users (email, display_name, password_hash) values ('admin-j@example.invalid', 'Compte J', 'scrypt:131072:8:1:c2VsCg==:a2V5Cg==')" > /dev/null
+role_of() { db_query "select role from users where email = 'admin-j@example.invalid'"; }
+audit_n() { db_query 'select count(*) from backoffice_audit'; }
+run_role() { local n; n=$(printf '%s' "${2:-}" | tr 'A-Z' 'a-z' | tr -cd 'a-z'); RC=0; bash ./backoffice-role.sh "$@" > "$CASE_OUT/role-$1${n:+-}$n.log" 2>&1 || RC=$?; }
+AUDIT_J0=$(audit_n)
+run_role grant admin-j@example.invalid
+j1() { [ "$RC" = 0 ] && grep -q 'SIMULATION TERMINÉE' "$CASE_OUT/role-grant-adminjexampleinvalid.log" && [ "$(role_of)" = user ] && [ "$(audit_n)" = "$AUDIT_J0" ]; }
+expect "J simulation : code 0, « SIMULATION TERMINÉE », rôle inchangé, journal inchangé" j1
+run_role grant ADMIN-J@example.invalid --apply --actor test-j
+j2() { [ "$RC" = 0 ] && grep -q 'APPLIQUÉ : admin-j@example.invalid est désormais « admin »' "$CASE_OUT/role-grant-adminjexampleinvalid.log" && [ "$(role_of)" = admin ]; }
+expect "J --apply : code 0, « APPLIQUÉ », rôle admin (email insensible à la casse)" j2
+expect "J --apply : une ligne de journal role.grant, source cli, acteur test-j" test "$(db_query "select count(*) from backoffice_audit where action = 'role.grant' and source = 'cli' and actor_email = 'test-j' and detail->>'email' = 'admin-j@example.invalid' and detail->>'to' = 'admin'")" = 1
+run_role grant admin-j@example.invalid --apply
+j3() { [ "$RC" = 0 ] && grep -q 'RIEN À APPLIQUER' "$CASE_OUT/role-grant-adminjexampleinvalid.log" && [ "$(audit_n)" = "$((AUDIT_J0 + 1))" ]; }
+expect "J rejeu --apply : « RIEN À APPLIQUER », journal inchangé" j3
+run_role list
+j4() { [ "$RC" = 0 ] && grep -q '^admin | admin-j@example.invalid' "$CASE_OUT/role-list.log" && grep -q '^compte | 1 compte(s) admin' "$CASE_OUT/role-list.log"; }
+expect "J list : le compte apparaît, 1 admin" j4
+run_role revoke admin-j@example.invalid --apply
+j5() { [ "$RC" = 0 ] && [ "$(role_of)" = user ] && [ "$(db_query "select count(*) from backoffice_audit where action = 'role.revoke' and source = 'cli'")" = 1 ]; }
+expect "J revoke --apply : rôle user, ligne role.revoke" j5
+run_role grant inconnu@example.invalid --apply
+j6() { [ "$RC" = 1 ] && grep -q 'aucun compte pour « inconnu@example.invalid »' "$CASE_OUT/role-grant-inconnuexampleinvalid.log" && [ "$(audit_n)" = "$((AUDIT_J0 + 2))" ]; }
+expect "J compte inconnu : code 1, refus nominatif, journal inchangé" j6
+j7() { ! db_query 'delete from backoffice_audit' > /dev/null 2>&1; }
+expect "J le journal refuse la suppression, même au propriétaire" j7
+expect "J rôle testhand_backoffice : aucun privilège sur deck_cards, decks.name illisible, users non modifiable" test "$(db_query "select has_table_privilege('testhand_backoffice', 'deck_cards', 'select') or has_column_privilege('testhand_backoffice', 'decks', 'name', 'select') or has_table_privilege('testhand_backoffice', 'users', 'update')")" = f
+
 echo
 if [ "$FAILS" -gt 0 ]; then echo "ÉCHEC : $FAILS garde(s) en échec — journaux dans $OUT"; exit 1; fi
-echo "OK : toutes les gardes passent (cas A–I) — journaux dans $OUT"
+echo "OK : toutes les gardes passent (cas A–J) — journaux dans $OUT"

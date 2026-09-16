@@ -55,9 +55,19 @@ dc up -d db
 echo '==> Attente de la DB (healthy, serveur définitif annoncé dans les journaux, select 1)...'
 db_ready || die 'base injoignable après 120 s : docker compose --env-file .env.prod -f docker-compose.prod.yml ps / logs db'
 
-hook_stop_app() { dc stop app; }             # aucune écriture de l'ancienne API pendant la transition
-hook_start_app() { dc up -d; dc ps; }        # nouvelle image (avec ou sans 003 selon l'issue)
-hook_start_old_app() { dc start app || true; dc ps; }   # conteneur précédent, base intacte
+hook_stop_app() { dc stop app admin; }       # aucune écriture de l'ancienne API ni du back-office pendant la transition
+# Back-office (docs/backoffice.md T3) : LOGIN et mot de passe du rôle du site, posés hors migration
+# depuis .env.prod (BACKOFFICE_DB_PASSWORD), AVANT le démarrage des conteneurs (le service admin se
+# connecte dès sa première requête). Sans la clé, le rôle reste NOLOGIN et le service admin ne peut
+# pas se connecter (avertissement, pas un échec : le back-office ne bloque jamais l'app de jeu).
+backoffice_login_from_env() {
+  local pw; pw=$(env_prod_value BACKOFFICE_DB_PASSWORD)
+  if [ -z "$pw" ]; then warn "BACKOFFICE_DB_PASSWORD absent de .env.prod : rôle $BACKOFFICE_ROLE laissé NOLOGIN, le back-office ne pourra pas se connecter"; return 0; fi
+  if backoffice_db_login "$pw"; then echo "==> rôle $BACKOFFICE_ROLE : LOGIN et mot de passe posés depuis .env.prod"
+  else warn "rôle $BACKOFFICE_ROLE : LOGIN impossible (005 non appliquée ?) — le back-office ne pourra pas se connecter"; fi
+}
+hook_start_app() { backoffice_login_from_env; dc up -d; dc ps; }   # nouvelle image (avec ou sans 003 selon l'issue)
+hook_start_old_app() { dc start app admin || true; dc ps; }   # conteneurs précédents, base intacte
 hook_app_left_stopped() {
   echo "App laissée ARRÊTÉE : contrôle après migration en échec, détail dans $OUT/check-migration.txt"
   echo "Retour à l'état pré-migration (archive vérifiée, confirmation OUI demandée) : $1"

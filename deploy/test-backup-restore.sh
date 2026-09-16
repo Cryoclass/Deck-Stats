@@ -61,6 +61,9 @@ start_db "$DST" "$DST_PORT"
 export TESTHAND_DB_CONTAINER=$SRC
 db_psql < "$ROOT_DIR/db/schema.sql"
 db_psql < "$ROOT_DIR/server/tests/fixtures/legacy-representative.sql"
+# Back-office : 005 dans la source, donc des GRANT vers testhand_backoffice dans chaque archive ; la
+# restauration dans le cluster NEUF (destination) exerce ensure_backoffice_role (lib.sh, T15).
+db_psql < "$ROOT_DIR/db/migrations/005-backoffice.sql"
 SRC_GLOBAL=$(global_of_db)
 
 say "1. backup.sh (cron) sur la source"

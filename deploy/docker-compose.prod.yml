@@ -22,6 +22,7 @@ services:
       - ../db/migrations/002-profiles-and-conditions.sql:/docker-entrypoint-initdb.d/02-profiles-and-conditions.sql:ro
       - ../db/migrations/003-purge-legacy.sql:/docker-entrypoint-initdb.d/03-purge-legacy.sql:ro
       - ../db/migrations/004-side-plans.sql:/docker-entrypoint-initdb.d/04-side-plans.sql:ro
+      - ../db/migrations/005-backoffice.sql:/docker-entrypoint-initdb.d/05-backoffice.sql:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ygo -d ygo']
       interval: 5s
@@ -52,6 +53,35 @@ services:
         - node
         - -e
         - "fetch('http://localhost:8787/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - default
+      - edge
+
+  # Back-office (docs/backoffice.md, T14) : admin.scratchrecode.com, joint par le Caddy goldfish via
+  # `edge` (reverse_proxy ygo-admin:8080). Aucun port publié. Se connecte avec le rôle PostgreSQL
+  # restreint testhand_backoffice (mot de passe posé par deploy.sh depuis BACKOFFICE_DB_PASSWORD),
+  # jamais avec `ygo`. Arrêté par deploy.sh et restore.sh pendant la séquence (il écrit dans le
+  # journal à chaque requête).
+  admin:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.admin
+    container_name: ygo-admin # nom stable : cible du reverse_proxy dans le Caddyfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      BACKOFFICE_DATABASE_URL: postgres://testhand_backoffice:${BACKOFFICE_DB_PASSWORD:-}@db:5432/ygo # vide = le service admin refuse de se connecter, db et app vivent (deploy.sh avertit)
+      BACKOFFICE_TOTP_KEY: ${BACKOFFICE_TOTP_KEY:-} # vide = le service admin s'arrête au démarrage (message nommant la variable)
+      BACKOFFICE_ENV: PRODUCTION
+      BACKOFFICE_TRUST_PROXY: '1' # limite de débit par IP réelle (X-Forwarded-For posé par Caddy)
+      BACKOFFICE_HOST: ${BACKOFFICE_HOST:-admin.scratchrecode.com}
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:8080/health']
       interval: 30s
       timeout: 5s
       retries: 3

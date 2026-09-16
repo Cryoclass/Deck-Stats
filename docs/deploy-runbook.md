@@ -10,6 +10,9 @@ Procédure d'exécution, commande par commande, avec les scripts de `deploy/` (`
 - **« Départ à vide »** (8C, exécutée sur le VPS le 8 septembre 2026, code `9d281cf`,
   docs/etape-8.md « Compte rendu 8C ») : volume recréé, 001–003 jouées par `initdb`, catalogue
   rechargé. Conservée telle quelle ; l'incident du premier `deploy.sh` est consigné en V4.
+- **« Première mise en ligne du back-office »** (B0–B7, ci-dessous après C6) : migration additive
+  `005-backoffice.sql`, service `admin`, DNS `admin.scratchrecode.com`, bloc Caddy, rôle admin d'un
+  compte par `backoffice-role.sh`, enrôlement TOTP. Aucune question attendue.
 - **« Base conservée »** (§3 à §5, pour mémoire) : migration 001 → 002 → 003 d'une base pré-001
   avec simulation, rapport et acceptation `OUI` ; répétée sur le dump réel en 8B, jamais jouée
   en production (décision « départ à vide »).
@@ -136,7 +139,7 @@ Already up to date.                         (git pull, déjà fait en C1)
 ==> Attente de la DB (healthy, serveur définitif annoncé dans les journaux, select 1)...
 séquence de migration — dossier : .../deploy/out/deploy-<horodatage> — acceptation : OUI au terminal
 arrêt de l'app (aucune écriture pendant la transition)
-    ... Container ygo-proba-app-1 Stopped
+    ... Container ygo-proba-app-1 Stopped   (et Container ygo-admin Stopped depuis le back-office)
 empreinte de la base avant toute modification (fingerprint-0.txt)
 sauvegarde pré-migration vérifiée (obligatoire, hors rétention)
     <date> sauvegarde ok: keep/ygo-pre-migration-<horodatage>.sql.gz (1.5M)
@@ -261,6 +264,190 @@ Deux niveaux, indépendants :
 > remplace les §3, §4 et §5 ; §0 (répétition sur archive fraîche) devient inutile, §1 et §2 sont
 > inchangés, §6 est adapté dans la variante, §7 et §8 restent valables. Les §3 à §5 sont
 > conservés pour mémoire : ils décrivent la migration d'une base conservée.
+
+## Variante « première mise en ligne du back-office » — admin.scratchrecode.com (B0–B7)
+
+État attendu de la production avant de commencer : base non vide, `app_migrations` = 001, 002,
+003, 004, cron `backup.sh` en place, code `4cf9493` ou postérieur en service. Ce que ce lot change
+**sur le VPS** : la migration additive `005-backoffice.sql` (colonne `users.role`, trois tables
+`backoffice_*`, rôle PostgreSQL `testhand_backoffice`), un nouveau service Compose `admin`
+(image `deploy/Dockerfile.admin`, conteneur `ygo-admin`, réseau `edge`, sans port), trois
+variables dans `.env.prod`, un enregistrement DNS et un bloc du Caddyfile goldfish. Le serveur
+Node et le web ne changent pas de comportement. Tout est documenté ici commande par commande ;
+rien n'a été exécuté sur le VPS par l'agent.
+
+Préparation validée en local avant ce runbook : `bash deploy/test-migration-sequence.sh` (cas
+« F sans 005 » = exactement ce déploiement : base à 004, 005 rejouée par la branche post-003,
+rôle créé, `users` reformée à effectif identique, aucune question), `bash deploy/rehearsal.sh
+--fixture`, tests d'intégration du back-office sur 55442 et garde navigateur (docs/backoffice.md
+§10).
+
+### B0. La veille, en local (T2)
+
+```bash
+git log --oneline -1                                 # le commit qui sera déployé (tag backoffice-ok)
+git diff --stat <commit en service>..HEAD -- db      # attendu : db/migrations/005-backoffice.sql seulement
+openssl rand -hex 24                                 # → BACKOFFICE_DB_PASSWORD (hexadécimal : pas de « @ » dans l'URL de connexion)
+openssl rand -base64 32                              # → BACKOFFICE_TOTP_KEY (32 octets ; la perdre = ré-enrôler chaque admin)
+```
+
+Le compte qui deviendra admin doit exister dans l'app **avec un mot de passe** (compte créé par
+email + mot de passe ; un compte Discord seul ne peut pas se connecter au back-office :
+`backoffice-role.sh` le signale). Un admin peut posséder des decks.
+
+### B1. DNS (Cloudflare)
+
+`admin.scratchrecode.com` → **A** → `137.74.172.32`, **DNS only (nuage gris)** — même contrainte
+que `analysis` : Caddy obtient son certificat par challenge HTTP-01. Vérifier la propagation
+avant B2 : `dig +short admin.scratchrecode.com` → `137.74.172.32`.
+
+### B2. Bloc Caddy (stack goldfish, hors dépôt)
+
+Dans le `Caddyfile` de goldfish, ajouter — en-têtes de sécurité compris, HSTS y compris (le
+site pose les autres lui-même, docs/backoffice.md T10 ; Caddy termine TLS, HSTS est à lui) :
+
+```caddyfile
+admin.scratchrecode.com {
+  encode zstd gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Robots-Tag "noindex, nofollow"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "no-referrer"
+    X-Frame-Options "DENY"
+    -Server
+  }
+  reverse_proxy ygo-admin:8080
+}
+```
+
+Ne redémarrer Caddy **qu'après B4** (le conteneur `ygo-admin` doit exister sur `edge`, sinon
+Caddy répond 502 et journalise des erreurs de résolution) :
+
+```bash
+cd ~/apps/goldfish/deploy
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec caddy caddy validate --config /etc/caddy/Caddyfile < /dev/null
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec caddy caddy reload --config /etc/caddy/Caddyfile < /dev/null
+```
+
+### B3. `.env.prod` (T1)
+
+```bash
+cd ~/apps/ygo-proba/deploy
+cp .env.prod .env.prod.bak-$(date -u +%Y%m%d)      # copie de sûreté (chmod 600 hérité)
+nano .env.prod                                    # ajouter, sans guillemets :
+#   BACKOFFICE_DB_PASSWORD=<valeur de B0>
+#   BACKOFFICE_TOTP_KEY=<valeur de B0>
+#   BACKOFFICE_HOST=admin.scratchrecode.com
+grep -c '^BACKOFFICE_' .env.prod                  # → 3
+```
+
+### B4. Code à jour et `deploy.sh` — aucune question attendue (T1)
+
+Comme C1 puis C3, avec ces différences de sortie :
+
+```bash
+cd ~/apps/ygo-proba && git rev-parse --short HEAD   # noter : commit en service (retour arrière du code)
+cd deploy && bash deploy.sh
+```
+
+- `dc build` construit **deux** images (app, puis admin : restauration NuGet et publication .NET,
+  quelques minutes la première fois) ;
+- `up -d db` **recrée** le conteneur `db` (`Container ygo-proba-db-1 Recreate`) : le montage de
+  `05-backoffice.sql` change sa configuration ; volume conservé (« Skipping initialization ») ;
+  l'app en service perd sa base quelques secondes avant son propre arrêt (comportement connu
+  depuis l'étape 10) ;
+- `arrêt de l'app` : `Container ygo-proba-app-1 Stopped` — pas encore d'`ygo-admin` à ce
+  premier déploiement (aux suivants, il est arrêté aussi) ;
+- inventaire : `19 table(s)` (les trois tables du back-office n'existent pas encore), journal à
+  quatre migrations, effectifs de C2 ;
+- `003 déjà journalisée : … schéma et migrations additives postérieures seulement`, puis
+  `rejeu par stdin : db/schema.sql`, `db/migrations/004-side-plans.sql`,
+  **`db/migrations/005-backoffice.sql`** ;
+- contrôles : `OK|journal 005-backoffice : journalisée`, `OK|colonne v2 users.role : présente`,
+  trois `OK|table v2 backoffice_… : présente`, `OK|rôle testhand_backoffice : présent`,
+  `OK|rôle testhand_backoffice : aucun privilège sur les tables de contenu …`,
+  `OK|rôle testhand_backoffice : decks.name / notes / params / summary illisibles, aucune écriture`,
+  `OK|rôle testhand_backoffice : users en lecture seule`, `OK|rôle testhand_backoffice :
+  sessions.token_hash illisible`, `OK|journal backoffice_audit en ajout seul …`,
+  `OK|lignes du journal du back-office : 0`,
+  **`OK|005 appliquée par cette séquence : users reformée (colonne role ajoutée), effectif N
+  identique, tous les rôles « user »`** (N = comptes notés en C2) et
+  `OK|tables intactes de bout en bout (effectif et contenu) : cards catalog_version
+  user_identities sessions deck_cards deck_starters card_categories` (**sans `users`**, une seule
+  fois : au déploiement suivant, `users` y figure de nouveau) ; aucune `KO|` ;
+- `démarrage de l'app` : d'abord `==> rôle testhand_backoffice : LOGIN et mot de passe posés depuis
+  .env.prod` (le rôle doit pouvoir se connecter avant que le service démarre), puis `up -d` démarre
+  `db`, `app` **et `admin`**. Si la ligne est `ATTENTION : BACKOFFICE_DB_PASSWORD absent de
+  .env.prod`, B3 n'a pas été fait : `db` et `app` sont en service, `admin` ne peut pas se connecter
+  (ou s'arrête au démarrage sans `BACKOFFICE_TOTP_KEY`) ; compléter `.env.prod` et relancer
+  `deploy.sh` (aucune question, aucun effet sur la donnée).
+
+Code **0**, **aucune question**. Toute question : `NON`, comprendre, ne pas relancer.
+
+### B5. Rôle admin et enrôlement TOTP (T1, puis navigateur)
+
+```bash
+cd ~/apps/ygo-proba/deploy
+bash backoffice-role.sh list                                   # → 0 compte(s) admin
+bash backoffice-role.sh grant <email du compte>                # SIMULATION : lire le rapport
+bash backoffice-role.sh grant <email du compte> --apply        # écrit + journal (role.grant, source cli)
+bash backoffice-role.sh list                                   # → 1 compte(s) admin
+```
+
+Puis, après B2 (Caddy rechargé) : https://admin.scratchrecode.com → bandeau **PRODUCTION**,
+formulaire de connexion → email + mot de passe du compte → page « Second facteur » avec le QR et
+le secret en base32 → l'ajouter dans l'application d'authentification (Aegis, 1Password, Google
+Authenticator…) → saisir le code → tableau de bord. L'enrôlement n'est confirmé qu'au premier
+code juste (`totp.enrol` au journal) ; un rechargement de la page avant ce code réutilise le même
+secret.
+
+### B6. Contrôles après mise en ligne (T1, puis navigateur)
+
+```bash
+curl -sI https://admin.scratchrecode.com/ | grep -iE '^(HTTP|location|strict|x-robots|content-security|x-content|referrer|cache-control)'
+#   HTTP/2 302, location: /login, tous les en-têtes présents (CSP posée par le site)
+curl -s https://admin.scratchrecode.com/health          # → ok (aucun détail)
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Cookie: ygo_session=x' https://admin.scratchrecode.com/comptes   # → 302 (cookie de l'app ignoré)
+docker compose --env-file .env.prod -f docker-compose.prod.yml ps        # db, app, admin « Up (healthy) »
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select id from app_migrations order by id" < /dev/null   # cinq lignes
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select action, source, actor_email, at from backoffice_audit order by id" < /dev/null
+#   role.grant (cli), login.success, totp.enrol, totp.success, view.dashboard … — une ligne par consultation
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select has_column_privilege('testhand_backoffice','decks','name','select') as lit_les_decks, has_table_privilege('testhand_backoffice','deck_cards','select') as lit_les_cartes, has_table_privilege('testhand_backoffice','backoffice_audit','delete') as efface_le_journal" < /dev/null
+#   f | f | f
+```
+
+Au navigateur : **Comptes** (liste, recherche, tri, pagination ; « Decks » = nombre, jamais un
+nom), **fiche** d'un compte (sessions actives), **Journal** (chaque page vue y a ajouté une
+ligne), bouton **Thème** (clair / sombre / système, retenu au rechargement), **Déconnexion** ;
+sur un téléphone ou à 360 px, les tableaux défilent horizontalement dans leur cadre.
+
+Le lendemain : `tail -n 2 ~/ygo-backup.log` montre « sauvegarde ok » puis « sauvegarde
+vérifiée » — la vérification restaure dans `ygo_verify` du même cluster, où le rôle existe.
+
+**Admin qui a perdu son authentificateur, ou clé `BACKOFFICE_TOTP_KEY` changée** : le rôle du
+site n'a pas `DELETE` sur `backoffice_totp` (T6) ; en tant que propriétaire, effacer l'enrôlement,
+le prochain accès au back-office le recommence (QR) :
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "delete from backoffice_totp where user_id = (select id from users where lower(email) = lower('<email>'))" < /dev/null
+```
+
+### B7. Retour arrière
+
+Trois niveaux, indépendants :
+
+1. **Back-office seul** (garder 005 et le reste) : retirer le bloc Caddy (B2) et recharger
+   Caddy ; `docker compose --env-file .env.prod -f docker-compose.prod.yml stop admin`. Le rôle
+   admin d'un compte se retire par `bash backoffice-role.sh revoke <email> --apply`.
+2. **Code** : `git checkout <commit noté en B4>`, `build`, puis `up -d --remove-orphans`
+   (l'ancien compose ne connaît pas `admin` : `--remove-orphans` supprime `ygo-admin`). L'ancienne
+   app ignore `users.role` et les tables `backoffice_*` ; 005 est additive, aucune donnée à
+   restaurer. Le conteneur `db` est recréé une fois de plus (montage 005 retiré), volume conservé.
+3. **Données** (seulement si l'état d'avant doit revenir) : archive pré-migration de B4 par
+   `restore.sh`, comme C5. Le rôle `testhand_backoffice` existe dans le cluster : la restauration
+   des `GRANT` passe. Hors VPS, une copie de cette archive se vérifie sur un conteneur jetable
+   (§4b) : `restore.sh --check-only` pré-crée le rôle (lib.sh).
 
 ## Avant de commencer
 

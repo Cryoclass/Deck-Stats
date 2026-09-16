@@ -105,7 +105,9 @@ report ""
 
 # ─── 1. Restauration ───
 say "1. restauration de l'archive dans $CONTAINER"
-if gunzip -c "$ARCHIVE" | db_exec psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -q -f - > "$OUT/restore.log" 2>&1; then
+# Cluster neuf : le rôle du back-office est pré-créé (NOLOGIN) parce qu'une archive prise après 005
+# porte des GRANT vers lui (lib.sh, ensure_backoffice_role).
+if ensure_backoffice_role > "$OUT/restore.log" 2>&1 && gunzip -c "$ARCHIVE" | db_exec psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -q -f - >> "$OUT/restore.log" 2>&1; then
   step_result "1. Restauration de l'archive" ok "$(db_query "select count(*) from pg_tables where schemaname = 'public'") table(s), $(db_query 'select count(*) from decks') deck(s), $(db_query 'select count(*) from cards') carte(s) ($(elapsed))"
 else
   step_result "1. Restauration de l'archive" KO "voir $OUT/restore.log"
