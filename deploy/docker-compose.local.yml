@@ -1,0 +1,69 @@
+# Pile LOCALE complète pour essayer l'app et le back-office sur le poste (jamais en production) :
+#   docker compose -f deploy/docker-compose.local.yml up -d --build      (depuis la racine du dépôt)
+#   docker compose -f deploy/docker-compose.local.yml down -v            (démontage, volume compris)
+# App de jeu : http://localhost:8787 — back-office : http://localhost:8080. Base sur un volume dédié
+# (ygo-local-pgdata), initialisée par le schéma et les migrations 001 à 005 puis deploy/local/ (mot de
+# passe du rôle restreint, valeur locale). Secrets en clair ici parce que tout est local : ne jamais
+# réutiliser ces valeurs ailleurs. Le catalogue se charge à part (cf. deploy/README.md §11).
+name: ygo-local
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: ygo-local-db
+    environment:
+      POSTGRES_USER: ygo
+      POSTGRES_PASSWORD: ygo-local
+      POSTGRES_DB: ygo
+    ports:
+      - '127.0.0.1:55450:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+      - ../db/migrations/001-deck-configuration.sql:/docker-entrypoint-initdb.d/01-deck-configuration.sql:ro
+      - ../db/migrations/002-profiles-and-conditions.sql:/docker-entrypoint-initdb.d/02-profiles-and-conditions.sql:ro
+      - ../db/migrations/003-purge-legacy.sql:/docker-entrypoint-initdb.d/03-purge-legacy.sql:ro
+      - ../db/migrations/004-side-plans.sql:/docker-entrypoint-initdb.d/04-side-plans.sql:ro
+      - ../db/migrations/005-backoffice.sql:/docker-entrypoint-initdb.d/05-backoffice.sql:ro
+      - ./local/06-backoffice-login.local.sql:/docker-entrypoint-initdb.d/06-backoffice-login.local.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ygo -d ygo']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: ygo-local-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ygo:ygo-local@db:5432/ygo
+      NODE_ENV: production
+      INVITE_CODES: local-test
+      APP_ORIGIN: http://localhost:8787
+    ports:
+      - '127.0.0.1:8787:8787'
+
+  admin:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.admin
+    container_name: ygo-local-admin
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      BACKOFFICE_DATABASE_URL: postgres://testhand_backoffice:backoffice-local@db:5432/ygo
+      BACKOFFICE_TOTP_KEY: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+      BACKOFFICE_ENV: DEV
+      BACKOFFICE_HOST: localhost:8080
+    ports:
+      - '127.0.0.1:8080:8080'
+
+volumes:
+  pgdata:
+    name: ygo-local-pgdata

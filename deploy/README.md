@@ -286,6 +286,20 @@ decks, journal `backoffice_audit` en ajout seul) — jamais avec `ygo`.
 - Première mise en ligne : [docs/deploy-runbook.md](../docs/deploy-runbook.md), variante B0–B7
   (DNS, Caddy, `.env.prod`, `deploy.sh`, rôle et enrôlement, contrôles, retour arrière).
 
+## 11. Pile locale complète (essais sur le poste, jamais en production)
+
+```bash
+docker compose -f deploy/docker-compose.local.yml up -d --build   # db (55450), app http://localhost:8787, back-office http://localhost:8080
+docker compose -f deploy/docker-compose.local.yml down -v         # démontage, volume ygo-local-pgdata compris
+```
+
+Volume dédié initialisé par le schéma, 001 à 005 et `deploy/local/06-backoffice-login.local.sql` (mot
+de passe local du rôle restreint). Secrets en clair dans le fichier : valeurs locales, jamais
+réutilisées. Catalogue : le copier depuis la base de dev (`docker exec ygo-proba-db pg_dump -U ygo -d ygo
+--data-only -t cards -t catalog_version | docker exec -i ygo-local-db psql -U ygo -d ygo -q`) ou le charger
+par `migrate-cards.js` depuis le conteneur `app` (§8). Inscription avec le code `local-test` ; rôle admin par
+`TESTHAND_DB_CONTAINER=ygo-local-db bash deploy/backoffice-role.sh grant <email> --apply`.
+
 ## Exploitation courante
 
 ```bash
