@@ -200,7 +200,9 @@ export async function decksRoutes(app: FastifyInstance) {
   });
   app.delete<{ Params: { id: string } }>('/:id', async (req) => {
     if (!uuidPattern.test(req.params.id)) error(404,'Deck introuvable.');
-    await query('delete from decks where id=$1 and owner_id=$2', [req.params.id,requireUser(req).id]);
+    // Deck d'autrui ou inexistant : rien de supprimé → 404, jamais un faux succès (audit 04 O10).
+    const result = await query('delete from decks where id=$1 and owner_id=$2', [req.params.id,requireUser(req).id]);
+    if (!result.rowCount) error(404,'Deck introuvable.');
     return { ok: true };
   });
   for (const path of ['starters','pair-exclusions','start-requirements']) app.put(`/:id/${path}`, async () => error(410,'Rechargez l’application : enregistrement complet du deck requis.'));

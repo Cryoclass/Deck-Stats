@@ -152,3 +152,51 @@ test('une inscription avec un email de 64 000 « @ » et un code valide répond 
   assert.equal(r.statusCode,400,r.body.slice(0,120));assert.deepEqual(r.json(),{ error:'email invalide' });
   assert.ok(ms<50,`inscription hostile traitée en ${ms.toFixed(0)} ms (attendu < 50 ms)`);
 });
+
+// ─── 3. Erreurs : jamais un détail interne au client, messages utiles conservés (04 O10) ───
+
+const noInternalDetail=(body: string) => {
+  assert.equal(JSON.parse(body).code,undefined,body);
+  assert.doesNotMatch(body,/pkey|violates|constraint|2201W|22P02|23505|requireUser|LIMIT must|bigint/,body);
+};
+
+test('une erreur interne répond 500 « erreur interne », sans code SQL ni message',async () => {
+  const r=await inject('GET','/api/audit/unmarked?boom=1',{ session:a.session });
+  assert.equal(r.statusCode,500);assert.deepEqual(r.json(),{ error:'erreur interne' });
+});
+
+test('`limit` de la recherche du catalogue : entier de 1 à 100, sinon 400 explicite, jamais un code SQL',async () => {
+  for (const bad of ['-1','0','0.5','101','abc','1e1']) {
+    const r=await inject('GET',`/api/cards/search?q=audit&limit=${bad}`,{ session:a.session });
+    assert.equal(r.statusCode,400,`limit=${bad} → ${r.statusCode} ${r.body.slice(0,120)}`);
+    noInternalDetail(r.body);assert.match(r.json().error,/limit/);
+  }
+  for (const ok of ['1','30','100']) assert.equal((await inject('GET',`/api/cards/search?q=audit&limit=${ok}`,{ session:a.session })).statusCode,200,`limit=${ok}`);
+  assert.equal((await inject('GET','/api/cards/search?q=audit',{ session:a.session })).statusCode,200);
+});
+
+test('les erreurs de validation gardent leur message : configuration invalide 400, JSON invalide 400, deck inconnu 404, 11e connexion 429',async () => {
+  const bad=await inject('POST','/api/decks',{ session:a.session,payload:{ version:2 } });
+  assert.equal(bad.statusCode,400,bad.body);assert.ok(bad.json().error.length>0);noInternalDetail(bad.body);
+  const json=await inject('POST','/api/decks',{ session:a.session,payload:'{oups',headers:{ 'content-type':'application/json' } });
+  assert.equal(json.statusCode,400,json.body);assert.ok(json.json().error.length>0);noInternalDetail(json.body);
+  const missing=await inject('GET',`/api/decks/${randomUUID()}`,{ session:a.session });
+  assert.equal(missing.statusCode,404);assert.deepEqual(missing.json(),{ error:'Deck introuvable.' });
+  // 10 connexions / min par IP (route publique) : la limite répond 429 avec un message, jamais 500.
+  let last: Awaited<ReturnType<typeof inject>> | undefined;
+  for (let i=0;i<11;i++) last=await inject('POST','/api/auth/login',{ payload:{ email:EMAIL_B,password:'faux' } });
+  assert.equal(last!.statusCode,429,last!.body);assert.ok(String(last!.json().error).length>0);noInternalDetail(last!.body);
+});
+
+test('supprimer le deck d’un autre compte répond 404 et ne supprime rien ; le sien 200 puis 404',async () => {
+  const created=await inject('POST','/api/decks',{ session:a.session,payload:emptyConfiguration('Audit') });
+  assert.equal(created.statusCode,201,created.body);
+  const id=created.json().id as string;
+  const other=await inject('DELETE',`/api/decks/${id}`,{ session:b.session });
+  assert.equal(other.statusCode,404,other.body);assert.deepEqual(other.json(),{ error:'Deck introuvable.' });
+  assert.equal((await inject('GET',`/api/decks/${id}`,{ session:a.session })).statusCode,200,'deck de A intact');
+  assert.equal((await inject('DELETE',`/api/decks/${randomUUID()}`,{ session:a.session })).statusCode,404);
+  const own=await inject('DELETE',`/api/decks/${id}`,{ session:a.session });
+  assert.equal(own.statusCode,200,own.body);assert.deepEqual(own.json(),{ ok:true });
+  assert.equal((await inject('GET',`/api/decks/${id}`,{ session:a.session })).statusCode,404);
+});

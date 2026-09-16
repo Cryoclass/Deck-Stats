@@ -10,6 +10,9 @@ const CARD_COLS =
 /** Taille maximale d'une vignette relayée : une vignette du CDN pèse quelques dizaines de ko. */
 const CARD_IMAGE_MAX_BYTES = 2_000_000;
 
+const SEARCH_LIMIT_DEFAULT = 30;
+const SEARCH_LIMIT_MAX = 100;
+
 export async function cardsRoutes(app: FastifyInstance, opts: { fetchImage?: typeof fetch } = {}) {
   const fetchImage = opts.fetchImage ?? fetch;
   // Catalogue réservé aux comptes (textes de Konami, audit 03 B2) : derrière la garde globale,
@@ -33,10 +36,15 @@ export async function cardsRoutes(app: FastifyInstance, opts: { fetchImage?: typ
   // Recherche par nom. GET /api/cards/search?q=dragon&limit=30
   app.get<{ Querystring: { q?: string; limit?: string } }>(
     '/search',
-    async (req) => {
+    async (req, reply) => {
       requireUser(req);
       const q = (req.query.q ?? '').trim();
-      const limit = Math.min(Number(req.query.limit ?? 30) || 30, 100);
+      // Audit 04 O10 : `limit=-1` ou `0.5` partaient tels quels en SQL (500 avec le code SQL).
+      const rawLimit = req.query.limit;
+      const limit = rawLimit === undefined ? SEARCH_LIMIT_DEFAULT : Number(rawLimit);
+      if (rawLimit !== undefined && (!/^\d+$/.test(rawLimit) || limit < 1 || limit > SEARCH_LIMIT_MAX)) {
+        return reply.code(400).send({ error: `paramètre \`limit\` invalide : entier de 1 à ${SEARCH_LIMIT_MAX}` });
+      }
       if (q.length < 2) return [];
       const { rows } = await query(
         `select ${CARD_COLS} from cards

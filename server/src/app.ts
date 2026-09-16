@@ -45,6 +45,20 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
 
   app.decorateRequest('user', null);
 
+  // Gestionnaire d'erreurs (audit 04 O10) : sans lui, Fastify renvoyait au client le message
+  // et le code de toute exception — codes et contraintes SQL compris. Une erreur à statut
+  // client explicite (`ConfigurationError` 400, `error(404, …)` des routes, 413 / 429 / JSON
+  // invalide de Fastify et de ses plugins) garde son message ; tout le reste est une erreur
+  // interne : journal seulement, réponse générique.
+  app.setErrorHandler((err: Error & { statusCode?: number }, req, reply) => {
+    const status = typeof err.statusCode === 'number' ? err.statusCode : 500;
+    if (status >= 400 && status < 500) {
+      return reply.code(status).send({ error: err.message });
+    }
+    req.log.error(err);
+    return reply.code(500).send({ error: 'erreur interne' });
+  });
+
   // Garde globale (itération 8, refaite à l'audit 04 O1) : décidée sur la route résolue,
   // privée par défaut ; une route publique le déclare par `config: { public: true }`.
   // Public aujourd'hui : health, inscription / connexion / fournisseurs / déconnexion,
