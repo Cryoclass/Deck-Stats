@@ -8,7 +8,9 @@ public static class Fmt
 {
     public static string Date(DateTimeOffset? d) => d is { } v ? v.ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture) : "—";
     public static string DateShort(DateTimeOffset? d) => d is { } v ? v.ToUniversalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "—";
-    public static string Num(long n) => n.ToString("N0", CultureInfo.GetCultureInfo("fr-FR")).Replace(' ', ' ').Replace(' ', ' ');
+    // Sans culture nommée : l'image aspnet Alpine tourne en mode « globalization invariant » (pas d'ICU),
+    // CultureInfo.GetCultureInfo("fr-FR") y lève une exception. Séparateur de milliers = espace.
+    public static string Num(long n) => n.ToString("N0", CultureInfo.InvariantCulture).Replace(',', ' ');
     public static string ShortId(Guid? id) => id is { } g ? g.ToString("D")[..8] + "…" : "—";
     public static string Text(string? s) => string.IsNullOrEmpty(s) ? "—" : s;
     public static string Ua(string? ua)
