@@ -11,7 +11,7 @@ Procédure d'exécution, commande par commande, avec les scripts de `deploy/` (`
   docs/etape-8.md « Compte rendu 8C ») : volume recréé, 001–003 jouées par `initdb`, catalogue
   rechargé. Conservée telle quelle ; l'incident du premier `deploy.sh` est consigné en V4.
 - **« Première mise en ligne du back-office »** (B0–B7, ci-dessous après C6) : migration additive
-  `005-backoffice.sql`, service `admin`, DNS `admin.scratchrecode.com`, bloc Caddy, rôle admin d'un
+  `005-backoffice.sql`, service `admin`, DNS `bo.scratchrecode.com`, bloc Caddy, rôle admin d'un
   compte par `backoffice-role.sh`, enrôlement TOTP. Aucune question attendue.
 - **« Base conservée »** (§3 à §5, pour mémoire) : migration 001 → 002 → 003 d'une base pré-001
   avec simulation, rapport et acceptation `OUI` ; répétée sur le dump réel en 8B, jamais jouée
@@ -265,7 +265,7 @@ Deux niveaux, indépendants :
 > inchangés, §6 est adapté dans la variante, §7 et §8 restent valables. Les §3 à §5 sont
 > conservés pour mémoire : ils décrivent la migration d'une base conservée.
 
-## Variante « première mise en ligne du back-office » — admin.scratchrecode.com (B0–B7)
+## Variante « première mise en ligne du back-office » — bo.scratchrecode.com (B0–B7)
 
 État attendu de la production avant de commencer : base non vide, `app_migrations` = 001, 002,
 003, 004, cron `backup.sh` en place, code `4cf9493` ou postérieur en service. Ce que ce lot change
@@ -297,9 +297,9 @@ email + mot de passe ; un compte Discord seul ne peut pas se connecter au back-o
 
 ### B1. DNS (Cloudflare)
 
-`admin.scratchrecode.com` → **A** → `137.74.172.32`, **DNS only (nuage gris)** — même contrainte
+`bo.scratchrecode.com` → **A** → `137.74.172.32`, **DNS only (nuage gris)** — même contrainte
 que `analysis` : Caddy obtient son certificat par challenge HTTP-01. Vérifier la propagation
-avant B2 : `dig +short admin.scratchrecode.com` → `137.74.172.32`.
+avant B2 : `dig +short bo.scratchrecode.com` → `137.74.172.32`.
 
 ### B2. Bloc Caddy (stack goldfish, hors dépôt)
 
@@ -307,7 +307,7 @@ Dans le `Caddyfile` de goldfish, ajouter — en-têtes de sécurité compris, HS
 site pose les autres lui-même, docs/backoffice.md T10 ; Caddy termine TLS, HSTS est à lui) :
 
 ```caddyfile
-admin.scratchrecode.com {
+bo.scratchrecode.com {
   encode zstd gzip
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -338,7 +338,7 @@ cp .env.prod .env.prod.bak-$(date -u +%Y%m%d)      # copie de sûreté (chmod 60
 nano .env.prod                                    # ajouter, sans guillemets :
 #   BACKOFFICE_DB_PASSWORD=<valeur de B0>
 #   BACKOFFICE_TOTP_KEY=<valeur de B0>
-#   BACKOFFICE_HOST=admin.scratchrecode.com
+#   BACKOFFICE_HOST=bo.scratchrecode.com
 grep -c '^BACKOFFICE_' .env.prod                  # → 3
 ```
 
@@ -395,7 +395,7 @@ bash backoffice-role.sh grant <email du compte> --apply        # écrit + journa
 bash backoffice-role.sh list                                   # → 1 compte(s) admin
 ```
 
-Puis, après B2 (Caddy rechargé) : https://admin.scratchrecode.com → bandeau **PRODUCTION**,
+Puis, après B2 (Caddy rechargé) : https://bo.scratchrecode.com → bandeau **PRODUCTION**,
 formulaire de connexion → email + mot de passe du compte → page « Second facteur » avec le QR et
 le secret en base32 → l'ajouter dans l'application d'authentification (Aegis, 1Password, Google
 Authenticator…) → saisir le code → tableau de bord. L'enrôlement n'est confirmé qu'au premier
@@ -405,10 +405,10 @@ secret.
 ### B6. Contrôles après mise en ligne (T1, puis navigateur)
 
 ```bash
-curl -sI https://admin.scratchrecode.com/ | grep -iE '^(HTTP|location|strict|x-robots|content-security|x-content|referrer|cache-control)'
+curl -sI https://bo.scratchrecode.com/ | grep -iE '^(HTTP|location|strict|x-robots|content-security|x-content|referrer|cache-control)'
 #   HTTP/2 302, location: /login, tous les en-têtes présents (CSP posée par le site)
-curl -s https://admin.scratchrecode.com/health          # → ok (aucun détail)
-curl -s -o /dev/null -w '%{http_code}\n' -H 'Cookie: ygo_session=x' https://admin.scratchrecode.com/comptes   # → 302 (cookie de l'app ignoré)
+curl -s https://bo.scratchrecode.com/health          # → ok (aucun détail)
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Cookie: ygo_session=x' https://bo.scratchrecode.com/comptes   # → 302 (cookie de l'app ignoré)
 docker compose --env-file .env.prod -f docker-compose.prod.yml ps        # db, app, admin « Up (healthy) »
 docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select id from app_migrations order by id" < /dev/null   # cinq lignes
 docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U ygo -d ygo -c "select action, source, actor_email, at from backoffice_audit order by id" < /dev/null

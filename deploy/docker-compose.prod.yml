@@ -60,7 +60,7 @@ services:
       - default
       - edge
 
-  # Back-office (docs/backoffice.md, T14) : admin.scratchrecode.com, joint par le Caddy goldfish via
+  # Back-office (docs/backoffice.md, T14) : bo.scratchrecode.com, joint par le Caddy goldfish via
   # `edge` (reverse_proxy ygo-admin:8080). Aucun port publié. Se connecte avec le rôle PostgreSQL
   # restreint testhand_backoffice (mot de passe posé par deploy.sh depuis BACKOFFICE_DB_PASSWORD),
   # jamais avec `ygo`. Arrêté par deploy.sh et restore.sh pendant la séquence (il écrit dans le
@@ -79,7 +79,7 @@ services:
       BACKOFFICE_TOTP_KEY: ${BACKOFFICE_TOTP_KEY:-} # vide = le service admin s'arrête au démarrage (message nommant la variable)
       BACKOFFICE_ENV: PRODUCTION
       BACKOFFICE_TRUST_PROXY: '1' # limite de débit par IP réelle (X-Forwarded-For posé par Caddy)
-      BACKOFFICE_HOST: ${BACKOFFICE_HOST:-admin.scratchrecode.com}
+      BACKOFFICE_HOST: ${BACKOFFICE_HOST:-bo.scratchrecode.com}
     healthcheck:
       test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:8080/health']
       interval: 30s

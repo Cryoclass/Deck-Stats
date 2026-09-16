@@ -88,7 +88,7 @@ aussi. `theme.js` lit `localStorage.th_theme` (`light` | `dark` | absent = syst�
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ ▮ PRODUCTION · admin.scratchrecode.com          (bandeau) │  24 px, neg (PROD) / info (DEV)
+│ ▮ PRODUCTION · bo.scratchrecode.com          (bandeau) │  24 px, neg (PROD) / info (DEV)
 ├──────────────────────────────────────────────────────────┤
 │ Testhand · Back-office   Tableau de bord  Comptes  Journal│  en-tête, bg-sunken, 44 px
 │                             celian@… · Thème · Déconnexion │

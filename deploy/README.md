@@ -251,7 +251,7 @@ arrière par `restore.sh`, puis démonte. Rapport : `deploy/out/rehearsal-<horod
 Le dossier `deploy/out/` est ignoré par git et contient des archives complètes : ne pas le
 partager.
 
-## 10. Back-office — admin.scratchrecode.com (docs/backoffice.md)
+## 10. Back-office — bo.scratchrecode.com (docs/backoffice.md)
 
 Site d'administration séparé (`admin/`, .NET 10, Razor Pages), en lecture seule dans ce lot :
 connexion par mot de passe du compte + TOTP obligatoire, session de 8 h absolues, tableau de bord,
