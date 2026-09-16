@@ -1,0 +1,24 @@
+@page "/login"
+@model Testhand.Admin.Pages.LoginModel
+@{
+    ViewData["Title"] = "Connexion";
+}
+<div class="narrow">
+    <h1 class="title">Connexion</h1>
+    <p class="meta">Compte de l'app avec le rôle admin, mot de passe puis second facteur. Chaque tentative est journalisée.</p>
+    @if (Model.Error is not null)
+    {
+        <div class="banner neg" role="alert">@Model.Error</div>
+    }
+    <form method="post" class="form">
+        <div class="field">
+            <label for="Email">Email</label>
+            <input id="Email" name="Email" type="email" autocomplete="username" required maxlength="254" value="@Model.Email" />
+        </div>
+        <div class="field">
+            <label for="Password">Mot de passe</label>
+            <input id="Password" name="Password" type="password" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn primary">Se connecter</button>
+    </form>
+</div>
