@@ -1,7 +1,8 @@
 -- Annotations par défaut (docs/annotations-par-defaut.md §11 « Réponses » et §13 « Modèle révisé
 -- pour la partie C ») — cinquième profil de disponibilité « réactive » (partie B), puis rôle
 -- `referent`, choix du compte par aspect, référence commune et son journal, groupe fourni de base
--- « Mulcharmy », résumés invalidés (partie C, lot C1).
+-- « Mulcharmy », résumés invalidés (partie C, lot C1), puis avis fermés par compte `user_notices`
+-- (partie D, lot D1).
 --
 -- Deux zones, volontairement séparées :
 --   • le DDL vit HORS de tout marqueur de journal et reste idempotent, parce que ce fichier a été
@@ -174,6 +175,25 @@ do $$ begin
   end if;
 end $$;
 
+-- ─── Avis d'interface fermés par compte (partie D, lot D1 ; §11 Q8, D9) ───
+-- Une ligne = « ce compte a fermé cet avis » ; la fermeture est retenue côté serveur, donc sur
+-- tous les appareils du compte. Table MODIFIABLE (pas d'ajout seul : c'est un état, pas un
+-- journal) ; la suppression du compte emporte ses lignes. `notice` est une liste fermée, tenue aussi par
+-- `server/src/auth/notices.ts`. Le CHECK est anonyme dans un `create table if not exists` : modifier la
+-- liste ICI n'aurait aucun effet sur une base où la table existe ; une clé nouvelle exigera une migration
+-- qui retrouve la contrainte par `pg_constraint`, la supprime et la recrée (méthode de
+-- `card_flags_availability_check` plus haut).
+-- Règle d'affichage (server/src/routes/auth.ts, `/api/auth/me`) : l'avis « annotation-defaults »
+-- est dû à un compte créé AVANT l'application du marqueur « 006-annotation-defaults/c » et sans
+-- ligne ici ; un compte créé après n'a jamais eu d'anciens chiffres.
+-- Aucun privilège pour `testhand_backoffice` (contenu du compte ; check-migration.sql met un KO).
+create table if not exists user_notices (
+  user_id      uuid not null references users on delete cascade,
+  notice       text not null check (notice in ('annotation-defaults')),
+  dismissed_at timestamptz not null default now(),
+  primary key (user_id, notice)
+);
+
 -- ─── Données, UNE SEULE FOIS (second marqueur « 006-annotation-defaults/c ») ───
 -- Q2 : une ligne `is_hopt = false` d'avant le chantier était indiscernable d'un clic « retirer » et
 -- d'un profil posé — elle repasse donc à « hérite ». Un compte qui avait posé un profil avait, lui,
@@ -207,6 +227,9 @@ do $$ begin
   end if;
   if to_regclass('public.card_references') is null or to_regclass('public.card_reference_log') is null then
     raise exception '006-annotation-defaults : card_references ou card_reference_log absente après le DDL';
+  end if;
+  if to_regclass('public.user_notices') is null then
+    raise exception '006-annotation-defaults : user_notices absente après le DDL';
   end if;
   if not exists (select 1 from app_migrations where id = '006-annotation-defaults/c') then
     raise exception '006-annotation-defaults : marqueur de données « /c » absent après le bloc de données';

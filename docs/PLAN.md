@@ -54,7 +54,7 @@ par un référent → choix du compte.
 | A — détection | `server/src/domain/cardDefaults.ts` (pur, partagé, dans `__ENGINE_VERSION__`), fixtures de textes réels, tests d'accord avec les choix existants, `scripts/annotations-report.ts` | ✅ Terminée le 16 sept. 2026 — HOPT `byName` seul (4 623 cartes du catalogue), profils par 4 gabarits (réactive / flexible / précoce + plafond Mulcharmy / board breaker), 97 des 99 HOPT du compte expert retrouvés sur 126 cartes jouées, 7 tests, 6 mutations détectées (docs/annotations-par-defaut.md §12). |
 | B — contrat et moteur | Profil `reactive` (contrat §3, moteur, oracle, libellés), porte profil / étiquette levée (cas Q1 réécrit sur décision, garde serveur), migration 006 ouverte, tag `annotations-b-ok` | ✅ Terminée le 16 sept. 2026 — profil réactif (moteur, oracle N01, pont B02), porte levée (Q1 réécrit sur décision, gardes serveur / store / grille), 006 (contrainte CHECK, branchée partout, 99 gardes A–J, répétition conforme), 291 web + 21 serveur, 12 + 14 + 11 PostgreSQL, 10 scénarios e2e, 5 mutations détectées (docs/annotations-par-defaut.md §14). |
 | C — modèle et persistance | Migration 006 (rôle `referent`, `is_hopt` nullable, `nonengine_choice`, groupe fourni de base, `card_references` + journal, résumés à NULL), routes, `effectiveLibrary.ts`, archive JSON, `prune-stale-cards`, `backoffice-role.sh`, séquence de déploiement, rapport d'écart, tag `annotations-c-ok` | ✅ Terminée le 17 sept. 2026 — 006 étendue (données une fois sous `/c`), routes de choix par aspect et de références (référent, 404, journal, invalidation tous comptes), bibliothèque effective dans le store et hors éditeur, archive et purge du catalogue, rapport d'écart (`--gap` : P(≥ 1) et brick inchangés sur les 16 decks du 8 sept., E[U] seul change) ; 301 web + 22 serveur, 12 + 17 + 13 PostgreSQL, 130 gardes A–J, répétition conforme, 10 scénarios e2e, 10 mutations détectées, relecture indépendante (docs/annotations-par-defaut.md §15). |
-| D — interface | Pastilles d'origine, retour au défaut, bandeau, mode Non-engine par profil, formulaire et page de référence, e2e `defaults`, docs, tag `annotations-d-ok` | À faire |
+| D — interface | Pastilles d'origine, retour au défaut, bandeau, mode Non-engine par profil, formulaire et page de référence, e2e `defaults`, docs, tag `annotations-d-ok` | ✅ Terminée le 17 sept. 2026 — réponses préalables (adopter puis retirer, bandeau par compte, /references aux référents) ; `user_notices` dans 006 et route de fermeture ; mode Non-engine unique (poser / adopter / retirer) ; badges d'origine, retour au défaut, formulaire et page de référence, bandeau ; e2e `defaults` ; 309 web + 22 serveur, 13 + 17 + 13 PostgreSQL, 133 gardes A–J, 11 scénarios e2e, répétition conforme, 9 mutations détectées, relecture indépendante (docs/annotations-par-defaut.md §16). |
 
 ## Reports connus (à reprendre dans l'étape indiquée)
 
@@ -65,6 +65,15 @@ par un référent → choix du compte.
 ## Compte rendu de la dernière étape
 
 À mettre à jour en fin de chaque tâche (remplacer le contenu, l'historique reste dans docs/etapes-*.md et git).
+
+- **Date** : 17 septembre 2026.
+- **Étape** : hors numérotation, annotations par défaut, partie D (docs/annotations-par-defaut.md §16). Tag `annotations-d-ok`, rien poussé. **Chantier clos** (A–D).
+- **Livré** : bandeau par compte (`user_notices` dans 006, `/api/auth/me` → `notices`, fermeture), mode Non-engine unique, badges d'origine, retour au défaut, formulaire de référence et page `/references`, scénario e2e `defaults`, contrat §9.
+- **Vérifications exécutées** : typecheck, build, test-quiet (309 web, 22 serveur), `test:integration` (13 + 17 + 13), `test-migration-sequence.sh` (133 gardes), e2e (11 scénarios), `rehearsal.sh --fixture` conforme, 9 mutations détectées.
+- **Non fait / reporté** : déploiement (runbook « déploiement courant » avec migration 006, recrée le conteneur `db`) ; attribution du premier référent (`backoffice-role.sh grant <email> --role referent`) ; `referencesVersion` lue par aucun client ; tests unitaires de `DefaultsNotice`.
+- **Prochaine action** (utilisateur) : relire les comptes rendus §15–§16, pousser la branche et les tags, puis décider du déploiement.
+
+Compte rendu précédent (partie C, même jour) :
 
 - **Date** : 17 septembre 2026.
 - **Étape** : hors numérotation, annotations par défaut, partie C (docs/annotations-par-defaut.md §15). Tag `annotations-c-ok`, rien poussé.

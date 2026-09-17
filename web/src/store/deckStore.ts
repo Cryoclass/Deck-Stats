@@ -139,10 +139,10 @@ interface State {
   addCategory: (name: string) => void;
   deleteCategory: (id: string) => void;
   toggleCardCategory: (cardId: number, categoryId: string) => void;
-  /** Mode Non-engine combiné (9B) : rend la carte conforme au couple étiquette + profil (`null`
-   *  = profil inchangé) ; si elle le porte déjà exactement, retire l'étiquette puis, s'il ne
-   *  reste aucune étiquette, le profil. Deux requêtes au plus, dans l'ordre, dans la file globale. */
-  applyNonEngine: (cardId: number, categoryId: string, profile: Availability | null) => void;
+  /** Mode Non-engine (partie D) : `categoryId` et `profile` facultatifs, jamais les deux absents. */
+  applyNonEngine: (cardId: number, categoryId: string | null, profile: Availability | null) => void;
+  saveReference: (cardId: number, reference: Omit<CardReference, 'card_id'>) => void;
+  clearReference: (cardId: number) => void;
   setProfile: (cardId: number, availability: Availability | null) => void;
   setCardGroup: (cardId: number, groupId: string | null) => void;
   addGroup: (name: string, capPerTurn: number) => void;
@@ -790,30 +790,44 @@ export const useDeck = create<State>((set, get) => {
         cc.set(cardId,cats);set({ cardCategories: cc });libraryCalc();
       });
     },
-    // Étape 9B — mode Non-engine combiné. L'effet est décidé au clic sur l'état adopté (acquitté),
-    // puis rejoué dans la file : l'étiquette d'abord, le profil ensuite (ordre conservé bien que le
-    // serveur n'exige plus d'étiquette avant un profil depuis le 16 septembre 2026, D14′) ; en
-    // retrait, l'étiquette puis le profil devenu orphelin.
-    // Chaque écriture est adoptée après son acquittement ; une erreur arrête la paire et laisse
-    // l'état tel qu'acquitté (persistenceError).
+    // Mode Non-engine (partie D, lib/nonEngine.ts) : l'effet est décidé au clic sur l'état adopté
+    // (acquitté), puis rejoué dans la file — étiquette d'abord, profil ensuite ; en retrait, l'étiquette
+    // demandée puis le profil (choix « pas non-engine »). Chaque écriture est adoptée après son
+    // acquittement ; une erreur arrête la suite et laisse l'état tel qu'acquitté (persistenceError).
     applyNonEngine(cardId, categoryId, profile) {
       persist(set, async () => {
-        const has = get().cardCategories.get(cardId)?.has(categoryId) ?? false;
+        const has = categoryId !== null && (get().cardCategories.get(cardId)?.has(categoryId) ?? false);
         const current = get().profiles.get(cardId)?.availability ?? null;
-        const conforming = nonEngineEffect(has,current,profile) === 'retirer';
+        const effect = nonEngineEffect({ hasLabel: has,profile: current,origin: get().origin.get(cardId)?.nonengine ?? null },categoryId,profile);
+        if (effect === null) return;
         const setCats = (cats: Set<string>) => { const cc = new Map(get().cardCategories); cc.set(cardId,cats); set({ cardCategories: cc }); };
-        if (!conforming) {
-          if (!has) { await api.addCardCategory(cardId,categoryId); setCats(new Set([...(get().cardCategories.get(cardId) ?? []),categoryId])); }
-          if (profile !== null && current !== profile) adoptFlags(cardId, await api.setFlags(cardId,{ availability: profile,inherited: inheritedOf(cardId) }));
+        if (effect === 'retirer') {
+          if (categoryId !== null && has) {
+            await api.removeCardCategory(cardId,categoryId);
+            setCats(new Set([...(get().cardCategories.get(cardId) ?? [])].filter((id) => id !== categoryId)));
+          }
+          if (profile !== null) adoptFlags(cardId, await api.setFlags(cardId,{ availability: null }));
         } else {
-          await api.removeCardCategory(cardId,categoryId);
-          const remaining = new Set([...(get().cardCategories.get(cardId) ?? [])].filter((id) => id !== categoryId));
-          setCats(remaining);
-          // Partie C : seul un profil CHOISI est l'effet d'un geste « poser » ; un profil hérité (détection,
-          // référence) n'a pas été posé par le mode et reste en place (sinon « pas non-engine » explicite).
-          if (remaining.size === 0 && get().profiles.has(cardId) && get().origin.get(cardId)?.nonengine === 'choice') adoptFlags(cardId, await api.setFlags(cardId,{ availability: null }));
+          if (categoryId !== null && !has) { await api.addCardCategory(cardId,categoryId); setCats(new Set([...(get().cardCategories.get(cardId) ?? []),categoryId])); }
+          // `adopter` écrit la même valeur : le serveur matérialise l'héritage, la carte devient un choix.
+          if (profile !== null && (current !== profile || effect === 'adopter')) adoptFlags(cardId, await api.setFlags(cardId,{ availability: profile,inherited: inheritedOf(cardId) }));
         }
         libraryCalc();
+      });
+    },
+    /** Référence commune (référent, partie D) : écrite puis adoptée pour toutes les cartes du store. */
+    saveReference(cardId, reference) {
+      persist(set, async () => {
+        const saved = await api.setReference(cardId, reference);
+        const references = new Map(get().references); references.set(cardId, { ...saved.reference, card_id: cardId });
+        set({ references }); deriveEffective(); libraryCalc();
+      });
+    },
+    clearReference(cardId) {
+      persist(set, async () => {
+        await api.clearReference(cardId);
+        const references = new Map(get().references); references.delete(cardId);
+        set({ references }); deriveEffective(); libraryCalc();
       });
     },
     // ─── Profils de disponibilité et plafonds partagés (étape 5B, contrat §3) ───
@@ -851,6 +865,7 @@ export const useDeck = create<State>((set, get) => {
       persist(set, async () => {
         const updated = await api.updateGroup(id,patch);
         set({ groups: get().groups.map((g) => (g.id === id ? updated : g)) });
+        deriveEffective(); // un plafond de référence se résout par son nom
         recompute();
       });
     },

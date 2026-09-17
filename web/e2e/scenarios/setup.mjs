@@ -22,6 +22,14 @@ export default async function setup() {
   const done = async () => { await page.click('button:has-text("Terminer")'); };
   const modeBtn = (label) => page.locator('div.flex.shrink-0 button').filter({ hasText: label }).first();
   const menuItem = (text) => page.locator('[role="menuitem"]', { hasText: text });
+  /** Mode Non-engine (partie D) : profil (`none` = étiquette seule) puis étiquette facultative. */
+  const nonEngine = async (profile, label) => {
+    await page.click('[data-mode-trigger="nonengine"]');
+    await page.click(`[data-ne-profile="${profile}"]`);
+    await page.click('[data-mode-trigger="nonengine"]');
+    await page.click(`[data-ne-label="${label}"]`);
+    await page.waitForTimeout(150);
+  };
 
   const importDeck = async (name, lines) => {
     await page.goto('/decks');
@@ -69,29 +77,17 @@ export default async function setup() {
   await page.waitForTimeout(300);
   await done();
 
-  await modeBtn('Non-engine').click();
-  await menuItem('Handtrap').click();
-  for (const n of ['Handtrap Epsilon', 'Handtrap Zeta', 'Mulcharmy Eta', 'Mulcharmy Theta', 'Quick-Play Iota']) {
-    await tile(page, n).click();
-    await page.waitForTimeout(150);
-  }
-  await modeBtn('Non-engine').click();
-  await menuItem('Board breaker').click();
-  await tile(page, 'Breaker Kappa').click();
-  await page.waitForTimeout(300);
-  await done();
-
-  await modeBtn('Profil').click();
-  await menuItem('Flexible').click();
-  await tile(page, 'Handtrap Epsilon').click();
-  await tile(page, 'Handtrap Zeta').click();
-  await modeBtn('Profil').click();
-  await menuItem('Précoce').click();
-  await tile(page, 'Mulcharmy Eta').click();
-  await tile(page, 'Mulcharmy Theta').click();
-  await modeBtn('Profil').click();
-  await menuItem('Préparée').click();
+  // Partie D : un seul mode Non-engine (profil + étiquette facultative). Même fixture qu'avant :
+  // Handtrap + Flexible / Précoce / Préparée, Board breaker seule sur Breaker Kappa.
+  await nonEngine('flexible', 'Handtrap');
+  for (const n of ['Handtrap Epsilon', 'Handtrap Zeta']) { await tile(page, n).click(); await page.waitForTimeout(250); }
+  await nonEngine('early', 'Handtrap');
+  for (const n of ['Mulcharmy Eta', 'Mulcharmy Theta']) { await tile(page, n).click(); await page.waitForTimeout(250); }
+  await nonEngine('prepared', 'Handtrap');
   await tile(page, 'Quick-Play Iota').click();
+  await page.waitForTimeout(250);
+  await nonEngine('none', 'Board breaker');
+  await tile(page, 'Breaker Kappa').click();
   await page.waitForTimeout(400);
   await done();
   // Breaker Kappa : étiquetée, volontairement sans profil.

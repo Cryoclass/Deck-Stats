@@ -34,6 +34,8 @@ export function CardMenu({
   const toggleDeadSecond = useDeck((s) => s.toggleDeadSecond);
   const setProfile = useDeck((s) => s.setProfile);
   const setCardGroup = useDeck((s) => s.setCardGroup);
+  const origin = useDeck((s) => s.origin.get(cardId));
+  const resetAnnotation = useDeck((s) => s.resetAnnotation);
 
   const name = (id: number) => cards[id]?.name ?? `#${id}`;
   const combos = pairs.filter((p) => p.card_a_id === cardId || p.card_b_id === cardId);
@@ -100,6 +102,22 @@ export function CardMenu({
           <Radio checked={!profile} onSelect={() => setProfile(cardId, null)}>
             <span className="text-fg-3">Aucun (non comptée)</span>
           </Radio>
+
+          {/* Annotations par défaut (D9) : oublier un choix du compte, par aspect. */}
+          {(origin?.hopt === 'choice' || origin?.nonengine === 'choice') && (
+            <>
+              <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
+              <div className="px-2 py-0.5 text-meta uppercase tracking-wide text-fg-3">
+                Revenir au défaut
+              </div>
+              {origin?.hopt === 'choice' && (
+                <Item onSelect={() => resetAnnotation(cardId, 'hopt')}>HOPT : oublier mon choix</Item>
+              )}
+              {origin?.nonengine === 'choice' && (
+                <Item onSelect={() => resetAnnotation(cardId, 'nonengine')}>Profil et plafond : oublier mon choix</Item>
+              )}
+            </>
+          )}
 
           {/* Plafond partagé (Q2) : proposé seulement à une carte profilée. */}
           {profile && (

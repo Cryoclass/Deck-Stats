@@ -67,6 +67,13 @@ export interface LibraryChoice {
 }
 /** D'où vient une valeur effective (R1) : choix du compte, référence commune, détection textuelle. */
 export type AnnotationOrigin = 'choice' | 'reference' | 'detection';
+/** Pastilles d'origine (D9) : court sur la tuile, long dans le détail de carte. */
+export const ORIGIN_SHORT: Record<AnnotationOrigin, string> = { choice: 'vous', reference: 'réf.', detection: 'auto' };
+export const ORIGIN_LABEL: Record<AnnotationOrigin, string> = {
+  choice: 'votre choix (ce compte seulement)',
+  reference: 'référence commune, posée par un référent',
+  detection: 'détecté automatiquement depuis le texte de la carte',
+};
 export interface CardOrigin {
   hopt: AnnotationOrigin | null;
   nonengine: AnnotationOrigin | null;

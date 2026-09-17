@@ -32,19 +32,18 @@ export function AnnotationGrid({
   const toggleHopt = useDeck((s) => s.toggleHopt);
   const toggleStarter = useDeck((s) => s.toggleStarter);
   const profiles = useDeck((s) => s.profiles);
+  const origin = useDeck((s) => s.origin);
   const applyNonEngine = useDeck((s) => s.applyNonEngine);
-  const setProfile = useDeck((s) => s.setProfile);
   const startConditions = useDeck((s) => s.startConditions);
   const toggleRequirement = useDeck((s) => s.toggleRequirement);
   const extraSideHidden = useDeck((s) => s.extraSideHidden);
   const setExtraSideHidden = useDeck((s) => s.setExtraSideHidden);
 
   const [mode, setMode] = useState<AnnotationMode>('select');
+  // Mode Non-engine (partie D) : profil posé (`null` = étiquette seule) et étiquette facultative
+  // (`null` = aucune). Par défaut : Flexible, sans étiquette — le profil seul fait compter (D14′).
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
-  // Étape 9B : profil posé avec l'étiquette par le mode Non-engine ; `null` = profil inchangé
-  // (valeur par défaut : l'étiquette seule, comportement d'avant 9B — docs/etape-9.md).
-  const [nonEngineProfile, setNonEngineProfile] = useState<Availability | null>(null);
-  const [activeProfile, setActiveProfile] = useState<Availability | null>('flexible');
+  const [nonEngineProfile, setNonEngineProfile] = useState<Availability | null>('flexible');
   const [comboPivot, setComboPivot] = useState<number | null>(null);
   const [prereqSource, setPrereqSource] = useState<number | null>(null);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
@@ -58,13 +57,12 @@ export function AnnotationGrid({
       setComboPivot(null);
       setPrereqSource(null);
       setModCount(0);
-      if (next === 'nonengine') {
-        setActiveCategoryId(option?.categoryId ?? activeCategoryId ?? categories[0]?.id ?? null);
-        if (option && 'nonEngineProfile' in option) setNonEngineProfile(option.nonEngineProfile ?? null);
+      if (next === 'nonengine' && option) {
+        if ('categoryId' in option) setActiveCategoryId(option.categoryId ?? null);
+        if ('nonEngineProfile' in option) setNonEngineProfile(option.nonEngineProfile ?? null);
       }
-      if (next === 'profile' && option && 'profile' in option) setActiveProfile(option.profile ?? null);
     },
-    [activeCategoryId, categories],
+    [],
   );
 
   const exitMode = useCallback(() => {
@@ -153,11 +151,15 @@ export function AnnotationGrid({
     return s;
   }, [activeDependent, startConditions]);
 
-  // Étape 9B : effet du prochain clic en mode Non-engine, annoncé sur chaque tuile et dans le
-  // bandeau (carte survolée) — même règle que le store (lib/nonEngine.ts).
+  // Effet du prochain clic en mode Non-engine, annoncé sur chaque tuile et dans le bandeau (carte
+  // survolée) — même règle que le store (lib/nonEngine.ts).
   const effectOf = (cardId: number): NonEngineEffect | null =>
-    mode === 'nonengine' && activeCategoryId
-      ? nonEngineEffect(cardCategories.get(cardId)?.has(activeCategoryId) ?? false, profiles.get(cardId)?.availability ?? null, nonEngineProfile)
+    mode === 'nonengine'
+      ? nonEngineEffect(
+          { hasLabel: activeCategoryId !== null && (cardCategories.get(cardId)?.has(activeCategoryId) ?? false), profile: profiles.get(cardId)?.availability ?? null, origin: origin.get(cardId)?.nonengine ?? null },
+          activeCategoryId,
+          nonEngineProfile,
+        )
       : null;
   const hoveredEffect = hoveredCard !== null ? effectOf(hoveredCard) : null;
 
@@ -172,15 +174,10 @@ export function AnnotationGrid({
         setModCount((c) => c + 1);
         break;
       case 'nonengine':
-        if (activeCategoryId) {
+        if (effectOf(cardId) !== null) {
           applyNonEngine(cardId, activeCategoryId, nonEngineProfile);
           setModCount((c) => c + 1);
         }
-        break;
-      case 'profile':
-        // Depuis le 16 septembre 2026 (D14′) : le profil seul compte, aucune étiquette requise.
-        setProfile(cardId, activeProfile);
-        setModCount((c) => c + 1);
         break;
       case 'combo':
         if (comboPivot === null) setComboPivot(cardId);
@@ -262,7 +259,7 @@ export function AnnotationGrid({
 
   return (
     <div className="flex h-full flex-col">
-      <ModeBar mode={mode} activeCategoryId={activeCategoryId} nonEngineProfile={nonEngineProfile} activeProfile={activeProfile} onEnter={enterMode} />
+      <ModeBar mode={mode} activeCategoryId={activeCategoryId} nonEngineProfile={nonEngineProfile} onEnter={enterMode} />
 
       {mode !== 'select' && (
         <ModeBanner
@@ -275,7 +272,6 @@ export function AnnotationGrid({
           categoryName={categories.find((c) => c.id === activeCategoryId)?.name ?? null}
           nonEngineProfileName={nonEngineProfile ? AVAILABILITY_LABEL[nonEngineProfile] : null}
           hovered={hoveredEffect && hoveredCard !== null ? { name: cards[hoveredCard]?.name ?? `#${hoveredCard}`, effect: hoveredEffect } : null}
-          profileName={activeProfile ? AVAILABILITY_LABEL[activeProfile] : null}
           onNewPivot={() => setComboPivot(null)}
           onNewSource={() => setPrereqSource(null)}
           onDone={exitMode}
@@ -360,7 +356,6 @@ function ModeBanner({
   categoryName,
   nonEngineProfileName,
   hovered,
-  profileName,
   onNewPivot,
   onNewSource,
   onDone,
@@ -375,7 +370,6 @@ function ModeBanner({
   nonEngineProfileName: string | null;
   /** Mode Non-engine : carte survolée et effet de son prochain clic (9B). */
   hovered: { name: string; effect: NonEngineEffect } | null;
-  profileName: string | null;
   onNewPivot: () => void;
   onNewSource: () => void;
   onDone: () => void;
@@ -383,7 +377,7 @@ function ModeBanner({
   const accent =
     mode === 'combo'
       ? 'border-emerald-500/30 bg-emerald-500/10 text-pos'
-      : mode === 'nonengine' || mode === 'profile'
+      : mode === 'nonengine'
         ? 'border-sky-500/30 bg-sky-500/10 text-info'
         : 'border-amber-500/30 bg-amber-500/10 text-warn';
 
@@ -399,15 +393,13 @@ function ModeBanner({
         ? 'Clique la carte dépendante (son start exige qu’il reste une carte en deck).'
         : `Dépendante : ${sourceName}. Clique les cartes requises EN DECK (clauses ET) ; les alternatives OU se composent dans l’inventaire. Re-clique la dépendante pour en changer.`;
   } else if (mode === 'nonengine') {
-    // 9B : le couple choisi, puis l'effet du prochain clic sur la carte survolée (poser / retirer).
-    const couple = `« ${categoryName ?? '—'} »${nonEngineProfileName ? ` + profil « ${nonEngineProfileName} »` : ''}`;
-    hint = hovered
-      ? `Prochain clic : ${hovered.effect} ${couple} — ${hovered.name}${hovered.effect === 'retirer' ? ' (le profil part avec la dernière étiquette)' : ''}.`
-      : `${couple} : clique une carte pour la rendre conforme ; sur une carte déjà conforme, le clic retire l'étiquette (et le profil s'il ne reste aucune étiquette).`;
-  } else if (mode === 'profile') {
-    hint = profileName
-      ? `Profil « ${profileName} » : clique les cartes non-engine ; le profil seul les fait compter (annotation du compte).`
-      : 'Retirer le profil : clique les cartes concernées (elles ne seront plus comptées).';
+    // Partie D : le choix du mode, puis l'effet du prochain clic sur la carte survolée.
+    const choice = [nonEngineProfileName ? `profil « ${nonEngineProfileName} »` : null, categoryName ? `étiquette « ${categoryName} »` : null].filter(Boolean).join(' + ');
+    hint = !choice
+      ? 'Étiquette seule sans étiquette : aucun clic n’a d’effet. Choisissez un profil ou une étiquette dans le menu Non-engine.'
+      : hovered
+        ? `Prochain clic : ${hovered.effect} ${choice} — ${hovered.name}${hovered.effect === 'adopter' ? ' (le profil hérité devient votre choix, même profil et même plafond)' : hovered.effect === 'retirer' && nonEngineProfileName ? ' (la carte ne sera plus comptée non-engine)' : hovered.effect === 'poser' && nonEngineProfileName ? ' (un plafond déjà porté est conservé)' : ''}.`
+        : `${choice} : clique une carte pour le poser ; un profil hérité identique (auto, réf.) est adopté ; sur votre choix, le clic le retire.`;
   } else {
     hint = `Clique les cartes à basculer en ${MODE_LABEL[mode]}.`;
   }

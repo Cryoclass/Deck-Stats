@@ -25,6 +25,9 @@ export function ComboList() {
       <div className="mb-3 rounded-md border border-ink-800 px-2.5 py-1.5 text-meta text-fg-3">
         Les paires et leurs conditions appartiennent à ce deck. Cliquez sur Enregistrer pour les conserver.
         Les étiquettes non-engine, profils, plafonds partagés et HOPT sont communs à vos decks et enregistrés lors de leur modification.
+        Sans choix de votre part, HOPT et profil viennent d'une référence commune (« réf. ») ou du texte de la carte (« auto ») ;
+        un choix (« vous ») ne vaut que pour ce compte et s'oublie par « Revenir au défaut » (menu ⋯ ou détail de la carte).
+        Le profil seul fait compter une carte non-engine ; l'étiquette sert à la ventilation.
       </div>
 
       {/* Ajout d'une paire depuis les cartes du main deck. */}
@@ -166,7 +169,7 @@ function CategoryManager() {
         Étiquettes non-engine (compte)
       </div>
       <div className="mb-2 text-meta text-fg-3">
-        Le profil de chaque carte (mode Profil) la fait compter et fixe ses fenêtres ; une étiquette est un axe facultatif de ventilation et de requête.
+        Le profil de chaque carte (mode Non-engine ou menu ⋯) la fait compter et fixe ses fenêtres ; une étiquette est un axe facultatif de ventilation et de requête.
       </div>
       <ul className="mb-2 flex flex-col gap-1">
         {categories.map((c) => (
@@ -239,6 +242,7 @@ function GroupManager() {
             className="flex items-center gap-2 rounded-md border border-ink-800 bg-ink-900 px-2 py-1 text-body"
           >
             <span className="text-fg-1">{g.name}</span>
+            {g.is_builtin && <span className="rounded bg-ink-800 px-1.5 py-0.5 text-meta text-fg-3" title="Fourni de base : utilisé par la détection et les références ; sa limite se modifie, il ne se supprime pas.">de base</span>}
             <label className="flex items-center gap-1 text-fg-3">
               limite
               <input
@@ -254,13 +258,13 @@ function GroupManager() {
               /tour
             </label>
             <span className="tnum text-fg-3">{membersOf(g.id)} cartes</span>
-            <button
+            {!g.is_builtin && <button
               onClick={() => deleteGroup(g.id)}
               title="Supprimer : les membres gardent leur profil, sans plafond"
               className="ml-auto flex h-6 w-6 items-center justify-center rounded text-fg-3 hover:bg-red-500/10 hover:text-neg"
             >
               ✕
-            </button>
+            </button>}
           </li>
         ))}
       </ul>

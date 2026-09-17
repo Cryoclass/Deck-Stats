@@ -5,6 +5,7 @@ import { createAccount } from '../auth/account.js';
 import { createSession, destroySession, requireUser } from '../auth/session.js';
 import { discordConfigured } from './discord.js';
 import { isReferentRole, roleValid } from '../domain/deckConfiguration.js';
+import { dismissNotice, noticesDue, noticeValid } from '../auth/notices.js';
 
 // Codes d'invitation : liste en variable d'environnement (séparés par des virgules).
 // Zéro table, zéro écran d'admin ; révoquer = éditer .env + redémarrer. Le contrôle
@@ -39,11 +40,12 @@ const publicUser = (u: Pick<UserRow, 'id' | 'email' | 'display_name'>) => ({
 /** Métadonnées de compte pour le front (Lot D) : fournisseurs OAuth liés + présence
  *  d'un mot de passe (pilote « Lier / Délier Discord » dans le menu de compte). */
 async function withAccountMeta(u: Pick<UserRow, 'id' | 'email' | 'display_name'>) {
-  const [ids, pw] = await Promise.all([
+  const [ids, pw, notices] = await Promise.all([
     query<{ provider: string }>('select provider from user_identities where user_id = $1', [u.id]),
     query<{ has: boolean; role: string }>('select password_hash is not null as has, role from users where id = $1', [
       u.id,
     ]),
+    noticesDue(u.id),
   ]);
   // Rôle (005 / 006) relu à chaque appel, jamais mis en cache : `referent` pilote l'interface du
   // référent (docs/annotations-par-defaut.md, D5′) ; la garde réelle est côté routes (`requireReferent`).
@@ -54,6 +56,9 @@ async function withAccountMeta(u: Pick<UserRow, 'id' | 'email' | 'display_name'>
     has_password: pw.rows[0]?.has ?? false,
     role,
     referent: isReferentRole(role),
+    // Avis d'interface dus à ce compte (auth/notices.ts), relus à chaque appel : aujourd'hui
+    // `['annotation-defaults']` ou `[]`. La fermeture est retenue côté serveur (user_notices).
+    notices,
   };
 }
 
@@ -144,4 +149,16 @@ export async function authRoutes(app: FastifyInstance) {
 
   // Sonde de session du front : 401 = anonyme, rendu par la garde globale (route privée).
   app.get('/me', async (req) => ({ user: await withAccountMeta(requireUser(req)) }));
+
+  // Fermeture d'un avis pour le compte courant (route privée : garde globale). Idempotente ;
+  // clé inconnue → 404 avec message. Aucune condition « dû » : fermer un avis non dû est sans effet
+  // visible, et le client n'a pas à connaître la règle d'affichage.
+  app.post<{ Params: { notice: string } }>('/notices/:notice/dismiss', async (req) => {
+    const user = requireUser(req);
+    if (!noticeValid(req.params.notice)) {
+      throw Object.assign(new Error('Avis inconnu.'), { statusCode: 404 });
+    }
+    await dismissNotice(user.id, req.params.notice);
+    return { ok: true };
+  });
 }

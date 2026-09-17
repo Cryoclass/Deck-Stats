@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useDeck } from '../store/deckStore.js';
 import { useRouter } from '../lib/router.js';
+import { DefaultsNotice } from './DefaultsNotice.js';
 import { Header } from './Header.js';
 import { AnnotationGrid } from './AnnotationGrid.js';
 import { ComboList } from './ComboList.js';
@@ -135,6 +136,7 @@ export function EditorPage({ id, initialTab }: { id: string; initialTab?: 'side'
   return (
     <div className="flex h-[100dvh] flex-col bg-ink-950 text-fg-2">
       <Header onSave={() => void saveDeck()} onHome={goHome} />
+      <DefaultsNotice />
 
       {draftAvailable && (
         <div className="flex flex-wrap items-center gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-body text-warn">

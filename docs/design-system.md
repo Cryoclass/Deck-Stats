@@ -573,6 +573,11 @@ bas-gauche   : marqueurs d'état négatif (bg-black/70, texte rouge, 9 px)
 bas-droite   : marqueur de relation / compteur (bg-black/75, 10 px)
 ```
 
+Annotations par défaut (17 septembre 2026) : un badge de rôle **hérité** (détection, référence)
+n'est pas un aplat mais un contour sur fond noir (`bg-black/75 ring-1 ring-<teinte>-400/80`,
+texte de la teinte) suffixé « auto » ou « réf. » ; le choix du compte garde l'aplat. Dans le détail de
+carte, l'origine est une puce : « vous » neutre (`bg-ink-800`), « réf. » ciel, « auto » ambre.
+
 Toute incrustation sur image porte un fond noir semi-opaque ou un `ring-1 ring-black/50` :
 c'est ce qui garantit la lisibilité quelle que soit l'image dessous.
 Ce qui n'est pas concerné est estompé par `opacity-45` — **jamais** par un floutage

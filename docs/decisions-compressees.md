@@ -359,3 +359,9 @@ Tranché par l'agent en C :
 - Sans textes de cartes, aucun chiffre calculé ni persisté (accueil, comparateur, fiche, éditeur) ; `sourceFromDetail` exige les cartes.
 - « Retirer » du mode combiné ne retire qu'un profil CHOISI ; « pas non-engine » choisi contre profil importé / reporté = conflit ; groupe de base créé seulement si la colonne existe ; auteurs des références visibles des référents seuls.
 - Rapport d'écart (`--gap`) sur l'archive du 8 sept. : P(≥ 1) et brick inchangés sur 16 decks, E[U] seul change.
+Tranché en D (réponses du 17 sept. : adopter puis retirer, bandeau par compte, /references aux référents) :
+- `user_notices` dans le DDL de 006 (non déployée), pas de 007 ; bandeau dû aux comptes antérieurs au marqueur `/c`, fermeture par `POST /api/auth/notices/:notice/dismiss`.
+- Un seul mode Non-engine (profil + étiquette facultative, « étiquette seule » conservée) ; règle `lib/nonEngine.ts` poser / adopter / retirer.
+- Badge hérité en contour suffixé « auto » / « réf. », choix en aplat ; détail de carte : origine, « Revenir au défaut », référence ; menu ⋯ : oublier mon choix.
+- `ReferenceDialog` sans état global ; plafond de référence parmi les groupes fournis de base ; page /references (lien référent seulement).
+- e2e `defaults` avec `ctx.sql` (conteneur jetable), cartes 90000030–31.

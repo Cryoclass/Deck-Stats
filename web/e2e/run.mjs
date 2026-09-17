@@ -33,7 +33,7 @@ const API_PORT = Number(process.env.E2E_API_PORT ?? 8790);
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5174);
 const LABEL = 'purpose=testhand-e2e';
 const API = `http://localhost:${API_PORT}`;
-const ALL_SCENARIOS = ['setup', 'guards', 'compare', 'mobile', 'home', 'conditions', 'nonengine', 'extraside', 'side', 'sidesheet'];
+const ALL_SCENARIOS = ['setup', 'guards', 'compare', 'mobile', 'home', 'conditions', 'nonengine', 'extraside', 'side', 'sidesheet', 'defaults'];
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
@@ -223,7 +223,14 @@ try {
   } else {
     await waitHttp(`${E2E.base}/api/health`, 'pile existante');
   }
-  const ctx = { base: E2E.base, out: E2E.out, api: API, log: (m) => console.log(`  ${m}`) };
+  // Partie D des annotations par défaut : le scénario `defaults` pose un rôle et recule l'ancienneté du
+  // compte de test par SQL, dans le conteneur jetable de la pile (jamais la base de dev).
+  const sql = (text) => {
+    const r = docker(['exec', '-i', CONTAINER, 'psql', '-U', DB_USER, '-d', DB_NAME, '-v', 'ON_ERROR_STOP=1', '-q', '-t', '-A', '-f', '-'], { input: text });
+    if (r.status !== 0) throw new Error(`psql : ${r.stderr.trim()}`);
+    return r.stdout;
+  };
+  const ctx = { base: E2E.base, out: E2E.out, api: API, sql, log: (m) => console.log(`  ${m}`) };
   for (const name of scenarios) {
     const t0 = Date.now();
     log(`scénario ${name}`);

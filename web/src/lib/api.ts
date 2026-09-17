@@ -60,6 +60,7 @@ export interface AuthUser {
   has_password?: boolean; // false = compte Discord seul (déliaison refusée)
   role?: Role; // `user` | `referent` | `admin` (005 / 006) ; relu à chaque `/me`
   referent?: boolean; // un admin l'est aussi (D5′) ; pilote l'interface du référent, jamais une garde
+  notices?: string[]; // bandeaux dus à ce compte (partie D : 'annotation-defaults'), fermeture retenue par le serveur
 }
 
 export interface ReferenceLogEntry {
@@ -127,6 +128,7 @@ export const api = {
 
   // Auth (itération 8)
   me: () => j<{ user: AuthUser }>('/auth/me'),
+  dismissNotice: (notice: string) => j<{ ok: boolean }>(`/auth/notices/${encodeURIComponent(notice)}/dismiss`, { method: 'POST' }),
   login: (email: string, password: string) =>
     j<{ user: AuthUser }>('/auth/login', {
       method: 'POST',

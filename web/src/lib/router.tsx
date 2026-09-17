@@ -8,9 +8,12 @@ export type Route =
   | { name: 'home' }
   | { name: 'editor'; id: string; tab?: 'side' }
   | { name: 'sideSheet'; id: string }
-  | { name: 'compare'; a: string; b: string };
+  | { name: 'compare'; a: string; b: string }
+  | { name: 'references' };
 
 function parse(pathname: string): Route {
+  // Annotations par défaut (partie D) : page des références communes, réservée aux référents.
+  if (/^\/references\/?$/.test(pathname)) return { name: 'references' };
   const c = pathname.match(/^\/compare\/([^/?#]+)\/([^/?#]+)/);
   if (c) return { name: 'compare', a: decodeURIComponent(c[1]), b: decodeURIComponent(c[2]) };
   // Étape 10D : fiche imprimable des plans de side, avant la règle de l'éditeur.
@@ -24,6 +27,7 @@ function toPath(route: Route): string {
   if (route.name === 'editor') return `/decks/${route.id}${route.tab === 'side' ? '/side' : ''}`;
   if (route.name === 'sideSheet') return `/decks/${route.id}/side/fiche`;
   if (route.name === 'compare') return `/compare/${route.a}/${route.b}`;
+  if (route.name === 'references') return '/references';
   return '/decks';
 }
 

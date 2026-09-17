@@ -1,6 +1,6 @@
 # Annotations par défaut — HOPT, étiquettes et plafonds pré-remplis
 
-Statut : **plan proposé le 16 septembre 2026, en attente de validation** (aucun code écrit).
+Statut : **chantier clos le 17 septembre 2026** (parties A–D, comptes rendus §12, §14, §15, §16) ; plan validé le 16 septembre 2026.
 Prompt d'origine : [prompt-annotations-par-defaut.md](prompt-annotations-par-defaut.md).
 Inventaire mené en lecture seule sur la base de dev (catalogue) et sur une restauration
 jetable de l'archive de production du 8 septembre 2026 (`../testhand-dumps/`, conteneur
@@ -846,3 +846,74 @@ HOPT depuis le choix brut → `defaults.test` · W3 valeur héritée non envoyé
 `persistence` · S3 import d'un profil sans `is_hopt` explicite → `persistence` · S4 journal compté par
 `prune-stale-cards` → `purge` · S5 auteurs visibles de tous → `persistence`. Fichiers restaurés,
 empreintes identiques.
+
+## 16. Compte rendu D (17 septembre 2026)
+
+Décisions demandées à l'utilisateur AVANT le code (non couvertes par le plan), réponses du 17 septembre :
+un clic du mode Non-engine sur une carte dont le profil hérité est déjà celui du mode **adopte** ce profil
+(même valeur, devenue choix), un second clic le **retire** ; le bandeau est retenu **par compte** (serveur) ;
+la page `/references` est **réservée aux référents**.
+
+### Livré
+
+- **Lot D1 (serveur, sous-agent)** : table `user_notices` dans le DDL de 006 (non déployée, donc pas de
+  007), branchée dans `check-migration.sql` (table v2, aucun privilège du rôle du site) et
+  `test-migration-sequence.sh` (« F sans 006 », rejeu, cas J) ; `server/src/auth/notices.ts` ;
+  `GET /api/auth/me` → `notices` (dû aux comptes créés avant le marqueur `006-annotation-defaults/c` et
+  non fermés) ; `POST /api/auth/notices/:notice/dismiss` (privée, idempotente, 404 sur clé inconnue) ;
+  test d'intégration `auth`.
+- **Mode Non-engine unique** (`lib/nonEngine.ts`, `ModeBar`, `AnnotationGrid`, `applyNonEngine`) : profil
+  (ou « étiquette seule ») puis étiquette facultative ; poser / adopter / retirer annoncés sur la tuile et
+  dans le bandeau ; plus de mode « Profil » ; message explicite quand rien n'est choisi.
+- **Origine visible** : badges de tuile hérités en contour suffixés « auto » / « réf. » (attributs
+  `data-origin-*`) ; détail de carte : ligne par aspect avec puce « vous / réf. / auto », « Revenir au
+  défaut », rappel de la détection et de la note de référence ; menu ⋯ : « oublier mon choix » par aspect.
+- **Référent** : `ReferenceDialog` (HOPT détection / oui / non ; non-engine détection / pas non-engine /
+  profil ; plafond parmi les groupes fournis de base ; note ; retrait ; Échap, `aria-modal`,
+  `aria-pressed`) depuis le détail de carte ; page `/references` (liste, recherche, filtre des désaccords
+  avec la détection, journal, modification) et lien dans le menu du compte (confirmation si le deck n'est
+  pas enregistré) ; store `saveReference` / `clearReference`.
+- **Bandeau** `DefaultsNotice` (accueil et éditeur), texte validé en Q8, « Compris » retenu par le serveur.
+- **Onglet Combos & catégories** : aide sur les trois couches ; plafond fourni de base marqué « de base »,
+  sans ✕. Textes « mode Profil » remplacés (ComboList, StatsPanel).
+- **e2e** : `setup` et `nonengine` réécrits pour le mode unique (fixture identique) ; nouveau scénario
+  `defaults` (D1–D7 : aucun clic, HOPT choisi puis retour au défaut, adopter / retirer, référence posée par
+  un référent et vue d'un second compte, aperçus invalidés puis recalculés, page `/references`, bandeau,
+  360 px, restauration vérifiée par SQL) ; `ctx.sql` dans `run.mjs` ; cartes synthétiques 90000030–31.
+- **Docs** : contrat §9 (R1–R9) et paragraphe 9B du §6 mis à jour, charte §7.15, AGENTS.md, server/AGENTS.md,
+  runbook (lignes C4 attendues), DECISIONS.md, décisions compressées, PLAN.md.
+
+### Relecture indépendante (sous-agent à contexte neuf)
+
+Aucun bloquant. Corrigé : paragraphe 9B du contrat contradictoire avec R8 ; textes renvoyant au mode
+« Profil » supprimé ; mode sans effet silencieux (« étiquette seule » sans étiquette) ; garde de store
+périmée et règle nouvelle non gardée (profil retiré malgré une autre étiquette, échec du profil après une
+étiquette acquittée, adoption d'une référence avec plafond — trois tests ajoutés) ; R1 inexacte pour la
+tuile ; faux désaccord pour une carte absente du catalogue (test ajouté) ; commentaire trompeur du CHECK
+de `user_notices` ; restauration incomplète et garde lâche dans les scénarios ; navigation sans
+confirmation depuis l'éditeur ; accessibilité du dialogue ; plafond de référence non fourni de base
+invisible ; indications « adopter » / « poser » sur le plafond conservé ; nombres de tests d'AGENTS.md.
+Laissé : couleur de la puce « auto » (ambre, documentée en §7.15), bandeau à la formule « information » de
+la charte §7.12 (`sky-500/5`, `sky-500/20`, conforme), tests unitaires de `DefaultsNotice`. Point hors
+diff signalé : le §13 prévoyait que « revenir au défaut » supprime les étiquettes et que les
+affectations d'étiquette matérialisent l'aspect non-engine ; c'est l'écart 5 de la partie C, décidé et
+documenté (§15).
+
+### Vérifications exécutées
+
+`npm run typecheck` · `npm run build` · `node scripts/test-quiet.mjs` (309 web, 22 serveur) ·
+`test:integration` sur 55433 (auth 13, persistence 17, purge 13) · `bash deploy/test-migration-sequence.sh`
+(133 gardes, cas A–J) · `npm run e2e -w web` (11 scénarios, `defaults` compris) · `bash deploy/rehearsal.sh
+--fixture` : RÉPÉTITION CONFORME sur le code final (restauration, séquence, recalcul, 11 scénarios e2e sur la pile migrée, retour arrière) · captures relues (`defaults-1440-auto`, `-reference`, `-references`, `-bandeau`,
+`defaults-360-reference`). Base de dev : 005 (prérequis nominatif, absente) puis 006 appliquées par stdin
+par le lot D1.
+
+### Contrôle par mutation (9 posées, 9 détectées)
+
+Unitaires : DM1 plus d'« adopter » → `nonEngine.test`, `defaults.test` · DM2 étiquette seule sans
+étiquette agit → `nonEngine.test` · DM3 adopter n'écrit rien → `defaults.test` · DM4 retirer ne retire pas
+le profil → `defaults.test`, `nonengine.test`. Serveur (lot D1, posée et rapportée par le sous-agent, non rejouée par l'agent principal) : règle « créé
+avant le marqueur » retirée → `auth.integration`. Interface, par e2e `defaults` : UM1 suffixe « auto » retiré → D1 · UM2 bandeau jamais
+rendu → D6 (clic « Compris » introuvable) · UM3 lien des références montré à tous → D4 (**non détectée au
+premier passage** : la garde comptait le lien sans ouvrir le menu du compte ; garde corrigée, détectée
+ensuite) · UM4 « Revenir au défaut » absent → D2. Fichiers restaurés, empreintes identiques.

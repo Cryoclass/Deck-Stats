@@ -4,10 +4,11 @@ import { useDeck } from './deckStore.js';
 import { emptyConfiguration } from '../../../server/src/domain/deckConfiguration.js';
 import { stateFromConfiguration } from '../lib/deckConfiguration.js';
 
-// Étape 9B — mode Non-engine combiné : `applyNonEngine` rend la carte conforme au couple
-// (étiquette, profil), deux requêtes au plus dans la file globale, l'étiquette avant le profil
-// (le serveur exige une étiquette avant un profil, Q1 de 5B) ; conforme → retrait de l'étiquette
-// puis du profil devenu orphelin. Annotations du compte : jamais « non enregistré ».
+// Mode Non-engine (étape 9B, règle remplacée en partie D des annotations par défaut, R8) :
+// `applyNonEngine` pose le profil et l'étiquette facultative, deux requêtes au plus dans la file
+// globale, l'étiquette d'abord ; sur le CHOIX identique, retire l'étiquette demandée puis le profil
+// (« pas non-engine » choisi), quelles que soient les autres étiquettes ; « étiquette seule » ne touche
+// jamais le profil. Annotations du compte : jamais « non enregistré ».
 vi.mock('../worker/client.js',() => ({ createEngineClient: () => ({ compute: () => ({ id: 0,promise: new Promise(() => {}),cancel() {} }),cancelAll() {},dispose() {},pendingCount: 0 }) }));
 vi.mock('../lib/draft.js',() => ({ saveDraft: vi.fn(async () => {}),clearDraft: vi.fn(async () => {}),loadDraft: vi.fn(async () => null) }));
 vi.mock('../lib/api.js',async (original) => {
@@ -66,7 +67,7 @@ describe('Étape 9B — mode Non-engine combiné',() => {
     expect(useDeck.getState().profiles.get(1)?.availability).toBe('early');
   });
 
-  it('carte conforme : retrait de l’étiquette, puis du profil s’il ne reste aucune étiquette',async () => {
+  it('choix identique : retrait de l’étiquette demandée, puis du profil',async () => {
     useDeck.setState({ ...chosen('early'),cardCategories:new Map([[1,new Set(['ht'])]]) });
     vi.mocked(api.setFlags).mockResolvedValue(flags(null));
     useDeck.getState().applyNonEngine(1,'ht','early');
@@ -108,5 +109,25 @@ describe('Étape 9B — mode Non-engine combiné',() => {
     expect(vi.mocked(api.setFlags).mock.calls).toEqual([[1,{ availability:'early' }],[1,{ availability:null }]]);
     expect(useDeck.getState().cardCategories.get(1)?.size ?? 0).toBe(0);
     expect(useDeck.getState().profiles.has(1)).toBe(false);
+  });
+
+  it('partie D : le profil choisi part même s’il reste une autre étiquette (R8)',async () => {
+    useDeck.setState({ ...chosen('early'),cardCategories:new Map([[1,new Set(['ht','bb'])]]) });
+    vi.mocked(api.setFlags).mockResolvedValue(flags(null));
+    useDeck.getState().applyNonEngine(1,'ht','early');
+    await settled();
+    expect(api.removeCardCategory).toHaveBeenCalledWith(1,'ht');
+    expect(api.setFlags).toHaveBeenCalledWith(1,{ availability:null });
+    expect([...useDeck.getState().cardCategories.get(1)!]).toEqual(['bb']);
+    expect(useDeck.getState().profiles.has(1)).toBe(false);
+  });
+
+  it('partie D : un profil refusé après une étiquette acquittée laisse l’état acquitté et l’erreur visible',async () => {
+    vi.mocked(api.setFlags).mockRejectedValue(new Error('refus du serveur'));
+    useDeck.getState().applyNonEngine(1,'ht','early');
+    await settled();
+    expect([...useDeck.getState().cardCategories.get(1)!]).toEqual(['ht']);
+    expect(useDeck.getState().profiles.has(1)).toBe(false);
+    expect(useDeck.getState().persistenceError).toBe('refus du serveur');
   });
 });

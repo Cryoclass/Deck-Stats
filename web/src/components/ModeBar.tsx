@@ -6,25 +6,23 @@ import { AVAILABILITY_PROFILES } from '../../../server/src/domain/deckConfigurat
 import { MODE_KEY, MODE_LABEL, type AnnotationMode } from './annotationModes.js';
 
 export interface ModeOption {
-  categoryId?: string;
-  /** Mode Non-engine combiné (9B) : profil posé avec l'étiquette ; `null` = profil inchangé. */
+  /** Mode Non-engine (partie D) : étiquette facultative posée avec le profil ; `null` = aucune. */
+  categoryId?: string | null;
+  /** Mode Non-engine : profil posé ; `null` = étiquette seule (le profil n'est pas touché). */
   nonEngineProfile?: Availability | null;
-  /** Mode Profil : profil appliqué ; `null` = retirer le profil. */
-  profile?: Availability | null;
 }
 
 interface Props {
   mode: AnnotationMode;
   activeCategoryId: string | null;
   nonEngineProfile: Availability | null;
-  activeProfile: Availability | null;
   onEnter: (mode: AnnotationMode, option?: ModeOption) => void;
 }
 
 const ITEM = 'flex cursor-pointer items-center justify-between gap-3 rounded px-2 py-1.5 text-body text-fg-2 outline-none data-[highlighted]:bg-ink-700';
 const SECTION = 'px-2 py-1 text-meta uppercase tracking-wide text-fg-3';
 
-export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfile, onEnter }: Props) {
+export function ModeBar({ mode, activeCategoryId, nonEngineProfile, onEnter }: Props) {
   const categories = useDeck((s) => s.categories);
   const activeCat = categories.find((c) => c.id === activeCategoryId);
 
@@ -56,25 +54,25 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
         onClick={() => onEnter('starter')}
       />
 
-      {/* Non-engine combiné (étape 9B) : le déroulant choisit l'étiquette ET le profil posé avec
-          elle (« profil inchangé » par défaut : l'étiquette seule, comme avant 9B). Les profils
-          sont des éléments radio (rôle menuitemradio) : un profil et une étiquette peuvent porter
-          le même nom (« Board breaker ») sans se confondre. Le chip du bouton rappelle le couple. */}
+      {/* Non-engine (partie D des annotations par défaut, D14′) : le PROFIL fait compter la carte,
+          l'étiquette est un axe facultatif. Le déroulant choisit le profil (ou « étiquette seule ») puis
+          l'étiquette (ou « aucune ») ; profils et étiquettes sont des éléments radio distincts (un
+          profil et une étiquette peuvent porter le même nom, « Board breaker »). */}
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button
+            data-mode-trigger="nonengine"
             className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-body font-medium transition-colors ${
               mode === 'nonengine'
                 ? 'bg-sky-500/20 text-info ring-1 ring-sky-500/40'
                 : 'text-fg-3 hover:bg-ink-800 hover:text-fg-1'
             }`}
-            title="Non-engine : pose l'étiquette choisie et, si un profil est choisi, ce profil ; sur une carte déjà conforme, retire l'étiquette (et le profil s'il ne reste aucune étiquette)."
+            title="Non-engine : pose le profil choisi (et l'étiquette, si choisie). Sur une carte au profil hérité identique, le clic l'adopte comme votre choix ; sur votre choix, il le retire."
           >
             {MODE_LABEL.nonengine}
-            {mode === 'nonengine' && activeCat && (
+            {mode === 'nonengine' && (
               <span className="rounded bg-sky-500/30 px-1 text-meta text-sky-100">
-                {activeCat.name}
-                {nonEngineProfile ? ` + ${AVAILABILITY_LABEL[nonEngineProfile]}` : ''}
+                {[nonEngineProfile ? AVAILABILITY_LABEL[nonEngineProfile] : null, activeCat?.name ?? null].filter(Boolean).join(' + ') || '—'}
               </span>
             )}
             <span className="text-fg-3">▾</span>
@@ -89,86 +87,39 @@ export function ModeBar({ mode, activeCategoryId, nonEngineProfile, activeProfil
             collisionPadding={8}
             className="z-50 min-w-[220px] rounded-lg border border-ink-700 bg-ink-850 p-1 shadow-2xl shadow-black/50"
           >
-            <div className={SECTION}>Étiquette à poser</div>
-            {categories.map((cat) => (
-              <DropdownMenu.Item
-                key={cat.id}
-                onSelect={() => onEnter('nonengine', { categoryId: cat.id })}
-                className={ITEM}
-              >
-                {cat.name}
-                {cat.id === activeCategoryId && <span className="text-info">✓</span>}
-              </DropdownMenu.Item>
-            ))}
-            <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
-            <div className={SECTION}>Profil posé avec l'étiquette</div>
+            <div className={SECTION}>Profil</div>
             <DropdownMenu.RadioGroup
-              value={nonEngineProfile ?? 'unchanged'}
-              onValueChange={(v) => onEnter('nonengine', { nonEngineProfile: v === 'unchanged' ? null : (v as Availability) })}
+              value={nonEngineProfile ?? 'none'}
+              onValueChange={(v) => onEnter('nonengine', { nonEngineProfile: v === 'none' ? null : (v as Availability) })}
             >
-              <DropdownMenu.RadioItem value="unchanged" className={`${ITEM} text-fg-3`}>
-                Profil inchangé
-                <DropdownMenu.ItemIndicator className="text-info">✓</DropdownMenu.ItemIndicator>
-              </DropdownMenu.RadioItem>
               {AVAILABILITY_PROFILES.map((profile) => (
-                <DropdownMenu.RadioItem key={profile} value={profile} title={AVAILABILITY_HINT[profile]} className={ITEM}>
+                <DropdownMenu.RadioItem key={profile} value={profile} data-ne-profile={profile} title={AVAILABILITY_HINT[profile]} className={ITEM}>
                   {AVAILABILITY_LABEL[profile]}
                   <DropdownMenu.ItemIndicator className="text-info">✓</DropdownMenu.ItemIndicator>
                 </DropdownMenu.RadioItem>
               ))}
+              <DropdownMenu.RadioItem value="none" data-ne-profile="none" className={`${ITEM} text-fg-3`}>
+                Étiquette seule (profil inchangé)
+                <DropdownMenu.ItemIndicator className="text-info">✓</DropdownMenu.ItemIndicator>
+              </DropdownMenu.RadioItem>
             </DropdownMenu.RadioGroup>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
-
-      {/* Profil de disponibilité (étape 5B, contrat §3) : fenêtres d'une carte étiquetée. Conservé
-          à côté du mode combiné (Q4 de l'étape 9). */}
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
-          <button
-            className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-body font-medium transition-colors ${
-              mode === 'profile'
-                ? 'bg-sky-500/20 text-info ring-1 ring-sky-500/40'
-                : 'text-fg-3 hover:bg-ink-800 hover:text-fg-1'
-            }`}
-            title="Profil de disponibilité non-engine : détermine les fenêtres retenues (premier / second / sixième carte)."
-          >
-            {MODE_LABEL.profile}
-            {mode === 'profile' && (
-              <span className="rounded bg-sky-500/30 px-1 text-meta text-sky-100">
-                {activeProfile ? AVAILABILITY_LABEL[activeProfile] : 'retirer'}
-              </span>
-            )}
-            <span className="text-fg-3">▾</span>
-            <Kbd>{MODE_KEY.profile}</Kbd>
-          </button>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content
-            side="bottom"
-            align="start"
-            sideOffset={4}
-            collisionPadding={8}
-            className="z-50 min-w-[220px] rounded-lg border border-ink-700 bg-ink-850 p-1 shadow-2xl shadow-black/50"
-          >
-            <div className={SECTION}>Profil à poser</div>
-            {AVAILABILITY_PROFILES.map((profile) => (
-              <DropdownMenu.Item
-                key={profile}
-                onSelect={() => onEnter('profile', { profile })}
-                title={AVAILABILITY_HINT[profile]}
-                className="cursor-pointer rounded px-2 py-1.5 text-body text-fg-2 outline-none data-[highlighted]:bg-ink-700"
-              >
-                {AVAILABILITY_LABEL[profile]}
-              </DropdownMenu.Item>
-            ))}
             <DropdownMenu.Separator className="my-1 h-px bg-ink-700" />
-            <DropdownMenu.Item
-              onSelect={() => onEnter('profile', { profile: null })}
-              className="cursor-pointer rounded px-2 py-1.5 text-body text-fg-3 outline-none data-[highlighted]:bg-ink-700"
+            <div className={SECTION}>Étiquette (facultative)</div>
+            <DropdownMenu.RadioGroup
+              value={activeCategoryId ?? 'none'}
+              onValueChange={(v) => onEnter('nonengine', { categoryId: v === 'none' ? null : v })}
             >
-              Retirer le profil
-            </DropdownMenu.Item>
+              <DropdownMenu.RadioItem value="none" data-ne-label="none" className={`${ITEM} text-fg-3`}>
+                Aucune
+                <DropdownMenu.ItemIndicator className="text-info">✓</DropdownMenu.ItemIndicator>
+              </DropdownMenu.RadioItem>
+              {categories.map((cat) => (
+                <DropdownMenu.RadioItem key={cat.id} value={cat.id} data-ne-label={cat.name} className={ITEM}>
+                  {cat.name}
+                  <DropdownMenu.ItemIndicator className="text-info">✓</DropdownMenu.ItemIndicator>
+                </DropdownMenu.RadioItem>
+              ))}
+            </DropdownMenu.RadioGroup>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>

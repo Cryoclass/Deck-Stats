@@ -138,6 +138,42 @@ deux sous-agents ; C2 / C3 interrompu sans rapport, repris, relu et complété p
   `PUT /flags` (`is_hopt` null, `nonengine_choice`), groupe fourni de base exclu des comptages de
   groupes créés par le compte (suites `auth` et `persistence`).
 
+### Partie D — interface (17 septembre 2026)
+
+Réponses de l'utilisateur le 17 septembre 2026, avant le code : clic du mode Non-engine sur un profil
+hérité identique = « adopter, puis retirer » ; bandeau retenu par compte (serveur) ; page /references
+réservée aux référents. Tranché par l'agent en les appliquant :
+
+- **`user_notices` dans le DDL de 006, pas de migration 007.** 006 n'est déployée nulle part en
+  production et son DDL est déjà hors journal et idempotent : une 007 aurait ajouté montage, séquence,
+  liste e2e et cas I pour une table. Clés fermées tenues en double (CHECK de 006 et
+  `server/src/auth/notices.ts`) ; fermer un avis non dû écrit quand même la ligne (idempotent).
+- **Bandeau dû** aux comptes créés AVANT l'application du marqueur `006-annotation-defaults/c` et qui ne
+  l'ont pas fermé : un compte créé ensuite n'a jamais eu d'anciens chiffres. `GET /api/auth/me` →
+  `notices` ; `POST /api/auth/notices/:notice/dismiss` (privée, 404 sur clé inconnue).
+- **Un seul mode Non-engine** (profil, puis étiquette facultative), le mode « Profil » disparaît (§3,
+  D14′). « Étiquette seule » est conservée comme valeur du profil : elle garde la fixture « étiquetée
+  sans profil » (Q5) et ne touche jamais le profil. Règle unique `lib/nonEngine.ts` : `poser`,
+  `adopter` (profil hérité identique → même valeur écrite avec `inherited`, la carte devient un choix),
+  `retirer` (choix identique → étiquette demandée puis profil à NULL, « pas non-engine » choisi) ;
+  « retirer » ne regarde plus la dernière étiquette (règle 9B remplacée sur décision).
+- **Origine sur la tuile** : un badge hérité passe en contour sur fond noir, suffixé « auto » / « réf. » ;
+  le choix garde l'aplat sans suffixe (« vous » n'est écrit que dans le détail, faute de place à 96 px).
+  Détail de carte : ligne par aspect avec puce d'origine, « Revenir au défaut » sur un choix, rappel de
+  la détection et de la note de référence ; menu ⋯ : « oublier mon choix » par aspect.
+- **Formulaire de référence sans état global** (`ReferenceDialog`) : ouvert depuis le détail de carte
+  (éditeur) et la page /references ; HOPT détection / oui / non, non-engine détection / pas non-engine /
+  profil, plafond choisi parmi les groupes FOURNIS DE BASE (seuls noms communs à tous les comptes).
+- **Page /references** : lien dans le menu du compte pour un référent ; un non-référent qui l'ouvre lit
+  « Page réservée aux référents ». Désaccords calculés sur les textes des cartes (sans textes, erreur
+  plutôt qu'un faux désaccord).
+- **e2e** : scénario `defaults` en fin de liste, accès SQL `ctx.sql` ajouté à `run.mjs` (conteneur
+  jetable de la pile) pour le rôle référent et l'ancienneté du compte ; cartes 90000030–31 (90000018–19
+  sont pris par le jeu représentatif de la répétition) ; `setup` et `nonengine` réécrits pour le mode
+  unique, fixture identique.
+- **Base de dev** : le sous-agent du lot D1 y a appliqué 005 (absente) puis 006 par stdin — seule
+  l'application de 006 était autorisée, 005 était son prérequis nominatif.
+
 ## Back-office — hors numérotation, socle en lecture seule (16 septembre 2026)
 
 Plan validé en séance, consigné dans [docs/backoffice.md](docs/backoffice.md) (décisions 1 à 11,

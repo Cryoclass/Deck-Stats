@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
-import { AVAILABILITY_LABEL, AVAILABILITY_SHORT, type Card, type Zone } from '../types.js';
+import { AVAILABILITY_LABEL, AVAILABILITY_SHORT, ORIGIN_LABEL, ORIGIN_SHORT, type AnnotationOrigin, type Card, type Zone } from '../types.js';
 import { ZONE_LABEL } from '../lib/zones.js';
 import { comboColor, comboVeil, type GroupAssignment } from '../lib/colors.js';
 import { signedPct } from '../lib/fmt.js';
@@ -58,6 +58,8 @@ export function CardTile({
   const deadSecond = useDeck((s) => s.deadSecond.has(cardId));
   const labelled = useDeck((s) => (s.cardCategories.get(cardId)?.size ?? 0) > 0);
   const profile = useDeck((s) => s.profiles.get(cardId));
+  const hoptOrigin = useDeck((s) => s.origin.get(cardId)?.hopt ?? null);
+  const nonengineOrigin = useDeck((s) => s.origin.get(cardId)?.nonengine ?? null);
   const groupName = useDeck((s) => s.groups.find((g) => g.id === profile?.groupId)?.name);
   const context = useDeck((s) => s.context);
   // Q3 (étape 6B, contrat §6) : le delta est une statistique du dernier résultat ; périmé,
@@ -102,15 +104,15 @@ export function CardTile({
           ? 'border-dashed border-amber-400 ring-1 ring-amber-400/60'
           : highlightCat
             ? 'border-sky-400/70 ring-1 ring-sky-400/50'
-            : mode === 'profile' && labelled
-              ? 'border-sky-400/40'
-              : 'border-ink-800';
+            : 'border-ink-800';
 
   return (
     <div
       ref={rootRef}
       data-zone-tile={zone === 'main' ? undefined : zone}
       data-card-id={zone === 'main' ? undefined : cardId}
+      data-origin-hopt={hoptOrigin ?? undefined}
+      data-origin-nonengine={nonengineOrigin ?? undefined}
       onMouseEnter={() => onHoverChange?.(true)}
       onMouseLeave={() => onHoverChange?.(false)}
       className={`group relative flex flex-col rounded-md border bg-ink-900 transition-opacity ${border} ${
@@ -147,16 +149,26 @@ export function CardTile({
           {isStarter && (
             <span className="rounded bg-emerald-500/90 px-1 text-meta font-bold text-black">S</span>
           )}
+          {/* Annotations par défaut (D9) : un choix du compte garde l'aplat ; une valeur héritée
+              (détection « auto », référence « réf. ») est en contour sur fond noir, suffixée. */}
           {isHopt && (
-            <span className="rounded bg-amber-500/90 px-1 text-meta font-bold text-black">H</span>
+            <span
+              data-badge="hopt"
+              className={inheritedBadge(hoptOrigin, 'bg-amber-500/90 text-black', 'bg-black/75 text-warn ring-1 ring-amber-400/80')}
+              title={`HOPT — ${originTitle(hoptOrigin)}`}
+            >
+              H{originSuffix(hoptOrigin)}
+            </span>
           )}
           {profile && (
             <span
-              className="rounded bg-sky-500/90 px-1 text-meta font-bold text-black"
-              title={`Profil ${AVAILABILITY_LABEL[profile.availability]}${groupName ? ` · plafond « ${groupName} »` : ''}`}
+              data-badge="profile"
+              className={inheritedBadge(nonengineOrigin, 'bg-sky-500/90 text-black', 'bg-black/75 text-info ring-1 ring-sky-400/80')}
+              title={`Profil ${AVAILABILITY_LABEL[profile.availability]}${groupName ? ` · plafond « ${groupName} »` : ''} — ${originTitle(nonengineOrigin)}`}
             >
               {AVAILABILITY_SHORT[profile.availability]}
               {groupName ? '·' : ''}
+              {originSuffix(nonengineOrigin)}
             </span>
           )}
           {unprofiled && (
@@ -269,3 +281,10 @@ export function CardTile({
     </div>
   );
 }
+
+/** Badge de tuile selon l'origine (partie D) : aplat pour un choix, contour pour un héritage. */
+function inheritedBadge(origin: AnnotationOrigin | null, chosen: string, inherited: string): string {
+  return `rounded px-1 text-meta font-bold ${origin === 'detection' || origin === 'reference' ? inherited : chosen}`;
+}
+const originSuffix = (origin: AnnotationOrigin | null) => (origin === 'detection' || origin === 'reference' ? ` ${ORIGIN_SHORT[origin]}` : '');
+const originTitle = (origin: AnnotationOrigin | null) => (origin ? ORIGIN_LABEL[origin] : 'votre choix');

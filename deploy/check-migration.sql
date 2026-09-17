@@ -30,7 +30,7 @@ begin
   insert into check_rows (line) values ((case when n = 0 then 'OK' else 'KO' end) || '|colonnes historiques (relevance, dead_first, dead_second) : ' || n || ' présente(s), 0 attendue');
 
   -- Objets v2 : tables et colonnes que la nouvelle app lit.
-  foreach t in array array['deck_combo_pairs', 'deck_conditions', 'deck_flags', 'nonengine_groups', 'deck_cards', 'deck_starters', 'card_flags', 'nonengine_categories', 'card_categories', 'deck_matchups', 'deck_side_plans', 'deck_side_plan_cards', 'backoffice_totp', 'backoffice_sessions', 'backoffice_audit', 'card_references', 'card_reference_log'] loop
+  foreach t in array array['deck_combo_pairs', 'deck_conditions', 'deck_flags', 'nonengine_groups', 'deck_cards', 'deck_starters', 'card_flags', 'nonengine_categories', 'card_categories', 'deck_matchups', 'deck_side_plans', 'deck_side_plan_cards', 'backoffice_totp', 'backoffice_sessions', 'backoffice_audit', 'card_references', 'card_reference_log', 'user_notices'] loop
     ok := to_regclass('public.' || t) is not null;
     insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|table v2 ' || t || (case when ok then ' : présente' else ' : ABSENTE' end));
   end loop;
@@ -88,6 +88,12 @@ begin
     execute $q$ select count(*) from card_reference_log $q$ into n;
     insert into check_rows (line) values ('OK|lignes du journal des références : ' || n);
   end if;
+  -- Avis d'interface fermés par compte (006, partie D) : informatif ; la table est vide le jour de
+  -- la première application et se remplit à mesure que les comptes ferment le bandeau.
+  if to_regclass('public.user_notices') is not null then
+    execute $q$ select count(*) from user_notices $q$ into n;
+    insert into check_rows (line) values ('OK|avis fermés par compte (user_notices) : ' || n);
+  end if;
   if to_regclass('public.nonengine_groups') is not null and to_regclass('public.users') is not null
      and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'nonengine_groups' and column_name = 'is_builtin') then
     execute $q$ select count(*) from users u where not exists
@@ -107,7 +113,7 @@ begin
   insert into check_rows (line) values ((case when ok then 'OK' else 'KO' end) || '|rôle testhand_backoffice' || (case when ok then ' : présent' else ' : ABSENT' end));
   if ok then
     n := 0;
-    foreach t in array array['deck_cards', 'deck_starters', 'deck_combo_pairs', 'deck_conditions', 'deck_flags', 'deck_matchups', 'deck_side_plans', 'deck_side_plan_cards', 'card_flags', 'nonengine_categories', 'nonengine_groups', 'card_categories', 'cards', 'app_migrations'] loop
+    foreach t in array array['deck_cards', 'deck_starters', 'deck_combo_pairs', 'deck_conditions', 'deck_flags', 'deck_matchups', 'deck_side_plans', 'deck_side_plan_cards', 'card_flags', 'nonengine_categories', 'nonengine_groups', 'card_categories', 'cards', 'app_migrations', 'user_notices'] loop
       if to_regclass('public.' || t) is not null and (
            has_table_privilege('testhand_backoffice', 'public.' || t, 'select, insert, update, delete, truncate, references, trigger')
            or exists (select 1 from information_schema.column_privileges where grantee = 'testhand_backoffice' and table_schema = 'public' and table_name = t)) then
@@ -115,7 +121,7 @@ begin
         insert into check_rows (line) values ('KO|rôle testhand_backoffice : privilège INTERDIT sur la table de contenu ' || t);
       end if;
     end loop;
-    if n = 0 then insert into check_rows (line) values ('OK|rôle testhand_backoffice : aucun privilège sur les tables de contenu (deck_cards, conditions, plans de side, bibliothèque, catalogue, journal des migrations)'); end if;
+    if n = 0 then insert into check_rows (line) values ('OK|rôle testhand_backoffice : aucun privilège sur les tables de contenu (deck_cards, conditions, plans de side, bibliothèque, catalogue, journal des migrations, avis fermés)'); end if;
     if to_regclass('public.decks') is not null then
       ok := not has_column_privilege('testhand_backoffice', 'public.decks', 'name', 'select')
         and not has_column_privilege('testhand_backoffice', 'public.decks', 'notes', 'select')

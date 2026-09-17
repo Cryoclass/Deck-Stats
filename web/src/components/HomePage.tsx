@@ -13,6 +13,7 @@ import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled } from '../worker/computeClient.js';
 import { ImportDialog } from './ImportDialog.js';
 import { AccountMenu } from './AccountMenu.js';
+import { DefaultsNotice } from './DefaultsNotice.js';
 import { CompareDialog } from './ComparePage.js';
 
 // ─── Aperçus (étape 9, point 1) ───
@@ -184,6 +185,7 @@ export function HomePage() {
         <AccountMenu />
       </header>
 
+      <DefaultsNotice />
       {actionError && <p role="alert" className="px-5 py-2 text-value text-neg">{actionError}</p>}
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         {decks === null && <div className="text-value text-fg-3">Chargement…</div>}

@@ -22,8 +22,9 @@
 #      « reactive » et rôle « referent » refusés avant et acceptés après, `is_hopt = false` passé
 #      à NULL, `nonengine_choice` posé sur les seules lignes à profil, carte seulement étiquetée
 #      non matérialisée, groupe « Mulcharmy » fourni de base créé, aperçus à NULL, journal des
-#      références en ajout seul, contrôle nominatif OK ; rejeu → un choix « false » et un aperçu
-#      posés APRÈS 006 survivent (second marqueur de journal « 006-annotation-defaults/c ») ;
+#      références en ajout seul, table des avis fermés `user_notices` créée vide et sans privilège
+#      pour le rôle du site, contrôle nominatif OK ; rejeu → un choix « false », un aperçu et un avis
+#      fermé posés APRÈS 006 survivent (second marqueur de journal « 006-annotation-defaults/c ») ;
 #   G. base vide (« départ à vide », 8C) en mode interactif sans terminal → code 0 sans question
 #      (une question aurait rendu 3), 001 à 006 journalisées, 0 ligne purgée, contrôle
 #      « base vide au départ » OK ; rejeu → code 0, « déjà journalisée », base identique ;
@@ -41,7 +42,8 @@
 #      écriture, --apply journalisé (backoffice_audit, source cli), rien à appliquer au rejeu,
 #      retrait, liste, compte inconnu refusé (code 1), `--role referent` et cible inconnue ; le
 #      journal refuse toute suppression ; le rôle testhand_backoffice n'a aucun privilège sur
-#      deck_cards, ne lit pas decks.name, et ne lit card_references qu'en lecture seule.
+#      deck_cards ni sur user_notices, ne lit pas decks.name, et ne lit card_references qu'en
+#      lecture seule.
 # Sorties dans deploy/out/test-migration-sequence-<horodatage>/ (ignoré par git). Conteneur
 # supprimé à la fin (--rm), y compris en cas d'échec. Jamais la base de dev (5433).
 set -euo pipefail
@@ -217,8 +219,8 @@ expect "F rejeu après 005 : liste stricte complète (users comprise)" grep_file
 # F, base à 005 SANS 006 : l'état de la production avant le chantier « annotations par défaut ».
 # Tout ce que 006 apporte est défait (contrainte de 002 à quatre profils, users_role_check à deux
 # valeurs, colonnes nonengine_choice / is_builtin, is_hopt « not null », référence et son journal,
-# groupes « Mulcharmy », les DEUX marqueurs de journal), puis une donnée représentative est posée
-# AVANT la séquence. Seule preuve que la branche « 003 déjà journalisée » rejoue 006, que le
+# avis fermés user_notices, groupes « Mulcharmy », les DEUX marqueurs de journal), puis une donnée
+# représentative est posée AVANT la séquence. Seule preuve que la branche « 003 déjà journalisée » rejoue 006, que le
 # cinquième profil et le rôle « referent » n'arrivent qu'après, et que la partie C migre les
 # données une seule fois et correctement (contrôle nominatif de check_006_data).
 db_query "
@@ -233,6 +235,7 @@ db_query "
   delete from nonengine_groups where name = 'Mulcharmy';
   drop table card_reference_log, card_references;
   drop function card_reference_log_refuse();
+  drop table user_notices;
   delete from app_migrations where id = '006-annotation-defaults';
   delete from app_migrations where id = '006-annotation-defaults/c';
 " > /dev/null
@@ -292,6 +295,8 @@ expect "F sans 006 : nonengine_choice posé exactement sur les lignes à profil"
 expect "F sans 006 : un groupe « Mulcharmy » (2 par tour, is_builtin) par compte" test "$(db_query "select count(*) from nonengine_groups where name = 'Mulcharmy' and is_builtin and cap_per_turn = 2")" = "$USERS_F6" -a "$(db_query "select count(*) from users u where not exists (select 1 from nonengine_groups g where g.owner_id = u.id and g.name = 'Mulcharmy' and g.is_builtin)")" = 0
 expect "F sans 006 : tous les aperçus decks.summary à NULL, aucun deck perdu" test "$(db_query 'select count(*) from decks where summary is not null')" = 0 -a "$(db_query 'select count(*) from decks')" = "$DECKS_F6"
 expect "F sans 006 : card_references et son journal présents" test "$(db_query "select count(*) from pg_tables where schemaname = 'public' and tablename in ('card_references', 'card_reference_log')")" = 2
+expect "F sans 006 : user_notices présente et vide (aucun avis fermé à la première application)" test "$(db_query "select count(*) from user_notices")" = 0
+expect "F sans 006 : rôle testhand_backoffice sans aucun privilège sur user_notices" test "$(db_query "select has_table_privilege('testhand_backoffice', 'user_notices', 'select, insert, update, delete, truncate, references, trigger')")" = f
 f6log() { ! db_query 'delete from card_reference_log' > /dev/null 2>&1; }
 expect "F sans 006 : le journal des références est en ajout seul (delete refusé même au propriétaire)" f6log
 expect "F sans 006 : contrôle nominatif de 006 dans check-migration.txt" grep_file '^OK\|006 appliquée par cette séquence : plus aucune ligne card_flags' "$CASE_OUT/check-migration.txt"
@@ -304,6 +309,7 @@ expect "F sans 006 : aucun KO dans check-migration.txt" not grep_file '^KO\|' "$
 db_query "
   update card_flags set is_hopt = false where owner_id = '$F6_OWNER' and card_id = 990000002;
   update decks set summary = '{\"mainSize\": 40, \"engineVersion\": \"apres-006\"}'::jsonb where owner_id = '$F6_OWNER';
+  insert into user_notices (user_id, notice) values ('$F6_OWNER', 'annotation-defaults');
 " > /dev/null
 FP_F6=$(db_fingerprint | fingerprint_global)
 CASE_OUT="$OUT/case-F-rejeu-006"; mkdir -p "$CASE_OUT"; HOOKS="$CASE_OUT/hooks.txt"; : > "$HOOKS"
@@ -311,6 +317,7 @@ run_seq interactive
 expect "F rejeu après 006 : code 0, base identique" test "$RC" = 0 -a "$(db_fingerprint | fingerprint_global)" = "$FP_F6"
 expect "F rejeu après 006 : le choix explicite « is_hopt = false » a survécu" test "$(db_query 'select count(*) from card_flags where is_hopt = false')" = 1
 expect "F rejeu après 006 : l'aperçu recalculé après 006 a survécu" test "$(db_query 'select count(*) from decks where summary is not null')" = 1
+expect "F rejeu après 006 : l'avis fermé après 006 a survécu (user_notices)" test "$(db_query "select count(*) from user_notices where user_id = '$F6_OWNER'")" = 1
 expect "F rejeu après 006 : aucun groupe « Mulcharmy » en double" test "$(db_query "select count(*) from nonengine_groups where name = 'Mulcharmy'")" = "$USERS_F6"
 expect "F rejeu après 006 : journal de séquence — aucun relevé, contrôle strict" grep_file 'données déjà migrées \(marqueur « /c » journalisé\)' "$CASE_OUT/journal.txt"
 expect "F rejeu après 006 : contrôle strict nominatif dans check-migration.txt" grep_file '^OK\|006 : marqueur de données « /c » déjà journalisé, aucun rejeu ne retouche' "$CASE_OUT/check-migration.txt"
@@ -442,7 +449,7 @@ expect "J --role inconnue : code 2 (usage), rien écrit" test "$RC" = 2 -a "$(ro
 run_role revoke admin-j@example.invalid --apply
 expect "J revoke après referent : rôle user" test "$RC" = 0 -a "$(role_of)" = user
 expect "J rôle testhand_backoffice : card_references lisible, non modifiable" test "$(db_query "select has_table_privilege('testhand_backoffice', 'card_references', 'select') and has_table_privilege('testhand_backoffice', 'card_reference_log', 'select') and not has_table_privilege('testhand_backoffice', 'card_references', 'insert, update, delete')")" = t
-expect "J rôle testhand_backoffice : aucun privilège sur deck_cards, decks.name illisible, users non modifiable" test "$(db_query "select has_table_privilege('testhand_backoffice', 'deck_cards', 'select') or has_column_privilege('testhand_backoffice', 'decks', 'name', 'select') or has_table_privilege('testhand_backoffice', 'users', 'update')")" = f
+expect "J rôle testhand_backoffice : aucun privilège sur deck_cards ni user_notices, decks.name illisible, users non modifiable" test "$(db_query "select has_table_privilege('testhand_backoffice', 'deck_cards', 'select') or has_table_privilege('testhand_backoffice', 'user_notices', 'select, insert, update, delete') or has_column_privilege('testhand_backoffice', 'decks', 'name', 'select') or has_table_privilege('testhand_backoffice', 'users', 'update')")" = f
 
 echo
 if [ "$FAILS" -gt 0 ]; then echo "ÉCHEC : $FAILS garde(s) en échec — journaux dans $OUT"; exit 1; fi

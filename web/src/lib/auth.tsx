@@ -24,6 +24,8 @@ interface AuthCtx {
     invite_code: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
+  /** Ferme un bandeau pour ce compte (retenu par le serveur, partie D). */
+  dismissNotice: (notice: string) => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -81,7 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.assign('/decks');
   };
 
-  return <Ctx.Provider value={{ state, login, register, logout }}>{children}</Ctx.Provider>;
+  const dismissNotice = async (notice: string) => {
+    await api.dismissNotice(notice);
+    setState((s) => (s.status === 'authenticated' ? { status: 'authenticated', user: { ...s.user, notices: (s.user.notices ?? []).filter((n) => n !== notice) } } : s));
+  };
+
+  return <Ctx.Provider value={{ state, login, register, logout, dismissNotice }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth(): AuthCtx {

@@ -365,11 +365,10 @@ valeur fine restant dans l'infobulle. Gardé par le scénario `home` de `web/e2e
 Vue et mode combiné (étape 9B) : la vue du panneau de statistiques est un réglage transitoire,
 comme le contexte premier / second — jamais enregistrée, changer de vue ne marque pas le deck
 « non enregistré » ; le curseur d'importance reste un paramètre enregistré. Le mode Non-engine
-pose une étiquette et, si un profil est choisi, ce profil (l'étiquette d'abord, le serveur
-exigeant une étiquette avant un profil) ; sur une carte déjà conforme au couple, le clic retire
-l'étiquette puis, s'il ne reste aucune étiquette, le profil devenu orphelin. La tuile annonce
-l'effet du prochain clic. Gardé par le scénario `nonengine` de `web/e2e/` (chaque clic vérifié
-par l'API).
+de 9B (étiquette puis profil, retrait du profil avec la dernière étiquette) est remplacé depuis
+le 17 septembre 2026 par la règle R8 du §9 : un profil et une étiquette facultative, poser /
+adopter / retirer, « retirer » ne regardant plus les étiquettes restantes. La tuile annonce l'effet
+du prochain clic. Gardé par le scénario `nonengine` de `web/e2e/` (chaque clic vérifié par l'API).
 
 Extra et side (étape 9C) : les deux zones sont éditables dans l'éditeur (ajout, copies, retrait
 avec annulation dans la même zone) et enregistrées avec le main dans la même configuration ;
@@ -464,3 +463,36 @@ main, copies qui entrent depuis le side.
 - **Comparateur.** Un côté peut être le deck sidé d'un plan prêt (adresse `deck~adversaire~position`) ;
   ses deux scénarios sont calculés, seul celui de la position du plan correspond au plan — c'est
   dit par une note d'information. Un plan incomplet ou à revoir ne se compare pas.
+
+## 9. Annotations par défaut (17 septembre 2026)
+
+Plan et comptes rendus : [annotations-par-defaut.md](annotations-par-defaut.md) (§11, §13, §15, §16).
+
+- **R1 — Trois couches.** La valeur effective d'une carte, aspect par aspect (HOPT ; profil et
+  plafond), vient du choix du compte, sinon de la référence commune, sinon de la détection. Son
+  origine est affichée en toutes lettres dans le détail de la carte (« vous », « réf. », « auto ») ;
+  sur la tuile, un badge hérité est en contour suffixé « auto » ou « réf. », un choix en aplat (un
+  « non » ou « pas non-engine » choisi n'a pas de badge).
+- **R2 — Détection.** Fonction pure du nom, du type et du texte anglais de la carte, sans liste de
+  cartes ; une carte d'extra deck n'a jamais de défaut ; un texte absent vaut « aucun défaut ». Sans
+  les textes des cartes, aucun chiffre n'est calculé ni enregistré.
+- **R3 — HOPT détecté** = limite par nom propre énoncée par la carte sur elle-même ; « once per turn »
+  sans nom, invocation limitée par nom, « twice per turn » n'en sont pas.
+- **R4 — Profil détecté** : quatre gabarits (Mulcharmy → Précoce + plafond « Mulcharmy » ; handtrap
+  générique → Réactive ou Flexible ; piège activable depuis la main → Flexible ; retrait de masse →
+  Board breaker) ; jamais « Préparé », jamais une étiquette.
+- **R5 — Choix du compte.** Il ne vaut que pour ce compte, aspect par aspect, et s'oublie par
+  « Revenir au défaut ». Un défaut n'est jamais exporté comme un choix ; un choix explicite contraire
+  refuse l'import (HOPT « non », « pas non-engine »). Les étiquettes restent des axes du compte, hors
+  défauts.
+- **R6 — Référence.** Écrite par un référent (ou un admin) seulement ; chaque écriture est journalisée
+  et invalide les aperçus de tous les decks, tous comptes, qui contiennent la carte. Elle désigne un
+  plafond par le nom d'un groupe fourni de base.
+- **R7 — Aucun résumé** calculé avec d'autres annotations que les annotations effectives courantes
+  n'est affiché.
+- **R8 — Mode Non-engine** (grille) : un profil et une étiquette facultative. Un clic pose ; sur une
+  carte dont le profil hérité est déjà celui du mode, il l'adopte (même valeur, devenue choix) ; sur
+  le choix identique, il le retire (« pas non-engine » choisi). « Étiquette seule » ne touche jamais
+  le profil.
+- **R9 — Bandeau** « Les annotations par défaut sont actives : vos chiffres ont pu changer ; vos choix
+  sont conservés », une fois par compte créé avant la migration, fermeture retenue par le serveur.

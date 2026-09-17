@@ -1,5 +1,7 @@
 import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.js';
+import { useRouter } from '../lib/router.js';
+import { useDeck } from '../store/deckStore.js';
 import { Popover } from './ui.js';
 
 /** État de persistance de l'éditeur, montré ici plutôt que dans l'en-tête (audit 01 §4 :
@@ -13,6 +15,7 @@ export interface PersistenceStatus {
  *  Rien en mode hors-ligne (pas de session à montrer). */
 export function AccountMenu({ status }: { status?: PersistenceStatus }) {
   const { state, logout } = useAuth();
+  const { navigate } = useRouter();
   if (state.status !== 'authenticated') return null;
   const { user } = state;
 
@@ -80,6 +83,21 @@ export function AccountMenu({ status }: { status?: PersistenceStatus }) {
                   </button>
                 )}
               </div>
+            )}
+
+            {/* Partie D : références communes, pour un référent (ou un admin, qui l'est aussi). */}
+            {user.referent && (
+              <button
+                data-nav-references
+                onClick={() => {
+                  // Même garde que « ← Decks » de l'éditeur : un deck non enregistré se confirme avant de partir.
+                  if (useDeck.getState().dirty && !window.confirm('Modifications non enregistrées : quitter quand même ?')) return;
+                  navigate({ name: 'references' });
+                }}
+                className="mt-1 rounded px-2 py-1.5 text-left text-body text-fg-2 hover:bg-ink-800"
+              >
+                Références communes
+              </button>
             )}
 
             <button

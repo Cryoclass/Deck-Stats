@@ -126,7 +126,7 @@ export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
         <div
           role="status"
           className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-meta text-warn"
-          title="Le profil de disponibilité (mode Profil) détermine les fenêtres retenues ; sans profil, la carte reste comptée dans les copies brutes de son étiquette mais pas dans le potentiel."
+          title="Le profil de disponibilité (mode Non-engine ou menu ⋯ de la carte) détermine les fenêtres retenues ; sans profil, la carte reste comptée dans les copies brutes de son étiquette mais pas dans le potentiel."
         >
           {unprofiled.length} carte{unprofiled.length > 1 ? 's' : ''} non-engine sans profil, non comptée
           {unprofiled.length > 1 ? 's' : ''} dans le potentiel :{' '}

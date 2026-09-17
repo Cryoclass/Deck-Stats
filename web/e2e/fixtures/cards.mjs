@@ -19,6 +19,11 @@ export const CARDS = [
   [90000015, 'Filler Omicron', 'Normal Monster', '#4a5568'],
   [90000016, 'Extra Pi', 'Fusion Monster', '#553c9a'],
   [90000017, 'Side Rho', 'Trap Card', '#9b2c2c'],
+  // Annotations par défaut (partie D, scénario `defaults`) : hors Deck A / Deck B. Passcodes 900000(30,31)
+  // libres : 90000018–19 sont pris par le jeu représentatif de la répétition. Sigma porte un texte qui
+  // déclenche la détection (limite par nom → HOPT, handtrap générique → Flexible) ; Tau un texte neutre.
+  [90000030, 'Auto Sigma', 'Effect Monster', '#2c7a7b', 'When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that effect. You can only use this effect of "Auto Sigma" once per turn.'],
+  [90000031, 'Reference Tau', 'Effect Monster', '#285e61'],
 ];
 
 const svg = (name, color) => {
@@ -29,9 +34,9 @@ const svg = (name, color) => {
 
 /** SQL d'insertion (idempotent) des cartes et de l'estampille de catalogue. */
 export function cardsSql() {
-  const rows = CARDS.map(([id, name, type, color]) => {
+  const rows = CARDS.map(([id, name, type, color, text]) => {
     const u = svg(name, color);
-    return `(${id}, '${name}', '${type}', 'Synthetic', null, 'Carte synthetique de validation visuelle.', '${u}', '${u}', '${u}')`;
+    return `(${id}, '${name}', '${type}', 'Synthetic', null, '${(text ?? 'Carte synthetique de validation visuelle.').replace(/'/g, "''")}', '${u}', '${u}', '${u}')`;
   });
   return [
     'insert into cards (id, name, type, race, attribute, description, image_url, image_url_small, image_url_cropped) values',

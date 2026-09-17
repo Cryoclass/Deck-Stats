@@ -76,18 +76,49 @@ describe('Partie C — valeurs effectives dans le store',() => {
     expect(useDeck.getState().origin.get(2)?.nonengine).toBe('choice');
   });
 
-  it('mode Non-engine combiné : poser puis retirer l’étiquette d’une carte au profil DÉTECTÉ laisse le profil hérité',async () => {
+  it('mode Non-engine (partie D) : sur un profil DÉTECTÉ identique, 1er clic adopte (valeur inchangée, « vous »), 2e clic retire',async () => {
     seed(library());
     useDeck.setState({ categories:[{ id:'ht',name:'Handtrap',is_builtin:true }] });
     vi.mocked(api.addCardCategory).mockResolvedValue({} as never);
     vi.mocked(api.removeCardCategory).mockResolvedValue({} as never);
-    useDeck.getState().applyNonEngine(1,'ht','flexible'); // poser : étiquette seule (profil déjà flexible)
+    vi.mocked(api.setFlags).mockResolvedValueOnce({ ok:true,card_id:1,is_hopt:null,nonengine_choice:true,availability:'flexible',group_id:null });
+    useDeck.getState().applyNonEngine(1,'ht','flexible');
     await settled();
-    useDeck.getState().applyNonEngine(1,'ht','flexible'); // retirer : l'étiquette part, le profil hérité reste
+    expect(api.addCardCategory).toHaveBeenCalledWith(1,'ht');
+    expect(api.setFlags).toHaveBeenCalledWith(1,{ availability:'flexible',inherited:{ availability:'flexible',group_name:null } });
+    expect(useDeck.getState().profiles.get(1)).toEqual({ availability:'flexible',groupId:null });
+    expect(useDeck.getState().origin.get(1)?.nonengine).toBe('choice');
+    vi.mocked(api.setFlags).mockResolvedValueOnce({ ok:true,card_id:1,is_hopt:null,nonengine_choice:true,availability:null,group_id:null });
+    useDeck.getState().applyNonEngine(1,'ht','flexible');
     await settled();
     expect(api.removeCardCategory).toHaveBeenCalledWith(1,'ht');
+    expect(api.setFlags).toHaveBeenLastCalledWith(1,{ availability:null });
+    expect(useDeck.getState().profiles.has(1)).toBe(false);
+    expect(useDeck.getState().origin.get(1)?.nonengine).toBe('choice');
+  });
+
+  it('mode Non-engine, étiquette seule : le profil hérité n’est jamais touché',async () => {
+    seed(library());
+    useDeck.setState({ categories:[{ id:'ht',name:'Handtrap',is_builtin:true }] });
+    vi.mocked(api.addCardCategory).mockResolvedValue({} as never);
+    vi.mocked(api.removeCardCategory).mockResolvedValue({} as never);
+    useDeck.getState().applyNonEngine(1,'ht',null);
+    await settled();
+    useDeck.getState().applyNonEngine(1,'ht',null);
+    await settled();
+    expect(api.addCardCategory).toHaveBeenCalledWith(1,'ht');
+    expect(api.removeCardCategory).toHaveBeenCalledWith(1,'ht');
     expect(api.setFlags).not.toHaveBeenCalled();
-    expect(useDeck.getState().profiles.get(1)).toEqual({ availability:'flexible',groupId:null });
     expect(useDeck.getState().origin.get(1)?.nonengine).toBe('detection');
+  });
+
+  it('partie D : adopter un profil de RÉFÉRENCE avec plafond envoie le plafond par son nom',async () => {
+    seed(library({ references:[{ card_id:2,is_hopt:null,nonengine_set:true,availability:'reactive',group_name:'Mulcharmy',note:null }] }));
+    vi.mocked(api.setFlags).mockResolvedValueOnce({ ok:true,card_id:2,is_hopt:null,nonengine_choice:true,availability:'reactive',group_id:'g-m' });
+    useDeck.getState().applyNonEngine(2,null,'reactive');
+    await settled();
+    expect(api.setFlags).toHaveBeenCalledWith(2,{ availability:'reactive',inherited:{ availability:'reactive',group_name:'Mulcharmy' } });
+    expect(useDeck.getState().profiles.get(2)).toEqual({ availability:'reactive',groupId:'g-m' });
+    expect(useDeck.getState().origin.get(2)?.nonengine).toBe('choice');
   });
 });

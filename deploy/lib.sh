@@ -25,6 +25,10 @@
 #   en mode keep échoue, « la base a bougé »), et 005 se rejoue avant 003 comme 004 — 006
 #   (annotations par défaut) de même, et APRÈS 005 : 005 révoque puis réaccorde les privilèges du
 #   rôle du site, 006 lui réaccorde ensuite ses deux lectures (card_references et son journal).
+#   Les tables créées par 006 (card_references, card_reference_log, user_notices) sont absentes
+#   avant sa première application : comme celles de 004 et 005, elles restent hors de
+#   KEPT_ACROSS_SEQUENCE (elles y seraient « absentes avant ») et sont contrôlées par
+#   check-migration.sql (présence, privilèges du rôle du site) et par test-migration-sequence.sh.
 #   Crochets à définir par l'appelant : hook_stop_app, hook_start_app (nouvelle app),
 #   hook_start_old_app (conteneur précédent), hook_app_left_stopped <commande de restauration>,
 #   hook_backup <dossier> (lance backup.sh --pre-migration et pose PRE_MIGRATION_ARCHIVE ;

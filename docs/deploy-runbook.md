@@ -74,7 +74,9 @@ aucune question — c'est exactement le cas « F, rejeu » de `deploy/test-migra
 > - C4 : le journal de séquence porte d'abord `006 : relevé avant migration des données — …`
 >   (effectifs de `card_flags`, `nonengine_groups`, `users`, `decks` avant le rejeu) ; les contrôles
 >   ajoutent `OK|journal 006-annotation-defaults : journalisée`,
->   `OK|journal 006-annotation-defaults/c : journalisée`, puis une dizaine de lignes
+>   `OK|journal 006-annotation-defaults/c : journalisée`, `OK|table v2 user_notices : présente`,
+>   `OK|avis fermés par compte (user_notices) : 0` (bandeau « annotations par défaut » dû aux
+>   comptes créés avant le marqueur `/c`, fermeture retenue par compte), puis une dizaine de lignes
 >   `OK|006 appliquée par cette séquence : …` (contrôle nominatif de `check_006_data`) ; aucune `KO|` ;
 > - C4, empreintes : **trois tables changent d'empreinte ce jour-là** et c'est attendu —
 >   `card_flags` (tout `is_hopt = false` passe à NULL, `nonengine_choice` posé sur les lignes à

@@ -91,7 +91,7 @@ test('sans session, toute route non marquée publique répond 401 — y compris 
   const closed: Array<[Method,string]>=[
     ['GET','/api/cards/search?q=audit'],['GET','/api/cards?ids=1'],['GET','/api/cards/483/image'],
     ['GET','/api/decks'],['POST','/api/decks'],['GET','/api/library'],['POST','/api/library/categories'],
-    ['GET','/api/auth/me'],['DELETE','/api/auth/discord'],['GET','/api/audit/unmarked'],['GET','/api/references'],['PUT','/api/references/1'],
+    ['GET','/api/auth/me'],['DELETE','/api/auth/discord'],['GET','/api/audit/unmarked'],['GET','/api/references'],['PUT','/api/references/1'],['POST','/api/auth/notices/annotation-defaults/dismiss'],['POST','/%61pi/auth/notices/annotation-defaults/dismiss'],
     ['GET','/%61pi/cards/search?q=audit&limit=100'],['GET','/%61pi/cards?ids=1'],['GET','/%61pi/cards/abc/image'],
     ['GET','/%61pi/decks'],['GET','/%61pi/library'],['GET','/%61pi/audit/unmarked'],['GET','/api/%63ards/search?q=audit'],
   ];
@@ -230,4 +230,40 @@ test('un `id` fourni par le client pour une étiquette ou un plafond est ignoré
   // Le plafond fourni de base « Mulcharmy » (D7′, annotations par défaut) est hors de cette sonde.
   assert.deepEqual(libB.json().groups.filter((g: { is_builtin: boolean }) => !g.is_builtin).map((g: { name: string; cap_per_turn: number }) => [g.name,g.cap_per_turn]),[['Sonde',2]]);
   assert.equal((await query('select count(*)::int as n from nonengine_groups where id=$1',[groupId])).rows[0].n,1);
+});
+
+// ─── 5. Avis d'interface fermés par compte (annotations par défaut, partie D, lot D1) ───
+
+test('bandeau « annotations par défaut » : dû seulement à un compte antérieur au marqueur 006/c, fermé côté serveur, fermeture idempotente, clé inconnue 404',async () => {
+  const notices=async () => {
+    const me=await inject('GET','/api/auth/me',{ session:a.session });
+    assert.equal(me.statusCode,200,me.body);
+    return me.json().user.notices as string[];
+  };
+  // Compte créé APRÈS l'application de 006 (base neuve de la suite) : jamais d'anciens chiffres.
+  assert.deepEqual(await notices(),[]);
+  // Compte reculé avant le marqueur « 006-annotation-defaults/c » : l'avis est dû.
+  await query("update users set created_at=(select applied_at from app_migrations where id='006-annotation-defaults/c') - interval '1 day' where email=$1",[EMAIL_A]);
+  assert.deepEqual(await notices(),['annotation-defaults']);
+  // B (créé après le marqueur) ne voit rien, même pendant que A le voit.
+  const meB=await inject('GET','/api/auth/me',{ session:b.session });
+  assert.deepEqual(meB.json().user.notices,[]);
+  const dismiss=await inject('POST','/api/auth/notices/annotation-defaults/dismiss',{ session:a.session });
+  assert.equal(dismiss.statusCode,200,dismiss.body);assert.deepEqual(dismiss.json(),{ ok:true });
+  assert.deepEqual(await notices(),[]);
+  // Idempotente : une seconde fermeture répond 200 et ne crée pas de seconde ligne.
+  const again=await inject('POST','/api/auth/notices/annotation-defaults/dismiss',{ session:a.session });
+  assert.equal(again.statusCode,200,again.body);assert.deepEqual(again.json(),{ ok:true });
+  assert.equal((await query("select count(*)::int as n from user_notices n join users u on u.id=n.user_id where u.email=$1",[EMAIL_A])).rows[0].n,1);
+  assert.deepEqual(await notices(),[]);
+  // Clé inconnue : 404 avec message, rien d'écrit.
+  const unknown=await inject('POST','/api/auth/notices/inconnu/dismiss',{ session:a.session });
+  assert.equal(unknown.statusCode,404,unknown.body);assert.deepEqual(unknown.json(),{ error:'Avis inconnu.' });
+  assert.equal((await query('select count(*)::int as n from user_notices')).rows[0].n,1);
+  // Marqueur absent (base antérieure à la partie C) : plus rien n'est dû, même sans fermeture.
+  await query("delete from user_notices");
+  assert.deepEqual(await notices(),['annotation-defaults']);
+  await query("delete from app_migrations where id='006-annotation-defaults/c'");
+  try { assert.deepEqual(await notices(),[]); }
+  finally { await query("insert into app_migrations (id) values ('006-annotation-defaults/c') on conflict do nothing"); }
 });
