@@ -1,12 +1,13 @@
 import { create } from 'zustand';
-import type { Availability, Card, CardProfile, Category, ComboPair, ConditionNode, DeckCard, Matchup, NonEngineGroup, SidePlanCard, SidePlanPosition, StartCondition, Zone } from '../types.js';
+import type { Availability, Card, CardOrigin, CardProfile, CardReference, Category, ComboPair, ConditionNode, DeckCard, LibraryChoice, Matchup, NonEngineGroup, SidePlanCard, SidePlanPosition, StartCondition, Zone } from '../types.js';
 import { addMatchup as addMatchupTo, copyPlan as copyPlanIn, removeFromPlan as removeFromPlanIn, removeMatchup as removeMatchupFrom, renameMatchup as renameMatchupIn, setPlanNote as setPlanNoteIn, swapInPlan as swapInto, type PlanDirection } from '../lib/matchups.js';
 import { pairKey } from '../types.js';
 import type { AnalysisContext, EngineResult } from '../engine/types.js';
 import type { QueryCriterion, SavedQuery } from '../engine/query.js';
 import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled, type ComputeClient, type ComputeTask } from '../worker/computeClient.js';
-import { ApiError, api } from '../lib/api.js';
+import { ApiError, api, type CardFlagsRow } from '../lib/api.js';
+import { effectiveLibrary, effectiveOf } from '../lib/effectiveLibrary.js';
 import { MAX_COPIES, type ParsedDeck } from '../lib/ydk.js';
 import { saveDraft, loadDraft, clearDraft, type DeckDraft } from '../lib/draft.js';
 import type { DeckJson } from '../lib/exportDeck.js';
@@ -32,8 +33,16 @@ interface State {
   side: DeckCard[];
 
   // Account-wide HOPT/categories/profiles/caps; pairs and start availability are deck-local.
+  // Partie C (docs/annotations-par-defaut.md, D1, D6) : `hopt` et `profiles` sont les valeurs
+  // EFFECTIVES (choix > référence > détection), dérivées de la bibliothèque brute ci-dessous et des
+  // textes de `cards` par `deriveEffective` ; `origin` dit d'où vient chaque valeur.
   hopt: Set<number>;
   profiles: Map<number, CardProfile>;
+  choices: Map<number, LibraryChoice>;
+  chosenProfiles: Map<number, CardProfile>;
+  references: Map<number, CardReference>;
+  referencesVersion: string;
+  origin: Map<number, CardOrigin>;
   groups: NonEngineGroup[];
   deadFirst: Set<number>;
   deadSecond: Set<number>;
@@ -113,6 +122,8 @@ interface State {
   removeCard: (cardId: number, zone?: Zone) => void;
   toggleStarter: (cardId: number) => void;
   toggleHopt: (cardId: number) => void;
+  /** Retour au défaut d'un aspect (D6) : la carte hérite à nouveau de la référence ou de la détection. */
+  resetAnnotation: (cardId: number, aspect: 'hopt' | 'nonengine') => void;
   toggleDeadFirst: (cardId: number) => void;
   toggleDeadSecond: (cardId: number) => void;
   togglePair: (a: number, b: number) => void;
@@ -251,8 +262,35 @@ function persist(set: (p: Partial<State>) => void, fn: () => Promise<unknown>): 
   }).finally(() => set({ libraryPending: --libraryPending }));
 }
 
+export const CATALOG_UNAVAILABLE = 'Catalogue des cartes indisponible : sans le texte des cartes, les annotations par défaut manquent et les chiffres seraient faux. Rechargez.';
+
+/** Valeurs effectives (R1) de toutes les cartes connues du store (catalogue chargé et zones). */
+function effectiveOfState(s: Pick<State, 'choices' | 'chosenProfiles' | 'groups' | 'references' | 'cards' | 'main' | 'extra' | 'side'>): Pick<State, 'hopt' | 'profiles' | 'origin'> {
+  const ids = new Set<number>([...Object.keys(s.cards).map(Number), ...s.main.map((c) => c.cardId), ...s.extra.map((c) => c.cardId), ...s.side.map((c) => c.cardId)]);
+  return effectiveLibrary({ hopt: new Set(), choices: s.choices, chosenProfiles: s.chosenProfiles, groups: s.groups, references: s.references }, s.cards, ids);
+}
+
 export const useDeck = create<State>((set, get) => {
   const recompute = () => scheduleCompute(get, set);
+  const deriveEffective = () => set(effectiveOfState(get()));
+  /** Ce que le serveur doit matérialiser au premier geste sur l'aspect non-engine d'une carte héritée. */
+  const inheritedOf = (cardId: number) => {
+    const s = get();
+    if (s.choices.get(cardId)?.nonengine_choice) return undefined;
+    const e = effectiveOf({ hopt: new Set(), choices: s.choices, chosenProfiles: s.chosenProfiles, groups: s.groups, references: s.references }, cardId, s.cards[cardId]);
+    return e.origin.nonengine === null ? undefined : e.inherited; // rien à matérialiser sans défaut
+  };
+  /** Adopte une ligne de drapeaux acquittée par le serveur (choix et profil matérialisé), puis dérive. */
+  const adoptFlags = (cardId: number, row: CardFlagsRow) => {
+    const choices = new Map(get().choices);
+    if (row.is_hopt === null && !row.nonengine_choice) choices.delete(cardId);
+    else choices.set(cardId, { card_id: cardId, is_hopt: row.is_hopt, nonengine_choice: row.nonengine_choice });
+    const chosenProfiles = new Map(get().chosenProfiles);
+    if (row.availability) chosenProfiles.set(cardId, { availability: row.availability, groupId: row.group_id });
+    else chosenProfiles.delete(cardId);
+    set({ choices, chosenProfiles });
+    deriveEffective();
+  };
   const markDirty = () => {
     set({ dirty: true,editRevision: get().editRevision+1 });
     scheduleDraft(get);
@@ -298,6 +336,11 @@ export const useDeck = create<State>((set, get) => {
     side: [],
     hopt: new Set(),
     profiles: new Map(),
+    choices: new Map(),
+    chosenProfiles: new Map(),
+    references: new Map(),
+    referencesVersion: '0',
+    origin: new Map(),
     groups: [],
     deadFirst: new Set(),
     deadSecond: new Set(),
@@ -340,6 +383,7 @@ export const useDeck = create<State>((set, get) => {
           ...libraryState(lib),
           online: true,
         });
+        deriveEffective();
       } catch {
         set({ online: false });
       }
@@ -353,6 +397,7 @@ export const useDeck = create<State>((set, get) => {
       const cardMap: Record<number, Card> = { ...get().cards };
       for (const c of cards) cardMap[c.id] = c;
       set({ cards: cardMap, persistenceError: null });
+      deriveEffective();
       const all = [
         ...toDeck(parsed.main, 'main'),
         ...toDeck(parsed.extra, 'extra'),
@@ -403,7 +448,9 @@ export const useDeck = create<State>((set, get) => {
         const configuration = configurationFromDetail(detail);
         const cardMap = { ...get().cards };
         const ids = new Set([...configuration.cards.map((c) => c.card_id),...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),...configuration.conditions.flatMap((r) => leavesOf(r.condition).map((l) => l.leaf.card_id))]);
-        try { for (const c of await api.cardsByIds([...ids])) cardMap[c.id] = c; } catch { /* Catalogue lookup is optional. */ }
+        // Partie C : les textes des cartes déterminent les annotations par défaut, donc les chiffres (et
+        // l'aperçu joint à l'enregistrement) ; sans eux, aucun calcul plutôt qu'un calcul faux.
+        try { for (const c of await api.cardsByIds([...ids])) cardMap[c.id] = c; } catch { throw new Error(CATALOG_UNAVAILABLE); }
         if (!current()) return;
         // Aucune ancienne statistique ne survit à l'ouverture d'un deck : état initial de
         // calcul, jamais un mélange avec le résultat du deck précédent (§6).
@@ -412,6 +459,7 @@ export const useDeck = create<State>((set, get) => {
           dirty: false,editRevision: 0,lastSavedAt: Date.parse(detail.updated_at ?? ''),draftAvailable: null,
           persistenceError: null,removalToast: null,queryCriteria: defaultQuery(),handFilterByQuery: false,
           result: null,model: null,resultContext: null,stale: false,computeError: null });
+        deriveEffective();
         recompute();
         const draft = await loadDraft(id);
         if (!current()) return;
@@ -459,7 +507,16 @@ export const useDeck = create<State>((set, get) => {
       if (!d) return;
       set({ ...stateFromConfiguration(d.configuration),draftAvailable: null,dirty: true,editRevision: get().editRevision+1 });
       // Keep the loaded server revision; an old draft is an explicit user restoration.
+      deriveEffective();
       recompute();
+      // Partie C : une carte ajoutée dans le brouillon n'a pas encore son texte ; sans lui, aucun défaut.
+      const missing = d.configuration.cards.map((c) => c.card_id).filter((cardId) => !get().cards[cardId]);
+      if (missing.length) void api.cardsByIds(missing).then((loaded) => {
+        if (get().deckId !== d.deckId) return;
+        set({ cards: { ...get().cards,...Object.fromEntries(loaded.map((c) => [c.id,c])) } });
+        deriveEffective();
+        recompute();
+      }).catch(() => { set({ persistenceError: CATALOG_UNAVAILABLE }); });
     },
 
     async discardDraft() {
@@ -488,6 +545,7 @@ export const useDeck = create<State>((set, get) => {
         ? get()[zone].map((m) => (m.cardId === card.id ? { ...m, copies: requested } : m))
         : [...get()[zone], { cardId: card.id, copies: requested, zone }];
       set({ cards, [zone]: list, persistenceError: null });
+      deriveEffective();
       zoneMutation(zone);
       return true;
     },
@@ -673,11 +731,16 @@ export const useDeck = create<State>((set, get) => {
     // Global annotations are adopted only after acknowledgement; queued in order.
     toggleHopt(cardId) {
       persist(set, async () => {
-        const hopt = new Set(get().hopt);
-        const on = !hopt.has(cardId);
-        await api.setFlags(cardId,{ is_hopt: on });
-        if (on) hopt.add(cardId); else hopt.delete(cardId);
-        set({ hopt }); libraryCalc();
+        // Bascule par rapport à la valeur EFFECTIVE : un clic sur un HOPT détecté pose un choix « faux ».
+        const on = !get().hopt.has(cardId);
+        adoptFlags(cardId, await api.setFlags(cardId,{ is_hopt: on }));
+        libraryCalc();
+      });
+    },
+    resetAnnotation(cardId, aspect) {
+      persist(set, async () => {
+        adoptFlags(cardId, await api.resetFlags(cardId, aspect));
+        libraryCalc();
       });
     },
     toggleDeadFirst(cardId) {
@@ -738,21 +801,17 @@ export const useDeck = create<State>((set, get) => {
         const has = get().cardCategories.get(cardId)?.has(categoryId) ?? false;
         const current = get().profiles.get(cardId)?.availability ?? null;
         const conforming = nonEngineEffect(has,current,profile) === 'retirer';
-        const adoptFlags = (saved: { availability: Availability | null; group_id: string | null }) => {
-          const profiles = new Map(get().profiles);
-          if (saved.availability) profiles.set(cardId,{ availability: saved.availability,groupId: saved.group_id });
-          else profiles.delete(cardId);
-          set({ profiles });
-        };
         const setCats = (cats: Set<string>) => { const cc = new Map(get().cardCategories); cc.set(cardId,cats); set({ cardCategories: cc }); };
         if (!conforming) {
           if (!has) { await api.addCardCategory(cardId,categoryId); setCats(new Set([...(get().cardCategories.get(cardId) ?? []),categoryId])); }
-          if (profile !== null && current !== profile) adoptFlags(await api.setFlags(cardId,{ availability: profile }));
+          if (profile !== null && current !== profile) adoptFlags(cardId, await api.setFlags(cardId,{ availability: profile,inherited: inheritedOf(cardId) }));
         } else {
           await api.removeCardCategory(cardId,categoryId);
           const remaining = new Set([...(get().cardCategories.get(cardId) ?? [])].filter((id) => id !== categoryId));
           setCats(remaining);
-          if (remaining.size === 0 && get().profiles.has(cardId)) adoptFlags(await api.setFlags(cardId,{ availability: null }));
+          // Partie C : seul un profil CHOISI est l'effet d'un geste « poser » ; un profil hérité (détection,
+          // référence) n'a pas été posé par le mode et reste en place (sinon « pas non-engine » explicite).
+          if (remaining.size === 0 && get().profiles.has(cardId) && get().origin.get(cardId)?.nonengine === 'choice') adoptFlags(cardId, await api.setFlags(cardId,{ availability: null }));
         }
         libraryCalc();
       });
@@ -764,11 +823,8 @@ export const useDeck = create<State>((set, get) => {
       // Depuis le 16 septembre 2026 (docs/annotations-par-defaut.md, D14′) : le profil seul
       // déclenche le comptage ; une étiquette n'est plus requise (ancienne garde Q1 levée).
       persist(set, async () => {
-        const saved = await api.setFlags(cardId,{ availability });
-        const profiles = new Map(get().profiles);
-        if (saved.availability) profiles.set(cardId,{ availability: saved.availability,groupId: saved.group_id });
-        else profiles.delete(cardId);
-        set({ profiles }); libraryCalc();
+        adoptFlags(cardId, await api.setFlags(cardId,{ availability,inherited: inheritedOf(cardId) }));
+        libraryCalc();
       });
     },
     setCardGroup(cardId, groupId) {
@@ -779,17 +835,15 @@ export const useDeck = create<State>((set, get) => {
         return;
       }
       persist(set, async () => {
-        const saved = await api.setFlags(cardId,{ group_id: groupId });
-        const profiles = new Map(get().profiles);
-        if (saved.availability) profiles.set(cardId,{ availability: saved.availability,groupId: saved.group_id });
-        else profiles.delete(cardId);
-        set({ profiles }); libraryCalc();
+        adoptFlags(cardId, await api.setFlags(cardId,{ group_id: groupId,inherited: inheritedOf(cardId) }));
+        libraryCalc();
       });
     },
     addGroup(name, capPerTurn) {
       persist(set, async () => {
         const created = await api.addGroup(name,capPerTurn,uid());
         set({ groups: [...get().groups.filter((g) => g.id !== created.id),created] });
+        deriveEffective();
         recompute();
       });
     },
@@ -805,7 +859,8 @@ export const useDeck = create<State>((set, get) => {
         await api.deleteGroup(id);
         // Les membres gardent leur profil et perdent leur plafond (FK on delete set null).
         set({ groups: get().groups.filter((g) => g.id !== id),
-          profiles: new Map([...get().profiles].map(([card,p]) => [card,p.groupId === id ? { ...p,groupId: null } : p])) });
+          chosenProfiles: new Map([...get().chosenProfiles].map(([card,p]) => [card,p.groupId === id ? { ...p,groupId: null } : p])) });
+        deriveEffective();
         recompute();
       });
     },

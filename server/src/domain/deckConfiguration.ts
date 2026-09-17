@@ -5,6 +5,52 @@
 export const AVAILABILITY_PROFILES = ['early', 'flexible', 'prepared', 'breaker', 'reactive'] as const;
 export type Availability = (typeof AVAILABILITY_PROFILES)[number];
 
+/** Rôles des comptes (migration 005 puis 006) : hiérarchie `admin > referent > user`. */
+export const USER_ROLES = ['user', 'referent', 'admin'] as const;
+export type Role = (typeof USER_ROLES)[number];
+export const roleValid = (v: unknown): v is Role => typeof v === 'string' && (USER_ROLES as readonly string[]).includes(v);
+/** Un admin est référent (réponse Q1 du chantier « annotations par défaut »). */
+export const isReferentRole = (role: Role): boolean => role === 'referent' || role === 'admin';
+
+/**
+ * Référence commune à tous les comptes, posée par un référent (docs/annotations-par-defaut.md,
+ * D4′). Chaque aspect peut être laissé à la détection : `is_hopt` null = détection ;
+ * `nonengine_set` false = détection, true = `availability` / `group_name` font foi, y compris
+ * `availability` null = « pas non-engine ». Le plafond est désigné par le NOM du groupe fourni
+ * de base (D7′), résolu par chaque compte vers son propre groupe.
+ */
+export interface CardReference {
+  card_id: number;
+  is_hopt: boolean | null;
+  nonengine_set: boolean;
+  availability: Availability | null;
+  group_name: string | null;
+  note: string | null;
+}
+export const REFERENCE_NOTE_MAX = 2000;
+/** Valide le corps d'une écriture de référence (`PUT /api/references/:cardId`). */
+export function parseReference(cardId: number, value: unknown): CardReference {
+  const fail = (message: string): never => { throw new ConfigurationError(message); };
+  if (!cardIdValid(cardId)) fail('Carte invalide.');
+  if (!record(value)) fail('Référence invalide.');
+  const v = value as Record<string, unknown>;
+  if (!Object.keys(v).every((k) => ['is_hopt', 'nonengine_set', 'availability', 'group_name', 'note'].includes(k))) fail('Champ de référence non pris en charge.');
+  const is_hopt = v.is_hopt === undefined || v.is_hopt === null ? null : v.is_hopt;
+  if (is_hopt !== null && typeof is_hopt !== 'boolean') fail('Référence HOPT invalide.');
+  const nonengine_set = v.nonengine_set === undefined ? false : v.nonengine_set;
+  if (typeof nonengine_set !== 'boolean') fail('Référence non-engine invalide.');
+  const availability = v.availability === undefined || v.availability === null ? null : v.availability;
+  if (availability !== null && !availabilityValid(availability)) fail('Profil de disponibilité inconnu.');
+  const group_name = v.group_name === undefined || v.group_name === null ? null : v.group_name;
+  if (group_name !== null && (typeof group_name !== 'string' || !group_name.trim() || group_name.length > 200)) fail('Plafond de référence invalide.');
+  if (!nonengine_set && (availability !== null || group_name !== null)) fail('Un profil ou un plafond de référence exige nonengine_set.');
+  if (group_name !== null && availability === null) fail('Un plafond de référence exige un profil.');
+  const note = v.note === undefined || v.note === null ? null : v.note;
+  if (note !== null && (typeof note !== 'string' || note.length > REFERENCE_NOTE_MAX)) fail('Note de référence invalide.');
+  if (is_hopt === null && !nonengine_set) fail('Une référence vide ne dit rien : retirez-la plutôt.');
+  return { card_id: cardId, is_hopt: is_hopt as boolean | null, nonengine_set: nonengine_set as boolean, availability: availability as Availability | null, group_name: group_name === null ? null : (group_name as string).trim(), note: note === null ? null : (note as string) };
+}
+
 /**
  * Condition ET/OU d'une source de start (contrat §4), sur le deck restant après le
  * tirage observé. Feuille : « il reste au moins `at_least` copies de `card_id` dans le

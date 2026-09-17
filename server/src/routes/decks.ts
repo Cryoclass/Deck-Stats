@@ -60,20 +60,26 @@ async function mergeLibrary(c: PoolClient, uid: string, archive: DeckArchive): P
       groupMapping.set(group.id,created.id);
     }
   }
+  // D11 : l'archive ne porte que des CHOIX explicites ; un HOPT importé devient un choix `true`
+  // (`is_hopt` null = hérité, jamais contradictoire ; `false` explicite l'est).
   for (const id of archive.library.hoptCardIds) {
-    const { rows: [existing] } = await c.query('select is_hopt from card_flags where owner_id=$1 and card_id=$2', [uid,id]);
-    if (existing && !existing.is_hopt) error(409, `HOPT contradictoire pour la carte ${id}. Aucun import effectué.`);
-    await c.query('insert into card_flags (owner_id,card_id,is_hopt) values ($1,$2,true) on conflict (owner_id,card_id) do nothing', [uid,id]);
+    const { rows: [existing] } = await c.query<{ is_hopt: boolean | null }>('select is_hopt from card_flags where owner_id=$1 and card_id=$2', [uid,id]);
+    if (existing && existing.is_hopt === false) error(409, `HOPT contradictoire pour la carte ${id}. Aucun import effectué.`);
+    await c.query('insert into card_flags (owner_id,card_id,is_hopt) values ($1,$2,true) on conflict (owner_id,card_id) do update set is_hopt=true', [uid,id]);
   }
   for (const cc of archive.library.cardCategories) await c.query('insert into card_categories (card_id,category_id) values ($1,$2) on conflict do nothing', [cc.card_id,mapping.get(cc.category_id)]);
   for (const p of archive.library.profiles) {
     const groupId = p.group_id ? groupMapping.get(p.group_id)! : null;
-    const { rows: [existing] } = await c.query('select availability,group_id from card_flags where owner_id=$1 and card_id=$2', [uid,p.card_id]);
+    const { rows: [existing] } = await c.query<{ availability: string | null; group_id: string | null; nonengine_choice: boolean }>('select availability,group_id,nonengine_choice from card_flags where owner_id=$1 and card_id=$2', [uid,p.card_id]);
+    // Choix explicite « pas non-engine » (partie C) : contradictoire avec un profil importé, comme un HOPT « faux ».
+    if (existing?.nonengine_choice && !existing.availability) error(409, `Profil contradictoire pour la carte ${p.card_id} (aucun, choisi, contre ${p.availability}). Aucun import effectué.`);
     if (existing?.availability && existing.availability !== p.availability) error(409, `Profil contradictoire pour la carte ${p.card_id} (${existing.availability} contre ${p.availability}). Aucun import effectué.`);
     if (existing?.group_id && groupId && existing.group_id !== groupId) error(409, `Plafond partagé contradictoire pour la carte ${p.card_id}. Aucun import effectué.`);
+    // Un profil importé matérialise l'aspect non-engine (D6) : il prime sur le défaut du compte.
     await c.query(
-      `insert into card_flags (owner_id,card_id,availability,group_id) values ($1,$2,$3,$4)
-       on conflict (owner_id,card_id) do update set availability=excluded.availability,group_id=coalesce(card_flags.group_id,excluded.group_id)`,
+      // `is_hopt` explicite à NULL : la colonne garde `default false` (006), qui vaudrait un choix « pas HOPT ».
+      `insert into card_flags (owner_id,card_id,is_hopt,nonengine_choice,availability,group_id) values ($1,$2,null,true,$3,$4)
+       on conflict (owner_id,card_id) do update set nonengine_choice=true,availability=excluded.availability,group_id=coalesce(card_flags.group_id,excluded.group_id)`,
       [uid,p.card_id,p.availability,groupId]);
   }
   archive.configuration.params = remapCategoryReferences(archive.configuration.params,mapping);

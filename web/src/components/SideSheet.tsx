@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, type DeckDetail } from '../lib/api.js';
 import { useRouter } from '../lib/router.js';
-import { configurationFromDetail, libraryState, stateFromConfiguration } from '../lib/deckConfiguration.js';
+import { configurationFromDetail, sourceFromDetail } from '../lib/deckConfiguration.js';
 import { planComputeMode, planFingerprint, planSummaryFromPass } from '../lib/sidePlan.js';
 import { plansToCompute, planKey, sheetOf, type SheetPlan } from '../lib/sideSheet.js';
 import { createEngineClient } from '../worker/client.js';
@@ -65,11 +65,9 @@ export function SideSheet({ id }: { id: string }) {
         ...configuration.matchups.flatMap((m) => m.plans.flatMap((p) => [...p.outgoing, ...p.incoming].map((c) => c.card_id))),
       ]);
       const cards: Record<number, Card> = {};
-      try {
-        for (const c of await api.cardsByIds([...ids])) cards[c.id] = c;
-      } catch {
-        /* Catalogue facultatif : l'image se dérive de l'id. */
-      }
+      // Partie C : les textes des cartes déterminent les annotations par défaut, donc les chiffres de plan
+      // persistés ; sans eux, la fiche ne se charge pas (erreur affichée) plutôt que d'écrire des chiffres faux.
+      for (const c of await api.cardsByIds([...ids])) cards[c.id] = c;
       if (cancelled) return;
       setLoaded({ detail, library, cards });
       setStored(Object.fromEntries((detail.plan_summaries ?? []).map((r) => [planKey(r.matchup_id, r.position), r.summary])));
@@ -85,7 +83,7 @@ export function SideSheet({ id }: { id: string }) {
 
   const sheet = useMemo(() => {
     if (!loaded) return null;
-    const state = { ...stateFromConfiguration(configurationFromDetail(loaded.detail)), ...libraryState(loaded.library) };
+    const state = sourceFromDetail(loaded.detail, loaded.library, loaded.cards);
     return sheetOf(state, state.matchups, stored);
   }, [loaded, stored]);
   const pending = sheet ? plansToCompute(sheet) : [];

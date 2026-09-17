@@ -17,7 +17,7 @@ function engineVersion(): string {
   const files = readdirSync(engineDir)
     .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
     .map((f) => path.join(engineDir, f));
-  files.push(path.join(src, 'lib', 'engineModel.ts'), path.join(src, 'lib', 'conditions.ts'), path.join(src, 'lib', 'summary.ts'));
+  files.push(path.join(src, 'lib', 'engineModel.ts'), path.join(src, 'lib', 'conditions.ts'), path.join(src, 'lib', 'summary.ts'), path.join(src, 'lib', 'effectiveLibrary.ts'), path.join(src, 'lib', 'deckConfiguration.ts'));
   // Annotations par défaut (D1, D8) : la détection depuis le texte des cartes détermine l'entrée du
   // moteur au même titre que la bibliothèque ; toute règle qui change périme les aperçus.
   files.push(path.resolve(src, '..', '..', 'server', 'src', 'domain', 'cardDefaults.ts'));

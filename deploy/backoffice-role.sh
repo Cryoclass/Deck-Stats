@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Rôle admin d'un compte (back-office, docs/backoffice.md §3 T9) — le SEUL chemin d'attribution :
-#   bash deploy/backoffice-role.sh grant  <email> [--apply] [--actor <qui>]
+# Rôle d'un compte (back-office, docs/backoffice.md §3 T9 ; hiérarchie admin > referent > user,
+# docs/annotations-par-defaut.md §11 Q1) — le SEUL chemin d'attribution :
+#   bash deploy/backoffice-role.sh grant  <email> [--role referent|admin] [--apply] [--actor <qui>]
 #   bash deploy/backoffice-role.sh revoke <email> [--apply] [--actor <qui>]
 #   bash deploy/backoffice-role.sh list
+# --role vaut `admin` par défaut (les usages d'avant le rôle « referent » ne changent pas) ; revoke
+# ramène toujours à `user`. `list` affiche les admins et les référents.
 # Simulation par défaut (transaction annulée, rapport « SIMULATION TERMINÉE ») ; --apply écrit et
 # journalise (backoffice_audit, source cli) dans la même transaction. Accès à la base par lib.sh :
 # sur le VPS, `docker compose exec` du service db de la pile de production (depuis deploy/, avec
@@ -13,10 +16,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 . ./lib.sh
 
-usage() { sed -n '2,10p' "$0" >&2; exit 2; }
+usage() { sed -n '2,14p' "$0" >&2; exit 2; }
 [ $# -ge 1 ] || usage
 ACTION=$1; shift
-EMAIL=; APPLY=0; ACTOR="${USER:-$(id -un 2>/dev/null || echo inconnu)}@$(hostname 2>/dev/null || echo hote)"
+EMAIL=; APPLY=0; TARGET=admin; ACTOR="${USER:-$(id -un 2>/dev/null || echo inconnu)}@$(hostname 2>/dev/null || echo hote)"
 case $ACTION in
   grant|revoke) [ $# -ge 1 ] || usage; EMAIL=$1; shift ;;
   list) ;;
@@ -26,6 +29,10 @@ while [ $# -gt 0 ]; do
   case $1 in
     --apply) APPLY=1 ;;
     --actor) ACTOR=${2:-}; [ -n "$ACTOR" ] || usage; shift ;;
+    --role)
+      # `revoke` ramène toujours à `user` : une cible n'a de sens que pour `grant`.
+      [ "$ACTION" = grant ] || usage
+      TARGET=${2:-}; case $TARGET in referent|admin) ;; *) usage ;; esac; shift ;;
     *) usage ;;
   esac
   shift
@@ -33,7 +40,7 @@ done
 [ "$ACTION" = list ] || [ "$APPLY" = 1 ] || say "SIMULATION (rien ne sera écrit) : ajouter --apply pour écrire"
 
 sql_literal() { printf "%s" "$1" | sed "s/'/''/g"; }
-ARGS=(-c 'set client_min_messages = warning' -c "set testhand.role_action = '$(sql_literal "$ACTION")'" -c "set testhand.role_actor = '$(sql_literal "$ACTOR")'")
+ARGS=(-c 'set client_min_messages = warning' -c "set testhand.role_action = '$(sql_literal "$ACTION")'" -c "set testhand.role_target = '$TARGET'" -c "set testhand.role_actor = '$(sql_literal "$ACTOR")'")
 [ -z "$EMAIL" ] || ARGS+=(-c "set testhand.role_email = '$(sql_literal "$EMAIL")'")
 [ "$APPLY" = 1 ] && ARGS+=(-c "set testhand.role_apply = '1'")
 RC=0

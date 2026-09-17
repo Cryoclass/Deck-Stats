@@ -1,4 +1,5 @@
 import { configurationFromDetail, sourceFromDetail } from '../lib/deckConfiguration.js';
+import type { Card } from '../types.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useRouter } from '../lib/router.js';
@@ -50,7 +51,11 @@ function usePreviews(decks: DeckSummary[] | null): Record<string, PreviewState> 
         if (cancelled) return;
         try {
           const detail = await api.getDeck(id);
-          const source = sourceFromDetail(detail, library);
+          // Partie C : la bibliothèque effective (choix > référence > détection) se dérive des textes de cartes.
+          const cards: Record<number, Card> = {};
+          // Sans les textes, pas de défauts : aucun aperçu calculé ni écrit (l'erreur rend l'aperçu indisponible).
+          for (const c of await api.cardsByIds(detail.cards.map((c) => c.card_id))) cards[c.id] = c;
+          const source = sourceFromDetail(detail, library, cards);
           const mainSize = source.main.reduce((sum, c) => sum + c.copies, 0);
           const { result } = await client.compute(buildEngineModel(source).input, 'first').promise;
           const summary = summaryFromPass(result.first, mainSize);

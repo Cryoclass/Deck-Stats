@@ -61,27 +61,44 @@ aucune question — c'est exactement le cas « F, rejeu » de `deploy/test-migra
 
 > **Si `main` contient le chantier « annotations par défaut »** (docs/annotations-par-defaut.md) :
 > la migration additive `006-annotation-defaults.sql` s'ajoute au montage Compose et à la séquence.
-> Même procédure, **toujours sans question** ; différences attendues :
+> Depuis la **partie C** elle n'est plus « une contrainte seule » : elle MIGRE DES DONNÉES à sa
+> première application (sous un second marqueur de journal `006-annotation-defaults/c`). Même
+> procédure, **toujours sans question** ; différences attendues :
 > - C0 : `git diff --stat <commit en service>..HEAD -- db` liste `db/migrations/006-annotation-defaults.sql` ;
 > - C3 : le conteneur `db` est **recréé** (nouveau montage `06-annotation-defaults.sql`), volume
 >   conservé (« Skipping initialization ») — même comportement qu'aux étapes 10 et back-office ;
 > - C4 : après `rejeu par stdin : db/migrations/005-backoffice.sql`, une ligne
->   `rejeu par stdin : db/migrations/006-annotation-defaults.sql` ; les contrôles ajoutent
->   `OK|journal 006-annotation-defaults : journalisée` ; aucune `KO|`, aucune empreinte modifiée
->   (006 n'élargit à ce jour qu'une contrainte CHECK : `card_flags.availability` accepte le
->   cinquième profil `reactive`) ;
-> - C5, retour arrière du code seul : valable tant que 006 reste additive — l'ancienne app n'écrit
->   jamais `reactive`, mais elle ne sait pas le LIRE (« Profil de disponibilité inconnu » dans le
->   moteur web) : un retour arrière après qu'un compte a posé un profil réactif exige de remettre
->   ces lignes à un profil connu, ou de restaurer l'archive pré-migration. Idem pour l'ancien
->   moteur de `recompute-check.ts`.
+>   `rejeu par stdin : db/migrations/006-annotation-defaults.sql` ; 006 passe TOUJOURS après 005
+>   (005 révoque puis réaccorde les privilèges du rôle du site, 006 lui rend ensuite ses deux
+>   lectures `card_references` / `card_reference_log`) ;
+> - C4 : le journal de séquence porte d'abord `006 : relevé avant migration des données — …`
+>   (effectifs de `card_flags`, `nonengine_groups`, `users`, `decks` avant le rejeu) ; les contrôles
+>   ajoutent `OK|journal 006-annotation-defaults : journalisée`,
+>   `OK|journal 006-annotation-defaults/c : journalisée`, puis une dizaine de lignes
+>   `OK|006 appliquée par cette séquence : …` (contrôle nominatif de `check_006_data`) ; aucune `KO|` ;
+> - C4, empreintes : **trois tables changent d'empreinte ce jour-là** et c'est attendu —
+>   `card_flags` (tout `is_hopt = false` passe à NULL, `nonengine_choice` posé sur les lignes à
+>   profil), `nonengine_groups` (un groupe fourni de base « Mulcharmy » par compte) et `decks`
+>   (**tous** les aperçus `summary` à NULL, recalculés à l'accueil au premier passage). Le contrôle
+>   nominatif les vérifie une par une ; un déploiement suivant les compare de nouveau strictement ;
+> - C4 : `KO|comptes sans groupe fourni de base « Mulcharmy » (is_builtin)` signifie que
+>   l'inscription (`server/src/auth/account.ts`) ne le crée pas — défaut de code, pas de donnée ;
+> - C5, retour arrière : **le code seul ne suffit plus**. L'ancienne app ne sait pas lire le profil
+>   `reactive` (« Profil de disponibilité inconnu » dans le moteur web) ni la colonne
+>   `nonengine_choice`, et surtout 006 a réécrit des données : un `git checkout` en arrière laisse
+>   `is_hopt` à NULL là où l'ancienne app attend un booléen (elle lirait « pas HOPT » pour un
+>   héritage, et son import d'archive ne s'y attend pas), et les aperçus effacés. Le retour arrière des
+>   DONNÉES est donc l'**archive pré-migration** produite par `deploy.sh` (restaurée par
+>   `deploy/restore.sh`), comme pour une migration destructive. Idem pour l'ancien moteur de
+>   `recompute-check.ts`. Les aperçus perdus ne se restaurent pas autrement : ils se recalculent.
 >
-> Preuve locale : cas « F sans 006 » de `deploy/test-migration-sequence.sh` (base à 005 sans 006 →
-> code 0 sans question, 006 rejouée par la branche post-003, `reactive` refusé avant et accepté
-> après, journal 001 à 006). Ce fichier de migration est **étendu par la partie C du chantier**
-> (rôle `referent`, `card_references`, groupe fourni de base, résumés à NULL) : relire ce bloc et
-> `git diff -- db` avant de déployer, la liste des effets ci-dessus n'étant valable que pour la
-> partie B.
+> Preuve locale : cas « F sans 006 » de `deploy/test-migration-sequence.sh` (base à 005 sans 006,
+> donnée représentative posée avant → code 0 sans question, 006 rejouée par la branche post-003,
+> `reactive` et `referent` refusés avant et acceptés après, `is_hopt = false` → NULL, `true`
+> conservé, `nonengine_choice` sur les seules lignes à profil, carte seulement étiquetée non
+> matérialisée, groupe « Mulcharmy » créé `is_builtin`, aperçus à NULL, journal des références en
+> ajout seul, contrôle nominatif OK), puis « F rejeu après 006 » (un choix `false` et un aperçu
+> posés APRÈS 006 survivent au rejeu : le marqueur `/c` garde la migration de données).
 
 Indisponibilité : de « arrêt de l'app » à « démarrage de l'app » dans la séquence, soit la
 sauvegarde pré-migration vérifiée (≈ 1 min) et les contrôles (quelques secondes) ; le build de

@@ -53,7 +53,7 @@ par un référent → choix du compte.
 | --- | --- | --- |
 | A — détection | `server/src/domain/cardDefaults.ts` (pur, partagé, dans `__ENGINE_VERSION__`), fixtures de textes réels, tests d'accord avec les choix existants, `scripts/annotations-report.ts` | ✅ Terminée le 16 sept. 2026 — HOPT `byName` seul (4 623 cartes du catalogue), profils par 4 gabarits (réactive / flexible / précoce + plafond Mulcharmy / board breaker), 97 des 99 HOPT du compte expert retrouvés sur 126 cartes jouées, 7 tests, 6 mutations détectées (docs/annotations-par-defaut.md §12). |
 | B — contrat et moteur | Profil `reactive` (contrat §3, moteur, oracle, libellés), porte profil / étiquette levée (cas Q1 réécrit sur décision, garde serveur), migration 006 ouverte, tag `annotations-b-ok` | ✅ Terminée le 16 sept. 2026 — profil réactif (moteur, oracle N01, pont B02), porte levée (Q1 réécrit sur décision, gardes serveur / store / grille), 006 (contrainte CHECK, branchée partout, 99 gardes A–J, répétition conforme), 291 web + 21 serveur, 12 + 14 + 11 PostgreSQL, 10 scénarios e2e, 5 mutations détectées (docs/annotations-par-defaut.md §14). |
-| C — modèle et persistance | Migration 006 (rôle `referent`, `is_hopt` nullable, `nonengine_choice`, groupe fourni de base, `card_references` + journal, résumés à NULL), routes, `effectiveLibrary.ts`, archive JSON, `prune-stale-cards`, `backoffice-role.sh`, séquence de déploiement, rapport d'écart, tag `annotations-c-ok` | À faire |
+| C — modèle et persistance | Migration 006 (rôle `referent`, `is_hopt` nullable, `nonengine_choice`, groupe fourni de base, `card_references` + journal, résumés à NULL), routes, `effectiveLibrary.ts`, archive JSON, `prune-stale-cards`, `backoffice-role.sh`, séquence de déploiement, rapport d'écart, tag `annotations-c-ok` | ✅ Terminée le 17 sept. 2026 — 006 étendue (données une fois sous `/c`), routes de choix par aspect et de références (référent, 404, journal, invalidation tous comptes), bibliothèque effective dans le store et hors éditeur, archive et purge du catalogue, rapport d'écart (`--gap` : P(≥ 1) et brick inchangés sur les 16 decks du 8 sept., E[U] seul change) ; 301 web + 22 serveur, 12 + 17 + 13 PostgreSQL, 130 gardes A–J, répétition conforme, 10 scénarios e2e, 10 mutations détectées, relecture indépendante (docs/annotations-par-defaut.md §15). |
 | D — interface | Pastilles d'origine, retour au défaut, bandeau, mode Non-engine par profil, formulaire et page de référence, e2e `defaults`, docs, tag `annotations-d-ok` | À faire |
 
 ## Reports connus (à reprendre dans l'étape indiquée)
@@ -65,6 +65,15 @@ par un référent → choix du compte.
 ## Compte rendu de la dernière étape
 
 À mettre à jour en fin de chaque tâche (remplacer le contenu, l'historique reste dans docs/etapes-*.md et git).
+
+- **Date** : 17 septembre 2026.
+- **Étape** : hors numérotation, annotations par défaut, partie C (docs/annotations-par-defaut.md §15). Tag `annotations-c-ok`, rien poussé.
+- **Livré** : migration 006 étendue et sa séquence (lot C1), contrat et routes (choix par aspect, références, rôle référent), `effectiveLibrary.ts` et tous ses appelants, archive JSON, `prune-stale-cards`, `annotations-report.ts --gap` ; défauts du lot C2 / C3 interrompu corrigés, puis ceux de la relecture indépendante.
+- **Vérifications exécutées** : typecheck, build, test-quiet (301 web, 22 serveur), `test:integration` (12 + 17 + 13), `test-migration-sequence.sh` (130 gardes), `rehearsal.sh --fixture` conforme, e2e (10 scénarios), 10 mutations détectées.
+- **Non fait / reporté** : partie D (interface) ; `referencesVersion` lue par aucun client ; ✕ du plafond fourni de base (D).
+- **Prochaine action** : réponses aux questions de la partie D, puis D.
+
+Compte rendu précédent (parties A et B, conservé pour la lecture de la passation) :
 
 - **Date** : 16 septembre 2026.
 - **Étape** : hors numérotation, annotations par défaut, parties A et B (docs/annotations-par-defaut.md §12 et §14). Tags `annotations-a-ok` et `annotations-b-ok`, rien poussé.

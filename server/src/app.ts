@@ -11,6 +11,7 @@ import { discordRoutes } from './routes/discord.js';
 import { cardsRoutes } from './routes/cards.js';
 import { decksRoutes } from './routes/decks.js';
 import { libraryRoutes } from './routes/library.js';
+import { referencesRoutes } from './routes/references.js';
 
 export interface BuildAppOptions {
   /** Journal Fastify (pino). Désactivé par les tests d'intégration. */
@@ -96,6 +97,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(cardsRoutes, { prefix: '/api/cards' });
   await app.register(decksRoutes, { prefix: '/api/decks' });
   await app.register(libraryRoutes, { prefix: '/api/library' });
+  await app.register(referencesRoutes, { prefix: '/api/references' });
 
   // Production : le serveur sert aussi le front construit (WEB_DIST → web/dist),
   // même origine que l'API — pas de CORS, cookies simples (même modèle que le

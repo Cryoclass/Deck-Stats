@@ -46,7 +46,7 @@ before(async () => {
   const tables=await query("select tablename from pg_tables where schemaname='public'");
   assert.equal(tables.rows.length,0,'Integration suite requires a fresh disposable database.');
   await query(await readFile(new URL('../../db/schema.sql',import.meta.url),'utf8'));
-  for (const m of ['001-deck-configuration','002-profiles-and-conditions','004-side-plans','006-annotation-defaults']) await query(await readFile(new URL(`../../db/migrations/${m}.sql`,import.meta.url),'utf8'));
+  for (const m of ['001-deck-configuration','002-profiles-and-conditions','004-side-plans','005-backoffice','006-annotation-defaults']) await query(await readFile(new URL(`../../db/migrations/${m}.sql`,import.meta.url),'utf8'));
   await app.ready();
 });
 after(async () => {
@@ -91,7 +91,7 @@ test('sans session, toute route non marquée publique répond 401 — y compris 
   const closed: Array<[Method,string]>=[
     ['GET','/api/cards/search?q=audit'],['GET','/api/cards?ids=1'],['GET','/api/cards/483/image'],
     ['GET','/api/decks'],['POST','/api/decks'],['GET','/api/library'],['POST','/api/library/categories'],
-    ['GET','/api/auth/me'],['DELETE','/api/auth/discord'],['GET','/api/audit/unmarked'],
+    ['GET','/api/auth/me'],['DELETE','/api/auth/discord'],['GET','/api/audit/unmarked'],['GET','/api/references'],['PUT','/api/references/1'],
     ['GET','/%61pi/cards/search?q=audit&limit=100'],['GET','/%61pi/cards?ids=1'],['GET','/%61pi/cards/abc/image'],
     ['GET','/%61pi/decks'],['GET','/%61pi/library'],['GET','/%61pi/audit/unmarked'],['GET','/api/%63ards/search?q=audit'],
   ];
@@ -121,10 +121,16 @@ test('avec une session valide, les routes privées répondent ; le cookie est Ht
   const lib=await inject('GET','/api/library',{ session:a.session });
   assert.equal(lib.statusCode,200,lib.body);
   assert.deepEqual(lib.json().categories.map((c: { name: string }) => c.name).sort(),['Board breaker','Handtrap']);
+  // Annotations par défaut (D7′) : l'inscription crée le plafond fourni de base « Mulcharmy » (2). Tout
+  // chemin d'inscription passe par `insertAccount` ; sans ce groupe, check-migration.sql met un KO au
+  // déploiement suivant.
+  assert.deepEqual(lib.json().groups.map((g: { name: string; cap_per_turn: number; is_builtin: boolean }) => [g.name,g.cap_per_turn,g.is_builtin]),[['Mulcharmy',2,true]]);
   assert.equal((await inject('GET','/api/cards/search?q=audit',{ session:a.session })).statusCode,200);
   assert.equal((await inject('GET','/api/audit/unmarked',{ session:a.session })).statusCode,200);
   const me=await inject('GET','/api/auth/me',{ session:a.session });
   assert.equal(me.statusCode,200,me.body);assert.equal(me.json().user.email,EMAIL_A);
+  // Rôle (005 / 006) exposé au client : un compte neuf est « user », pas référent.
+  assert.equal(me.json().user.role,'user');assert.equal(me.json().user.referent,false);
 });
 
 test('un cookie inconnu ou une session expirée valent 401 ; la session expirée est purgée et son cookie effacé',async () => {
@@ -221,6 +227,7 @@ test('un `id` fourni par le client pour une étiquette ou un plafond est ignoré
   const probeGroup=await inject('POST','/api/library/groups',{ session:b.session,payload:{ id:groupId,name:'Sonde',cap_per_turn:2 } });
   assert.equal(probeGroup.statusCode,201,probeGroup.body);assert.notEqual(probeGroup.json().id,groupId);
   const libB=await inject('GET','/api/library',{ session:b.session });
-  assert.deepEqual(libB.json().groups.map((g: { name: string; cap_per_turn: number }) => [g.name,g.cap_per_turn]),[['Sonde',2]]);
+  // Le plafond fourni de base « Mulcharmy » (D7′, annotations par défaut) est hors de cette sonde.
+  assert.deepEqual(libB.json().groups.filter((g: { is_builtin: boolean }) => !g.is_builtin).map((g: { name: string; cap_per_turn: number }) => [g.name,g.cap_per_turn]),[['Sonde',2]]);
   assert.equal((await query('select count(*)::int as n from nonengine_groups where id=$1',[groupId])).rows[0].n,1);
 });

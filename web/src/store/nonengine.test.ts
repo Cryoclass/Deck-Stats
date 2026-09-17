@@ -15,7 +15,10 @@ vi.mock('../lib/api.js',async (original) => {
   return { ...actual,api:{ ...actual.api,saveConfiguration:vi.fn(),setFlags:vi.fn(),addCardCategory:vi.fn(),removeCardCategory:vi.fn() } };
 });
 const deckId='00000000-0000-4000-8000-000000000001';
-const flags=(availability: 'early' | 'flexible' | null) => ({ ok:true,is_hopt:false,availability,group_id:null });
+// Partie C : la ligne acquittée porte le choix matérialisé (`nonengine_choice`) et le HOPT tri-état.
+const flags=(availability: 'early' | 'flexible' | null) => ({ ok:true,card_id:1,is_hopt:null,nonengine_choice:true,availability,group_id:null });
+/** Seed d'un profil CHOISI : brut (`chosenProfiles`, `choices`) et effectif (`profiles`) — cartes sans texte, donc aucune détection. */
+const chosen=(availability: 'early' | 'flexible') => ({ profiles:new Map([[1,{ availability,groupId:null }]]),chosenProfiles:new Map([[1,{ availability,groupId:null }]]),choices:new Map([[1,{ card_id:1,is_hopt:null,nonengine_choice:true }]]),origin:new Map([[1,{ hopt:null,nonengine:'choice' as const }]]) });
 const settled=() => vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
 const order=(fn: unknown) => vi.mocked(fn as () => unknown).mock.invocationCallOrder[0];
 beforeEach(() => {
@@ -44,7 +47,7 @@ describe('Étape 9B — mode Non-engine combiné',() => {
   });
 
   it('« profil inchangé » : l’étiquette seule est posée, le profil n’est pas touché',async () => {
-    useDeck.setState({ profiles:new Map([[1,{ availability:'flexible',groupId:null }]]),cardCategories:new Map([[1,new Set(['bb'])]]) });
+    useDeck.setState({ ...chosen('flexible'),cardCategories:new Map([[1,new Set(['bb'])]]) });
     useDeck.getState().applyNonEngine(1,'ht',null);
     await settled();
     expect(api.addCardCategory).toHaveBeenCalledWith(1,'ht');
@@ -54,7 +57,7 @@ describe('Étape 9B — mode Non-engine combiné',() => {
   });
 
   it('étiquette déjà portée mais profil différent : seul le profil est posé',async () => {
-    useDeck.setState({ profiles:new Map([[1,{ availability:'flexible',groupId:null }]]),cardCategories:new Map([[1,new Set(['ht'])]]) });
+    useDeck.setState({ ...chosen('flexible'),cardCategories:new Map([[1,new Set(['ht'])]]) });
     vi.mocked(api.setFlags).mockResolvedValue(flags('early'));
     useDeck.getState().applyNonEngine(1,'ht','early');
     await settled();
@@ -64,7 +67,7 @@ describe('Étape 9B — mode Non-engine combiné',() => {
   });
 
   it('carte conforme : retrait de l’étiquette, puis du profil s’il ne reste aucune étiquette',async () => {
-    useDeck.setState({ profiles:new Map([[1,{ availability:'early',groupId:null }]]),cardCategories:new Map([[1,new Set(['ht'])]]) });
+    useDeck.setState({ ...chosen('early'),cardCategories:new Map([[1,new Set(['ht'])]]) });
     vi.mocked(api.setFlags).mockResolvedValue(flags(null));
     useDeck.getState().applyNonEngine(1,'ht','early');
     await settled();
@@ -76,7 +79,7 @@ describe('Étape 9B — mode Non-engine combiné',() => {
   });
 
   it('carte conforme avec une autre étiquette : l’étiquette part, le profil reste',async () => {
-    useDeck.setState({ profiles:new Map([[1,{ availability:'early',groupId:null }]]),cardCategories:new Map([[1,new Set(['ht','bb'])]]) });
+    useDeck.setState({ ...chosen('early'),cardCategories:new Map([[1,new Set(['ht','bb'])]]) });
     useDeck.getState().applyNonEngine(1,'ht',null);
     await settled();
     expect(api.removeCardCategory).toHaveBeenCalledWith(1,'ht');

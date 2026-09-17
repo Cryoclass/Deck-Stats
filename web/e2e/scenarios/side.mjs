@@ -95,6 +95,10 @@ export default async function side() {
 
     // ─── P3 : retouche, « incomplet », rééquilibrage ───
     await copies('side', RHO, 'engaged').first().click();
+    // Attendre le rendu du clic avant de lire : sous charge (répétition du 17 sept. 2026), la lecture
+    // immédiate voyait encore les chiffres du plan prêt. La garde elle-même est inchangée.
+    await status('incomplete').waitFor({ timeout: 5000 }).catch(() => {});
+    await page.locator('[data-plan-figures="ready"]').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
     expect('P3 plan incomplet après retrait d’une entrée', (await status('incomplete').count()) === 1);
     expect('P3 aucun chiffre pour un plan incomplet', (await page.locator('[data-plan-figures="ready"]').count()) === 0 && /Plan incomplet/.test(await page.locator('[data-plan]').innerText()));
     await copies('main', MU, 'engaged').first().click();

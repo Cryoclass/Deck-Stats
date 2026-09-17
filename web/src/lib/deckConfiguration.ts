@@ -1,6 +1,7 @@
 import { parseConfiguration, type Configuration } from '../../../server/src/domain/deckConfiguration.js';
-import type { CardProfile, ComboPair, DeckCard, Library, Matchup, NonEngineGroup, StartCondition } from '../types.js';
+import type { Card, CardProfile, CardReference, ComboPair, DeckCard, Library, LibraryChoice, Matchup, NonEngineGroup, StartCondition } from '../types.js';
 import type { EngineModelSource } from './engineModel.js';
+import { effectiveLibrary } from './effectiveLibrary.js';
 import type { SavedQuery } from '../engine/query.js';
 import type { DeckDetail } from './api.js';
 
@@ -48,12 +49,21 @@ export function configurationFromDetail(d: DeckDetail): Configuration {
     matchups: d.matchups ?? [],params: d.params ?? {},notes: d.notes ?? null });
 }
 
+/** Bibliothèque BRUTE du compte (partie C) : choix, profils matérialisés, références — rien de dérivé.
+ *  `hopt` et `profiles` effectifs viennent de `effectiveLibrary` (choix > référence > détection). */
 export interface LibraryState {
+  /** Choix `true` explicites ; devient l'ensemble EFFECTIF après `withEffective` / `sourceFromDetail`. */
   hopt: Set<number>;
+  choices: Map<number, LibraryChoice>;
+  chosenProfiles: Map<number, CardProfile>;
+  /** Alias de `chosenProfiles` tant qu'aucune détection n'a été appliquée (fixtures, tests) ; devient
+   *  la carte EFFECTIVE après `withEffective` / `sourceFromDetail`. */
+  profiles: Map<number, CardProfile>;
   categories: Library['categories'];
   cardCategories: Map<number, Set<string>>;
-  profiles: Map<number, CardProfile>;
   groups: NonEngineGroup[];
+  references: Map<number, CardReference>;
+  referencesVersion: string;
 }
 
 export function libraryState(lib: Library): LibraryState {
@@ -62,11 +72,29 @@ export function libraryState(lib: Library): LibraryState {
     const categories = cardCategories.get(cc.card_id) ?? new Set<string>();
     categories.add(cc.category_id);cardCategories.set(cc.card_id,categories);
   }
-  const profiles = new Map<number,CardProfile>();
-  for (const p of lib.profiles ?? []) profiles.set(p.card_id,{ availability: p.availability,groupId: p.group_id ?? null });
-  return { hopt: new Set(lib.hoptCardIds),categories: lib.categories,cardCategories,profiles,groups: lib.groups ?? [] };
+  const chosenProfiles = new Map<number,CardProfile>();
+  for (const p of lib.profiles ?? []) chosenProfiles.set(p.card_id,{ availability: p.availability,groupId: p.group_id ?? null });
+  const choices = new Map<number,LibraryChoice>();
+  for (const c of lib.choices ?? []) choices.set(c.card_id,c);
+  // Serveur antérieur à la partie C : un HOPT listé est un choix `true` ; un profil listé, un choix matérialisé.
+  for (const id of lib.hoptCardIds) if (!choices.has(id)) choices.set(id,{ card_id: id,is_hopt: true,nonengine_choice: chosenProfiles.has(id) });
+  for (const id of chosenProfiles.keys()) if (!choices.has(id)) choices.set(id,{ card_id: id,is_hopt: null,nonengine_choice: true });
+  const references = new Map<number,CardReference>();
+  for (const r of lib.references ?? []) references.set(r.card_id,r);
+  return { hopt: new Set(lib.hoptCardIds),choices,chosenProfiles,profiles: chosenProfiles,categories: lib.categories,cardCategories,groups: lib.groups ?? [],references,referencesVersion: lib.referencesVersion ?? '0' };
 }
 
-export function sourceFromDetail(detail: DeckDetail, library: Library): EngineModelSource {
-  return { ...stateFromConfiguration(configurationFromDetail(detail)),...libraryState(library) };
+/** Applique la fusion effective (choix > référence > détection) à une bibliothèque brute pour les
+ *  cartes données : `hopt` et `profiles` deviennent les valeurs effectives (R1). */
+export function withEffective<T extends LibraryState>(state: T, cards: Record<number, Card>, cardIds: Iterable<number>): T {
+  const effective = effectiveLibrary(state,cards,cardIds);
+  return { ...state,hopt: effective.hopt,profiles: effective.profiles };
+}
+
+/** Source du moteur pour un deck enregistré : configuration + bibliothèque EFFECTIVE, dérivée des
+ *  textes de cartes fournis (`cards` : les objets `Card` du deck ; une carte absente n'a aucun défaut). */
+export function sourceFromDetail(detail: DeckDetail, library: Library, cards: Record<number, Card>): EditableDeck & LibraryState & EngineModelSource {
+  const state = { ...stateFromConfiguration(configurationFromDetail(detail)),...libraryState(library) };
+  const ids = [...state.main,...state.extra,...state.side].map((c) => c.cardId);
+  return withEffective(state,cards,ids);
 }

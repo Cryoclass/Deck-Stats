@@ -92,7 +92,7 @@ describe('Étape 3 — persistance du store',() => {
   it('profil et plafond sont globaux : profil accepté sans étiquette (D14′, 16 sept. 2026), refus local sans profil (Q2), sinon acquittement serveur',async () => {
     // Depuis le 16 septembre 2026 (docs/annotations-par-defaut.md), le profil seul déclenche le comptage :
     // aucune étiquette n'est exigée avant un profil (ancienne garde Q1 levée).
-    vi.mocked(api.setFlags).mockResolvedValue({ ok:true,is_hopt:false,availability:'flexible',group_id:null });
+    vi.mocked(api.setFlags).mockResolvedValue({ ok:true,card_id:1,is_hopt:null,nonengine_choice:true,availability:'flexible',group_id:null });
     useDeck.getState().setProfile(1,'flexible');
     await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
     expect(api.setFlags).toHaveBeenLastCalledWith(1,{ availability:'flexible' });
@@ -100,7 +100,7 @@ describe('Étape 3 — persistance du store',() => {
     expect(useDeck.getState().dirty).toBe(false); // annotation du compte : rien à enregistrer dans le deck
     useDeck.getState().setCardGroup(2,'g');
     expect(useDeck.getState().persistenceError).toMatch(/profil/);
-    vi.mocked(api.setFlags).mockResolvedValue({ ok:true,is_hopt:false,availability:'flexible',group_id:'g' });
+    vi.mocked(api.setFlags).mockResolvedValue({ ok:true,card_id:1,is_hopt:null,nonengine_choice:true,availability:'flexible',group_id:'g' });
     useDeck.getState().setCardGroup(1,'g');
     await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
     expect(useDeck.getState().profiles.get(1)).toEqual({ availability:'flexible',groupId:'g' });
@@ -108,9 +108,9 @@ describe('Étape 3 — persistance du store',() => {
 
   it('les disponibilités des starts sont locales ; HOPT est global et attend son acquittement',async () => {
     useDeck.getState().toggleDeadFirst(1);expect(useDeck.getState().dirty).toBe(true);expect(api.setFlags).not.toHaveBeenCalled();
-    const request=deferred<{ ok:boolean;is_hopt:boolean;availability:null;group_id:null }>();vi.mocked(api.setFlags).mockReturnValue(request.promise);
+    const request=deferred<{ ok:boolean;card_id:number;is_hopt:boolean;nonengine_choice:boolean;availability:null;group_id:null }>();vi.mocked(api.setFlags).mockReturnValue(request.promise);
     useDeck.getState().toggleHopt(1);await Promise.resolve();expect(useDeck.getState().hopt.has(1)).toBe(false);
-    request.resolve({ ok:true,is_hopt:true,availability:null,group_id:null });await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
+    request.resolve({ ok:true,card_id:1,is_hopt:true,nonengine_choice:false,availability:null,group_id:null });await vi.waitFor(() => expect(useDeck.getState().libraryPending).toBe(0));
     expect(useDeck.getState().hopt.has(1)).toBe(true);
   });
 

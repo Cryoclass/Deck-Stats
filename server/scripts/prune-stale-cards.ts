@@ -61,6 +61,10 @@ const REFS: Ref[] = [
   { table: 'deck_starters', column: 'card_id' },
   { table: 'card_flags', column: 'card_id' },
   { table: 'card_categories', column: 'card_id' },
+  // Annotations par défaut (partie C) : référence commune. Son journal `card_reference_log` n'est PAS
+  // une référence : historique en ajout seul, jamais reporté (le déclencheur refuse tout UPDATE) ; le
+  // compter bloquerait au contrôle final toute carte renommée qui a eu une référence.
+  { table: 'card_references', column: 'card_id' },
   { table: 'deck_combo_pairs', column: 'card_a_id' },
   { table: 'deck_combo_pairs', column: 'card_b_id' },
   { table: 'deck_conditions', column: 'source_card_id', where: 'source_card_id is not null' },
@@ -391,6 +395,9 @@ async function remap(c: pg.PoolClient, oldId: number, newId: number): Promise<vo
        from card_flags s join card_flags d on d.owner_id = s.owner_id and d.card_id = $2
       where s.card_id = $1
         and ((s.availability is not null and d.availability is not null and s.availability <> d.availability)
+          -- Partie C : « pas non-engine » choisi (choix matérialisé sans profil) contre un profil = contradiction.
+          or (s.nonengine_choice and s.availability is null and d.availability is not null)
+          or (d.nonengine_choice and d.availability is null and s.availability is not null)
           or (s.group_id is not null and d.group_id is not null and s.group_id <> d.group_id))`,
     p,
   );
@@ -404,8 +411,13 @@ async function remap(c: pg.PoolClient, oldId: number, newId: number): Promise<vo
   await run(
     c,
     'card_flags (drapeaux, profil et plafond fusionnés)',
+    // `is_hopt` est tri-état depuis la partie C (null = hérite) : un choix explicite l'emporte sur
+    // l'héritage, `true` sur `false` (fusion par OU des choix, comme avant) ; `nonengine_choice` par OU.
     `update card_flags d
-        set is_hopt      = d.is_hopt or s.is_hopt,
+        set is_hopt      = case when d.is_hopt is true or s.is_hopt is true then true
+                                when d.is_hopt is false or s.is_hopt is false then false
+                                else null end,
+            nonengine_choice = d.nonengine_choice or s.nonengine_choice,
             availability = coalesce(d.availability, s.availability),
             group_id     = coalesce(d.group_id, s.group_id)
        from card_flags s
@@ -438,6 +450,15 @@ async function remap(c: pg.PoolClient, oldId: number, newId: number): Promise<vo
     `update card_categories set card_id = $2 where card_id = $1`,
     p,
   );
+
+  // ── card_references ── PK card_id (référence commune, partie C). Deux références sur les deux
+  // cartes = refus (l'outil ne tranche pas entre deux décisions de référent) ; sinon report. Le journal
+  // `card_reference_log` garde l'ancien passcode : historique en ajout seul, jamais réécrit.
+  const refConflict = await c.query('select 1 from card_references where card_id = $1 and exists (select 1 from card_references where card_id = $2)', p);
+  if (refConflict.rowCount) {
+    throw new Error(`Report ${oldId} → ${newId} : les deux cartes portent une référence commune. Harmoniser à la main (retirer l'une), puis relancer. Tout est annulé.`);
+  }
+  await run(c, 'card_references (reportée)', `update card_references set card_id = $2 where card_id = $1`, p);
 }
 
 type Orphan = { id: number; name: string; targets: number[]; refs: number };

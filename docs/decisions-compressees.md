@@ -348,3 +348,14 @@ Tranché par l'agent en B :
 - Une carte profilée est un type suivi de `buildEngineModel` même sans étiquette ; gardes Q1 levées (serveur, store, grille).
 - Profil `reactive` (type Droll : tour adverse suivant en premier, tour adverse initial en second, sixième sans fenêtre) → contrat, moteur, oracle N01, pont B02 (deck réactif) ; libellé « Réactive » / « Ra ».
 - Migration 006 ouverte en B (contrainte CHECK des profils, DDL idempotent hors journal) et branchée partout (compose, lib.sh deux branches avant 003, check-migration, e2e, test-migration-sequence, suites d'intégration) ; étendue en C avant tout déploiement.
+Tranché par l'agent en C :
+- Données de 006 une seule fois sous `006-annotation-defaults/c` (`false` → hérite, profil → `nonengine_choice`, « Mulcharmy » rétro-créé, aperçus à NULL) ; DDL hors journal ; « aucun `false` » contrôlé à la première application seulement.
+- `card_reference_log.actor` sans FK (sinon aucun compte supprimable) ; `referencesVersion` = dernier id du journal ; journal ni compté ni reporté par prune-stale-cards (bloquait toute carte renommée).
+- `is_hopt default false` conservé → toute insertion écrit `is_hopt` explicitement (import JSON d'un profil corrigé).
+- Étiquettes hors copie sur écriture : non matérialisées par 006, conservées par « revenir au défaut ».
+- Valeur héritée dite par le client (`inherited`) au premier geste non-engine ; changer de profil garde le plafond.
+- « Mulcharmy » (2) fourni de base par `insertAccount`, non supprimable, limite modifiable ; KO de check-migration gardé par `auth.integration.ts`.
+- Bibliothèque effective = un seul chemin (`effectiveLibrary.ts` via `deriveEffective` et `sourceFromDetail`) ; bascule HOPT depuis la valeur effective ; rôle relu à chaque requête, non-référent → 404.
+- Sans textes de cartes, aucun chiffre calculé ni persisté (accueil, comparateur, fiche, éditeur) ; `sourceFromDetail` exige les cartes.
+- « Retirer » du mode combiné ne retire qu'un profil CHOISI ; « pas non-engine » choisi contre profil importé / reporté = conflit ; groupe de base créé seulement si la colonne existe ; auteurs des références visibles des référents seuls.
+- Rapport d'écart (`--gap`) sur l'archive du 8 sept. : P(≥ 1) et brick inchangés sur 16 decks, E[U] seul change.

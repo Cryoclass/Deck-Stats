@@ -1,4 +1,4 @@
-import type { Availability, Card, Library, Zone, ComboPair, Matchup, NonEngineGroup, SidePlanPosition } from '../types.js';
+import type { Availability, Card, CardReference, Library, Role, Zone, ComboPair, Matchup, NonEngineGroup, SidePlanPosition } from '../types.js';
 import type { PlanSummary } from '../../../server/src/domain/deckSummary.js';
 import { emptyConfiguration, type Configuration, type StartCondition } from '../../../server/src/domain/deckConfiguration.js';
 import type { DeckArchive } from '../../../server/src/domain/deckArchive.js';
@@ -58,6 +58,18 @@ export interface AuthUser {
   display_name: string;
   providers?: string[]; // fournisseurs OAuth liés (Lot D) — ex. ['discord']
   has_password?: boolean; // false = compte Discord seul (déliaison refusée)
+  role?: Role; // `user` | `referent` | `admin` (005 / 006) ; relu à chaque `/me`
+  referent?: boolean; // un admin l'est aussi (D5′) ; pilote l'interface du référent, jamais une garde
+}
+
+export interface ReferenceLogEntry {
+  id: number;
+  card_id: number;
+  action: 'set' | 'clear';
+  before: CardReference | null;
+  after: CardReference | null;
+  actor: string | null;
+  at: string;
 }
 
 /** Résumé stocké (étape 9) : forme validée par le serveur, mais la VERSION du moteur n'est
@@ -92,11 +104,22 @@ export interface DeckDetail {
   updated_at?: string;
 }
 
-/** Drapeaux d'une carte pour le compte : chaque champ absent est laissé tel quel. */
+/** Drapeaux d'une carte pour le compte : chaque champ absent est laissé tel quel. `inherited` =
+ *  valeur effective affichée (référence ou détection) que le serveur matérialise au premier geste
+ *  sur l'aspect non-engine d'une carte héritée (D6, §13). */
 export interface CardFlagsPatch {
   is_hopt?: boolean;
   availability?: Availability | null;
   group_id?: string | null;
+  inherited?: { availability: Availability | null; group_name: string | null };
+}
+export interface CardFlagsRow {
+  ok: boolean;
+  card_id: number;
+  is_hopt: boolean | null;
+  nonengine_choice: boolean;
+  availability: Availability | null;
+  group_id: string | null;
 }
 
 export const api = {
@@ -146,7 +169,15 @@ export const api = {
   // Bibliothèque globale
   getLibrary: () => j<Library>('/library'),
   setFlags: (cardId: number, flags: CardFlagsPatch) =>
-    j<{ ok: boolean; is_hopt: boolean; availability: Availability | null; group_id: string | null }>(`/library/flags/${cardId}`, { method: 'PUT', body: JSON.stringify(flags) }),
+    j<CardFlagsRow>(`/library/flags/${cardId}`, { method: 'PUT', body: JSON.stringify(flags) }),
+  /** Retour au défaut d'un aspect (D6) : la carte hérite à nouveau de la référence ou de la détection. */
+  resetFlags: (cardId: number, aspect: 'hopt' | 'nonengine') =>
+    j<CardFlagsRow>(`/library/flags/${cardId}?aspect=${aspect}`, { method: 'DELETE' }),
+  // Références communes (partie C) : lecture pour tous, écriture par un référent (404 sinon).
+  listReferences: () => j<{ references: CardReference[]; referencesVersion: string; log: ReferenceLogEntry[] }>('/references'),
+  setReference: (cardId: number, reference: Omit<CardReference, 'card_id'>) =>
+    j<{ ok: boolean; reference: CardReference; invalidated_decks: number }>(`/references/${cardId}`, { method: 'PUT', body: JSON.stringify(reference) }),
+  clearReference: (cardId: number) => j<{ ok: boolean; invalidated_decks: number }>(`/references/${cardId}`, { method: 'DELETE' }),
   addCategory: (name: string, id?: string) =>
     j<{ id: string; name: string; is_builtin: boolean }>(
       '/library/categories',

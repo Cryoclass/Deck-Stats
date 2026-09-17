@@ -96,14 +96,17 @@ export default async function setup() {
   await done();
   // Breaker Kappa : étiquetée, volontairement sans profil.
 
-  // Plafond partagé « Mulcharmy », 1 par tour, sur les deux Mulcharmy (menu ⋯).
+  // Plafond partagé « Mulcharmy », 1 par tour, sur les deux Mulcharmy (menu ⋯). Depuis les annotations
+  // par défaut (partie C), ce plafond est FOURNI DE BASE à 2 par tour à l'inscription : la fixture règle
+  // sa limite à 1 au lieu de le créer (un second « Mulcharmy » serait refusé, « autre limite »).
   await page.click('nav button[title="Combos & catégories"]');
-  const capName = page.locator('input[placeholder^="Nouveau plafond"]');
-  await capName.waitFor();
-  await capName.fill('Mulcharmy');
-  await capName.locator('..').locator('input[type="number"]').fill('1');
-  await capName.locator('..').locator('button', { hasText: '+' }).click();
-  await page.waitForSelector('li:has-text("Mulcharmy")');
+  const capRow = page.locator('li').filter({ has: page.locator('span', { hasText: /^Mulcharmy$/ }) }).filter({ has: page.locator('input[type="number"]') });
+  await capRow.waitFor();
+  await capRow.locator('input[type="number"]').fill('1');
+  await page.waitForFunction(async () => {
+    const lib = await (await fetch('/api/library')).json();
+    return lib.groups.some((g) => g.name === 'Mulcharmy' && g.cap_per_turn === 1);
+  });
   await page.click('nav button[title="Annoter"]');
   await page.waitForSelector('button[title="Starter Alpha"]');
   for (const n of ['Mulcharmy Eta', 'Mulcharmy Theta']) {

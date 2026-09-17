@@ -23,7 +23,8 @@
 #   Le back-office (service `admin`, docs/backoffice.md) écrit dans backoffice_audit à chaque
 #   requête : hook_stop_app doit l'arrêter avec l'app (sinon la sauvegarde pré-migration vérifiée
 #   en mode keep échoue, « la base a bougé »), et 005 se rejoue avant 003 comme 004 — 006
-#   (annotations par défaut) de même.
+#   (annotations par défaut) de même, et APRÈS 005 : 005 révoque puis réaccorde les privilèges du
+#   rôle du site, 006 lui réaccorde ensuite ses deux lectures (card_references et son journal).
 #   Crochets à définir par l'appelant : hook_stop_app, hook_start_app (nouvelle app),
 #   hook_start_old_app (conteneur précédent), hook_app_left_stopped <commande de restauration>,
 #   hook_backup <dossier> (lance backup.sh --pre-migration et pose PRE_MIGRATION_ARCHIVE ;
@@ -45,9 +46,15 @@ TOUCHED_BY_003='app_migrations card_flags nonengine_categories combo_pairs deck_
 # qu'elle s'applique — le contrôle de bout en bout en tient compte (check_after_migration).
 BACKOFFICE_ROLE=testhand_backoffice
 RESHAPED_BY_005='users'
-# 006 (annotations par défaut) n'élargit qu'une contrainte CHECK de `card_flags` : ni l'effectif ni
-# le contenu des lignes ne bougent, donc aucune empreinte ne change et aucun contrôle de bout en
-# bout n'est à adapter (card_flags est de toute façon dans TOUCHED_BY_003).
+# 006 (annotations par défaut, docs/annotations-par-defaut.md §13) : sa partie B n'élargissait qu'une
+# contrainte CHECK, sa partie C MIGRE DES DONNÉES à sa première application (sous son second
+# marqueur « 006-annotation-defaults/c ») — `card_flags` (is_hopt false → NULL, nonengine_choice),
+# `nonengine_groups` (un groupe fourni de base « Mulcharmy » par compte) et `decks` (résumés à
+# NULL). Leur empreinte change donc ce jour-là. Le contrôle de bout en bout le sait par un relevé
+# pris AVANT le rejeu (snapshot_before_006) et un contrôle NOMINATIF (check_006_data) ; aucune table
+# n'est retirée des listes strictes ci-dessus, et une fois le marqueur « /c » journalisé ces trois
+# tables redeviennent strictement comparées de bout en bout.
+MIGRATED_BY_006='card_flags nonengine_groups decks'
 # Git Bash (MSYS) réécrit les chemins absolus passés à Docker (« mount path must be absolute ») :
 # conversion désactivée pour tout le script ; les chemins destinés à Node passent alors par
 # host_path (cygpath), Node n'étant pas MSYS.
@@ -252,6 +259,51 @@ db_inventory() {  # <préfixe> → <préfixe>-counts.txt, -journal.txt, -summari
   return 0
 }
 
+# snapshot_before_006 <dossier> → <dossier>/before-006.txt (lignes « clé=valeur ») : état des
+# données que la partie C de 006 migre, relevé AVANT tout rejeu. Appelé seulement quand le second
+# marqueur « 006-annotation-defaults/c » n'est pas encore journalisé ; il donne au contrôle d'après
+# migration de quoi vérifier NOMINATIVEMENT ce que 006 a fait (check_006_data), au lieu d'exiger une
+# empreinte inchangée qui ne peut pas l'être ce jour-là. Toute table encore absente (base vide,
+# base pré-002) compte 0 : le schéma la créera vide. Aucune écriture.
+snapshot_before_006() {
+  local out=$1
+  : > "$out/before-006.txt"
+  db_exec psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -qAt -f - > "$out/before-006.txt" 2> "$out/before-006.err" <<'SQL'
+create temporary table before_006 (n serial primary key, k text not null, v text not null);
+do $$
+declare
+  has_flags  boolean := to_regclass('public.card_flags') is not null;
+  has_groups boolean := to_regclass('public.nonengine_groups') is not null;
+  has_users  boolean := to_regclass('public.users') is not null;
+  has_decks  boolean := to_regclass('public.decks') is not null;
+  has_avail  boolean := exists (select 1 from information_schema.columns
+                                 where table_schema = 'public' and table_name = 'card_flags' and column_name = 'availability');
+  n bigint;
+begin
+  if has_flags then execute 'select count(*) from card_flags' into n; else n := 0; end if;
+  insert into before_006 (k, v) values ('card_flags_total', n::text);
+  if has_flags then execute 'select count(*) from card_flags where is_hopt = false' into n; else n := 0; end if;
+  insert into before_006 (k, v) values ('card_flags_false', n::text);
+  if has_flags then execute 'select count(*) from card_flags where is_hopt = true' into n; else n := 0; end if;
+  insert into before_006 (k, v) values ('card_flags_true', n::text);
+  if has_flags and has_avail then execute 'select count(*) from card_flags where availability is not null' into n; else n := 0; end if;
+  insert into before_006 (k, v) values ('card_flags_avail', n::text);
+  if has_groups then execute 'select count(*) from nonengine_groups' into n; else n := 0; end if;
+  insert into before_006 (k, v) values ('groups_total', n::text);
+  if has_groups then execute $q$ select count(*) from nonengine_groups where name = 'Mulcharmy' $q$ into n; else n := 0; end if;
+  insert into before_006 (k, v) values ('groups_mulcharmy', n::text);
+  if has_users then execute 'select count(*) from users' into n; else n := 0; end if;
+  insert into before_006 (k, v) values ('users_total', n::text);
+  if has_decks then execute 'select count(*) from decks' into n; else n := 0; end if;
+  insert into before_006 (k, v) values ('decks_total', n::text);
+end $$;
+select k || '=' || v from before_006 order by n;
+drop table before_006;
+SQL
+  [ -s "$out/before-006.txt" ]
+}
+before_006_value() { sed -n "s/^$2=//p" "$1"; }  # <fichier> <clé>
+
 run_003() {  # <rapport> <GUC de session…> : joue 003 (stdin), rapport « section | ligne », erreurs dans <rapport>.err
   local report=$1; shift
   local args=(-c 'set client_min_messages = warning') g
@@ -331,6 +383,68 @@ accept_report() {
   esac
 }
 
+# check_006_data <dossier> : lignes OK| / KO| sur STDOUT pour ce que la partie C de 006 migre.
+#   • relevé présent (before-006.txt) = 006 a migré ses données DANS cette séquence → contrôle
+#     nominatif : `card_flags` à effectif identique et plus aucune ligne `is_hopt = false`, les
+#     `is_hopt = true` conservés, `nonengine_choice` posé exactement sur les lignes à profil ;
+#     `nonengine_groups` à effectif « avant + un groupe Mulcharmy par compte qui n'en avait pas »,
+#     un « Mulcharmy » `is_builtin` par compte ; `decks` à effectif identique, tous résumés NULL.
+#   • relevé absent = marqueur « /c » déjà journalisé → aucune donnée migrée, les trois tables sont
+#     comparées STRICTEMENT de bout en bout (sauf quand 001 / 002 se rejouent dans la même
+#     séquence : elles touchent légitimement card_flags et decks, et les contrôles ci-dessus les
+#     couvrent déjà).
+check_006_data() {
+  local out=$1 before="$out/before-006.txt" d n exp b_total b_false b_true b_avail b_groups b_mul b_users b_decks
+  if [ ! -s "$before" ]; then
+    if [ "$(grep -vc '^empreinte|' "$out/fingerprint-0.txt")" = 0 ]; then
+      echo "OK|006 : marqueur de données « /c » déjà journalisé et base vide au départ — rien à migrer, rien à comparer"
+    elif [ ! -s "$out/inventory-before-journal.txt" ] || ! grep -q '003-purge-legacy' "$out/inventory-before-journal.txt"; then
+      echo "OK|006 : marqueur de données « /c » déjà journalisé ; 001 et 002 se rejouent dans cette séquence et touchent card_flags / decks — comparaison couverte par les contrôles ci-dessus"
+    else
+      d=$(fingerprint_diff "$out/fingerprint-0.txt" "$out/fingerprint-3.txt" --only "$MIGRATED_BY_006" | tr '\n' ' '); d=${d% }
+      if [ -n "$d" ]; then echo "KO|006 : marqueur de données « /c » déjà journalisé, ces tables devaient rester intactes de bout en bout : $d"
+      else echo "OK|006 : marqueur de données « /c » déjà journalisé, aucun rejeu ne retouche $MIGRATED_BY_006 (effectif et contenu identiques)"; fi
+    fi
+    return 0
+  fi
+  b_total=$(before_006_value "$before" card_flags_total); b_false=$(before_006_value "$before" card_flags_false)
+  b_true=$(before_006_value "$before" card_flags_true);   b_avail=$(before_006_value "$before" card_flags_avail)
+  b_groups=$(before_006_value "$before" groups_total);    b_mul=$(before_006_value "$before" groups_mulcharmy)
+  b_users=$(before_006_value "$before" users_total);      b_decks=$(before_006_value "$before" decks_total)
+  echo "OK|006 appliquée par cette séquence : relevé avant = card_flags $b_total (dont $b_false à « false », $b_true à « true », $b_avail à profil), nonengine_groups $b_groups (dont $b_mul « Mulcharmy »), users $b_users, decks $b_decks"
+
+  n=$(db_query 'select count(*) from card_flags' 2>/dev/null || echo '?')
+  if [ "$n" != "$b_total" ]; then echo "KO|006 appliquée par cette séquence : card_flags devait garder son effectif ($b_total avant, $n après) — 006 ne crée ni ne supprime de ligne"
+  else echo "OK|006 appliquée par cette séquence : card_flags à effectif identique ($n), aucune ligne créée ni supprimée"; fi
+  n=$(db_query 'select count(*) from card_flags where is_hopt = false' 2>/dev/null || echo '?')
+  if [ "$n" != 0 ]; then echo "KO|006 appliquée par cette séquence : $n ligne(s) card_flags encore à « is_hopt = false », 0 attendue (Q2 : un false d'avant le chantier hérite du défaut)"
+  else echo "OK|006 appliquée par cette séquence : plus aucune ligne card_flags à « is_hopt = false » ($b_false remise(s) à NULL, Q2)"; fi
+  n=$(db_query 'select count(*) from card_flags where is_hopt = true' 2>/dev/null || echo '?')
+  if [ "$n" != "$b_true" ]; then echo "KO|006 appliquée par cette séquence : les choix « is_hopt = true » devaient être conservés ($b_true avant, $n après)"
+  else echo "OK|006 appliquée par cette séquence : $n choix « is_hopt = true » conservé(s)"; fi
+  n=$(db_query 'select count(*) from card_flags where nonengine_choice' 2>/dev/null || echo '?')
+  d=$(db_query 'select count(*) from card_flags where (availability is not null) <> nonengine_choice' 2>/dev/null || echo '?')
+  if [ "$n" != "$b_avail" ] || [ "$d" != 0 ]; then echo "KO|006 appliquée par cette séquence : nonengine_choice devait être posé exactement sur les $b_avail ligne(s) à profil ($n posée(s), $d discordance(s))"
+  else echo "OK|006 appliquée par cette séquence : nonengine_choice posé exactement sur les $n ligne(s) à profil (aucune carte seulement étiquetée matérialisée)"; fi
+
+  exp=$((b_groups + b_users - b_mul))
+  n=$(db_query 'select count(*) from nonengine_groups' 2>/dev/null || echo '?')
+  if [ "$n" != "$exp" ]; then echo "KO|006 appliquée par cette séquence : nonengine_groups devait passer de $b_groups à $exp (un « Mulcharmy » par compte qui n'en avait pas : $b_users compte(s), $b_mul déjà pourvu(s)), $n constaté(s)"
+  else echo "OK|006 appliquée par cette séquence : nonengine_groups $b_groups → $n (un groupe fourni de base « Mulcharmy » créé pour chacun des $((b_users - b_mul)) compte(s) qui n'en avait pas)"; fi
+  n=$(db_query "select count(*) from users u where not exists (select 1 from nonengine_groups g where g.owner_id = u.id and g.name = 'Mulcharmy' and g.is_builtin)" 2>/dev/null || echo '?')
+  d=$(db_query "select count(*) from nonengine_groups where name = 'Mulcharmy' and not is_builtin" 2>/dev/null || echo '?')
+  if [ "$n" != 0 ] || [ "$d" != 0 ]; then echo "KO|006 appliquée par cette séquence : $n compte(s) sans groupe « Mulcharmy » fourni de base, $d groupe(s) « Mulcharmy » non marqué(s) is_builtin"
+  else echo "OK|006 appliquée par cette séquence : chacun des $b_users compte(s) a son groupe « Mulcharmy » marqué is_builtin, aucun laissé sans marque"; fi
+
+  n=$(db_query 'select count(*) from decks' 2>/dev/null || echo '?')
+  if [ "$n" != "$b_decks" ]; then echo "KO|006 appliquée par cette séquence : decks devait garder son effectif ($b_decks avant, $n après)"
+  else echo "OK|006 appliquée par cette séquence : decks à effectif identique ($n)"; fi
+  n=$(db_query 'select count(*) from decks where summary is not null' 2>/dev/null || echo '?')
+  if [ "$n" != 0 ]; then echo "KO|006 appliquée par cette séquence : $n aperçu(s) decks.summary non nul(s), 0 attendu (le modèle moteur change pour tous les comptes)"
+  else echo "OK|006 appliquée par cette séquence : tous les aperçus decks.summary sont NULL (recalculés à l'accueil)"; fi
+  return 0
+}
+
 # check_after_migration <dossier> → <dossier>/check-migration.txt (lignes OK| / KO|) ; 0 si tout OK.
 check_after_migration() {
   local out=$1 ko=0 d n t
@@ -381,6 +495,7 @@ check_after_migration() {
       else echo "OK|003 n'a touché que ses propres objets (décks, cartes, starters, paires, conditions, drapeaux par deck, profils intacts)" >> "$out/check-migration.txt"; fi
     fi
   fi
+  check_006_data "$out" >> "$out/check-migration.txt"
   if grep -q '^KO|' "$out/check-migration.txt"; then ko=1; fi
   sed 's/^/    /' "$out/check-migration.txt"
   return $ko
@@ -429,6 +544,19 @@ run_migration_sequence() {  # <dossier de sortie> <interactive | auto | empreint
 
   seq_log "inventaire avant migration (inventory-before-*)"
   if ! db_inventory "$out/inventory-before"; then seq_abort_before "inventaire impossible"; return 1; fi
+
+  # Partie C de 006 : ses données ne sont migrées qu'une fois, sous le second marqueur
+  # « 006-annotation-defaults/c ». Tant qu'il n'est pas journalisé, on relève AVANT le rejeu ce que
+  # 006 va transformer, pour que le contrôle d'après migration le vérifie nominativement plutôt que
+  # d'exiger une empreinte inchangée (check_006_data).
+  rm -f "$out/before-006.txt"
+  if grep -q '006-annotation-defaults/c' "$out/inventory-before-journal.txt"; then
+    seq_log "006 : données déjà migrées (marqueur « /c » journalisé) — aucun relevé, contrôle strict après migration"
+  elif ! snapshot_before_006 "$out"; then
+    seq_abort_before "relevé avant 006 impossible : $(tail -n 2 "$out/before-006.err" 2>/dev/null | tr '\n' ' ')"; return 1
+  else
+    seq_log "006 : relevé avant migration des données — $(tr '\n' ' ' < "$out/before-006.txt")"
+  fi
 
   # 001 et 002 ne se rejouent que tant que 003 n'est pas journalisée : 001 recrée sans condition
   # `deck_requirements` (intermédiaire v2 que 003 supprime), et 003 refuse alors tout rejeu

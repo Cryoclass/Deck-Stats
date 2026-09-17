@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyConfiguration, MATCHUPS_MAX, parseConfiguration, upgradeConfiguration, validateCondition, type Configuration, type ConditionNode } from '../src/domain/deckConfiguration.js';
+import { emptyConfiguration, isReferentRole, MATCHUPS_MAX, parseConfiguration, parseReference, roleValid, upgradeConfiguration, validateCondition, type Configuration, type ConditionNode } from '../src/domain/deckConfiguration.js';
 import { parseArchive, remapCategoryReferences } from '../src/domain/deckArchive.js';
 import { parseCardIdList } from '../src/domain/cardIds.js';
 
@@ -175,4 +175,14 @@ test('a side plan summary is validated strictly and must describe the main deck 
   assert.throws(() => parsePlanSummary(incomplete),/Chiffres de plan invalides/);
   checkPlanSummaryMatches(ok,40);
   assert.throws(() => checkPlanSummaryMatches(ok,41),/calculés pour un main de 40 cartes, 41 après échange/);
+});
+
+test('a card reference is validated strictly: one aspect at least, profile only with nonengine_set, cap only with a profile, note bounded (partie C)', () => {
+  assert.deepEqual(parseReference(42,{ is_hopt:true }),{ card_id:42,is_hopt:true,nonengine_set:false,availability:null,group_name:null,note:null });
+  assert.deepEqual(parseReference(42,{ nonengine_set:true,availability:'reactive',group_name:' Mulcharmy ',note:'x' }),{ card_id:42,is_hopt:null,nonengine_set:true,availability:'reactive',group_name:'Mulcharmy',note:'x' });
+  assert.deepEqual(parseReference(42,{ is_hopt:false,nonengine_set:true }).availability,null,'nonengine_set sans profil = « pas non-engine »');
+  for (const bad of [{},{ is_hopt:null },{ is_hopt:'yes' },{ availability:'early' },{ nonengine_set:true,group_name:'Mulcharmy' },{ nonengine_set:true,availability:'sometimes' },{ is_hopt:true,extra:1 },{ is_hopt:true,note:'x'.repeat(2001) },{ nonengine_set:true,availability:'early',group_name:'' }]) assert.throws(() => parseReference(42,bad),JSON.stringify(bad));
+  assert.throws(() => parseReference(0,{ is_hopt:true }));
+  assert.equal(roleValid('referent'),true);assert.equal(roleValid('root'),false);
+  assert.equal(isReferentRole('admin'),true);assert.equal(isReferentRole('referent'),true);assert.equal(isReferentRole('user'),false);
 });

@@ -64,6 +64,80 @@ tranché en les appliquant.
   branches, avant 003, après 005), `check-migration.sql`, `web/e2e/run.mjs`,
   `test-migration-sequence.sh` et les suites d'intégration (auth, persistence, purge).
 
+### Partie C — modèle, persistance, référent (17 septembre 2026)
+
+Lots C1 (migration, déploiement) puis C2 / C3 (contrat, routes, bibliothèque effective) écrits par
+deux sous-agents ; C2 / C3 interrompu sans rapport, repris, relu et complété par l'agent suivant.
+
+- **Données de 006 migrées une seule fois, sous un second marqueur `006-annotation-defaults/c`.**
+  Après C, `is_hopt = false` est un choix explicite ; un `update … where is_hopt = false` rejoué
+  l'effacerait, et `update decks set summary = null` revidait les aperçus à chaque déploiement. Le
+  marqueur principal ne pouvait pas servir : des bases l'ont journalisé en B. Le DDL reste hors
+  journal et idempotent.
+- **`card_reference_log.actor` sans clé étrangère.** `on delete set null` émet un UPDATE que le
+  déclencheur d'ajout seul refuse : plus aucun compte n'était supprimable (même raison que
+  `backoffice_audit`). `card_references.updated_by` garde sa clé (table modifiable).
+- **« Aucune ligne `is_hopt = false` » contrôlé à la première application seulement**
+  (`check_006_data`, lib.sh) ; informatif dans `check-migration.sql`, sinon le premier choix « faux »
+  d'un utilisateur bloquerait tous les déploiements suivants.
+- **`card_flags.is_hopt` garde `default false`** (forme de table inchangée hors nullabilité) : toute
+  insertion serveur écrit `is_hopt` explicitement. Défaut trouvé à la reprise : l'import JSON d'un
+  profil insérait sans `is_hopt` et posait un choix « pas HOPT » ; corrigé (NULL explicite), gardé par
+  la suite `persistence`.
+- **Étiquettes hors copie sur écriture.** D14′ les sort des défauts : une étiquette est toujours un
+  choix du compte. 006 ne matérialise pas les cartes seulement étiquetées, et « revenir au défaut »
+  de l'aspect non-engine efface profil, plafond et choix, jamais les étiquettes (écart au tableau du
+  §13, qui les supprimait).
+- **La valeur héritée est dite par le client** (`inherited` : profil et NOM de plafond) au premier
+  geste non-engine sur une carte héritée ; le serveur la matérialise telle quelle, validée comme tout
+  profil, puis applique le geste. Changer de profil garde le plafond (hérité ou non), comme avant C.
+- **Plafond fourni de base « Mulcharmy » (2)** créé par `insertAccount` (tous les chemins
+  d'inscription) et rétro-créé par 006 ; non supprimable (400), limite modifiable, nom ignoré au
+  PATCH. `check-migration.sql` met un KO sur tout compte qui en manque : lien gardé par
+  `auth.integration.ts` (inscription réelle). `card_references.group_name` n'a aucune garantie de
+  correspondre à un groupe : un nom absent chez un compte donne un profil sans plafond (testé).
+- **`referencesVersion` = dernier id de `card_reference_log`** (monotone), plus le plus grand
+  `updated_at` : un retrait de référence ne changeait pas la version.
+- **`GET /api/library` lit les références dans sa transaction** (même instantané que les choix).
+- **Rôle relu en base à chaque requête** (`auth/role.ts`), jamais en session : un retrait prend effet
+  à la requête suivante. Écriture de référence par un non-référent → 404 (Q7).
+- **`prune-stale-cards` : `card_reference_log` n'est ni compté ni reporté.** L'y compter bloquait au
+  contrôle final toute carte renommée ayant eu une référence (le journal ne peut pas être réécrit).
+  `card_references` est reportée (deux références = refus nominatif) ; HOPT tri-état fusionné
+  `true > false > null`, `nonengine_choice` par OU.
+- **Bibliothèque effective, un seul chemin** : `effectiveLibrary.ts` (dans `__ENGINE_VERSION__`),
+  appliquée par le store (`deriveEffective` à chaque changement de cartes, de bibliothèque ou de
+  groupes, et à la reprise d'un brouillon, qui charge les textes manquants) et par
+  `sourceFromDetail` (accueil, comparateur, fiche de side, qui chargent les textes par
+  `cardsByIds`). Une bascule HOPT part de la valeur EFFECTIVE (un clic sur un HOPT détecté pose
+  « faux »).
+- **Rapport d'écart** (`annotations-report.ts --gap`) : avant = choix seuls, après = bibliothèque
+  effective, même moteur (porte levée) ; sur l'archive du 8 septembre (antérieure à 002, aucun
+  profil), P(≥ 1 départ) et brick identiques dans les 16 decks, seul E[U] change.
+- **Fixture e2e** : le scénario `setup` règle à 1 la limite du « Mulcharmy » fourni de base au lieu
+  de créer un plafond du même nom (refusé, « autre limite ») — chiffres de la fixture inchangés.
+- **Sans textes de cartes, aucun chiffre.** Avant C, `cardsByIds` était facultatif (images seulement) ;
+  il détermine désormais les défauts. Un échec rend l'aperçu de l'accueil indisponible (rien n'est
+  écrit), arrête le comparateur et la fiche de side, et fait échouer l'ouverture du deck dans
+  l'éditeur (comme une bibliothèque indisponible) : jamais un chiffre calculé sans défauts ni persisté.
+  `sourceFromDetail` et `compareSideOf` exigent les cartes (plus de `{}` par défaut). Relecture C.
+- **Mode Non-engine combiné, geste « retirer »** : le profil n'est retiré avec la dernière étiquette
+  que s'il est un CHOIX du compte ; un profil détecté ou de référence reste (sinon deux clics sur Ash
+  posaient « pas non-engine »). Relecture C.
+- **Conflit explicite à l'import et à la purge, pour l'aspect non-engine** : un « pas non-engine »
+  choisi contre un profil importé ou reporté = 409 / annulation nominative, comme un HOPT « faux ».
+- **`seedBuiltinCategories` ne crée le groupe fourni de base que si `nonengine_groups.is_builtin`
+  existe** : `adopt` tourne avant 001 et une base peut précéder 006 (inscription en 500 sinon).
+- **`GET /api/references`** : identifiants des auteurs (`actor`, `updated_by`) visibles des référents
+  seulement ; liste et journal lus dans un même instantané ; `before` lu `for update`.
+- **`web/src/lib/deckConfiguration.ts` entre dans `__ENGINE_VERSION__`** (fusion effective et
+  `libraryState` déterminent l'entrée du moteur).
+- **Garde e2e `side` P3** : attend le rendu du clic avant de lire (échec sous charge en répétition,
+  non reproduit seul) ; ce qu'elle vérifie est inchangé.
+- **Tests d'intégration adaptés sur décision, pas pour faire passer** : forme de réponse de
+  `PUT /flags` (`is_hopt` null, `nonengine_choice`), groupe fourni de base exclu des comptages de
+  groupes créés par le compte (suites `auth` et `persistence`).
+
 ## Back-office — hors numérotation, socle en lecture seule (16 septembre 2026)
 
 Plan validé en séance, consigné dans [docs/backoffice.md](docs/backoffice.md) (décisions 1 à 11,

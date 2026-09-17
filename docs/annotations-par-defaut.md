@@ -735,3 +735,114 @@ e2e `setup, guards, nonengine, compare`.
   local `06-backoffice-login`) : ordre lexical correct ; à renuméroter en C si gênant.
 - `deploy/README.md` §9 énumère toujours « schéma → 001 → 002 → 003 » (énumération partielle
   par choix) ; seule la ligne de la pile locale cite 006.
+
+## 15. Compte rendu C (17 septembre 2026)
+
+Deux sous-agents en parallèle : C1 (migration et déploiement), terminé et rapporté ; C2 / C3 (contrat,
+routes, bibliothèque effective), interrompu sans rapport. Repris par un agent suivant, qui a relu tout
+le code C2 / C3 contre le §13, corrigé, complété, puis fait passer la clôture.
+
+### Livré
+
+- **Migration 006 étendue** (C1) : rôle `referent` (`users_role_check` à trois valeurs), `card_flags.is_hopt`
+  nullable, `card_flags.nonengine_choice`, `nonengine_groups.is_builtin`, `card_references`,
+  `card_reference_log` (ajout seul, déclencheur `enable always`), `grant select` des deux tables au rôle
+  `testhand_backoffice` ; refus nominatifs sans 002 ou 005 ; données migrées une fois sous
+  `006-annotation-defaults/c`. Séquence (`lib.sh` : `snapshot_before_006`, `check_006_data`),
+  `check-migration.sql`, `test-migration-sequence.sh` (cas « F sans 006 » avec données représentatives),
+  `backoffice-role.sh grant <email> --role referent|admin`, runbook.
+- **Contrat** (`deckConfiguration.ts`) : `USER_ROLES`, `isReferentRole`, `CardReference`, `parseReference`.
+- **Routes** : `GET /api/library` (+ `choices`, `references`, `referencesVersion`, `groups[].is_builtin`),
+  `PUT /library/flags/:id` en copie sur écriture (`inherited`), `DELETE /library/flags/:id?aspect=`,
+  `GET /api/references` (+ journal, auteurs visibles des référents seuls), `PUT` / `DELETE
+  /api/references/:id` (référent ou admin, sinon 404 ; journal ; aperçus à NULL tous comptes),
+  `/api/auth/me` (+ `role`, `referent`) ; `auth/role.ts` (rôle relu à chaque requête) ; plafond fourni de
+  base non supprimable ; `insertAccount` crée « Mulcharmy » (2).
+- **Client** : `web/src/lib/effectiveLibrary.ts` (fusion pure, origine par aspect, valeur héritée) ;
+  store (`deriveEffective`, `resetAnnotation`, bascule HOPT depuis la valeur effective, `inherited` au
+  premier geste non-engine) ; `sourceFromDetail` / `compareSideOf` avec cartes obligatoires (accueil,
+  comparateur, fiche de side) ; `api.ts` (références, retour au défaut).
+- **Archive JSON** : export = choix seuls (inchangé en forme) ; import d'un HOPT = choix `true`, d'un
+  profil = aspect matérialisé (`is_hopt` NULL explicite) ; « faux » ou « pas non-engine » choisis
+  contredisent l'import (409).
+- **`prune-stale-cards`** : `card_references` reportée (deux références = refus), HOPT tri-état,
+  `nonengine_choice`, conflit « pas non-engine » contre profil ; journal ni compté ni reporté.
+- **Rapport d'écart** : `scripts/annotations-report.ts --gap` (ci-dessous).
+
+### Défauts trouvés à la reprise et corrigés
+
+Relecture de l'agent : import JSON d'un profil posant « pas HOPT » (`default false`) ; journal des
+références compté par `prune-stale-cards` (toute carte renommée ayant eu une référence bloquait le
+contrôle final) ; `referencesVersion` inchangée au retrait ; références lues hors de la transaction de
+`GET /library` ; reprise d'un brouillon sans textes des cartes ajoutées ; fixture e2e en collision avec
+le « Mulcharmy » fourni de base (le scénario règle désormais sa limite à 1) ; tests d'intégration jamais
+exécutés et faux (enregistrement tardif des routes, formes de réponse d'avant C, plafond conservé au
+changement de profil). Relecture indépendante (sous-agent à contexte neuf, aucun bloquant) : deux clics
+du mode Non-engine combiné effaçaient un profil détecté ; un échec de `cardsByIds` produisait et
+persistait des chiffres sans défauts ; import d'un profil contre « pas non-engine » choisi accepté ;
+`adopt` et inscription sur base antérieure à 006 en échec ; aucune garde sur `sourceFromDetail` ; auteurs
+des références exposés à tout compte ; `lib/deckConfiguration.ts` hors `__ENGINE_VERSION__` ; sélecteur
+fragile dans `setup.mjs`. Tous corrigés et gardés. Remarques laissées : `referencesVersion` n'est lue par
+aucun client (un aperçu calculé avant une écriture de référence peut être réécrit après son
+invalidation, risque assumé au §9) ; une archive dont le « Mulcharmy » vaut 1 s'importe en 409 sur un
+compte resté à 2 (règle « autre limite » inchangée) ; ✕ affiché sur le plafond fourni de base (partie
+D) ; `recompute-check.ts` reste une preuve d'équivalence du moteur sur les choix bruts, l'effet des
+défauts n'est mesuré que par `--gap`.
+
+### Écarts au §13 (dont ceux du lot C1)
+
+1. Données migrées une seule fois sous le second marqueur `006-annotation-defaults/c` : un `update`
+   idempotent effacerait les `false` devenus choix et revidait les aperçus à chaque déploiement ; le
+   marqueur principal était déjà journalisé en B sur des bases d'essai.
+2. `card_reference_log.actor` sans clé étrangère : `on delete set null` émet un UPDATE refusé par le
+   déclencheur d'ajout seul, plus aucun compte n'était supprimable.
+3. « Aucune ligne `is_hopt = false` » contrôlé strictement à la première application seulement
+   (`check_006_data`) ; informatif dans `check-migration.sql`.
+4. `card_flags.is_hopt` garde `default false` : toute insertion serveur écrit `is_hopt` explicitement
+   (vérifié dans `library.ts` et `decks.ts`, gardé par la suite `persistence`).
+5. Cartes seulement étiquetées non matérialisées ; plus généralement les étiquettes restent hors copie
+   sur écriture : « revenir au défaut » non-engine les conserve (le tableau du §13 les supprimait).
+6. Bug de la partie B corrigé par C1 : `\n` littéral dans la boucle `docker cp` du cas I.
+7. `referencesVersion` = dernier id du journal (au lieu du plus grand `updated_at`).
+8. Plafond fourni de base : nom ignoré au PATCH (pas de 400).
+
+Liens fragiles gardés : `check-migration.sql` met un KO sur tout compte sans « Mulcharmy » fourni de base
+→ `auth.integration.ts` vérifie le groupe après une inscription réelle (tous les chemins passent par
+`insertAccount`). `card_references.group_name` n'est garanti par rien → un nom absent donne un profil sans
+plafond (`effectiveLibrary.test.ts`). Rejouer 005 après 006 retirerait les `grant select` de 006 → l'ordre
+est 005 puis 006 partout, et `check-migration.sql` le signale.
+
+### Rapport d'écart (archive du 8 septembre, conteneur jetable 55446, détruit)
+
+`node --import tsx scripts/annotations-report.ts --db …55446… --gap`, après restauration, schéma, 001, 002,
+004, 005, 006 puis 003 (empreinte `e0efff5c…`). Avant = choix seuls, après = bibliothèque effective, même
+moteur. L'archive précède 002 : aucun profil n'était posé, aucune référence n'existe ; tout l'écart vient
+donc de la détection.
+
+- **P(≥ 1 départ) et brick : écart exactement nul dans les 16 decks, en premier comme en second.** Les HOPT
+  détectés en plus (cartes Elfnote, Light and Darkness Ritual, Black Luster Soldier - Soldier of Light and
+  Darkness, The Hallowed Azamina, Ruler of the End of the World, Crystron Tristaros, Fydraulis Harmonia,
+  Ghost Ogre & Snow Rabbit) ne changent pas ces deux grandeurs sur ces decks.
+- **E[U] : de 0 à +1,500 en premier (15 decks sur 16 ; Branded inchangé), de +0,374 à +2,166 en second
+  (16 decks).** Plus grands écarts : Elfnote (+1,500 / +2,157), Ryzeal (+1,424 / +2,109), Azamina RoLaD
+  (+1,350 / +2,166). Cartes en cause : Mulcharmy Fuwalos et Purulia (précoce + plafond), Ash Blossom,
+  Dominus Impulse et Spark, Infinite Impermanence, Ghost Ogre, Ghost Belle, Dimension Shifter
+  (flexible), Droll & Lock Bird, Effect Veiler, Fydraulis Harmonia, K9-17 Izuna, K9-ØØ Lupis (réactive),
+  et Griffoh (flexible, faux positif assumé en A, présent dans six decks).
+
+### Vérifications exécutées
+
+`npm run typecheck` · `npm run build` · `node scripts/test-quiet.mjs` (301 web, 22 serveur) ·
+`test:integration` sur 55433 (auth 12, persistence 17, purge 13) · `bash deploy/test-migration-sequence.sh`
+(130 gardes, cas A–J) · `bash deploy/rehearsal.sh --fixture` : RÉPÉTITION CONFORME (restauration, séquence, recalcul contre l'ancien moteur, 10 scénarios e2e sur la pile migrée, retour arrière ; un premier passage avait échoué sur la garde P3 du scénario `side`, lue avant le rendu du clic, non reproduite seule, garde rendue robuste) · `npm run e2e -w web` (10 scénarios) · `seedBuiltinCategories` exécutée sur une base au schéma seul
+(étiquettes créées, groupe sauté) · conteneurs jetables détruits.
+
+### Contrôle par mutation (10 posées, 10 détectées)
+
+W1 détection prioritaire sur la référence (HOPT) → `effectiveLibrary.test`, `defaults.test` · W2 bascule
+HOPT depuis le choix brut → `defaults.test` · W3 valeur héritée non envoyée → `defaults.test` · W4
+`sourceFromDetail` sans fusion → `effectiveLibrary.test` · W5 « retirer » efface un profil détecté →
+`defaults.test` · S1 garde référent retirée → `persistence` · S2 aperçus d'autrui non invalidés →
+`persistence` · S3 import d'un profil sans `is_hopt` explicite → `persistence` · S4 journal compté par
+`prune-stale-cards` → `purge` · S5 auteurs visibles de tous → `persistence`. Fichiers restaurés,
+empreintes identiques.

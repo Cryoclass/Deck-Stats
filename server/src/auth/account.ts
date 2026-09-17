@@ -12,7 +12,27 @@ export const BUILTIN_CATEGORIES: ReadonlyArray<{ name: string }> = [
   { name: 'Board breaker' },
 ];
 
+/** Plafonds partagés fournis de base (docs/annotations-par-defaut.md, D7′) : la détection et la
+ *  référence désignent un plafond par son nom, chaque compte porte le sien. */
+export const BUILTIN_GROUPS: ReadonlyArray<{ name: string; cap_per_turn: number }> = [
+  { name: 'Mulcharmy', cap_per_turn: 2 },
+];
+
 export async function seedBuiltinCategories(c: pg.PoolClient, userId: string): Promise<void> {
+  // `adopt` tourne avant 001 (pas de `nonengine_groups`) et une base peut précéder 006 (pas de
+  // `is_builtin`) : le groupe n'est créé que si la colonne existe ; 006 le rétro-crée sinon.
+  const { rowCount: hasBuiltinGroups } = await c.query(
+    `select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'nonengine_groups' and column_name = 'is_builtin'`,
+  );
+  if (hasBuiltinGroups) for (const group of BUILTIN_GROUPS) {
+    await c.query(
+      `insert into nonengine_groups (owner_id, name, cap_per_turn, is_builtin)
+       select $1, $2, $3, true
+       where not exists (select 1 from nonengine_groups where owner_id = $1 and name = $2)`,
+      [userId, group.name, group.cap_per_turn],
+    );
+  }
   for (const cat of BUILTIN_CATEGORIES) {
     // `where not exists` plutôt que `on conflict (owner_id, name)` : sur une base
     // legacy, la contrainte d'unicité par compte n'existe qu'APRÈS `npm run adopt` —

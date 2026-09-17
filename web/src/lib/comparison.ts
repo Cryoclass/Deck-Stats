@@ -2,7 +2,8 @@ import type { EngineInput, PassResult } from '../engine/types.js';
 import type { Library, SidePlanPosition } from '../types.js';
 import type { DeckDetail } from './api.js';
 import type { EngineModelSource } from './engineModel.js';
-import { configurationFromDetail, libraryState, stateFromConfiguration } from './deckConfiguration.js';
+import { sourceFromDetail } from './deckConfiguration.js';
+import type { Card } from '../types.js';
 import { applyPlan, sidedSource } from './sidePlan.js';
 import { planOf } from './matchups.js';
 import {
@@ -77,8 +78,9 @@ export interface CompareSide {
 
 const POSITION_WORD: Record<SidePlanPosition, string> = { first: 'premier', second: 'second' };
 
-export function compareSideOf(detail: DeckDetail, library: Library, target: CompareTarget): CompareSide {
-  const state = { ...stateFromConfiguration(configurationFromDetail(detail)), ...libraryState(library) };
+export function compareSideOf(detail: DeckDetail, library: Library, target: CompareTarget, cards: Record<number, Card>): CompareSide {
+  // Partie C : bibliothèque EFFECTIVE (choix > référence > détection) pour toutes les zones du deck.
+  const state = sourceFromDetail(detail, library, cards);
   if (!target.plan) return { name: detail.name, source: state, plan: null };
   const { matchupId, position } = target.plan;
   const matchup = state.matchups.find((m) => m.id === matchupId);

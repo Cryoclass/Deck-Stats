@@ -63,12 +63,12 @@ describe('Étape 3 — formats et références',() => {
     const c=emptyConfiguration('Compare',[{ card_id:1,zone:'main',copies:3 },{ card_id:2,zone:'main',copies:3 }]);
     c.pairs=[{ id:crypto.randomUUID(),card_a_id:1,card_b_id:2,disabled:false }];
     const detail={ id:'d',revision:1,configuration_version:2 as const,name:c.name,cards:c.cards,starters:c.starters,pairs:c.pairs,pair_exclusions:[],conditions:c.conditions,deadFirst:c.deadFirst,deadSecond:c.deadSecond,params:c.params };
-    const compared=buildEngineModel(sourceFromDetail(detail,emptyLibrary));
+    const compared=buildEngineModel(sourceFromDetail(detail,emptyLibrary,{}));
     const edited=buildEngineModel({ ...stateFromConfiguration(c),hopt:new Set<number>(),categories:[],cardCategories:new Map(),profiles:new Map(),groups:[] });
     expect(compared).toEqual(edited);
     expect(computePass(compared.input,5).brick).toBe(0);
     detail.pairs=[];
-    expect(computePass(buildEngineModel(sourceFromDetail(detail,emptyLibrary)).input,5).brick).toBe(1);
+    expect(computePass(buildEngineModel(sourceFromDetail(detail,emptyLibrary,{})).input,5).brick).toBe(1);
   });
 });
 

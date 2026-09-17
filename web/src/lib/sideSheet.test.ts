@@ -80,10 +80,10 @@ describe('comparateur sur un deck sidé', () => {
   });
 
   it('le côté sidé porte le main dérivé du plan et un nom qui le dit ; le deck de base est inchangé', () => {
-    const base = compareSideOf(detail, library, parseCompareTarget(DECK));
+    const base = compareSideOf(detail, library, parseCompareTarget(DECK), {});
     expect(base).toMatchObject({ name: 'Deck', plan: null });
     expect(base.source.main).toEqual(source.main);
-    const sided = compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, A, 'second')));
+    const sided = compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, A, 'second')), {});
     expect(sided.name).toBe('Deck — Kewl Tune (second)');
     expect(sided.source.main).toEqual(applyPlan(source.main, source.side, source.matchups[0].plans[1]).main);
     expect(sidedNotice(sided)?.message).toBe('« Deck — Kewl Tune (second) » : deck après le plan second contre « Kewl Tune » — seul le scénario second correspond à ce plan, le scénario premier est donné pour information.');
@@ -91,7 +91,7 @@ describe('comparateur sur un deck sidé', () => {
   });
 
   it('un plan pas prêt ou un adversaire disparu : refus explicite, rien n’est comparé', () => {
-    expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, B, 'second')))).toThrow('Plan second contre « Snake-Eye » incomplet : rien à comparer tant qu’il n’est pas prêt.');
-    expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, '00000000-0000-4000-8000-0000000000ff', 'first')))).toThrow(/adversaire introuvable/);
+    expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, B, 'second')), {})).toThrow('Plan second contre « Snake-Eye » incomplet : rien à comparer tant qu’il n’est pas prêt.');
+    expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, '00000000-0000-4000-8000-0000000000ff', 'first')), {})).toThrow(/adversaire introuvable/);
   });
 });

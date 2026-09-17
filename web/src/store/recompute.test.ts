@@ -301,12 +301,12 @@ describe('Étape 4 — recalcul', () => {
     seed();
     state().toggleStarter(1); // la carte doit être annotée pour être un type du modèle
     await settle();
-    const request = deferred<{ ok: boolean; is_hopt: boolean; availability: null; group_id: null }>();
+    const request = deferred<{ ok: boolean; card_id: number; is_hopt: boolean; nonengine_choice: boolean; availability: null; group_id: null }>();
     vi.mocked(api.setFlags).mockReturnValue(request.promise);
     state().toggleHopt(1);
     await flush();
     expect(state()).toMatchObject({ stale: false, computing: false, modelVersion: 1 });
-    request.resolve({ ok: true, is_hopt: true, availability: null, group_id: null });
+    request.resolve({ ok: true, card_id: 1, is_hopt: true, nonengine_choice: false, availability: null, group_id: null });
     await flush();
     await flush();
     expect(state()).toMatchObject({ stale: true, computing: true, modelVersion: 2 });

@@ -1,4 +1,4 @@
-import type { Availability, ConditionNode, Matchup, SidePlan, SidePlanCard, SidePlanPosition } from '../../server/src/domain/deckConfiguration.js';
+import type { Availability, CardReference, ConditionNode, Matchup, Role, SidePlan, SidePlanCard, SidePlanPosition } from '../../server/src/domain/deckConfiguration.js';
 
 export type Zone = 'main' | 'extra' | 'side';
 export type { Availability, ConditionNode };
@@ -47,11 +47,29 @@ export interface CardProfile {
   groupId: string | null;
 }
 
-/** Plafond partagé par tour (contrat §3), commun aux decks du compte. */
+/** Plafond partagé par tour (contrat §3), commun aux decks du compte ; `is_builtin` = fourni de
+ *  base (« Mulcharmy »), désigné par son nom par la détection et la référence (D7′). */
 export interface NonEngineGroup {
   id: string;
   name: string;
   cap_per_turn: number;
+  is_builtin?: boolean;
+}
+
+/** Référence commune posée par un référent (docs/annotations-par-defaut.md, D4′). */
+export type { CardReference, Role };
+/** Choix explicite du compte sur une carte (D6) : `is_hopt` null = hérite ; `nonengine_choice`
+ *  = le profil matérialisé (ou son absence) fait foi. */
+export interface LibraryChoice {
+  card_id: number;
+  is_hopt: boolean | null;
+  nonengine_choice: boolean;
+}
+/** D'où vient une valeur effective (R1) : choix du compte, référence commune, détection textuelle. */
+export type AnnotationOrigin = 'choice' | 'reference' | 'detection';
+export interface CardOrigin {
+  hopt: AnnotationOrigin | null;
+  nonengine: AnnotationOrigin | null;
 }
 
 /** Condition ET/OU (étape 5) — locale au deck. Exactement une source (carte starter
@@ -65,11 +83,17 @@ export interface StartCondition {
 
 /** Snapshot de la bibliothèque globale (§5). */
 export interface Library {
+  /** Choix explicites `true` seulement (D11 : jamais un défaut). */
   hoptCardIds: number[];
   categories: Category[];
   cardCategories: Array<{ card_id: number; category_id: string }>;
+  /** Profils matérialisés du compte (aspect non-engine choisi). */
   profiles: Array<{ card_id: number; availability: Availability; group_id: string | null }>;
   groups: NonEngineGroup[];
+  /** Partie C : choix par aspect, références communes et leur version (absents d'un serveur antérieur). */
+  choices?: LibraryChoice[];
+  references?: CardReference[];
+  referencesVersion?: string;
 }
 
 /** Libellés français des profils (contrat §3, tableau des profils). */

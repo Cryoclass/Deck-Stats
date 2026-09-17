@@ -12,6 +12,7 @@ process.env.DATABASE_URL=url.toString();
 const { pool, query }=await import('../src/db.js');
 const { decksRoutes }=await import('../src/routes/decks.js');
 const { libraryRoutes }=await import('../src/routes/library.js');
+const { referencesRoutes }=await import('../src/routes/references.js');
 const app=Fastify();
 const owner=randomUUID(),other=randomUUID(),legacyDeck=randomUUID(),legacyPair=randomUUID();
 // Deck de l'ère v2 (entre les étapes 3 et 5B) : prérequis ET plats, horizons, résumé.
@@ -20,13 +21,15 @@ const reqA='00000000-0000-4000-8000-00000000000a',reqB='00000000-0000-4000-8000-
 const migration=await readFile(new URL('../../db/migrations/001-deck-configuration.sql',import.meta.url),'utf8');
 const migration2=await readFile(new URL('../../db/migrations/002-profiles-and-conditions.sql',import.meta.url),'utf8');
 const migration4=await readFile(new URL('../../db/migrations/004-side-plans.sql',import.meta.url),'utf8');
-// Annotations par défaut (partie B) : additive, étend la contrainte des profils (« reactive »).
+// Back-office (005, `users.role`) puis annotations par défaut (006 : profils, choix, références) ; 006 exige 005.
+const migration5=await readFile(new URL('../../db/migrations/005-backoffice.sql',import.meta.url),'utf8');
 const migration6=await readFile(new URL('../../db/migrations/006-annotation-defaults.sql',import.meta.url),'utf8');
 const leaf=(card_id: number, at_least=1): ConditionNode => ({ kind:'remaining',card_id,at_least });
 app.decorateRequest('user',null);
 app.addHook('onRequest',async (req) => { req.user={ id: req.headers['x-test-owner'] === 'other' ? other : owner,email:'test@example.invalid',display_name:'Test' }; });
 await app.register(decksRoutes,{ prefix:'/decks' });
 await app.register(libraryRoutes,{ prefix:'/library' });
+await app.register(referencesRoutes,{ prefix:'/references' });
 
 async function rejects(sql: string, pattern: RegExp) {
   const client=await pool.connect();
@@ -84,6 +87,7 @@ before(async () => {
   await query(migration4);
   await query(migration4);
   assert.equal((await query("select count(*)::int as n from app_migrations where id='004-side-plans'")).rows[0].n,1);
+  await query(migration5);
   await query(migration6);
   await query(migration6);
   assert.equal((await query("select count(*)::int as n from app_migrations where id='006-annotation-defaults'")).rows[0].n,1);
@@ -127,8 +131,9 @@ test('migration 002 converts flat requirements into one AND group per source, st
   await query(migration2);
   assert.equal((await query('select count(*)::int as n from deck_conditions')).rows[0].n,before);
   assert.equal((await query("select count(*)::int as n from app_migrations where id='002-profiles-and-conditions'")).rows[0].n,1);
-  // Aucun profil ni plafond n'est créé par la migration (Q2, Q4).
-  assert.equal((await query('select count(*)::int as n from nonengine_groups')).rows[0].n,0);
+  // Aucun profil ni plafond n'est créé par la migration 002 (Q2, Q4) ; le seul plafond présent est celui
+  // fourni de base par 006 (« Mulcharmy », D7′, appliquée dans `before`).
+  assert.equal((await query('select count(*)::int as n from nonengine_groups where not is_builtin')).rows[0].n,0);
   assert.equal((await query('select count(*)::int as n from card_flags where availability is not null')).rows[0].n,0);
   // Q3 : une seule représentation — l'API refuse l'ancien format.
   const stale={ ...emptyConfiguration('Stale'),requirements:[] } as unknown as Configuration;
@@ -198,34 +203,35 @@ test('profiles and shared caps are account annotations: profile without label ac
   // Since 16 September 2026 (docs/annotations-par-defaut.md): the profile alone triggers the count,
   // no label is required first (former Q1 guard lifted); the new `reactive` profile is accepted.
   const uncategorised=await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ availability:'reactive' } });
-  assert.equal(uncategorised.statusCode,200,uncategorised.body);assert.deepEqual(uncategorised.json(),{ ok:true,card_id:301,is_hopt:false,availability:'reactive',group_id:null });
+  assert.equal(uncategorised.statusCode,200,uncategorised.body);assert.deepEqual(uncategorised.json(),{ ok:true,card_id:301,is_hopt:null,nonengine_choice:true,availability:'reactive',group_id:null });
   const cat=(await app.inject({ method:'POST',url:'/library/categories',payload:{ name:'Étiquette 5B' } })).json();
   assert.equal(cat.name,'Étiquette 5B');assert.equal(cat.relevance,undefined);
   assert.equal((await app.inject({ method:'POST',url:'/library/card-categories',payload:{ card_id:300,category_id:cat.id } })).statusCode,201);
-  const group=await app.inject({ method:'POST',url:'/library/groups',payload:{ name:'Mulcharmy',cap_per_turn:2 } });
+  const group=await app.inject({ method:'POST',url:'/library/groups',payload:{ name:'Plafond 5B',cap_per_turn:2 } });
   assert.equal(group.statusCode,201,group.body);const gid=group.json().id as string;
-  assert.equal((await app.inject({ method:'POST',url:'/library/groups',payload:{ name:'Mulcharmy',cap_per_turn:3 } })).statusCode,400);
+  assert.equal((await app.inject({ method:'POST',url:'/library/groups',payload:{ name:'Plafond 5B',cap_per_turn:3 } })).statusCode,400);
   assert.equal((await app.inject({ method:'POST',url:'/library/groups',payload:{ name:'Zero',cap_per_turn:0 } })).statusCode,400);
   // Q2 : plafond sans profil — refusé par la contrainte SQL, relayé en 400.
   const early=await app.inject({ method:'PUT',url:'/library/flags/300',payload:{ group_id:gid } });
   assert.equal(early.statusCode,400,early.body);assert.match(early.body,/profil/);
   assert.equal((await app.inject({ method:'PUT',url:'/library/flags/300',payload:{ availability:'sometimes' } })).statusCode,400);
   const profiled=await app.inject({ method:'PUT',url:'/library/flags/300',payload:{ availability:'early',group_id:gid } });
-  assert.equal(profiled.statusCode,200,profiled.body);assert.deepEqual(profiled.json(),{ ok:true,card_id:300,is_hopt:false,availability:'early',group_id:gid });
+  assert.equal(profiled.statusCode,200,profiled.body);assert.deepEqual(profiled.json(),{ ok:true,card_id:300,is_hopt:null,nonengine_choice:true,availability:'early',group_id:gid });
   // HOPT reste indépendant et conservé lors d'une mise à jour partielle.
   await app.inject({ method:'PUT',url:'/library/flags/300',payload:{ is_hopt:true } });
   const lib=await library();
   assert.ok(lib.hoptCardIds.includes(300));
   assert.deepEqual(lib.profiles.find((p: { card_id:number }) => p.card_id===300),{ card_id:300,availability:'early',group_id:gid });
-  assert.deepEqual(lib.groups,[{ id:gid,name:'Mulcharmy',cap_per_turn:2 }]);
+  // Hors plafond fourni de base « Mulcharmy » (006, D7′), qui a sa propre garde plus bas.
+  assert.deepEqual(lib.groups.filter((g: { is_builtin:boolean }) => !g.is_builtin),[{ id:gid,name:'Plafond 5B',cap_per_turn:2,is_builtin:false }]);
   assert.equal(lib.categories.find((c: { id:string }) => c.id===cat.id).relevance,undefined);
   // Autre compte : plafond invisible et inutilisable.
-  assert.equal((await library('other')).groups.length,0);
+  assert.equal((await library('other')).groups.filter((g: { is_builtin:boolean }) => !g.is_builtin).length,0);
   assert.equal((await app.inject({ method:'PUT',url:'/library/flags/300',headers:{ 'x-test-owner':'other' },payload:{ availability:'early',group_id:gid } })).statusCode,404); // plafond d'un autre compte : introuvable
   assert.equal((await app.inject({ method:'PATCH',url:`/library/groups/${gid}`,headers:{ 'x-test-owner':'other' },payload:{ cap_per_turn:5 } })).statusCode,404);
   assert.equal((await app.inject({ method:'PATCH',url:`/library/groups/${gid}`,payload:{ cap_per_turn:3 } })).json().cap_per_turn,3);
   // Retirer le profil retire aussi le plafond (un plafond exige un profil) ; supprimer le plafond garde le profil.
-  assert.deepEqual((await app.inject({ method:'PUT',url:'/library/flags/300',payload:{ availability:null } })).json(),{ ok:true,card_id:300,is_hopt:true,availability:null,group_id:null });
+  assert.deepEqual((await app.inject({ method:'PUT',url:'/library/flags/300',payload:{ availability:null } })).json(),{ ok:true,card_id:300,is_hopt:true,nonengine_choice:true,availability:null,group_id:null });
   await app.inject({ method:'PUT',url:'/library/flags/300',payload:{ availability:'flexible',group_id:gid } });
   assert.equal((await app.inject({ method:'DELETE',url:`/library/groups/${gid}` })).statusCode,200);
   assert.deepEqual((await library()).profiles.find((p: { card_id:number }) => p.card_id===300),{ card_id:300,availability:'flexible',group_id:null });
@@ -238,9 +244,9 @@ test('a shared cap sent alone to an already profiled card is accepted (étape 6B
   assert.equal((await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ availability:'early' } })).statusCode,200);
   // Le menu ⋯ n'envoie que `group_id` : constaté 400 à l'écran avant correction.
   const capOnly=await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ group_id:gid } });
-  assert.equal(capOnly.statusCode,200,capOnly.body);assert.deepEqual(capOnly.json(),{ ok:true,card_id:301,is_hopt:false,availability:'early',group_id:gid });
+  assert.equal(capOnly.statusCode,200,capOnly.body);assert.deepEqual(capOnly.json(),{ ok:true,card_id:301,is_hopt:null,nonengine_choice:true,availability:'early',group_id:gid });
   // Retirer le plafond seul garde le profil ; un plafond avec profil explicitement nul reste refusé.
-  assert.deepEqual((await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ group_id:null } })).json(),{ ok:true,card_id:301,is_hopt:false,availability:'early',group_id:null });
+  assert.deepEqual((await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ group_id:null } })).json(),{ ok:true,card_id:301,is_hopt:null,nonengine_choice:true,availability:'early',group_id:null });
   const nullProfile=await app.inject({ method:'PUT',url:'/library/flags/301',payload:{ availability:null,group_id:gid } });
   assert.equal(nullProfile.statusCode,400,nullProfile.body);assert.match(nullProfile.body,/profil/);
   assert.equal((await app.inject({ method:'DELETE',url:`/library/groups/${gid}` })).statusCode,200);
@@ -443,4 +449,105 @@ test('a side plan summary is written only for the current revision and the saved
   c.matchups=[{ ...c.matchups[0],plans:[] }];
   assert.equal((await app.inject({ method:'PUT',url:`/decks/${id}`,payload:{ configuration:c,expectedRevision:2 } })).statusCode,200);
   assert.deepEqual((await detail(id)).plan_summaries,[]);
+});
+
+// ─── Annotations par défaut, partie C (docs/annotations-par-defaut.md §13) ───
+
+test('account choices are copy-on-write per aspect: HOPT tri-state, non-engine materialised from the inherited value, reset to default',async () => {
+  const lib0=await library();
+  // Groupe fourni de base « Mulcharmy » (006 pour les comptes existants), jamais supprimable, limite modifiable.
+  const mulcharmy=lib0.groups.find((g: { name:string }) => g.name==='Mulcharmy');
+  assert.ok(mulcharmy && mulcharmy.is_builtin,JSON.stringify(lib0.groups));
+  assert.equal((await app.inject({ method:'DELETE',url:`/library/groups/${mulcharmy.id}` })).statusCode,400);
+  assert.equal((await app.inject({ method:'PATCH',url:`/library/groups/${mulcharmy.id}`,payload:{ name:'Renommé',cap_per_turn:3 } })).json().name,'Mulcharmy');
+  assert.equal(typeof lib0.referencesVersion,'string');assert.ok(Array.isArray(lib0.references));
+  // Aspect HOPT : rien → true → false (choix explicite, jamais « hérité ») → retour au défaut (ligne effacée).
+  assert.equal(lib0.choices.some((c: { card_id:number }) => c.card_id===700),false);
+  assert.deepEqual((await app.inject({ method:'PUT',url:'/library/flags/700',payload:{ is_hopt:true } })).json(),{ ok:true,card_id:700,is_hopt:true,nonengine_choice:false,availability:null,group_id:null });
+  assert.deepEqual((await app.inject({ method:'PUT',url:'/library/flags/700',payload:{ is_hopt:false } })).json().is_hopt,false);
+  assert.deepEqual((await library()).choices.find((c: { card_id:number }) => c.card_id===700),{ card_id:700,is_hopt:false,nonengine_choice:false });
+  assert.equal((await app.inject({ method:'DELETE',url:'/library/flags/700?aspect=bogus' })).statusCode,400);
+  assert.deepEqual((await app.inject({ method:'DELETE',url:'/library/flags/700?aspect=hopt' })).json().is_hopt,null);
+  assert.equal((await library()).choices.some((c: { card_id:number }) => c.card_id===700),false);
+  assert.equal((await query('select count(*)::int as n from card_flags where card_id=700')).rows[0].n,0);
+  // Aspect non-engine : le premier geste sur une carte héritée matérialise la valeur effective fournie
+  // (profil réactif + plafond « Mulcharmy » résolu par son nom), puis applique le geste (plafond retiré).
+  const r=await app.inject({ method:'PUT',url:'/library/flags/701',payload:{ group_id:null,inherited:{ availability:'reactive',group_name:'Mulcharmy' } } });
+  assert.equal(r.statusCode,200,r.body);assert.deepEqual(r.json(),{ ok:true,card_id:701,is_hopt:null,nonengine_choice:true,availability:'reactive',group_id:null });
+  const r2=await app.inject({ method:'PUT',url:'/library/flags/702',payload:{ availability:'early',inherited:{ availability:'flexible',group_name:'Mulcharmy' } } });
+  // Changer de profil garde le plafond (comme avant la partie C) : ici celui, hérité, de « Mulcharmy ».
+  assert.deepEqual(r2.json(),{ ok:true,card_id:702,is_hopt:null,nonengine_choice:true,availability:'early',group_id:mulcharmy.id });
+  const r3=await app.inject({ method:'PUT',url:'/library/flags/703',payload:{ group_id:mulcharmy.id,inherited:{ availability:'early',group_name:'Mulcharmy' } } });
+  assert.deepEqual(r3.json(),{ ok:true,card_id:703,is_hopt:null,nonengine_choice:true,availability:'early',group_id:mulcharmy.id });
+  // Un choix explicite « pas non-engine » : profil null, mais l'aspect est matérialisé.
+  assert.deepEqual((await app.inject({ method:'PUT',url:'/library/flags/704',payload:{ availability:null,inherited:{ availability:'flexible' } } })).json(),{ ok:true,card_id:704,is_hopt:null,nonengine_choice:true,availability:null,group_id:null });
+  assert.deepEqual((await library()).choices.find((c: { card_id:number }) => c.card_id===704),{ card_id:704,is_hopt:null,nonengine_choice:true });
+  // Une valeur héritée invalide est refusée comme tout profil ; un corps « inherited » seul ne dit rien.
+  assert.equal((await app.inject({ method:'PUT',url:'/library/flags/705',payload:{ availability:'early',inherited:{ availability:'sometimes' } } })).statusCode,400);
+  assert.equal((await app.inject({ method:'PUT',url:'/library/flags/705',payload:{ inherited:{ availability:'early' } } })).statusCode,400);
+  // Retour au défaut de l'aspect non-engine : profil, plafond et choix effacés ; le HOPT explicite reste.
+  await app.inject({ method:'PUT',url:'/library/flags/703',payload:{ is_hopt:true } });
+  assert.deepEqual((await app.inject({ method:'DELETE',url:'/library/flags/703?aspect=nonengine' })).json(),{ ok:true,card_id:703,is_hopt:true,nonengine_choice:false,availability:null,group_id:null });
+  assert.deepEqual((await library()).choices.find((c: { card_id:number }) => c.card_id===703),{ card_id:703,is_hopt:true,nonengine_choice:false });
+  // Un plafond sans profil reste refusé (Q2), avec ou sans valeur héritée.
+  assert.equal((await app.inject({ method:'PUT',url:'/library/flags/706',payload:{ group_id:mulcharmy.id } })).statusCode,400);
+});
+
+test('references are written by a referent only (404 otherwise), journaled append-only, and invalidate every account\'s decks holding the card',async () => {
+  const otherDeck=await create({ ...emptyConfiguration('Elsewhere'),cards:[{ card_id:800,zone:'main',copies:3 }] },'other');
+  await query("update decks set summary='{\"engineVersion\":\"x\"}' where id=$1",[otherDeck]);
+  const body={ is_hopt:true,nonengine_set:true,availability:'reactive',group_name:null,note:'Droll : redondante' };
+  // Compte « user » : introuvable, jamais 403 ; rien n'est écrit.
+  assert.equal((await app.inject({ method:'PUT',url:'/references/800',payload:body })).statusCode,404);
+  assert.equal((await app.inject({ method:'DELETE',url:'/references/800' })).statusCode,404);
+  assert.equal((await query('select count(*)::int as n from card_references')).rows[0].n,0);
+  // Lecture ouverte à tout compte.
+  assert.equal((await app.inject({ method:'GET',url:'/references' })).statusCode,200);
+  await query("update users set role='referent' where id=$1",[owner]);
+  assert.equal((await app.inject({ method:'PUT',url:'/references/800',payload:{ is_hopt:null,nonengine_set:false } })).statusCode,400,'référence vide refusée');
+  assert.equal((await app.inject({ method:'PUT',url:'/references/800',payload:{ is_hopt:true,nonengine_set:false,availability:'early' } })).statusCode,400,'profil sans nonengine_set');
+  assert.equal((await app.inject({ method:'PUT',url:'/references/800',payload:{ is_hopt:true,bogus:1 } })).statusCode,400);
+  const set=await app.inject({ method:'PUT',url:'/references/800',payload:body });
+  assert.equal(set.statusCode,200,set.body);assert.equal(set.json().invalidated_decks,1);
+  assert.equal((await query('select summary from decks where id=$1',[otherDeck])).rows[0].summary,null);
+  const lib=await library('other');
+  assert.deepEqual(lib.references,[{ card_id:800,is_hopt:true,nonengine_set:true,availability:'reactive',group_name:null,note:'Droll : redondante' }]);
+  assert.notEqual(lib.referencesVersion,'0');
+  const log=(await app.inject({ method:'GET',url:'/references' })).json().log;
+  assert.equal(log.length,1);assert.equal(log[0].action,'set');assert.equal(log[0].before,null);assert.equal(log[0].after.availability,'reactive');
+  // Journal en ajout seul : effacement refusé par le déclencheur.
+  await assert.rejects(query('delete from card_reference_log'));
+  // Un admin est référent aussi ; retrait journalisé ; second retrait = 404.
+  await query("update users set role='admin' where id=$1",[owner]);
+  await query("update decks set summary='{\"engineVersion\":\"x\"}' where id=$1",[otherDeck]);
+  const cleared=await app.inject({ method:'DELETE',url:'/references/800' });
+  assert.equal(cleared.statusCode,200,cleared.body);assert.equal(cleared.json().invalidated_decks,1);
+  assert.equal((await app.inject({ method:'DELETE',url:'/references/800' })).statusCode,404);
+  const afterClear=await library();
+  assert.deepEqual(afterClear.references,[]);
+  assert.notEqual(afterClear.referencesVersion,lib.referencesVersion,'un retrait change la version des références');
+  assert.equal((await app.inject({ method:'GET',url:'/references' })).json().log.length,2);
+  await query("update users set role='user' where id=$1",[owner]);
+  assert.equal((await app.inject({ method:'PUT',url:'/references/800',payload:body })).statusCode,404,'rôle retiré : effet immédiat');
+  // Les identifiants des auteurs ne sont montrés qu'aux référents.
+  const seenByUser=(await app.inject({ method:'GET',url:'/references' })).json().log;
+  assert.ok(seenByUser.length===2 && seenByUser.every((r: { actor:unknown; before:{ updated_by?:unknown } | null; after:{ updated_by?:unknown } | null }) => r.actor===null && (r.before?.updated_by ?? null)===null && (r.after?.updated_by ?? null)===null),JSON.stringify(seenByUser));
+});
+
+test('a JSON archive carries explicit choices only: an imported HOPT becomes a true choice, an imported profile materialises the aspect',async () => {
+  const archive={ format:'ygo-proba-deck',version:2,configuration:emptyConfiguration('Choices'),library:{ hoptCardIds:[810],categories:[],cardCategories:[],groups:[],profiles:[{ card_id:811,availability:'reactive',group_id:null }] } };
+  assert.equal((await app.inject({ method:'POST',url:'/decks/import',payload:archive })).statusCode,201);
+  const choices=(await library()).choices;
+  assert.deepEqual(choices.find((c: { card_id:number }) => c.card_id===810),{ card_id:810,is_hopt:true,nonengine_choice:false });
+  assert.deepEqual(choices.find((c: { card_id:number }) => c.card_id===811),{ card_id:811,is_hopt:null,nonengine_choice:true });
+  // Un HOPT hérité (null) puis importé devient un choix ; un « faux » explicite contredit l'import.
+  await app.inject({ method:'PUT',url:'/library/flags/812',payload:{ is_hopt:false } });
+  archive.library.hoptCardIds=[812];
+  assert.equal((await app.inject({ method:'POST',url:'/decks/import',payload:archive })).statusCode,409);
+  // Même règle pour l'aspect non-engine : un « pas non-engine » choisi contredit un profil importé.
+  await app.inject({ method:'PUT',url:'/library/flags/813',payload:{ availability:null,inherited:{ availability:'flexible' } } });
+  archive.library.hoptCardIds=[];archive.library.profiles=[{ card_id:813,availability:'reactive',group_id:null }];
+  const refused=await app.inject({ method:'POST',url:'/decks/import',payload:archive });
+  assert.equal(refused.statusCode,409,refused.body);assert.match(refused.body,/Profil contradictoire pour la carte 813/);
+  assert.deepEqual((await library()).choices.find((c: { card_id:number }) => c.card_id===813),{ card_id:813,is_hopt:null,nonengine_choice:true });
 });

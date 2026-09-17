@@ -4,6 +4,7 @@ import { verifyAgainstDummy, verifyPassword } from '../auth/password.js';
 import { createAccount } from '../auth/account.js';
 import { createSession, destroySession, requireUser } from '../auth/session.js';
 import { discordConfigured } from './discord.js';
+import { isReferentRole, roleValid } from '../domain/deckConfiguration.js';
 
 // Codes d'invitation : liste en variable d'environnement (séparés par des virgules).
 // Zéro table, zéro écran d'admin ; révoquer = éditer .env + redémarrer. Le contrôle
@@ -40,14 +41,19 @@ const publicUser = (u: Pick<UserRow, 'id' | 'email' | 'display_name'>) => ({
 async function withAccountMeta(u: Pick<UserRow, 'id' | 'email' | 'display_name'>) {
   const [ids, pw] = await Promise.all([
     query<{ provider: string }>('select provider from user_identities where user_id = $1', [u.id]),
-    query<{ has: boolean }>('select password_hash is not null as has from users where id = $1', [
+    query<{ has: boolean; role: string }>('select password_hash is not null as has, role from users where id = $1', [
       u.id,
     ]),
   ]);
+  // Rôle (005 / 006) relu à chaque appel, jamais mis en cache : `referent` pilote l'interface du
+  // référent (docs/annotations-par-defaut.md, D5′) ; la garde réelle est côté routes (`requireReferent`).
+  const role = roleValid(pw.rows[0]?.role) ? pw.rows[0].role : 'user';
   return {
     ...publicUser(u),
     providers: ids.rows.map((r) => r.provider),
     has_password: pw.rows[0]?.has ?? false,
+    role,
+    referent: isReferentRole(role),
   };
 }
 

@@ -29,6 +29,7 @@ const m3=await sql('../../db/migrations/003-purge-legacy.sql');
 // deploy/lib.sh — la base de cette suite est celle que l'API sert après migration.
 const m4=await sql('../../db/migrations/004-side-plans.sql');
 // Annotations par défaut (partie B) : additive, appliquée après 004 comme dans la séquence.
+const m5=await sql('../../db/migrations/005-backoffice.sql');
 const m6=await sql('../../db/migrations/006-annotation-defaults.sql');
 const fixture=await sql('./fixtures/legacy-representative.sql');
 const SERVER_DIR=fileURLToPath(new URL('..',import.meta.url));
@@ -112,7 +113,7 @@ function runPrune(args: string[]): Promise<{ status: number | null; stdout: stri
     child.on('close',(status) => resolve({ status,stdout,stderr }));
   });
 }
-const SNAPSHOT_TABLES=['cards','catalog_version','deck_cards','deck_starters','deck_combo_pairs','deck_conditions','deck_flags','card_flags','card_categories','nonengine_groups','deck_matchups','deck_side_plans','deck_side_plan_cards'];
+const SNAPSHOT_TABLES=['cards','catalog_version','deck_cards','deck_starters','deck_combo_pairs','deck_conditions','deck_flags','card_flags','card_categories','nonengine_groups','deck_matchups','deck_side_plans','deck_side_plan_cards','card_references','card_reference_log'];
 async function snapshot(): Promise<string> {
   const parts: string[]=[];
   for (const t of SNAPSHOT_TABLES) parts.push((await query(`select md5(coalesce(string_agg(t::text,'|' order by t::text),'')) as h from ${t} t`)).rows[0].h);
@@ -121,7 +122,7 @@ async function snapshot(): Promise<string> {
 
 before(async () => {
   await reset();
-  await query(schema);await query(fixture);await query(m1);await query(m2);await query(m4);await query(m6);
+  await query(schema);await query(fixture);await query(m1);await query(m2);await query(m4);await query(m5);await query(m6);
   await app.ready();
 });
 after(async () => { await app.close();await pool.end();stub.close(); });
@@ -349,4 +350,43 @@ test('prune-stale-cards reports side plan cards, cumulates copies inside a list,
   assert.deepEqual((await query(`select card_id,direction,copies from deck_side_plan_cards where deck_id=$1 order by direction,card_id`,[D3])).rows,
     [{ card_id:90000003,direction:'in',copies:2 },{ card_id:90000001,direction:'out',copies:2 }]);
   assert.equal((await query('select count(*)::int as n from cards where id=90000109')).rows[0].n,0);
+});
+
+// ─── Annotations par défaut, partie C : la référence commune suit la carte, son journal reste ───
+test('prune-stale-cards reports a common reference and merges tri-state HOPT choices, keeps the append-only log, and cancels when both cards carry a reference',async () => {
+  // Carte périmée homonyme de « Starter Beta » (90000002, conservée) : cible sûre.
+  await query(`insert into cards (id,name,type) values (90000110,'Starter Beta','Effect Monster')`);
+  await query(`insert into card_references (card_id,is_hopt,nonengine_set,availability,note) values (90000110,true,true,'reactive','ancienne'),(90000002,false,false,null,'cible')`);
+  await query(`insert into card_reference_log (card_id,action,before,after) values (90000110,'set',null,'{}'::jsonb)`);
+  // Choix du compte : hérite (null) sur la périmée avec aspect non-engine matérialisé, « pas HOPT » explicite sur la cible.
+  await query(`insert into card_flags (owner_id,card_id,is_hopt,nonengine_choice,availability) values ($1,90000110,null,true,null),($1,90000002,false,false,null)`,[A]);
+  const before=await snapshot();
+  const conflict=await runPrune(['--apply']);
+  assert.equal(conflict.status,1,conflict.stdout);
+  assert.match(conflict.stderr,/Report 90000110 → 90000002 : les deux cartes portent une référence commune/);
+  assert.equal(await snapshot(),before,'rien ne change en cas de conflit, références comprises');
+
+  await query('delete from card_references where card_id=90000002');
+  const ok=await runPrune(['--apply']);
+  assert.equal(ok.status,0,ok.stdout+ok.stderr);
+  assert.match(ok.stdout,/card_references \(reportée\)/);
+  assert.deepEqual((await query('select card_id,is_hopt,nonengine_set,availability,note from card_references')).rows,[{ card_id:90000002,is_hopt:true,nonengine_set:true,availability:'reactive',note:'ancienne' }]);
+  // Le journal garde l'ancien passcode (ajout seul) et ne bloque pas le contrôle final.
+  assert.deepEqual((await query('select card_id from card_reference_log')).rows.map((r) => r.card_id),[90000110]);
+  assert.deepEqual((await query('select card_id,is_hopt,nonengine_choice from card_flags where owner_id=$1 and card_id in (90000002,90000110)',[A])).rows,[{ card_id:90000002,is_hopt:false,nonengine_choice:true }]);
+  assert.equal((await query('select count(*)::int as n from cards where id=90000110')).rows[0].n,0);
+});
+
+test('prune-stale-cards cancels everything when a chosen « not non-engine » meets a profile on the target (partie C)',async () => {
+  await query(`insert into cards (id,name,type) values (90000111,'Combo Delta','Effect Monster')`);
+  await query(`insert into card_flags (owner_id,card_id,is_hopt,nonengine_choice,availability) values ($1,90000111,null,true,null),($1,90000004,null,true,'early')`,[A]);
+  const before=await snapshot();
+  const conflict=await runPrune(['--apply']);
+  assert.equal(conflict.status,1,conflict.stdout);
+  assert.match(conflict.stderr,/Report 90000111 → 90000004 : .*profil ou un plafond contradictoire/);
+  assert.equal(await snapshot(),before);
+  await query('delete from card_flags where card_id=90000111');
+  const ok=await runPrune(['--apply']);
+  assert.equal(ok.status,0,ok.stdout+ok.stderr);
+  assert.equal((await query('select count(*)::int as n from cards where id=90000111')).rows[0].n,0);
 });

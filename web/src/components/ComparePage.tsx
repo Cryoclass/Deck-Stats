@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type DeckSummary } from '../lib/api.js';
+import type { Card } from '../types.js';
 import { useRouter } from '../lib/router.js';
 import { heatCell, heatDelta } from '../lib/colors.js';
 import { buildEngineModel } from '../lib/engineModel.js';
@@ -52,7 +53,12 @@ export function ComparePage({ a, b }: { a: string; b: string }) {
       // Étape 10D : un côté peut être un deck sidé (segment `deck~adversaire~position`).
       const targets = [parseCompareTarget(a), parseCompareTarget(b)];
       const [da, db, lib] = await Promise.all([api.getDeck(targets[0].deckId), api.getDeck(targets[1].deckId), api.getLibrary()]);
-      const decks = [da, db].map((d, i) => compareSideOf(d, lib, targets[i]));
+      // Partie C : les textes de cartes des deux decks (plans compris) alimentent la fusion effective.
+      const cards: Record<number, Card> = {};
+      const ids = new Set<number>([da, db].flatMap((d) => [...d.cards.map((c) => c.card_id), ...(d.matchups ?? []).flatMap((m) => m.plans.flatMap((p) => [...p.outgoing, ...p.incoming].map((c) => c.card_id)))]));
+      // Sans les textes, pas de défauts : l'erreur arrête la comparaison plutôt que d'afficher des chiffres faux.
+      for (const c of await api.cardsByIds([...ids])) cards[c.id] = c;
+      const decks = [da, db].map((d, i) => compareSideOf(d, lib, targets[i], cards));
       for (const { name, source } of decks) {
         const size = source.main.reduce((s, c) => s + c.copies, 0);
         if (size < 6) {
