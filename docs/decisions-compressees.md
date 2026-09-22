@@ -374,3 +374,7 @@ Plan validé : docs/plans-de-side-v2.md (D1–D17, S1–S10, Q1–Q13). Partie A
 - `trySwap` = règle unique de l'échange (geste et aperçu) ; `undoSwap` exact et jamais sous zéro ; `clearPlan` garde la note.
 - Candidats : main seulement, à une copie près, échanges acceptables seulement, entrées dédoublonnées ; écart mesuré contre le plan.
 - `deckLegality` = avertissement (40–60, ≤ 15, 3 copies toutes zones, `wrong-zone`), jamais un refus.
+Partie B :
+- Réutilisation du deck de base par ENTRÉE du moteur (plan vide, main identique, échange neutre) ; aperçu et candidats réutilisent toute passe connue.
+- Trois clients (base + étudiés, aperçu, candidats), annulation par tâche ; réponse adoptée seulement si sa clé est encore attendue ; caches bornés, vidés à `loadDeck`.
+- Changer de position ou d'adversaire abandonne sélection et historique ; contexte dans l'URL seule (`replaceState`).

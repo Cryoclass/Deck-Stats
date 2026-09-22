@@ -20,7 +20,7 @@ function Routed() {
     void bootstrap();
   }, [bootstrap]);
 
-  if (route.name === 'editor') return <EditorPage id={route.id} initialTab={route.tab} />;
+  if (route.name === 'editor') return <EditorPage id={route.id} initialTab={route.tab} initialStudy={route.study} />;
   if (route.name === 'compare') return <ComparePage a={route.a} b={route.b} />;
   if (route.name === 'sideSheet') return <SideSheet id={route.id} />;
   if (route.name === 'references') return <ReferencesPage />;

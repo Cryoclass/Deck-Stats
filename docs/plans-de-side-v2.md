@@ -1,7 +1,7 @@
 # Refonte des plans de side — le deck sidé au centre de l'éditeur
 
-Statut : **plan validé le 22 septembre 2026** (réponses Q1–Q13 en fin de document) ; partie A livrée le
-22 septembre 2026 (compte rendu §12). Rédigé le 17 septembre 2026 sans aucune ligne de code ni de test modifiée.
+Statut : **plan validé le 22 septembre 2026** (réponses Q1–Q13 en fin de document) ; parties A et B livrées le
+22 septembre 2026 (comptes rendus §12, §13). Rédigé le 17 septembre 2026 sans aucune ligne de code ni de test modifiée.
 Prompt d'origine : [prompt-refonte-plans-de-side.md](prompt-refonte-plans-de-side.md).
 Inventaire mené en lecture seule sur le dépôt (commit `471fadd`), sur le catalogue de la base de
 dev (une requête `select type, count(*)`, aucune écriture) et sur une restauration jetable de
@@ -777,3 +777,150 @@ Sous-agent à contexte neuf, mandat : confronter la partie A au prompt et au pla
 - Conséquence de S5 à surveiller après déploiement : une carte absente du catalogue chargé ne peut
   plus être échangée (§11).
 - Rien n'est poussé ; aucune commande vers la base de dev, le VPS ni Supabase.
+
+## 13. Compte rendu de la partie B — store et calcul (22 septembre 2026)
+
+**Périmètre** : l'orchestration. Le store connaît le contexte d'étude (adversaire + position), calcule
+les deux decks étudiés, l'aperçu d'une sélection et les écarts des candidats, et reflète le contexte
+dans l'URL. Aucun composant n'affiche encore ces états (C et D) ; `SidePlanner` garde son propre
+client jusqu'à D.
+
+### Livré
+
+- `web/src/worker/*` : mode `second` (passe second seule), symétrique du mode `first` ; `notComputedPass`
+  dit laquelle des deux passes a été demandée.
+- `web/src/store/study.ts` (nouveau, orchestration seulement — les règles sont dans lib/) :
+  - **decks étudiés** (D1, D2, D4) : `studiedDeck` par position ; plan vide, main identique **ou même
+    entrée du moteur** que le deck de base (échange neutre) → `reusesBase`, aucun calcul ; sinon calcul
+    par **entrée** (deux positions au même deck sidé = une tâche), en deux temps — `passes` puis `full`
+    pour les écarts de tuile — sur le client principal, derrière le deck de base ; cache par entrée
+    (32 entrées) ; réponse adoptée seulement si sa clé est encore attendue ; résultat précédent gardé
+    `stale` en attendant ;
+  - **aperçu** (D5) : `previewOf` puis, si l'entrée diffère de celle du plan, la seule passe de la
+    position sur un client dédié, regroupée à 50 ms, annulée à chaque changement ; passe déjà connue
+    (cache, deck de base frais, deck étudié frais) servie sans calcul ; ancien chiffre gardé `stale` ;
+  - **candidats** (D6, Q5) : `candidatesOf` + `candidateInputs` ; passes connues déduites ; estimation
+    = entrées inconnues × dernière passe mesurée de la position (`lastPassMs`, sinon `computeMs`) ;
+    automatique si ≤ `CANDIDATES_AUTO_MS` (3 s), sinon `pending` jusqu'à `runCandidates` ; troisième
+    client, tâches annulées dès que la sélection change ; `candidateDeltaOf` = candidat − plan ;
+  - **chiffres de plan persistés** (D17, déplacé de `SidePlanner`, qui le fait encore jusqu'à D) :
+    deck sans modification non enregistrée, révision lue, une fois par empreinte ;
+  - `openPlan`, `studiedPass`, `resetStudyEngine` (tests).
+- `web/src/store/deckStore.ts` : état transitoire `study`, `studied`, `selection`, `swapHistory`,
+  `preview`, `candidates`, `candidateIndicator`, `lastPassMs` (jamais dans la configuration ni le
+  brouillon) ; actions `setStudy`, `setSelection`, `adjustSelectionCopy`, `clearSelection`,
+  `commitSelection` (règle `trySwap`, historique), `undoLastSwap`, `clearOpenPlan`,
+  `setCandidateIndicator`, `runCandidates` ; `setContext` abandonne sélection et historique (le plan
+  ouvert change) ; toute mutation d'un plan ou d'une zone resynchronise decks étudiés, aperçu et
+  candidats ; `loadDeck` remet tout à zéro ; un enregistrement réussi relance la persistance des
+  chiffres.
+- `web/src/lib/studyUrl.ts` + `lib/router.tsx` + `EditorPage.tsx` : `?contre=<adversaire>&position=`
+  lu à l'ouverture, reflété par `replaceState` à chaque changement (D1, Q11) ; `App.tsx` passe
+  `initialStudy`.
+
+### Tests
+
+Nouveaux : `store/study.test.ts` (12 : réutilisation du deck de base — sans adversaire, plan vide,
+échange neutre —, passes puis complet derrière la base, dédoublonnage de deux positions, plan pas
+prêt, cache et réponse périmée jamais adoptée, aperçu sur son propre worker et jamais « non
+enregistré », annulation et cache de l'aperçu, échanger / annuler / vider / refus / changement de
+position, candidats automatiques et écarts contre le plan, candidats au-delà du budget puis annulés,
+persistance des chiffres, `loadDeck`), `lib/studyUrl.test.ts` (2). Harnais : un client par
+`createEngineClient()` (comme l'application) et journal chronologique des requêtes tous workers
+confondus. Aucun test existant modifié.
+
+### Vérifications exécutées
+
+- `npm run typecheck` (serveur, web, scripts) · `npm run build` (avertissement ExcelJS attendu) ·
+  `node scripts/test-quiet.mjs` : **373 tests web** (355 après A), **22 serveur**, tous verts.
+- `npm run e2e -w web` (pile jetable, ports web déplacés par `E2E_WEB_PORT` / `E2E_BASE`) : **11 scénarios OK** (setup, guards, compare, mobile, home, conditions, nonengine, extraside, side,
+  sidesheet, defaults), dont `side` et `sidesheet` sur le store de B ; aucun scénario nouveau (aucune
+  interface nouvelle en B).
+- Ni migration, ni schéma, ni route, ni deploy/ touchés → ni tests d'intégration PostgreSQL, ni séquence,
+  ni répétition pour cette partie (rejoués avant la clôture du chantier).
+
+### Contrôle par mutation
+
+10 posées : 9 détectées, 1 équivalente (jouées après les corrections de la relecture).
+
+| # | Mutation | Garde qui tombe |
+| --- | --- | --- |
+| B1 | Changer de position garde la sélection et l'historique | `study.test.ts` « Échanger… changer de position abandonne » |
+| B2 | L'aperçu marque le deck « non enregistré » | `study.test.ts` « jamais non enregistré » |
+| B3 | Chiffres d'un plan persistés même « non enregistré » | `study.test.ts` « seulement pour un deck sans modification » |
+| B4 | Une entrée déjà en cours de calcul est relancée à chaque resynchronisation | `study.test.ts` « deux positions au même deck sidé » (garde renforcée pour elle : resynchronisation pendant le calcul) |
+| B5 | Échange neutre recalculé au lieu de réutiliser le deck de base | `study.test.ts` « échange neutre » et « candidats… écarts contre le plan » |
+| B6 | Candidats lancés quel que soit le budget | `study.test.ts` « au-delà du budget » |
+| B7 | Aperçu en deux passes au lieu de la seule passe de la position | `study.test.ts` « une seule passe » (mode `second`) et candidats |
+| B8 | Position inconnue acceptée dans l'URL | `studyUrl.test.ts` |
+| B9 | Ouvrir un autre deck garde le contexte et la sélection | `study.test.ts` « loadDeck repart du deck de base » |
+| B10 | Une annotation sur une carte de side ne resynchronise plus le deck étudié (relecture C1) | `study.test.ts` « une annotation sur une carte de side… resynchronise » |
+| — | Réponse adoptée pour une clé qui n'est plus attendue (garde retirée) | **Équivalente** : une réponse est une fonction pure de sa clé d'entrée, l'adopter ne change aucun chiffre et le client ignore déjà une réponse annulée ; la garde reste défensive, comme la seconde garde de l'étape 4. Remplacée par B1. |
+
+Mutations posées par script sur les vrais fichiers, restaurés et vérifiés par SHA-256 identique.
+
+### Relecture indépendante
+
+Sous-agent à contexte neuf (mandat : confronter la partie B au plan et au prompt, preuves exigées,
+rien d'écrit). Verdict : **recevable sur l'architecture, un défaut bloquant, trois à corriger**, tous
+corrigés avant le tag, plus les remarques suivies :
+
+- **C1, bloquant** — une annotation portée par une carte de side (starter, paire, condition, mortes ;
+  HOPT, profil, plafond du compte) ne changeait pas le deck de base (`modelUnchanged`), donc ne
+  resynchronisait ni le deck étudié, ni l'aperçu, ni les candidats : un chiffre aurait pu s'afficher
+  sous le nom du deck sidé sans correspondre à son entrée — l'échec « le plus grave » du §9. Corrigé :
+  `annotationCalc` et `libraryCalc` appellent `studySync()` quand le deck de base ne bouge pas ; garde
+  « une annotation sur une carte de side… resynchronise » ; mutation B10.
+- **C2** — `lastPassMs` était posé à `ms / 2` pour les deux positions à chaque réponse, résultat
+  complet compris (surestimation ×2 à ×4 sur les gros decks → « à la demande » à tort), et écrasait
+  les mesures exactes de l'aperçu et des candidats. Corrigé : première estimation depuis les passes
+  seulement, jamais depuis un résultat complet, jamais par-dessus une valeur déjà mesurée.
+- **C3** — `lastPassMs` survivait à `loadDeck` (budget d'un deck léger appliqué à un deck lourd).
+  Corrigé : remis à zéro dans `freshStudy`, comme la position (voir E5) ; garde dans « loadDeck ».
+- **C4** — annuler k candidats en ordre de dépôt provoquait k terminaisons de worker et k(k−1)/2
+  reposts (`computeClient.cancel` tient la première tâche en attente pour « en cours »). Corrigé :
+  annulation en ordre inverse (les tâches en attente retirées sans effet, la tâche en cours terminée
+  une fois) ; idem dans `reset()`.
+- **C5** — sur un plan pas prêt, l'aperçu retombait sur « les chiffres du plan » (clé de base) alors
+  que le plan n'en a pas. Corrigé, et la règle déplacée en lib : `previewOf` reçoit la source et juge
+  `affectsEngine` sur l'**entrée du moteur** (échange neutre = sans effet) quand le plan est prêt ;
+  l'orchestrateur n'écrase plus ce champ.
+- **C6** — un résultat périmé d'un autre adversaire restait affiché sous le nom du nouveau. Corrigé
+  (gardé seulement pour le même adversaire) ; garde « jamais un chiffre de M1 sous le nom de M2 ».
+- **C7** — `knownPass` consulte aussi le cache des résultats complets. **C8** — un brouillon repris
+  abandonne sélection et historique. **C11** — une panne de persistance laisse un nouvel essai.
+- **E1** — `setStudy` regroupe comme le deck de base (`scheduleStudied`) : à l'ouverture par l'URL,
+  le deck de base est bien posté avant le deck sidé (D4) ; test réécrit dans ce sens. **E5** — la
+  position repart à « premier » à l'ouverture d'un deck (Q11 : le contexte vient de l'URL seule).
+  **E2 / E3 / E4** — écarts au plan dits ci-dessous. **E7** — motif de `cancelAll` reformulé.
+- **Tests (T1, T2)** — le test « réponse jamais adoptée » renommé pour ce qu'il prouve (tâche annulée,
+  worker terminé) ; écart d'un candidat prouvé contre un plan **différent** du deck de base (candidat
+  neutre = 0 exactement, alors que le plan diffère de la base).
+- Non retenu : **C9** (`freeCopies` sur main + extra confond une carte présente dans les deux zones —
+  deck déjà hors format) et **C10** (`popstate` vers le même deck avec un autre contexte) : marginaux,
+  notés pour C.
+- Confirmé par la relecture : trois clients, réponse adoptée seulement si sa clé est attendue, aperçu
+  et sélection hors `markDirty` / brouillon / configuration, persistance sous les bonnes gardes, rien
+  sous `engine/`, `server/src`, `db/`, `lib/sidePlan.ts` ; `planFingerprint` intact.
+
+### Écarts au plan
+
+- D4 : « même entrée que le deck de base » remplace « même main » pour réutiliser le résultat de base
+  (un échange neutre ne se recalcule pas) ; l'aperçu et les candidats réutilisent de même toute passe
+  déjà connue (cache, base fraîche, deck étudié frais). Cache de 32 entrées au lieu de 16.
+- §5.3 annonçait deux clients : trois (principal, aperçu, candidats), l'aperçu ne devant jamais attendre
+  derrière un `computeAll`.
+- §7 annonçait `store/selectors.ts` et `store/preview.test.ts` étendus : les sélecteurs de chiffres
+  (`studiedPass`, `candidateDeltaOf`) vivent dans `store/study.ts` ; `preview.test.ts` (aperçu de
+  l'accueil, étape 9) n'avait rien à gagner. Les consommateurs arrivent en C.
+- Q11 étendue : la position repart aussi à « premier » à l'ouverture d'un deck (elle est désormais
+  visible dans l'URL).
+- `SidePlanner` garde son client et sa persistance jusqu'à la partie D : quand l'adversaire étudié est
+  celui de l'onglet, le deck sidé peut être calculé deux fois (une fois par le store, une fois par
+  l'onglet) et le même chiffre persisté deux fois à l'identique — transitoire, sans effet visible.
+
+### Non fait / reporté
+
+- Parties C (barre de contexte, consommateurs), D (onglet), E (fiche, clôture).
+- Le budget réel dans le navigateur (worker, téléphone) reste à mesurer en C / D ; `lastPassMs` est
+  mesuré à la première passe de chaque position.

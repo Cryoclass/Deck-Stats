@@ -10,6 +10,7 @@ import { Inventory } from './Inventory.js';
 import { StatsPanel } from './StatsPanel.js';
 import { SidePlanner } from './SidePlanner.js';
 import { Toast } from './Toast.js';
+import { searchForStudy, type StudyParams } from '../lib/studyUrl.js';
 
 type Tab = 'annotate' | 'combos' | 'hands' | 'inventory' | 'side' | 'stats';
 
@@ -29,7 +30,7 @@ const TABS: ReadonlyArray<{ id: Tab; label: string; short: string; belowLgOnly?:
   { id: 'stats', label: 'Stats', short: 'Stats', belowLgOnly: true },
 ];
 
-export function EditorPage({ id, initialTab }: { id: string; initialTab?: 'side' }) {
+export function EditorPage({ id, initialTab, initialStudy }: { id: string; initialTab?: 'side'; initialStudy?: StudyParams }) {
   const { navigate } = useRouter();
   const loadDeck = useDeck((s) => s.loadDeck);
   const saveDeck = useDeck((s) => s.saveDeck);
@@ -39,6 +40,10 @@ export function EditorPage({ id, initialTab }: { id: string; initialTab?: 'side'
   const deckId = useDeck((s) => s.deckId);
   const draftAvailable = useDeck((s) => s.draftAvailable);
   const persistenceError = useDeck((s) => s.persistenceError);
+  const studyMatchupId = useDeck((s) => s.study.matchupId);
+  const context = useDeck((s) => s.context);
+  const setStudy = useDeck((s) => s.setStudy);
+  const setContext = useDeck((s) => s.setContext);
 
   const [tab, setTab] = useState<Tab>(initialTab ?? 'annotate');
   const [highlightCardId, setHighlightCardId] = useState<number | null>(null);
@@ -52,11 +57,27 @@ export function EditorPage({ id, initialTab }: { id: string; initialTab?: 'side'
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    loadDeck(id).finally(() => alive && setLoading(false));
+    loadDeck(id).finally(() => {
+      if (!alive) return;
+      // Plans de side v2 (D1, Q11) : le contexte d'étude vient de l'URL seule, appliqué une fois le deck lu.
+      if (initialStudy?.position) setContext(initialStudy.position);
+      if (initialStudy?.matchupId) setStudy(initialStudy.matchupId);
+      setLoading(false);
+    });
     return () => {
       alive = false;
     };
+    // `initialStudy` ne vaut qu'à l'ouverture : le store est ensuite la seule source.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, loadDeck]);
+
+  // Le contexte d'étude est reflété dans l'URL par `replaceState` (jamais une entrée d'historique) :
+  // il survit au rechargement sans rien écrire ailleurs (D1).
+  useEffect(() => {
+    if (loading || deckId !== id) return;
+    const search = searchForStudy(studyMatchupId, context);
+    if (window.location.search !== search) window.history.replaceState(null, '', `${window.location.pathname}${search}`);
+  }, [loading, deckId, id, studyMatchupId, context]);
 
   // Confirmation à la fermeture / au rechargement d'onglet quand il y a du non-enregistré.
   useEffect(() => {

@@ -65,7 +65,7 @@ l'archive du 8 septembre, décisions D1–D17, règles S1–S10, réponses Q1–
 | Partie | Résultat vérifiable attendu | Statut |
 | --- | --- | --- |
 | A — règles pures | Extra dans les plans (zone par type, équilibre par zone), `isMainDeckType` corrigé, légalité du deck, deck étudié et aperçu en pur, non-régression des plans existants prouvée ; tag `side-v2-a-ok` | ✅ Terminée le 22 sept. 2026 — `deckZoneOfType`, `applyPlan(deck, plan, zoneOf)` par zone avec extra dérivé hors moteur, `trySwap` unique (échange et aperçu), `undoSwap` / `clearPlan`, `deckLegality`, `studiedDeck.ts`, `swapPreview.ts`, garde D15 contre la copie figée de 471fadd (fixtures + 500 plans), contrat §2 / §8 (S1–S10) ; 355 web + 22 serveur, `--gap` avant / après identique sur les 16 decks du 8 sept., 7 mutations détectées + 1 équivalente, relecture indépendante (docs/plans-de-side-v2.md §12). |
-| B — store et calcul | Contexte d'étude (adversaire, position) dans l'URL, résultats par deck étudié et cache, aperçu, écarts de candidats sur un second client ; tag `side-v2-b-ok` | À faire (plan validé le 22 sept. 2026) |
+| B — store et calcul | Contexte d'étude (adversaire, position) dans l'URL, résultats par deck étudié et cache, aperçu, écarts de candidats sur un second client ; tag `side-v2-b-ok` | ✅ Terminée le 22 sept. 2026 — mode `second` du worker, `store/study.ts` (decks étudiés par entrée du moteur, deux temps passes → complet derrière le deck de base, cache, aperçu et candidats sur leurs propres clients, persistance des chiffres de plan), état et actions du store (`setStudy`, sélection, `commitSelection`, `undoLastSwap`, `clearOpenPlan`, `runCandidates`), contexte dans `?contre=&position=` (`lib/studyUrl.ts`, `replaceState`) ; 373 web + 22 serveur, 11 scénarios e2e, 9 mutations détectées + 1 équivalente, relecture indépendante (défaut bloquant C1 corrigé : annotation de side → resynchronisation) (docs/plans-de-side-v2.md §13). |
 | C — éditeur en contexte | Barre de contexte, panneau, matrice, requête, mur et tuiles sur le deck étudié et nommés ; e2e `study` ; tag `side-v2-c-ok` | À faire |
 | D — onglet side refondu | Tuiles par carte, aperçu et écarts de candidats, bloc Extra, barre d'action mobile, annuler / vider, « Enregistrer et ouvrir », règle des 3 copies ; e2e `side` ; tag `side-v2-d-ok` | À faire |
 | E — fiche, PDF, clôture | Extra dans la fiche et le PDF, e2e `sidesheet`, docs ; tags `side-v2-e-ok`, `side-v2-ok` | À faire |
@@ -81,11 +81,11 @@ l'archive du 8 septembre, décisions D1–D17, règles S1–S10, réponses Q1–
 À mettre à jour en fin de chaque tâche (remplacer le contenu, l'historique reste dans docs/etapes-*.md et git).
 
 - **Date** : 22 septembre 2026.
-- **Étape** : hors numérotation, refonte des plans de side, partie A (docs/plans-de-side-v2.md §12). Tag `side-v2-a-ok`, rien poussé.
-- **Livré** : zone de plan déduite du type (`deckZoneOfType`, bogue `isMainDeckType` corrigé), `applyPlan` par zone avec extra dérivé hors moteur, `trySwap` règle unique de l'échange, annuler / vider, `deckLegality`, deck étudié (`studiedDeck.ts`) et aperçu / candidats (`swapPreview.ts`) en pur, garde de non-régression D15, contrat §2 / §8 (S1–S10), décisions, AGENTS.md.
-- **Vérifications exécutées** : typecheck, build, test-quiet (355 web, 22 serveur), rapport `--gap` avant / après identique sur l'archive du 8 septembre (conteneur jetable détruit), 8 mutations (7 détectées, 1 équivalente), relecture indépendante.
-- **Non fait / reporté** : parties B à E ; e2e, intégration PostgreSQL, séquence et répétition non rejoués (rien de ce qu'ils couvrent n'a changé), à rejouer avant la clôture.
-- **Prochaine action** : partie B (store et calcul) selon docs/plans-de-side-v2.md §7.
+- **Étape** : hors numérotation, refonte des plans de side, partie B (docs/plans-de-side-v2.md §13). Tag `side-v2-b-ok`, rien poussé. Partie A le même jour (§12, tag `side-v2-a-ok`).
+- **Livré** : mode `second` du worker ; `store/study.ts` (decks étudiés par entrée du moteur, réutilisation du deck de base pour un plan vide ou un échange neutre, passes puis résultat complet derrière le deck de base, cache, aperçu sur client dédié, candidats sur un troisième client avec budget Q5, persistance des chiffres de plan) ; état et actions du store ; contexte d'étude dans l'URL (`lib/studyUrl.ts`, `EditorPage`) ; corrections de la relecture (annotation de side → resynchronisation, `lastPassMs`, annulation en ordre inverse, résultat périmé du seul même adversaire).
+- **Vérifications exécutées** : typecheck, build, test-quiet (373 web, 22 serveur), e2e 11 scénarios (rejoué après les corrections), 10 mutations (9 détectées, 1 équivalente), relecture indépendante.
+- **Non fait / reporté** : parties C à E ; `SidePlanner` garde son propre client jusqu'à D ; intégration PostgreSQL, séquence et répétition non rejouées (rien de ce qu'elles couvrent n'a changé), à rejouer avant la clôture.
+- **Prochaine action** : partie C (éditeur en contexte) selon docs/plans-de-side-v2.md §7.
 
 Compte rendu précédent (annotations par défaut, partie D) :
 

@@ -27,13 +27,14 @@ export type Preview =
   /** L'échange est acceptable mais le plan résultant n'est pas prêt (il ne l'était déjà pas : incomplet
    *  ou à revoir, et l'échange ne l'aggrave pas) : pas de deck à montrer, le statut est dit. */
   | { kind: 'not-ready'; applied: AppliedPlan }
-  /** Le deck « plan + sélection », prêt. `affectsEngine` = son main diffère de celui du plan ; une
-   *  sélection d'Extra seule ne change aucun chiffre (S7). */
+  /** Le deck « plan + sélection », prêt. `affectsEngine` = ses chiffres diffèrent de ceux du plan :
+   *  entrée du moteur différente quand la source (annotations) est connue et que le plan est prêt,
+   *  sinon main différent. Une sélection d'Extra seule, ou un échange neutre, ne change rien (S7). */
   | { kind: 'ready'; plan: SidePlan; applied: AppliedPlan; affectsEngine: boolean };
 
 /** L'aperçu d'une sélection sur un plan. La règle est celle du geste « Échanger » (`trySwap`) : un
  *  aperçu montre exactement ce que donnerait l'échange, et rien qu'il refuserait. */
-export function previewOf(deck: PlanDeck, plan: SidePlan, selection: Selection, zoneOf: ZoneOf, name: (cardId: number) => string): Preview {
+export function previewOf(deck: PlanDeck, plan: SidePlan, selection: Selection, zoneOf: ZoneOf, name: (cardId: number) => string, source: EngineModelSource | null = null): Preview {
   if (isSelectionEmpty(selection)) return { kind: 'none' };
   const out = countByZone(selection.outgoing, zoneOf);
   const inn = countByZone(selection.incoming, zoneOf);
@@ -45,7 +46,10 @@ export function previewOf(deck: PlanDeck, plan: SidePlan, selection: Selection, 
   const applied = applyPlan(deck, r.plan, zoneOf);
   if (applied.status !== 'ready') return { kind: 'not-ready', applied };
   const current = applyPlan(deck, plan, zoneOf);
-  return { kind: 'ready', plan: r.plan, applied, affectsEngine: !sameMain(applied.main, current.main) };
+  const affectsEngine = source && current.main
+    ? JSON.stringify(buildEngineModel(sidedSource(source, applied)!).input) !== JSON.stringify(buildEngineModel(sidedSource(source, current)!).input)
+    : !sameMain(applied.main, current.main);
+  return { kind: 'ready', plan: r.plan, applied, affectsEngine };
 }
 
 /** Un candidat (S4) : la carte qui compléterait la sélection à une copie près, avec le deck que

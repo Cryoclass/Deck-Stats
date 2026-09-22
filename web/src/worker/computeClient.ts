@@ -1,11 +1,12 @@
 import type { AnalysisContext, EngineInput, EngineResult, PassResult } from '../engine/types.js';
 import type { ComputeRequest, ComputeResponse } from './engine.worker.js';
 
-/** Passe volontairement non calculée (mode `first`) : même convention que le moteur pour une
- *  passe indisponible (`total === 0` + motif explicite) ; jamais copiée ni approximée. Partagée
- *  par le worker réel et le faux worker de test. */
+/** Passe volontairement non calculée (modes `first` et `second`) : même convention que le moteur
+ *  pour une passe indisponible (`total === 0` + motif explicite) ; jamais copiée ni approximée.
+ *  Partagée par le worker réel et le faux worker de test. */
 export function notComputedPass(context: AnalysisContext, deckSize: number): PassResult {
-  return { unavailableReason: 'Passe non calculée : aperçu de l’accueil (passe premier seule).', context, handSize: context === 'first' ? 5 : 6, deckSize, total: 0, outcomes: 0, buckets: [], startsBuckets: [0, 0, 0, 0], startsExact: [], brick: 0, meanStarts: 0, redundancy: [], nonEngine: [], meanNonEngine: 0, perCategory: [], crossMatrix: [], neSignatures: [] };
+  const reason = context === 'second' ? 'Passe non calculée : aperçu de l’accueil (passe premier seule).' : 'Passe non calculée : seule la passe second a été demandée (aperçu d’un échange, plans de side v2).';
+  return { unavailableReason: reason, context, handSize: context === 'first' ? 5 : 6, deckSize, total: 0, outcomes: 0, buckets: [], startsBuckets: [0, 0, 0, 0], startsExact: [], brick: 0, meanStarts: 0, redundancy: [], nonEngine: [], meanNonEngine: 0, perCategory: [], crossMatrix: [], neSignatures: [] };
 }
 
 // ─── Client de calcul (étape 4) — propriété des tâches, annulation, erreurs ───
@@ -31,8 +32,9 @@ export interface WorkerLike {
 }
 
 /** 'full' : éditeur (deux passes + contributions marginales) · 'passes' : comparateur ·
- *  'first' : aperçu de l'accueil (étape 9), passe premier seule, `second` rendue indisponible. */
-export type ComputeMode = 'full' | 'passes' | 'first';
+ *  'first' : aperçu de l'accueil (étape 9), passe premier seule, `second` rendue indisponible ·
+ *  'second' : aperçu d'un échange en position second (plans de side v2, D5), passe second seule. */
+export type ComputeMode = 'full' | 'passes' | 'first' | 'second';
 
 export interface ComputeOutput {
   result: EngineResult;

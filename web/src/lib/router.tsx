@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { studyFromSearch, type StudyParams } from './studyUrl.js';
 
 /** Routeur minimal (§4C) : accueil `/decks`, éditeur `/decks/:id`, comparateur
  *  `/compare/:a/:b` (itération 9). Pas de dépendance externe — on contrôle toute la
@@ -6,12 +7,14 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
  *  « Plans de side » (lien profond ; changer d'onglet ne réécrit pas l'URL). */
 export type Route =
   | { name: 'home' }
-  | { name: 'editor'; id: string; tab?: 'side' }
+  /** Plans de side v2 (D1) : `study` lu dans `?contre=&position=` à l'ouverture ; jamais réémis par `toPath`
+   *  (le store le reflète lui-même par `replaceState`). */
+  | { name: 'editor'; id: string; tab?: 'side'; study?: StudyParams }
   | { name: 'sideSheet'; id: string }
   | { name: 'compare'; a: string; b: string }
   | { name: 'references' };
 
-function parse(pathname: string): Route {
+function parse(pathname: string, search = ''): Route {
   // Annotations par défaut (partie D) : page des références communes, réservée aux référents.
   if (/^\/references\/?$/.test(pathname)) return { name: 'references' };
   const c = pathname.match(/^\/compare\/([^/?#]+)\/([^/?#]+)/);
@@ -20,7 +23,9 @@ function parse(pathname: string): Route {
   const f = pathname.match(/^\/decks\/([^/?#]+)\/side\/fiche/);
   if (f) return { name: 'sideSheet', id: decodeURIComponent(f[1]) };
   const m = pathname.match(/^\/decks\/([^/?#]+)(\/side)?/);
-  return m ? { name: 'editor', id: decodeURIComponent(m[1]), ...(m[2] ? { tab: 'side' as const } : {}) } : { name: 'home' };
+  if (!m) return { name: 'home' };
+  const study = studyFromSearch(search);
+  return { name: 'editor', id: decodeURIComponent(m[1]), ...(m[2] ? { tab: 'side' as const } : {}), ...(study.matchupId || study.position ? { study } : {}) };
 }
 
 function toPath(route: Route): string {
@@ -38,7 +43,7 @@ interface RouterCtx {
 const Ctx = createContext<RouterCtx | null>(null);
 
 export function RouterProvider({ children }: { children: ReactNode }) {
-  const [route, setRoute] = useState<Route>(() => parse(window.location.pathname));
+  const [route, setRoute] = useState<Route>(() => parse(window.location.pathname, window.location.search));
 
   // L'app ouvre sur /decks : normalise l'URL initiale si besoin.
   useEffect(() => {
@@ -48,7 +53,7 @@ export function RouterProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const onPop = () => setRoute(parse(window.location.pathname));
+    const onPop = () => setRoute(parse(window.location.pathname, window.location.search));
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);

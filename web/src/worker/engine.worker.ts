@@ -8,8 +8,9 @@ export interface ComputeRequest {
   // 'passes' (comparateur, itération 9) : les deux passes SANS les contributions
   // marginales (§3.2), qui coûtent n+1 énumérations et ne servent qu'à l'éditeur.
   // 'first' (accueil, étape 9) : la passe premier seule ; `second` est rendue INDISPONIBLE
-  // (total 0, motif explicite), jamais copiée ni approximée.
-  mode?: 'full' | 'passes' | 'first';
+  // (total 0, motif explicite), jamais copiée ni approximée. 'second' (aperçu d'un échange,
+  // plans de side v2) : symétrique, la passe second seule.
+  mode?: 'full' | 'passes' | 'first' | 'second';
 }
 export interface ComputeResponse {
   id: number;
@@ -39,7 +40,9 @@ ctx.onmessage = (e) => {
         ? { first: computePass(input, 'first'), second: computePass(input, 'second'), deltas: [] }
         : mode === 'first'
           ? { first: computePass(input, 'first'), second: notComputedPass('second', input.deckSize), deltas: [] }
-          : computeAll(input);
+          : mode === 'second'
+            ? { first: notComputedPass('first', input.deckSize), second: computePass(input, 'second'), deltas: [] }
+            : computeAll(input);
     ctx.postMessage({ id, result, ms: performance.now() - t0 });
   } catch (err) {
     ctx.postMessage({ id, error: err instanceof Error ? err.message : String(err) });

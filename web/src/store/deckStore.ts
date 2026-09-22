@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import type { Availability, Card, CardOrigin, CardProfile, CardReference, Category, ComboPair, ConditionNode, DeckCard, LibraryChoice, Matchup, NonEngineGroup, SidePlanCard, SidePlanPosition, StartCondition, Zone } from '../types.js';
-import { addMatchup as addMatchupTo, copyPlan as copyPlanIn, removeFromPlan as removeFromPlanIn, removeMatchup as removeMatchupFrom, renameMatchup as renameMatchupIn, setPlanNote as setPlanNoteIn, swapInPlan as swapInto, type PlanDirection } from '../lib/matchups.js';
+import { addMatchup as addMatchupTo, clearPlan as clearPlanIn, copyPlan as copyPlanIn, removeFromPlan as removeFromPlanIn, removeMatchup as removeMatchupFrom, renameMatchup as renameMatchupIn, setPlanNote as setPlanNoteIn, swapInPlan as swapInto, undoSwap as undoSwapIn, type PlanDirection, type SwapDelta } from '../lib/matchups.js';
+import { EMPTY_SELECTION, adjustSelection, freeCopies, type Indicator, type Selection } from '../lib/swapPreview.js';
+import { BASE_LABEL } from '../lib/studiedDeck.js';
+import { DEFAULT_CANDIDATE_INDICATOR, EMPTY_STUDIED, NO_CANDIDATES, createStudyEngine, openPlan, type CandidatesState, type PreviewState, type StudiedResult, type StudyEngine } from './study.js';
 import { pairKey } from '../types.js';
 import type { AnalysisContext, EngineResult } from '../engine/types.js';
 import type { QueryCriterion, SavedQuery } from '../engine/query.js';
@@ -18,7 +21,7 @@ import { summaryOfState } from '../lib/summary.js';
 import { nonEngineEffect } from '../lib/nonEngine.js';
 import { ZONE_LABEL, zoneOfCatalog } from '../lib/zones.js';
 
-interface State {
+export interface State {
   revision: number;
   editRevision: number;
   notes: string | null;
@@ -75,6 +78,21 @@ interface State {
   // unifié avec elle (§D) : les deux sont transitoires, hors params.
   queryCriteria: QueryCriterion[];
   handFilterByQuery: boolean;
+
+  // ─── Plans de side v2 (partie B) : contexte d'étude, decks étudiés, aperçu, candidats ───
+  // Tout est TRANSITOIRE (jamais dans la configuration, le brouillon ni « non enregistré ») ; la
+  // position étudiée est `context`. L'orchestration vit dans store/study.ts.
+  study: { matchupId: string | null };
+  studied: Record<SidePlanPosition, StudiedResult>;
+  /** Échange en préparation sur le plan ouvert (adversaire étudié, position courante). */
+  selection: Selection;
+  /** Échanges validés sur le plan ouvert pendant la session (« Annuler l'échange »). */
+  swapHistory: SwapDelta[];
+  preview: PreviewState;
+  candidates: CandidatesState;
+  candidateIndicator: Indicator;
+  /** Durée mesurée de la dernière passe calculée par position (estimation du coût des candidats). */
+  lastPassMs: Record<SidePlanPosition, number | null>;
 
   online: boolean;
   result: EngineResult | null;
@@ -167,6 +185,18 @@ interface State {
   setPlanNote: (matchupId: string, position: SidePlanPosition, note: string) => void;
   copyPlan: (matchupId: string, from: SidePlanPosition, to: SidePlanPosition) => void;
   setPlanSummary: (matchupId: string, position: SidePlanPosition, summary: unknown) => void;
+  // Plans de side v2 (partie B) : contexte d'étude et sélection — transitoires, jamais « non enregistré ».
+  setStudy: (matchupId: string | null) => void;
+  setSelection: (selection: Selection) => void;
+  /** Clic (+1) ou clic droit (−1) sur une carte de la zone, borné par ses copies libres. */
+  adjustSelectionCopy: (direction: PlanDirection, cardId: number, delta: 1 | -1) => void;
+  clearSelection: () => void;
+  /** « Échanger » : la sélection rejoint le plan ouvert (règle `trySwap`), l'échange entre dans l'historique. */
+  commitSelection: () => boolean;
+  undoLastSwap: () => void;
+  clearOpenPlan: () => void;
+  setCandidateIndicator: (indicator: Indicator) => void;
+  runCandidates: () => void;
 }
 
 /** Contexte d'un résultat : ce qu'il faut pour l'afficher avec ses propres libellés. */
@@ -205,7 +235,17 @@ export const COMPUTE_DEBOUNCE_MS = 50;
 let computeTimer: ReturnType<typeof setTimeout> | null = null;
 let computeClient: ComputeClient | null = null;
 let inflight: ComputeTask | null = null;
+let studyEngine: StudyEngine | null = null;
 const engineClient = (): ComputeClient => (computeClient ??= createEngineClient());
+/** Tests seulement : caches et tâches de l'orchestrateur d'étude remis à zéro (ce que `loadDeck` fait). */
+export const resetStudyEngine = (): void => studyEngine?.reset();
+
+const initialStudied = (): Record<SidePlanPosition, StudiedResult> => ({
+  first: { ...EMPTY_STUDIED({ position: 'first', kind: 'base', matchup: null, plan: null, applied: null, source: null, label: BASE_LABEL, unavailableReason: null }), reusesBase: true },
+  second: { ...EMPTY_STUDIED({ position: 'second', kind: 'base', matchup: null, plan: null, applied: null, source: null, label: BASE_LABEL, unavailableReason: null }), reusesBase: true },
+});
+/** État transitoire d'étude à l'ouverture d'un deck : deck de base, rien de sélectionné. */
+const freshStudy = () => ({ study: { matchupId: null }, studied: initialStudied(), selection: EMPTY_SELECTION, swapHistory: [] as SwapDelta[], preview: { kind: 'none' } as PreviewState, candidates: NO_CANDIDATES, lastPassMs: { first: null, second: null } as Record<SidePlanPosition, number | null>, context: 'first' as AnalysisContext });
 
 function scheduleCompute(get: () => State, set: (p: Partial<State>) => void): void {
   if (computeTimer) clearTimeout(computeTimer);
@@ -215,6 +255,10 @@ function scheduleCompute(get: () => State, set: (p: Partial<State>) => void): vo
   }
   const version = get().modelVersion + 1;
   set({ modelVersion: version, stale: get().result !== null, computing: true, computeError: null });
+  // Plans de side v2 : l'aperçu et les candidats se recalculent dès l'invalidation (leur entrée a pu
+  // changer) ; les decks étudiés suivent le deck de base, derrière lui (launchCompute).
+  studyEngine?.syncPreview();
+  studyEngine?.syncCandidates();
   computeTimer = setTimeout(() => {
     computeTimer = null;
     launchCompute(version, get, set);
@@ -233,6 +277,7 @@ function launchCompute(version: number, get: () => State, set: (p: Partial<State
   };
   const task = engineClient().compute(model.input);
   inflight = task;
+  studyEngine?.syncStudied();
   task.promise.then(
     ({ result, ms }) => {
       if (inflight === task) inflight = null;
@@ -275,6 +320,14 @@ function effectiveOfState(s: Pick<State, 'choices' | 'chosenProfiles' | 'groups'
 
 export const useDeck = create<State>((set, get) => {
   const recompute = () => scheduleCompute(get, set);
+  studyEngine = createStudyEngine(get, set, engineClient);
+  const study = studyEngine;
+  /** Une mutation qui peut changer un plan, une zone ou la sélection : decks étudiés (regroupés), aperçu, candidats. */
+  const studySync = () => {
+    study.scheduleStudied();
+    study.syncPreview();
+    study.syncCandidates();
+  };
   const deriveEffective = () => set(effectiveOfState(get()));
   /** Ce que le serveur doit matérialiser au premier geste sur l'aspect non-engine d'une carte héritée. */
   const inheritedOf = (cardId: number) => {
@@ -307,7 +360,10 @@ export const useDeck = create<State>((set, get) => {
   // extra et side ne sont jamais dans le modèle moteur (contrat §2) — « non enregistré » seul.
   const zoneMutation = (zone: Zone) => {
     if (zone === 'main') localCalc();
-    else markDirty();
+    else {
+      markDirty();
+      studySync(); // un plan peut devenir « à revoir », une sélection invalide (plans de side v2)
+    }
   };
   // Étape 10C : une annotation ne recalcule que si elle change l'ENTRÉE du moteur. Une annotation
   // portée par une carte hors main (side annoté pour un plan de side) ne la change pas : « non
@@ -319,14 +375,17 @@ export const useDeck = create<State>((set, get) => {
     return s.model !== null && s.result !== null && !s.computing && !s.stale && s.resultVersion === s.modelVersion
       && JSON.stringify(buildEngineModel(s).input) === JSON.stringify(s.model.input);
   };
+  // Plans de side v2 : une annotation qui ne change pas le deck de base (carte de side) peut changer le
+  // deck ÉTUDIÉ, l'aperçu et les candidats — ils se resynchronisent (le recalcul de base le fait déjà).
   const annotationCalc = () => {
-    if (modelUnchanged()) markDirty();
+    if (modelUnchanged()) { markDirty(); studySync(); }
     else localCalc();
   };
   // Annotations du compte (HOPT, étiquette, profil, plafond d'une carte) : même règle, sans
   // « non enregistré » (elles sont déjà persistées par l'API).
   const libraryCalc = () => {
     if (!modelUnchanged()) recompute();
+    else studySync();
   };
 
   return {
@@ -356,11 +415,12 @@ export const useDeck = create<State>((set, get) => {
     matchups: [],
     planSummaries: {},
     importance: 0.5,
-    context: 'first',
     statsView: 'starts',
     savedQueries: [],
     queryCriteria: defaultQuery(),
     handFilterByQuery: false,
+    ...freshStudy(),
+    candidateIndicator: DEFAULT_CANDIDATE_INDICATOR,
     online: true,
     result: null,
     model: null,
@@ -459,7 +519,8 @@ export const useDeck = create<State>((set, get) => {
         if (!current()) return;
         // Aucune ancienne statistique ne survit à l'ouverture d'un deck : état initial de
         // calcul, jamais un mélange avec le résultat du deck précédent (§6).
-        set({ ...stateFromConfiguration(configuration),cards: cardMap,deckId: id,revision: detail.revision,
+        study.reset();
+        set({ ...stateFromConfiguration(configuration),cards: cardMap,deckId: id,revision: detail.revision,...freshStudy(),
           planSummaries: Object.fromEntries((detail.plan_summaries ?? []).map((r) => [`${r.matchup_id}:${r.position}`,r.summary])),
           dirty: false,editRevision: 0,lastSavedAt: Date.parse(detail.updated_at ?? ''),draftAvailable: null,
           persistenceError: null,removalToast: null,queryCriteria: defaultQuery(),handFilterByQuery: false,
@@ -494,6 +555,7 @@ export const useDeck = create<State>((set, get) => {
           const unchanged = get().editRevision === s.editRevision;
           set({ revision: saved.revision,dirty: !unchanged,lastSavedAt: Date.now(),online: true });
           if (!unchanged) scheduleDraft(get);
+          else study.scheduleStudied(); // chiffres des plans étudiés persistables pour la révision enregistrée
         }
         await clearDraft(s.deckId,configuration);
       } catch (e) {
@@ -510,7 +572,7 @@ export const useDeck = create<State>((set, get) => {
     resumeDraft() {
       const d = get().draftAvailable;
       if (!d) return;
-      set({ ...stateFromConfiguration(d.configuration),draftAvailable: null,dirty: true,editRevision: get().editRevision+1 });
+      set({ ...stateFromConfiguration(d.configuration),draftAvailable: null,dirty: true,editRevision: get().editRevision+1,selection: EMPTY_SELECTION,swapHistory: [] });
       // Keep the loaded server revision; an old draft is an explicit user restoration.
       deriveEffective();
       recompute();
@@ -652,7 +714,12 @@ export const useDeck = create<State>((set, get) => {
     },
 
     setContext(context) {
-      set({ context }); // affichage seul : les deux passes sont déjà calculées
+      // Affichage seul : les deux passes sont déjà calculées. Plans de side v2 : la position change le plan
+      // OUVERT, donc la sélection en cours et l'historique des échanges tombent (transitoires).
+      if (get().context === context) return;
+      set({ context,selection: EMPTY_SELECTION,swapHistory: [] });
+      study.syncPreview();
+      study.syncCandidates();
     },
 
     // ─── Adversaires et plans de side (étape 10C) : données du deck, jamais du modèle moteur du
@@ -671,8 +738,9 @@ export const useDeck = create<State>((set, get) => {
       markDirty();
     },
     removeMatchup(id) {
-      set({ matchups: removeMatchupFrom(get().matchups,id) });
+      set({ matchups: removeMatchupFrom(get().matchups,id),...(get().study.matchupId === id ? { selection: EMPTY_SELECTION,swapHistory: [] } : {}) });
       markDirty();
+      studySync();
     },
     swapInPlan(matchupId, position, outgoing, incoming) {
       const s = get();
@@ -681,11 +749,13 @@ export const useDeck = create<State>((set, get) => {
       if (!r.ok) { set({ persistenceError: r.reason }); return false; }
       set({ matchups: r.matchups,persistenceError: null });
       markDirty();
+      studySync();
       return true;
     },
     removeFromPlan(matchupId, position, direction, cardId) {
       set({ matchups: removeFromPlanIn(get().matchups,matchupId,position,direction,cardId) });
       markDirty();
+      studySync();
     },
     setPlanNote(matchupId, position, note) {
       set({ matchups: setPlanNoteIn(get().matchups,matchupId,position,note) });
@@ -694,6 +764,75 @@ export const useDeck = create<State>((set, get) => {
     copyPlan(matchupId, from, to) {
       set({ matchups: copyPlanIn(get().matchups,matchupId,from,to) });
       markDirty();
+      studySync();
+    },
+
+    // ─── Plans de side v2 (partie B) : contexte d'étude, sélection, aperçu, candidats ───
+    // Rien ici n'est enregistré ni ne marque « non enregistré » : seul `commitSelection` (= un échange
+    // dans le plan) passe par `markDirty`, comme `swapInPlan`.
+    setStudy(matchupId) {
+      if (get().study.matchupId === matchupId) return;
+      set({ study: { matchupId },selection: EMPTY_SELECTION,swapHistory: [],candidates: NO_CANDIDATES });
+      studySync(); // regroupé : derrière un recalcul du deck de base en cours (ouverture par l'URL)
+    },
+    setSelection(selection) {
+      set({ selection });
+      study.syncPreview();
+      study.syncCandidates();
+    },
+    adjustSelectionCopy(direction, cardId, delta) {
+      const s = get();
+      const open = openPlan(s);
+      if (!open) return;
+      const pool = direction === 'incoming' ? s.side : [...s.main,...s.extra];
+      const engaged = direction === 'incoming' ? open.plan.incoming : open.plan.outgoing;
+      const free = freeCopies(pool,engaged,s.selection[direction]).get(cardId) ?? 0;
+      const next = adjustSelection(s.selection,direction,cardId,delta,free + (s.selection[direction].find((c) => c.card_id === cardId)?.copies ?? 0));
+      if (next === s.selection) return;
+      set({ selection: next });
+      study.syncPreview();
+      study.syncCandidates();
+    },
+    clearSelection() {
+      if (get().selection === EMPTY_SELECTION) return;
+      set({ selection: EMPTY_SELECTION });
+      study.syncPreview();
+      study.syncCandidates();
+    },
+    commitSelection() {
+      const s = get();
+      const open = openPlan(s);
+      if (!open) return false;
+      const delta = s.selection;
+      const r = swapInto(s.matchups,open.matchupId,open.position,{ main: s.main,extra: s.extra,side: s.side },zoneOfCatalog(s.cards),delta,(id) => s.cards[id]?.name ?? `#${id}`);
+      if (!r.ok) { set({ persistenceError: r.reason }); return false; }
+      set({ matchups: r.matchups,selection: EMPTY_SELECTION,swapHistory: [...s.swapHistory,delta],persistenceError: null });
+      markDirty();
+      studySync();
+      return true;
+    },
+    undoLastSwap() {
+      const s = get();
+      const open = openPlan(s);
+      const last = s.swapHistory.at(-1);
+      if (!open || !last) return;
+      set({ matchups: undoSwapIn(s.matchups,open.matchupId,open.position,last),swapHistory: s.swapHistory.slice(0,-1),selection: EMPTY_SELECTION });
+      markDirty();
+      studySync();
+    },
+    clearOpenPlan() {
+      const s = get();
+      const open = openPlan(s);
+      if (!open) return;
+      set({ matchups: clearPlanIn(s.matchups,open.matchupId,open.position),swapHistory: [],selection: EMPTY_SELECTION });
+      markDirty();
+      studySync();
+    },
+    setCandidateIndicator(indicator) {
+      set({ candidateIndicator: indicator });
+    },
+    runCandidates() {
+      study.runCandidates();
     },
     // Cache d'affichage seulement : ni « non enregistré », ni brouillon.
     setPlanSummary(matchupId, position, summary) {

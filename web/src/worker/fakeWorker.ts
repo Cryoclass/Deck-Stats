@@ -49,7 +49,9 @@ export function createFakeWorker(): FakeWorker {
           ? { first: computePass(input, 'first'), second: computePass(input, 'second'), deltas: [] }
           : mode === 'first'
             ? { first: computePass(input, 'first'), second: notComputedPass('second', input.deckSize), deltas: [] }
-            : computeAll(input);
+            : mode === 'second'
+              ? { first: notComputedPass('first', input.deckSize), second: computePass(input, 'second'), deltas: [] }
+              : computeAll(input);
       worker.onmessage?.({ data: { id, result, ms } satisfies ComputeResponse });
     },
     fail(id, message) {

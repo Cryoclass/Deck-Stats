@@ -2168,3 +2168,25 @@ décisions validées ne sont pas reprises ici ; ce qui suit est ce que l'agent a
   `sidePlan.test.ts`, `matchups.test.ts`, `sideSheet.test.ts` (catalogue avec types), `store/sidePlans.test.ts`
   (cartes typées : un échange exige la zone), `server/tests/cardDefaults.test.ts` (les 29 types du
   catalogue, deux types d'Extra ajoutés à la liste des exclus).
+
+### Partie B — store et calcul (22 septembre 2026)
+
+- **Réutilisation du deck de base par ENTRÉE, pas seulement par main.** Un plan vide, un main identique
+  ou un échange neutre (mêmes types, mêmes copies : le moteur ne distingue pas deux cartes sans
+  annotation) réutilisent `result` du store ; l'aperçu et les candidats réutilisent toute passe déjà
+  connue (cache, deck de base frais, deck étudié frais). Alternative écartée : comparer les mains
+  seulement — recalculait des chiffres identiques.
+- **Trois clients de calcul, un par usage** : principal (deck de base puis decks étudiés, passes puis
+  résultat complet), aperçu, candidats. Une seule file par worker : l'aperçu ne doit jamais attendre
+  derrière un `computeAll` de deck sidé. Annulation par tâche, jamais `cancelAll` (les tests partagent
+  l'implémentation).
+- **Seconde garde par clé d'entrée** (comme `modelVersion`) : une réponse n'est adoptée que si sa clé
+  est encore celle attendue par au moins une position ; les tâches des clés qui ne sont plus voulues
+  sont annulées ; caches bornés à 32 entrées, vidés à `loadDeck`.
+- **Changer de position abandonne la sélection et l'historique** : le plan ouvert change ; une
+  sélection sur l'autre volet n'aurait pas de sens. Un adversaire supprimé pendant l'étude retombe sur
+  le deck de base (l'interface le dira en C).
+- **Le contexte n'est écrit nulle part ailleurs que dans l'URL** (`replaceState`, jamais `pushState`) ;
+  `navigate` ne le réémet pas : quitter l'éditeur et revenir repart du deck de base (Q11).
+- **`resetStudyEngine` exporté pour les tests** : les caches de l'orchestrateur sont au niveau du
+  module (comme `computeClient` / `inflight`) et survivraient d'un test à l'autre.

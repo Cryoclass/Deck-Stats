@@ -46,8 +46,8 @@ describe('previewOf (S3)', () => {
   });
 
   it('équilibrée : l’aperçu est exactement le plan que donnerait « Échanger »', () => {
-    const selection = sel([[11, 1], [EXTRA, 1]], [[SIDE_NEUTRAL, 1], [SIDE_EXTRA, 1]]);
-    const preview = previewOf(state, plan, selection, zoneOf, name);
+    const selection = sel([[11, 1], [EXTRA, 1]], [[SIDE_STARTER, 1], [SIDE_EXTRA, 1]]);
+    const preview = previewOf(state, plan, selection, zoneOf, name, state);
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
     const committed = swapInPlan(state.matchups, M, 'first', state, zoneOf, selection, name);
@@ -60,9 +60,14 @@ describe('previewOf (S3)', () => {
     expect(zonesTouched(selection, zoneOf)).toEqual(['main', 'extra']);
   });
 
-  it('une sélection d’Extra seule est prête mais sans effet sur les chiffres (S7)', () => {
+  it('une sélection d’Extra seule, ou un échange neutre, est prête mais sans effet sur les chiffres (S7)', () => {
     const preview = previewOf(state, plan, sel([[EXTRA, 1]], [[SIDE_EXTRA, 1]]), zoneOf, name);
     expect(preview).toMatchObject({ kind: 'ready', affectsEngine: false });
+    // Sans la source, seul le main est comparé (un neutre contre un neutre : main différent) ; avec la
+    // source, c'est l'entrée du moteur qui compte : identique, donc sans effet.
+    expect(previewOf(state, plan, sel([[11, 1]], [[SIDE_NEUTRAL, 1]]), zoneOf, name)).toMatchObject({ kind: 'ready', affectsEngine: true });
+    expect(previewOf(state, plan, sel([[11, 1]], [[SIDE_NEUTRAL, 1]]), zoneOf, name, state)).toMatchObject({ kind: 'ready', affectsEngine: false });
+    expect(previewOf(state, plan, sel([[11, 1]], [[SIDE_STARTER, 1]]), zoneOf, name, state)).toMatchObject({ kind: 'ready', affectsEngine: true });
     if (preview.kind !== 'ready') return;
     expect(buildEngineModel(sidedSource(state, preview.applied)!).input).toEqual(buildEngineModel(sidedSource(state, applyPlan(state, plan, zoneOf))!).input);
   });
