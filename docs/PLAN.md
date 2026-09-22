@@ -56,6 +56,20 @@ par un référent → choix du compte.
 | C — modèle et persistance | Migration 006 (rôle `referent`, `is_hopt` nullable, `nonengine_choice`, groupe fourni de base, `card_references` + journal, résumés à NULL), routes, `effectiveLibrary.ts`, archive JSON, `prune-stale-cards`, `backoffice-role.sh`, séquence de déploiement, rapport d'écart, tag `annotations-c-ok` | ✅ Terminée le 17 sept. 2026 — 006 étendue (données une fois sous `/c`), routes de choix par aspect et de références (référent, 404, journal, invalidation tous comptes), bibliothèque effective dans le store et hors éditeur, archive et purge du catalogue, rapport d'écart (`--gap` : P(≥ 1) et brick inchangés sur les 16 decks du 8 sept., E[U] seul change) ; 301 web + 22 serveur, 12 + 17 + 13 PostgreSQL, 130 gardes A–J, répétition conforme, 10 scénarios e2e, 10 mutations détectées, relecture indépendante (docs/annotations-par-defaut.md §15). |
 | D — interface | Pastilles d'origine, retour au défaut, bandeau, mode Non-engine par profil, formulaire et page de référence, e2e `defaults`, docs, tag `annotations-d-ok` | ✅ Terminée le 17 sept. 2026 — réponses préalables (adopter puis retirer, bandeau par compte, /references aux référents) ; `user_notices` dans 006 et route de fermeture ; mode Non-engine unique (poser / adopter / retirer) ; badges d'origine, retour au défaut, formulaire et page de référence, bandeau ; e2e `defaults` ; 309 web + 22 serveur, 13 + 17 + 13 PostgreSQL, 133 gardes A–J, 11 scénarios e2e, répétition conforme, 9 mutations détectées, relecture indépendante (docs/annotations-par-defaut.md §16). |
 
+## Hors numérotation — refonte des plans de side (deck sidé au centre de l'éditeur)
+
+Plan validé le 22 septembre 2026 : [docs/plans-de-side-v2.md](plans-de-side-v2.md) (inventaire prouvé, mesures sur la fixture et
+l'archive du 8 septembre, décisions D1–D17, règles S1–S10, réponses Q1–Q13, révisions §11). Prompt :
+[prompt-refonte-plans-de-side.md](prompt-refonte-plans-de-side.md).
+
+| Partie | Résultat vérifiable attendu | Statut |
+| --- | --- | --- |
+| A — règles pures | Extra dans les plans (zone par type, équilibre par zone), `isMainDeckType` corrigé, légalité du deck, deck étudié et aperçu en pur, non-régression des plans existants prouvée ; tag `side-v2-a-ok` | ✅ Terminée le 22 sept. 2026 — `deckZoneOfType`, `applyPlan(deck, plan, zoneOf)` par zone avec extra dérivé hors moteur, `trySwap` unique (échange et aperçu), `undoSwap` / `clearPlan`, `deckLegality`, `studiedDeck.ts`, `swapPreview.ts`, garde D15 contre la copie figée de 471fadd (fixtures + 500 plans), contrat §2 / §8 (S1–S10) ; 355 web + 22 serveur, `--gap` avant / après identique sur les 16 decks du 8 sept., 7 mutations détectées + 1 équivalente, relecture indépendante (docs/plans-de-side-v2.md §12). |
+| B — store et calcul | Contexte d'étude (adversaire, position) dans l'URL, résultats par deck étudié et cache, aperçu, écarts de candidats sur un second client ; tag `side-v2-b-ok` | À faire (plan validé le 22 sept. 2026) |
+| C — éditeur en contexte | Barre de contexte, panneau, matrice, requête, mur et tuiles sur le deck étudié et nommés ; e2e `study` ; tag `side-v2-c-ok` | À faire |
+| D — onglet side refondu | Tuiles par carte, aperçu et écarts de candidats, bloc Extra, barre d'action mobile, annuler / vider, « Enregistrer et ouvrir », règle des 3 copies ; e2e `side` ; tag `side-v2-d-ok` | À faire |
+| E — fiche, PDF, clôture | Extra dans la fiche et le PDF, e2e `sidesheet`, docs ; tags `side-v2-e-ok`, `side-v2-ok` | À faire |
+
 ## Reports connus (à reprendre dans l'étape indiquée)
 
 - ~~Étape 9 (questions ouvertes de 7B)~~ : **traités en 9A** (docs/etape-9.md) — mur compact, Nouvelles mains 32 px, Δ 10 px, densité close à 96 px (mesure 84 px consignée), arbre ET/OU profond validé. Aucun test React dans le dépôt ; les gardes navigateur sont dans `web/e2e/` (hors `npm test`, Docker et Chrome requis) et mesurent le rendu de Chrome avec la police système de Windows.
@@ -65,6 +79,15 @@ par un référent → choix du compte.
 ## Compte rendu de la dernière étape
 
 À mettre à jour en fin de chaque tâche (remplacer le contenu, l'historique reste dans docs/etapes-*.md et git).
+
+- **Date** : 22 septembre 2026.
+- **Étape** : hors numérotation, refonte des plans de side, partie A (docs/plans-de-side-v2.md §12). Tag `side-v2-a-ok`, rien poussé.
+- **Livré** : zone de plan déduite du type (`deckZoneOfType`, bogue `isMainDeckType` corrigé), `applyPlan` par zone avec extra dérivé hors moteur, `trySwap` règle unique de l'échange, annuler / vider, `deckLegality`, deck étudié (`studiedDeck.ts`) et aperçu / candidats (`swapPreview.ts`) en pur, garde de non-régression D15, contrat §2 / §8 (S1–S10), décisions, AGENTS.md.
+- **Vérifications exécutées** : typecheck, build, test-quiet (355 web, 22 serveur), rapport `--gap` avant / après identique sur l'archive du 8 septembre (conteneur jetable détruit), 8 mutations (7 détectées, 1 équivalente), relecture indépendante.
+- **Non fait / reporté** : parties B à E ; e2e, intégration PostgreSQL, séquence et répétition non rejoués (rien de ce qu'ils couvrent n'a changé), à rejouer avant la clôture.
+- **Prochaine action** : partie B (store et calcul) selon docs/plans-de-side-v2.md §7.
+
+Compte rendu précédent (annotations par défaut, partie D) :
 
 - **Date** : 17 septembre 2026.
 - **Étape** : hors numérotation, annotations par défaut, partie D (docs/annotations-par-defaut.md §16). Tag `annotations-d-ok`, rien poussé. **Chantier clos** (A–D).

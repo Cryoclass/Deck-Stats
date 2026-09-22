@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cardDefaults, detectHopt, detectNonEngine, isMainDeckType, normalizeName, MULCHARMY_CAP, MULCHARMY_GROUP, type CardText, type HoptKind } from '../src/domain/cardDefaults.js';
+import { cardDefaults, deckZoneOfType, detectHopt, detectNonEngine, isMainDeckType, normalizeName, MULCHARMY_CAP, MULCHARMY_GROUP, type CardText, type HoptKind } from '../src/domain/cardDefaults.js';
 
 // Annotations par défaut, partie A (docs/annotations-par-defaut.md §2.3–2.5, D2, D3′, D15).
 // Les textes sont ceux du catalogue réel (fixtures/card-texts.json : 84 cartes choisies ;
@@ -14,8 +14,18 @@ const byName = new Map(TEXTS.map((c) => [c.name, c]));
 const card = (name: string): CardText => { const c = byName.get(name); if (!c) throw new Error(`fixture sans « ${name} »`); return c; };
 
 test('types : extra deck, jetons et cartes de compétence ne sont jamais annotés', () => {
-  for (const t of ['Fusion Monster', 'Synchro Monster', 'XYZ Monster', 'Link Monster', 'Synchro Tuner Monster', 'Token', 'Skill Card', 'Pendulum Effect Fusion Monster']) assert.equal(isMainDeckType(t), false, t);
-  for (const t of ['Effect Monster', 'Tuner Monster', 'Normal Monster', 'Ritual Effect Monster', 'Pendulum Effect Monster', 'Spell Card', 'Trap Card', null, undefined]) assert.equal(isMainDeckType(t), true, String(t));
+  // Plans de side v2 (Q7) : les 29 types du catalogue du 17 septembre 2026 — « Synchro Pendulum Effect Monster »
+  // (8 cartes) et « XYZ Pendulum Effect Monster » (10 cartes) sont d'Extra Deck.
+  const EXTRA = ['Fusion Monster', 'Synchro Monster', 'XYZ Monster', 'Link Monster', 'Synchro Tuner Monster', 'Pendulum Effect Fusion Monster', 'Synchro Pendulum Effect Monster', 'XYZ Pendulum Effect Monster'];
+  const MAIN = ['Effect Monster', 'Flip Effect Monster', 'Flip Tuner Effect Monster', 'Gemini Monster', 'Normal Monster', 'Normal Tuner Monster', 'Pendulum Effect Monster', 'Pendulum Effect Ritual Monster', 'Pendulum Flip Effect Monster', 'Pendulum Normal Monster', 'Pendulum Tuner Effect Monster', 'Ritual Effect Monster', 'Ritual Monster', 'Spell Card', 'Spirit Monster', 'Toon Monster', 'Trap Card', 'Tuner Monster', 'Union Effect Monster'];
+  for (const t of [...EXTRA, 'Token', 'Skill Card']) assert.equal(isMainDeckType(t), false, t);
+  for (const t of [...MAIN, null, undefined]) assert.equal(isMainDeckType(t), true, String(t));
+  assert.equal(EXTRA.length + MAIN.length + 2, 29, 'les 29 types du catalogue');
+  // La zone d'une carte n'est jamais devinée : type absent, jeton ou compétence → null.
+  for (const t of EXTRA) assert.equal(deckZoneOfType(t), 'extra', t);
+  for (const t of MAIN) assert.equal(deckZoneOfType(t), 'main', t);
+  for (const t of ['Token', 'Skill Card', '', '  ', null, undefined]) assert.equal(deckZoneOfType(t), null, String(t));
+  assert.equal(detectHopt({ name: 'Odd-Eyes Rebellion Dragon', type: 'XYZ Pendulum Effect Monster', description: 'You can only use this effect of "Odd-Eyes Rebellion Dragon" once per turn.' }).kind, 'excluded');
   assert.equal(detectHopt(card('Sky Striker Ace - Kagari')).kind, 'excluded');
   assert.equal(detectHopt(card('Mirrorjade the Iceblade Dragon')).kind, 'excluded');
   assert.equal(detectNonEngine(card('Mirrorjade the Iceblade Dragon')), null);

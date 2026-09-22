@@ -60,9 +60,31 @@ export const MULCHARMY_CAP = 2;
 
 // ─── Types et normalisation ───
 
-/** Extra deck, jetons, cartes de compétence : jamais annotés (le moteur ne lit que le main). */
-const EXCLUDED_TYPE = /^(?:Fusion|Synchro|XYZ|Link|Synchro Tuner|Synchro Pendulum|XYZ Pendulum|Fusion Pendulum|Pendulum Effect Fusion) Monster$|^Token$|^Skill Card$/i;
-export const isMainDeckType = (type: string | null | undefined): boolean => !EXCLUDED_TYPE.test((type ?? '').trim());
+/** Types d'Extra Deck du catalogue (22 septembre 2026, refonte des plans de side, Q7) : les types
+ *  réels sont « Synchro Pendulum Effect Monster » et « XYZ Pendulum Effect Monster » — le motif
+ *  précédent écrivait « Synchro Pendulum Monster » / « XYZ Pendulum Monster », qui n'existent pas, et
+ *  classait 18 cartes d'Extra Deck comme cartes de main. */
+const EXTRA_DECK_TYPE = /^(?:Fusion|Synchro|XYZ|Link|Synchro Tuner|Synchro Pendulum Effect|XYZ Pendulum Effect|Fusion Pendulum|Pendulum Effect Fusion) Monster$/i;
+/** Jetons et cartes de compétence : ni main ni extra, jamais dans un deck. */
+const NO_DECK_TYPE = /^Token$|^Skill Card$/i;
+/** Extra deck, jetons, cartes de compétence : jamais annotés (le moteur ne lit que le main). Un
+ *  type absent vaut « main » ici (aucun défaut n'en sortira faute de texte) ; la ZONE d'une carte,
+ *  elle, n'est jamais devinée : voir `deckZoneOfType`. */
+export const isMainDeckType = (type: string | null | undefined): boolean => {
+  const t = (type ?? '').trim();
+  return !EXTRA_DECK_TYPE.test(t) && !NO_DECK_TYPE.test(t);
+};
+
+/** Zone de jeu d'une carte d'après son type (plans de side v2, S5) : `main`, `extra`, ou `null`
+ *  quand le type est inconnu (carte absente du catalogue), un jeton ou une carte de compétence.
+ *  `null` n'est jamais remplacé par une supposition : un plan qui touche une telle carte est
+ *  « à revoir », nommé, jamais analysé. */
+export type DeckZone = 'main' | 'extra';
+export function deckZoneOfType(type: string | null | undefined): DeckZone | null {
+  const t = (type ?? '').trim();
+  if (t === '' || NO_DECK_TYPE.test(t)) return null;
+  return EXTRA_DECK_TYPE.test(t) ? 'extra' : 'main';
+}
 
 const isMonsterType = (type: string | null | undefined): boolean => /Monster$/i.test((type ?? '').trim()) && isMainDeckType(type);
 

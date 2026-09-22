@@ -61,8 +61,11 @@ présence en deck de cette mission.
 Le constructeur reste libre : enregistrer un deck vide ou incomplet est possible.
 Le repère 40–60 cartes donne un avertissement, sans imposer une légalité de format.
 Les entrées sont des identités de carte et des quantités entières ; la convention
-actuelle de 1 à 3 copies par carte et par zone est conservée, sans ajouter une
-banlist ou une validation interzones. Zéro signifie retirer l'entrée.
+de 1 à 3 copies par carte et par zone est conservée dans le contrat serveur, sans banlist.
+Depuis le 22 septembre 2026 (plans de side v2, S9), la règle officielle de 3 copies au total, toutes
+zones confondues, est celle de l'**éditeur** et de l'**import** : un deck qui la dépasse est averti
+« hors format » (`deckLegality`, partie A), jamais bloqué ni modifié d'office ; le refus d'un ajout
+ou d'une quantité qui la dépasserait arrive avec la partie D. Zéro signifie retirer l'entrée.
 Les doublons de lignes désignent des copies de la même carte, pas deux identités.
 Une quantité invalide ou un cumul hors convention doit être signalé avant
 enregistrement, sans arrondi ni réduction silencieuse.
@@ -464,6 +467,50 @@ main, copies qui entrent depuis le side.
   ses deux scénarios sont calculés, seul celui de la position du plan correspond au plan — c'est
   dit par une note d'information. Un plan incomplet ou à revoir ne se compare pas.
 
+### Plans de side v2 (22 septembre 2026)
+
+Plan et comptes rendus : [plans-de-side-v2.md](plans-de-side-v2.md) (décisions D1–D17, réponses
+Q1–Q13). Les règles S5–S8 entrent en vigueur avec la partie A, S9 en avertissement avec A et en refus
+d'ajout avec D, S1–S4 et S10 avec les parties B à D.
+
+- **S1 — Deck étudié.** L'éditeur étudie le deck de base, ou un adversaire. Contre un adversaire, la
+  position premier étudie le deck après le plan premier, la position second le deck après le plan
+  second. Tout chiffre de l'éditeur porte sur le deck étudié de sa position et le nomme.
+- **S2 — Plan pas prêt.** Une position dont le plan est incomplet ou à revoir n'affiche aucun chiffre ;
+  jamais ceux du deck de base à sa place.
+- **S3 — Aperçu.** Une sélection équilibrée zone par zone montre le deck « plan + sélection », marqué
+  aperçu, avec son écart avec le plan. Un aperçu n'est jamais enregistré, ne salit pas le deck, ne
+  s'imprime pas et n'est pas persisté comme chiffre de plan. Un aperçu montre exactement ce que
+  donnerait « Échanger », et rien qu'il refuserait : même règle (`trySwap`).
+- **S4 — Écart d'un candidat.** Sélection du main à une copie près : écart d'un candidat =
+  indicateur(plan + sélection + candidat) − indicateur(plan), dans la position ouverte, pour
+  l'indicateur choisi (I1, I2 ou I3 ; « main forte » par défaut). La référence est le plan actuel,
+  jamais le deck de base.
+- **S5 — Zones d'un plan.** Un plan fait sortir des cartes du main et de l'Extra Deck et entrer des
+  cartes du side ; la zone de jeu d'une carte est déduite de son type au catalogue
+  (`deckZoneOfType`), jamais stockée ni devinée ; un échange reste dans sa zone. Une carte dont la
+  zone est inconnue (absente du catalogue, jeton, carte de compétence) rend le plan « à revoir »,
+  nommée. Une sortante est prise dans la zone que son type désigne, jamais ailleurs.
+- **S6 — Équilibre par zone.** Un plan est prêt si, dans le main comme dans l'Extra, les copies
+  sortantes égalent les entrantes (et R1, R3, R5 ci-dessus, la convention 1–3 valant aussi pour
+  l'Extra dérivé). « Échanger » refuse une sélection déséquilibrée dans l'une des zones.
+- **S7 — Extra sans effet.** Les cartes d'Extra d'un plan n'entrent ni dans le calcul ni dans
+  l'empreinte de ses chiffres : un plan sans carte d'Extra rend exactement le main dérivé, l'entrée
+  du moteur et, à version de moteur donnée, l'empreinte qu'il rendait avant la v2 (garde
+  `lib/sidePlanLegacy.test.ts` ; la version du moteur, elle, change une fois avec la correction de
+  `cardDefaults.ts`).
+- **S8 — Légalité.** Un échange équilibré conserve les tailles de zone et le total de chaque carte :
+  le deck sidé est hors format si et seulement si le deck de base l'est (main hors 40–60, Extra ou
+  side au-delà de 15, carte d'Extra dans le main ou l'inverse, 3 copies toutes zones) ; c'est un
+  avertissement (`deckLegality`), jamais un refus d'enregistrer ni de calculer.
+- **S9 — 3 copies toutes zones confondues** : convention de l'éditeur et de l'import ;
+  avertissement sur un deck existant ; jamais un refus d'enregistrement ; les statuts de plan et
+  le contrat serveur n'en dépendent pas.
+- **S10 — Fiche et comparateur** : plan enregistré ; raison visible sans survol ; « Enregistrer et
+  ouvrir » n'ouvre qu'après un enregistrement réussi.
+- **Défaire.** « Annuler l'échange » retire du plan exactement les copies d'un échange passé (jamais
+  sous zéro, sans rééquilibrage) ; « Vider le plan » retire tous les échanges et garde la note.
+
 ## 9. Annotations par défaut (17 septembre 2026)
 
 Plan et comptes rendus : [annotations-par-defaut.md](annotations-par-defaut.md) (§11, §13, §15, §16).
@@ -474,7 +521,9 @@ Plan et comptes rendus : [annotations-par-defaut.md](annotations-par-defaut.md) 
   sur la tuile, un badge hérité est en contour suffixé « auto » ou « réf. », un choix en aplat (un
   « non » ou « pas non-engine » choisi n'a pas de badge).
 - **R2 — Détection.** Fonction pure du nom, du type et du texte anglais de la carte, sans liste de
-  cartes ; une carte d'extra deck n'a jamais de défaut ; un texte absent vaut « aucun défaut ». Sans
+  cartes ; une carte d'extra deck n'a jamais de défaut (types « Synchro Pendulum Effect Monster » et
+  « XYZ Pendulum Effect Monster » compris depuis le 22 septembre 2026, plans de side v2, Q7) ; un
+  texte absent vaut « aucun défaut ». Sans
   les textes des cartes, aucun chiffre n'est calculé ni enregistré.
 - **R3 — HOPT détecté** = limite par nom propre énoncée par la carte sur elle-même ; « once per turn »
   sans nom, invocation limitée par nom, « twice per turn » n'en sont pas.

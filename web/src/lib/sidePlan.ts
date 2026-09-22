@@ -1,81 +1,154 @@
 import type { EngineInput, PassResult } from '../engine/types.js';
 import { queryProbability, type QueryCriterion } from '../engine/query.js';
 import type { ComputeMode } from '../worker/computeClient.js';
-import type { ComboPair, ConditionNode, DeckCard, SidePlan, SidePlanPosition, StartCondition } from '../types.js';
+import type { ComboPair, ConditionNode, DeckCard, SidePlan, SidePlanCard, SidePlanPosition, StartCondition } from '../types.js';
 import type { EngineModelSource } from './engineModel.js';
 import type { PlanSummary } from '../../../server/src/domain/deckSummary.js';
+import type { DeckZone } from '../../../server/src/domain/cardDefaults.js';
 import { ENGINE_VERSION } from './summary.js';
 import { MAX_COPIES } from './ydk.js';
 
-// ─── Plans de side (étape 10B) : le deck sidé, ses trois indicateurs et leur cache ───
-// Tout est PUR ici : aucun calcul lancé, aucun appel réseau. La vue Side (10C) et la fiche (10D)
-// orchestrent : `applyPlan` → `sidedSource` → `buildEngineModel` → client de calcul
-// (`planComputeMode`) → passe de la position du plan (R7) → `planSummaryFromPass` →
+// ─── Plans de side (étape 10B, refondus le 22 septembre 2026) : le deck sidé, ses trois
+// indicateurs et leur cache ───
+// Tout est PUR ici : aucun calcul lancé, aucun appel réseau. Le store (deck étudié, aperçu), la vue
+// Side, la fiche et le comparateur orchestrent : `applyPlan` → `sidedSource` → `buildEngineModel` →
+// client de calcul (`planComputeMode`) → passe de la position du plan (R7) → `planSummaryFromPass` →
 // PUT …/matchups/:id/plans/:position/summary.
 // Ce fichier est volontairement HORS de l'empreinte `__ENGINE_VERSION__` (vite.config.ts) : il ne
 // périme aucun aperçu d'accueil. En échange, l'empreinte d'un plan inclut la définition sérialisée
 // de ses critères : changer un indicateur invalide ses chiffres sans rien toucher à la main (R9).
+//
+// Plans de side v2 (docs/plans-de-side-v2.md, S5–S7) : un plan fait sortir des cartes du main ET de
+// l'Extra Deck, et entrer des cartes du side ; la zone de jeu d'une carte est DÉDUITE de son type
+// (`zoneOf`, jamais stockée), un échange reste dans sa zone, l'équilibre se juge zone par zone. Les
+// cartes d'Extra d'un plan ne changent ni le main dérivé ni l'entrée du moteur : un plan sans carte
+// d'Extra rend exactement ce qu'il rendait avant la refonte (garde `sidePlanLegacy.test.ts`).
 
-/** Écart entre un plan et les zones du deck (R1, R3, R5 de docs/etape-10.md). */
+/** Zone de jeu d'une carte (`main` ou `extra`), `null` si elle est inconnue : jamais devinée. */
+export type ZoneOf = (cardId: number) => DeckZone | null;
+/** Les trois zones du deck de base, telles que le store et `sourceFromDetail` les portent. */
+export interface PlanDeck {
+  main: readonly DeckCard[];
+  extra: readonly DeckCard[];
+  side: readonly DeckCard[];
+}
+
+/** Écart entre un plan et les zones du deck (R1, R3, R5 de docs/etape-10.md ; S5 de la v2). */
 export type PlanIssue =
-  | { kind: 'outgoing-missing'; cardId: number; wanted: number; available: number }
-  | { kind: 'incoming-missing'; cardId: number; wanted: number; available: number }
-  | { kind: 'over-limit'; cardId: number; copies: number };
+  | { kind: 'outgoing-missing'; cardId: number; zone: DeckZone; wanted: number; available: number }
+  | { kind: 'incoming-missing'; cardId: number; zone: DeckZone; wanted: number; available: number }
+  | { kind: 'over-limit'; cardId: number; zone: DeckZone; copies: number }
+  | { kind: 'unknown-zone'; cardId: number };
 
-/** `ready` = analysable et imprimable ; `incomplete` = listes déséquilibrées (R4) ; `review` = une
- *  carte a quitté sa zone ou le main dérivé dépasse la convention 1–3 (R3, R5). Un plan qui n'est
- *  pas `ready` n'est jamais analysé : `applyPlan` ne lui rend pas de main. */
+/** `ready` = analysable et imprimable ; `incomplete` = listes déséquilibrées dans une zone (R4, S6) ;
+ *  `review` = une carte a quitté sa zone, sa zone est inconnue, ou la zone dérivée dépasse la
+ *  convention 1–3 (R3, R5, S5). Un plan qui n'est pas `ready` n'est jamais analysé : `applyPlan` ne
+ *  lui rend ni main ni extra. */
 export type PlanStatus = 'ready' | 'incomplete' | 'review';
+
+export interface ZoneBalance {
+  outgoing: number;
+  incoming: number;
+}
 
 export interface AppliedPlan {
   status: PlanStatus;
   issues: PlanIssue[];
-  /** Copies sortantes et entrantes. */
+  /** Copies sortantes et entrantes, toutes zones confondues (fiche : nombre de cartes du plan). */
   outgoing: number;
   incoming: number;
-  /** Taille du main après échange (base − sortantes + entrantes), toujours définie. */
+  /** Copies sortantes et entrantes par zone (S6 : l'équilibre se juge zone par zone). */
+  zones: Record<DeckZone, ZoneBalance>;
+  /** Taille du main après échange (base − sortantes + entrantes du main), toujours définie. */
   mainSize: number;
-  /** Main dérivé, SEULEMENT si le plan est prêt. */
+  /** Taille de l'Extra Deck après échange, toujours définie. */
+  extraSize: number;
+  /** Main dérivé, SEULEMENT si le plan est prêt. C'est lui, et lui seul, qui entre dans le moteur. */
   main: DeckCard[] | null;
+  /** Extra dérivé, SEULEMENT si le plan est prêt ; jamais dans le moteur (S7), pour la fiche. */
+  extra: DeckCard[] | null;
 }
 
 const copiesOf = (cards: readonly DeckCard[]) => new Map(cards.map((c) => [c.cardId, c.copies]));
-const totalOf = (list: SidePlan['outgoing']) => list.reduce((n, c) => n + c.copies, 0);
+const totalOf = (list: readonly SidePlanCard[]) => list.reduce((n, c) => n + c.copies, 0);
+export const zoneSize = (cards: readonly DeckCard[]): number => cards.reduce((n, c) => n + c.copies, 0);
 
-/** Applique un plan au main du deck. Le main dérivé garde l'ordre du deck : copies retirées ou
- *  ajoutées sur place, carte tombée à 0 retirée, carte nouvelle ajoutée à la fin dans l'ordre du
- *  plan — exactement le main qu'on obtiendrait en éditant le deck à la main. */
-export function applyPlan(main: readonly DeckCard[], side: readonly DeckCard[], plan: SidePlan): AppliedPlan {
-  const inMain = copiesOf(main);
-  const inSide = copiesOf(side);
+/** Dérive une zone du deck de base : copies retirées ou ajoutées sur place, carte tombée à 0 retirée,
+ *  carte nouvelle ajoutée à la fin dans l'ordre du plan — exactement la zone qu'on obtiendrait en
+ *  éditant le deck à la main. */
+function deriveZone(zone: DeckZone, base: readonly DeckCard[], leaving: Map<number, number>, entering: Map<number, number>, incoming: readonly SidePlanCard[]): DeckCard[] {
+  const present = copiesOf(base);
+  const derived: DeckCard[] = [];
+  for (const c of base) {
+    const copies = c.copies - (leaving.get(c.cardId) ?? 0) + (entering.get(c.cardId) ?? 0);
+    if (copies > 0) derived.push({ cardId: c.cardId, zone, copies });
+  }
+  for (const c of incoming) if (entering.has(c.card_id) && !present.has(c.card_id)) derived.push({ cardId: c.card_id, zone, copies: c.copies });
+  return derived;
+}
+
+/** Applique un plan aux zones du deck. Chaque carte du plan est rangée dans sa zone de jeu par
+ *  `zoneOf` ; une zone inconnue met le plan « à revoir » (S5). Les sortantes sont prises dans leur
+ *  zone du deck de base, les entrantes dans le side ; l'équilibre est jugé zone par zone (S6). */
+export function applyPlan(deck: PlanDeck, plan: SidePlan, zoneOf: ZoneOf): AppliedPlan {
+  const base: Record<DeckZone, Map<number, number>> = { main: copiesOf(deck.main), extra: copiesOf(deck.extra) };
+  const inSide = copiesOf(deck.side);
   const issues: PlanIssue[] = [];
+  const zones: Record<DeckZone, ZoneBalance> = { main: { outgoing: 0, incoming: 0 }, extra: { outgoing: 0, incoming: 0 } };
+  const leaving: Record<DeckZone, Map<number, number>> = { main: new Map(), extra: new Map() };
+  const entering: Record<DeckZone, Map<number, number>> = { main: new Map(), extra: new Map() };
+  const unknown = new Set<number>();
+  const zoneOrUnknown = (cardId: number): DeckZone | null => {
+    const z = zoneOf(cardId);
+    if (z === null && !unknown.has(cardId)) {
+      unknown.add(cardId);
+      issues.push({ kind: 'unknown-zone', cardId });
+    }
+    return z;
+  };
   for (const c of plan.outgoing) {
-    const available = inMain.get(c.card_id) ?? 0;
-    if (c.copies > available) issues.push({ kind: 'outgoing-missing', cardId: c.card_id, wanted: c.copies, available });
+    const zone = zoneOrUnknown(c.card_id);
+    if (zone === null) continue;
+    zones[zone].outgoing += c.copies;
+    leaving[zone].set(c.card_id, c.copies);
+    const available = base[zone].get(c.card_id) ?? 0;
+    if (c.copies > available) issues.push({ kind: 'outgoing-missing', cardId: c.card_id, zone, wanted: c.copies, available });
   }
   for (const c of plan.incoming) {
+    const zone = zoneOrUnknown(c.card_id);
+    if (zone === null) continue;
+    zones[zone].incoming += c.copies;
+    entering[zone].set(c.card_id, c.copies);
     const available = inSide.get(c.card_id) ?? 0;
-    if (c.copies > available) issues.push({ kind: 'incoming-missing', cardId: c.card_id, wanted: c.copies, available });
+    if (c.copies > available) issues.push({ kind: 'incoming-missing', cardId: c.card_id, zone, wanted: c.copies, available });
   }
-  const leaving = new Map(plan.outgoing.map((c) => [c.card_id, c.copies]));
-  const entering = new Map(plan.incoming.map((c) => [c.card_id, c.copies]));
-  const derived: DeckCard[] = [];
-  for (const c of main) {
-    const copies = c.copies - (leaving.get(c.cardId) ?? 0) + (entering.get(c.cardId) ?? 0);
-    if (copies > 0) derived.push({ cardId: c.cardId, zone: 'main', copies });
+  const derived: Record<DeckZone, DeckCard[]> = {
+    main: deriveZone('main', deck.main, leaving.main, entering.main, plan.incoming),
+    extra: deriveZone('extra', deck.extra, leaving.extra, entering.extra, plan.incoming),
+  };
+  for (const zone of ['main', 'extra'] as const) {
+    for (const c of derived[zone]) if (c.copies > MAX_COPIES) issues.push({ kind: 'over-limit', cardId: c.cardId, zone, copies: c.copies });
   }
-  for (const c of plan.incoming) if (!inMain.has(c.card_id)) derived.push({ cardId: c.card_id, zone: 'main', copies: c.copies });
-  for (const c of derived) if (c.copies > MAX_COPIES) issues.push({ kind: 'over-limit', cardId: c.cardId, copies: c.copies });
   const outgoing = totalOf(plan.outgoing);
   const incoming = totalOf(plan.incoming);
-  const mainSize = main.reduce((n, c) => n + c.copies, 0) - outgoing + incoming;
-  const status: PlanStatus = issues.length > 0 ? 'review' : outgoing !== incoming ? 'incomplete' : 'ready';
-  return { status, issues, outgoing, incoming, mainSize, main: status === 'ready' ? derived : null };
+  const balanced = zones.main.outgoing === zones.main.incoming && zones.extra.outgoing === zones.extra.incoming;
+  const status: PlanStatus = issues.length > 0 ? 'review' : !balanced ? 'incomplete' : 'ready';
+  return {
+    status,
+    issues,
+    outgoing,
+    incoming,
+    zones,
+    mainSize: zoneSize(deck.main) - zones.main.outgoing + zones.main.incoming,
+    extraSize: zoneSize(deck.extra) - zones.extra.outgoing + zones.extra.incoming,
+    main: status === 'ready' ? derived.main : null,
+    extra: status === 'ready' ? derived.extra : null,
+  };
 }
 
 /** Source du modèle moteur du deck sidé : TOUTES les annotations du deck, inchangées (R6), sur le
  *  main dérivé — une carte de side annotée devient active en entrant, une condition dont la carte
- *  requise sort devient fausse. `null` si le plan n'est pas prêt. */
+ *  requise sort devient fausse. L'Extra dérivé n'y entre jamais (S7). `null` si le plan n'est pas prêt. */
 export function sidedSource<S extends EngineModelSource>(source: S, applied: AppliedPlan): S | null {
   return applied.main ? { ...source, main: applied.main } : null;
 }

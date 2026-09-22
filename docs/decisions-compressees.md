@@ -365,3 +365,12 @@ Tranché en D (réponses du 17 sept. : adopter puis retirer, bandeau par compte,
 - Badge hérité en contour suffixé « auto » / « réf. », choix en aplat ; détail de carte : origine, « Revenir au défaut », référence ; menu ⋯ : oublier mon choix.
 - `ReferenceDialog` sans état global ; plafond de référence parmi les groupes fournis de base ; page /references (lien référent seulement).
 - e2e `defaults` avec `ctx.sql` (conteneur jetable), cartes 90000030–31.
+
+## Refonte des plans de side — deck sidé au centre de l'éditeur (22 septembre 2026)
+Plan validé : docs/plans-de-side-v2.md (D1–D17, S1–S10, Q1–Q13). Partie A :
+- Zone d'une carte de plan = `deckZoneOfType(type)` (main / extra / null), jamais stockée ni devinée ; `null` → plan « à revoir », carte nommée ; pas de migration.
+- `isMainDeckType` corrigé (Synchro / XYZ Pendulum Effect Monster = Extra) → `__ENGINE_VERSION__` change une fois ; `--gap` avant / après identique.
+- `applyPlan(deck, plan, zoneOf)` : équilibre par zone, extra dérivé hors moteur, 1–3 aussi en extra ; non-régression contre la copie figée de 471fadd (`sidePlanLegacy.test.ts`).
+- `trySwap` = règle unique de l'échange (geste et aperçu) ; `undoSwap` exact et jamais sous zéro ; `clearPlan` garde la note.
+- Candidats : main seulement, à une copie près, échanges acceptables seulement, entrées dédoublonnées ; écart mesuré contre le plan.
+- `deckLegality` = avertissement (40–60, ≤ 15, 3 copies toutes zones, `wrong-zone`), jamais un refus.

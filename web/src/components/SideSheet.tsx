@@ -8,6 +8,7 @@ import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled, type ComputeClient } from '../worker/computeClient.js';
 import { pct } from '../lib/fmt.js';
 import { slugify } from '../lib/exportDeck.js';
+import { zoneOfCatalog } from '../lib/zones.js';
 import { downloadSideSheetPdf } from '../lib/sideSheetPdf.js';
 import { imageSmall, type Card, type Library, type SidePlanCard } from '../types.js';
 import type { PlanSummary } from '../../../server/src/domain/deckSummary.js';
@@ -84,7 +85,7 @@ export function SideSheet({ id }: { id: string }) {
   const sheet = useMemo(() => {
     if (!loaded) return null;
     const state = sourceFromDetail(loaded.detail, loaded.library, loaded.cards);
-    return sheetOf(state, state.matchups, stored);
+    return sheetOf(state, state.matchups, stored, zoneOfCatalog(loaded.cards));
   }, [loaded, stored]);
   const pending = sheet ? plansToCompute(sheet) : [];
 

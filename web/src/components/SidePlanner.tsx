@@ -18,6 +18,7 @@ import { useRouter } from '../lib/router.js';
 import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled, type ComputeClient, type ComputeTask } from '../worker/computeClient.js';
 import { deltaPoints, pct } from '../lib/fmt.js';
+import { zoneOfCatalog } from '../lib/zones.js';
 import { CardImage } from './CardImage.js';
 import { Segmented } from './ui.js';
 import type { DeckCard, SidePlanCard, SidePlanPosition } from '../types.js';
@@ -60,6 +61,7 @@ export function SidePlanner() {
   const { navigate } = useRouter();
   const matchups = useDeck((s) => s.matchups);
   const main = useDeck((s) => s.main);
+  const extra = useDeck((s) => s.extra);
   const side = useDeck((s) => s.side);
   const cards = useDeck((s) => s.cards);
   const starters = useDeck((s) => s.starters);
@@ -98,7 +100,9 @@ export function SidePlanner() {
 
   const name = (id: number) => cards[id]?.name ?? `#${id}`;
   const plan = current ? planOf(current, position) : null;
-  const applied = useMemo(() => (plan ? applyPlan(main, side, plan) : null), [plan, main, side]);
+  // v2 (S5) : zone de chaque carte du plan déduite de son type ; l'onglet lui-même est refondu en partie D.
+  const zoneOf = useMemo(() => zoneOfCatalog(cards), [cards]);
+  const applied = useMemo(() => (plan ? applyPlan({ main, extra, side }, plan, zoneOf) : null), [plan, main, extra, side, zoneOf]);
 
   // Chiffres du plan ouvert (10B) : entrée du moteur du deck sidé, cache stocké puis calcul.
   const input = useMemo(

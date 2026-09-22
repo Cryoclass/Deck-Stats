@@ -2126,3 +2126,45 @@ Décisions prises en cours de tâche (questions ouvertes du plan tranchées par 
 - **`JetBrains Mono` retirée** de la configuration (déclarée, jamais chargée) : `font-mono` système.
 - **Hors périmètre** : variante claire optionnelle (Q4), `:focus-visible`, `role="dialog"` et Échap
   sur tous les dialogues (audit §2.4), page de connexion et parcours (volet 02).
+
+## Refonte des plans de side — le deck sidé au centre de l'éditeur (22 septembre 2026)
+
+Plan validé le 22 septembre 2026, consigné dans [docs/plans-de-side-v2.md](docs/plans-de-side-v2.md)
+(inventaire prouvé, mesures, décisions D1–D17, règles S1–S10, réponses Q1–Q13, révisions §11). Les
+décisions validées ne sont pas reprises ici ; ce qui suit est ce que l'agent a tranché en les appliquant.
+
+### Partie A — règles pures (22 septembre 2026)
+
+- **La zone d'une carte de plan est une fonction de son type, jamais une donnée.** `deckZoneOfType`
+  (`server/src/domain/cardDefaults.ts`) rend `main`, `extra` ou `null` ; `null` (type absent, jeton,
+  carte de compétence) n'est jamais remplacé par une supposition : le plan est « à revoir » et la
+  carte nommée (`unknown-zone`). Alternative écartée : une colonne `zone` en migration 007, redondante
+  avec le type, qui aurait figé la zone fausse des 18 cartes mal classées.
+- **`isMainDeckType` corrigé, pas assoupli.** Le motif reconnaît désormais les types réels « Synchro
+  Pendulum Effect Monster » et « XYZ Pendulum Effect Monster » ; `isMainDeckType(undefined)` reste vrai
+  (aucun défaut ne sortira sans texte), mais la ZONE, elle, est inconnue. `cardDefaults.ts` est dans
+  `__ENGINE_VERSION__` : aperçus et chiffres de plan périmés une fois, recalculés à l'identique (rapport
+  `--gap` avant / après identique sur l'archive du 8 septembre ; D15).
+- **Une seule règle d'échange, `trySwap`**, pour le geste « Échanger » et pour l'aperçu : un aperçu ne
+  montre jamais un deck que l'échange refuserait. Ordre des refus : zone inconnue, sélection vide,
+  déséquilibre par zone (message d'origine conservé quand seul le main est touché), carte des deux
+  côtés, écart créé.
+- **`applyPlan(deck, plan, zoneOf)`** dérive main ET extra, rend `zones` (sortantes / entrantes par
+  zone), `extraSize`, `extra` ; la convention 1–3 vaut aussi pour l'Extra dérivé ; une sortante est
+  cherchée dans la zone que son type désigne (une carte d'Extra posée dans le main n'est pas une
+  sortante du main). Non-régression : `lib/sidePlanLegacy.test.ts` compare à la copie figée de
+  l'`applyPlan` de 471fadd sur les plans des fixtures e2e et 500 plans tirés au sort (statut, main
+  dérivé, taille, écarts, entrée du moteur, empreinte).
+- **« Annuler l'échange » retire exactement les copies d'un échange passé**, jamais sous zéro et sans
+  rééquilibrer (un plan retouché entre-temps peut rester incomplet) ; « Vider le plan » garde la note
+  (texte de l'utilisateur, pas un échange).
+- **Candidats (S4) : seulement le main, seulement à une copie près, et seulement des échanges que
+  « Échanger » accepterait** ; l'Extra n'a pas de candidats (aucun effet sur les chiffres) et ne
+  compte pas dans l'écart d'une copie. Entrées du moteur dédoublonnées par leur JSON.
+- **Légalité (`deckLegality`) = avertissement du deck de base**, jamais un refus : main hors 40–60,
+  Extra ou side au-delà de 15, 3 copies toutes zones, carte d'Extra dans le main ou l'inverse
+  (`wrong-zone`, ajouté : gratuit une fois la zone connue).
+- **Tests existants modifiés, tous pour la signature ou la zone, jamais pour faire passer du code** :
+  `sidePlan.test.ts`, `matchups.test.ts`, `sideSheet.test.ts` (catalogue avec types), `store/sidePlans.test.ts`
+  (cartes typées : un échange exige la zone), `server/tests/cardDefaults.test.ts` (les 29 types du
+  catalogue, deux types d'Extra ajoutés à la liste des exclus).

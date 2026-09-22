@@ -17,6 +17,8 @@ vi.mock('../lib/api.js',async (original) => {
 const deckId='00000000-0000-4000-8000-000000000010';
 const MAIN_A=1,MAIN_B=2,SIDE=7;
 const cards=[{ card_id:MAIN_A,zone:'main' as const,copies:3 },{ card_id:MAIN_B,zone:'main' as const,copies:3 },{ card_id:SIDE,zone:'side' as const,copies:2 }];
+// v2 (S5) : un échange exige la zone de jeu de chaque carte, déduite de son type au catalogue.
+const catalog={ [MAIN_A]:{ id:MAIN_A,name:'A',type:'Effect Monster' },[MAIN_B]:{ id:MAIN_B,name:'B',type:'Spell Card' },[SIDE]:{ id:SIDE,name:'S',type:'Trap Card' } };
 
 /** Le calcul du deck de base est à jour : résultat de la version demandée, rien en cours. */
 function fresh() {
@@ -26,7 +28,7 @@ function fresh() {
 beforeEach(() => {
   vi.useFakeTimers();vi.clearAllMocks();
   useDeck.setState(useDeck.getInitialState(),true);
-  useDeck.setState({ ...stateFromConfiguration(emptyConfiguration('Deck',cards)),deckId,revision:1,starters:new Set([MAIN_A]) });
+  useDeck.setState({ ...stateFromConfiguration(emptyConfiguration('Deck',cards)),cards:catalog,deckId,revision:1,starters:new Set([MAIN_A]) });
   fresh();
 });
 afterEach(() => { vi.clearAllTimers();vi.useRealTimers(); });

@@ -36,6 +36,9 @@ const configuration = parseConfiguration({
   ],
 });
 const source = { ...stateFromConfiguration(configuration), ...libraryState(library) };
+const MAIN = () => 'main' as const; // v2 : toutes les cartes de ce test sont de type main deck
+// v2 (S5) : le comparateur déduit la zone de chaque carte de plan de son type au catalogue chargé.
+const catalog = Object.fromEntries([STARTER, TARGET, ...FILLERS, SIDE].map((id) => [id, { id, name: `#${id}`, type: 'Effect Monster' }]));
 const detail: DeckDetail = {
   id: DECK, revision: 3, configuration_version: 2, name: 'Deck', cards: configuration.cards, starters: configuration.starters,
   pairs: [], pair_exclusions: [], conditions: [], deadFirst: [], deadSecond: [], matchups: configuration.matchups, params: {}, notes: null,
@@ -43,7 +46,7 @@ const detail: DeckDetail = {
 
 describe('fiche imprimable', () => {
   it('un bloc par adversaire dans l’ordre d’ajout, deux volets premier puis second', () => {
-    const sheet = sheetOf(source, source.matchups, {}, 'v1');
+    const sheet = sheetOf(source, source.matchups, {}, MAIN, 'v1');
     expect(sheet.map((m) => m.name)).toEqual(['Snake-Eye', 'Kewl Tune']);
     expect(sheet.map((m) => m.plans.map((p) => p.position))).toEqual([['first', 'second'], ['first', 'second']]);
     // Volet absent ou vide : prêt, c'est le deck de base dans cette position.
@@ -52,22 +55,22 @@ describe('fiche imprimable', () => {
   });
 
   it('un plan qui n’est pas prêt n’a ni entrée de moteur ni chiffre, et n’est jamais « à calculer »', () => {
-    const sheet = sheetOf(source, source.matchups, {}, 'v1');
+    const sheet = sheetOf(source, source.matchups, {}, MAIN, 'v1');
     const incomplete = sheet[0].plans[1];
     expect(incomplete).toMatchObject({ applied: { status: 'incomplete' }, input: null, summary: null });
     expect(plansToCompute(sheet).map((p) => `${p.matchupId}:${p.position}`)).toEqual([`${B}:first`, `${A}:first`, `${A}:second`]);
   });
 
   it('un chiffre stocké n’est imprimé que s’il porte l’empreinte courante, sinon « — »', () => {
-    const ready = sheetOf(source, source.matchups, {}, 'v1')[1].plans[1];
+    const ready = sheetOf(source, source.matchups, {}, MAIN, 'v1')[1].plans[1];
     const summary = planSummaryFromPass(computePass(ready.input!, 'second'), ready.input!, 'second', 'v1')!;
     const stored = { [planKey(A, 'second')]: summary };
-    const printed = sheetOf(source, source.matchups, stored, 'v1');
+    const printed = sheetOf(source, source.matchups, stored, MAIN, 'v1');
     expect(printed[1].plans[1].summary).toEqual(summary);
     expect(plansToCompute(printed)).toHaveLength(2);
-    expect(sheetOf(source, source.matchups, stored, 'v2')[1].plans[1].summary).toBeNull(); // autre moteur
+    expect(sheetOf(source, source.matchups, stored, MAIN, 'v2')[1].plans[1].summary).toBeNull(); // autre moteur
     const edited = { ...source, starters: new Set([STARTER]) }; // le starter du side n'en est plus un
-    expect(sheetOf(edited, source.matchups, stored, 'v1')[1].plans[1].summary).toBeNull();
+    expect(sheetOf(edited, source.matchups, stored, MAIN, 'v1')[1].plans[1].summary).toBeNull();
   });
 });
 
@@ -80,18 +83,18 @@ describe('comparateur sur un deck sidé', () => {
   });
 
   it('le côté sidé porte le main dérivé du plan et un nom qui le dit ; le deck de base est inchangé', () => {
-    const base = compareSideOf(detail, library, parseCompareTarget(DECK), {});
+    const base = compareSideOf(detail, library, parseCompareTarget(DECK), catalog);
     expect(base).toMatchObject({ name: 'Deck', plan: null });
     expect(base.source.main).toEqual(source.main);
-    const sided = compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, A, 'second')), {});
+    const sided = compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, A, 'second')), catalog);
     expect(sided.name).toBe('Deck — Kewl Tune (second)');
-    expect(sided.source.main).toEqual(applyPlan(source.main, source.side, source.matchups[0].plans[1]).main);
+    expect(sided.source.main).toEqual(applyPlan(source, source.matchups[0].plans[1], MAIN).main);
     expect(sidedNotice(sided)?.message).toBe('« Deck — Kewl Tune (second) » : deck après le plan second contre « Kewl Tune » — seul le scénario second correspond à ce plan, le scénario premier est donné pour information.');
     expect(sidedNotice(base)).toBeNull();
   });
 
   it('un plan pas prêt ou un adversaire disparu : refus explicite, rien n’est comparé', () => {
-    expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, B, 'second')), {})).toThrow('Plan second contre « Snake-Eye » incomplet : rien à comparer tant qu’il n’est pas prêt.');
-    expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, '00000000-0000-4000-8000-0000000000ff', 'first')), {})).toThrow(/adversaire introuvable/);
+    expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, B, 'second')), catalog)).toThrow('Plan second contre « Snake-Eye » incomplet : rien à comparer tant qu’il n’est pas prêt.');
+    expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, '00000000-0000-4000-8000-0000000000ff', 'first')), catalog)).toThrow(/adversaire introuvable/);
   });
 });

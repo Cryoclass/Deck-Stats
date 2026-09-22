@@ -16,7 +16,12 @@ import {
   sidedSource,
   usablePlanSummary,
 } from './sidePlan.js';
-import type { Library, SidePlan } from '../types.js';
+import type { DeckCard, Library, SidePlan } from '../types.js';
+
+// v2 : `applyPlan` prend les trois zones et la zone de jeu de chaque carte (`zoneOf`) ; ici, toutes les
+// cartes sont de type main deck sauf mention (bloc « Extra Deck » en fin de fichier).
+const MAIN = () => 'main' as const;
+const deckOf = (main: readonly DeckCard[], side: readonly DeckCard[], extra: readonly DeckCard[] = []) => ({ main: [...main], extra: [...extra], side: [...side] });
 
 // ─── Étape 10B : le deck sidé est un deck comme un autre (R6), ses chiffres sont ceux du mode
 // Requête (R8), calculés dans le contexte de sa position (R7), jamais affichés périmés (R9). ───
@@ -70,50 +75,50 @@ const asQueryMode = (subject: 'starts' | 'nonengine', min: number): QueryCriteri
 
 const sidedInput = (plan: SidePlan = SECOND, lib: Library = library) => {
   const src = source(BASE, lib);
-  return buildEngineModel(sidedSource(src, applyPlan(src.main, src.side, plan))!).input;
+  return buildEngineModel(sidedSource(src, applyPlan(src, plan, MAIN))!).input;
 };
 
 describe('applyPlan', () => {
   const src = source();
 
   it('rend le main dérivé d’un plan équilibré, dans l’ordre d’une édition à la main', () => {
-    const applied = applyPlan(src.main, src.side, SECOND);
-    expect(applied).toMatchObject({ status: 'ready', issues: [], outgoing: 3, incoming: 3, mainSize: 40 });
+    const applied = applyPlan(src, SECOND, MAIN);
+    expect(applied).toMatchObject({ status: 'ready', issues: [], outgoing: 3, incoming: 3, mainSize: 40, extraSize: 0, zones: { main: { outgoing: 3, incoming: 3 }, extra: { outgoing: 0, incoming: 0 } }, extra: [] });
     expect(applied.main).toEqual(stateFromConfiguration(configuration(EDITED_BY_HAND)).main);
   });
 
   it('un plan vide est prêt et rend le main du deck tel quel', () => {
-    const applied = applyPlan(src.main, src.side, { position: 'first', note: null, outgoing: [], incoming: [] });
+    const applied = applyPlan(src, { position: 'first', note: null, outgoing: [], incoming: [] }, MAIN);
     expect(applied.status).toBe('ready');
     expect(applied.main).toEqual(src.main);
   });
 
   it('un plan déséquilibré est « incomplet » : taille donnée, aucun main, donc jamais analysé (R4)', () => {
-    const applied = applyPlan(src.main, src.side, { ...SECOND, incoming: [{ card_id: SIDE_STARTER, copies: 1 }] });
-    expect(applied).toMatchObject({ status: 'incomplete', issues: [], outgoing: 3, incoming: 1, mainSize: 38, main: null });
+    const applied = applyPlan(src, { ...SECOND, incoming: [{ card_id: SIDE_STARTER, copies: 1 }] }, MAIN);
+    expect(applied).toMatchObject({ status: 'incomplete', issues: [], outgoing: 3, incoming: 1, mainSize: 38, main: null, extra: null });
   });
 
   it('une carte qui a quitté sa zone met le plan « à revoir » et nomme la carte, même équilibré (R1, R5)', () => {
-    const absent = applyPlan(src.main, src.side, { ...SECOND, outgoing: [{ card_id: 99, copies: 1 }, { card_id: 10, copies: 2 }] });
+    const absent = applyPlan(src, { ...SECOND, outgoing: [{ card_id: 99, copies: 1 }, { card_id: 10, copies: 2 }] }, MAIN);
     expect(absent).toMatchObject({ status: 'review', main: null });
-    expect(absent.issues).toEqual([{ kind: 'outgoing-missing', cardId: 99, wanted: 1, available: 0 }]);
-    const tooMany = applyPlan(src.main, src.side, { ...SECOND, outgoing: [{ card_id: 10, copies: 3 }], incoming: [{ card_id: SIDE_STARTER, copies: 3 }] });
-    expect(tooMany.issues).toEqual([{ kind: 'incoming-missing', cardId: SIDE_STARTER, wanted: 3, available: 2 }]);
+    expect(absent.issues).toEqual([{ kind: 'outgoing-missing', cardId: 99, zone: 'main', wanted: 1, available: 0 }]);
+    const tooMany = applyPlan(src, { ...SECOND, outgoing: [{ card_id: 10, copies: 3 }], incoming: [{ card_id: SIDE_STARTER, copies: 3 }] }, MAIN);
+    expect(tooMany.issues).toEqual([{ kind: 'incoming-missing', cardId: SIDE_STARTER, zone: 'main', wanted: 3, available: 2 }]);
     // « À revoir » l'emporte sur « incomplet » : c'est la cohérence qu'il faut rétablir d'abord.
-    expect(applyPlan(src.main, src.side, { ...SECOND, outgoing: [{ card_id: 99, copies: 2 }] }).status).toBe('review');
+    expect(applyPlan(src, { ...SECOND, outgoing: [{ card_id: 99, copies: 2 }] }, MAIN).status).toBe('review');
   });
 
   it('une entrée qui porterait une carte à 4 exemplaires dans le main met le plan « à revoir » (R3)', () => {
     const side = [...src.side, { cardId: HT, zone: 'side' as const, copies: 1 }]; // même carte en main ET en side (9C)
-    const applied = applyPlan(src.main, side, { position: 'second', note: null, outgoing: [{ card_id: 10, copies: 1 }], incoming: [{ card_id: HT, copies: 1 }] });
-    expect(applied).toMatchObject({ status: 'review', main: null, issues: [{ kind: 'over-limit', cardId: HT, copies: 4 }] });
+    const applied = applyPlan(deckOf(src.main, side), { position: 'second', note: null, outgoing: [{ card_id: 10, copies: 1 }], incoming: [{ card_id: HT, copies: 1 }] }, MAIN);
+    expect(applied).toMatchObject({ status: 'review', main: null, issues: [{ kind: 'over-limit', cardId: HT, zone: 'main', copies: 4 }] });
   });
 });
 
 describe('le deck sidé est un deck comme un autre (R6)', () => {
   it('même modèle moteur que le main édité à la main, avec toutes les annotations du deck', () => {
     const src = source();
-    const model = buildEngineModel(sidedSource(src, applyPlan(src.main, src.side, SECOND))!);
+    const model = buildEngineModel(sidedSource(src, applyPlan(src, SECOND, MAIN))!);
     expect(model).toEqual(buildEngineModel(source(EDITED_BY_HAND)));
     // La carte annotée starter pendant qu'elle était dans le side devient un starter en entrant.
     expect(buildEngineModel(src).typeCardIds).not.toContain(SIDE_STARTER);
@@ -124,7 +129,7 @@ describe('le deck sidé est un deck comme un autre (R6)', () => {
 
   it('un plan qui n’est pas prêt n’a pas de source de modèle', () => {
     const src = source();
-    expect(sidedSource(src, applyPlan(src.main, src.side, { ...SECOND, incoming: [] }))).toBeNull();
+    expect(sidedSource(src, applyPlan(src, { ...SECOND, incoming: [] }, MAIN))).toBeNull();
   });
 });
 
@@ -204,13 +209,13 @@ describe('cache des chiffres d’un plan : jamais affiché périmé (R9)', () =>
 
 describe('sources de start neutralisées par un plan (Q3)', () => {
   const src = source();
-  const sided = applyPlan(src.main, src.side, SECOND).main!;
+  const sided = applyPlan(src, SECOND, MAIN).main!;
 
   it('nomme le starter dont la carte requise sort, pas celui qu’une autre branche OU garde vivant', () => {
     expect(neutralizedSources(src, src.main, sided)).toEqual([{ kind: 'starter', cardId: STARTER }]);
     const alive = { ...src, startConditions: [{ ...src.startConditions[0], condition: { kind: 'or' as const, any: [{ kind: 'remaining' as const, card_id: TARGET, at_least: 1 }, { kind: 'remaining' as const, card_id: 11, at_least: 1 }] } }] };
     expect(neutralizedSources(alive, src.main, sided)).toEqual([]);
-    const untouched = applyPlan(src.main, src.side, { ...SECOND, outgoing: [{ card_id: 10, copies: 3 }] }).main!;
+    const untouched = applyPlan(src, { ...SECOND, outgoing: [{ card_id: 10, copies: 3 }] }, MAIN).main!;
     expect(neutralizedSources(src, src.main, untouched)).toEqual([]);
   });
 
@@ -222,5 +227,65 @@ describe('sources de start neutralisées par un plan (Q3)', () => {
     expect(neutralizedSources({ ...withPair, pairExclusions: new Set([P]) }, src.main, sided)).toEqual([]);
     const impossible = { ...src, startConditions: [{ ...src.startConditions[0], condition: { kind: 'remaining' as const, card_id: TARGET, at_least: 2 } }] };
     expect(neutralizedSources(impossible, src.main, sided)).toEqual([]);
+  });
+});
+
+// ─── Plans de side v2 : l'Extra Deck dans les plans (S5–S7), zone déduite du type ───
+describe('v2 — l’Extra Deck entre dans les plans, sans effet sur le moteur', () => {
+  const FUSION = 50; // ×2 en extra
+  const LINK = 51; // ×1 en extra
+  const SIDE_FUSION = 52; // ×1 en side, type Extra Deck
+  const EXTRA_TYPES = new Set([FUSION, LINK, SIDE_FUSION]);
+  const zoneOf = (id: number) => (id === 999 ? null : EXTRA_TYPES.has(id) ? ('extra' as const) : ('main' as const));
+  const src = source();
+  const deck = { main: src.main, extra: [{ cardId: FUSION, zone: 'extra' as const, copies: 2 }, { cardId: LINK, zone: 'extra' as const, copies: 1 }], side: [...src.side, { cardId: SIDE_FUSION, zone: 'side' as const, copies: 1 }] };
+
+  it('un échange d’Extra équilibré est prêt, dérive l’extra, et laisse le main et l’entrée du moteur inchangés (S7)', () => {
+    const plan: SidePlan = { position: 'first', note: null, outgoing: [{ card_id: LINK, copies: 1 }], incoming: [{ card_id: SIDE_FUSION, copies: 1 }] };
+    const applied = applyPlan(deck, plan, zoneOf);
+    expect(applied).toMatchObject({ status: 'ready', outgoing: 1, incoming: 1, zones: { main: { outgoing: 0, incoming: 0 }, extra: { outgoing: 1, incoming: 1 } }, mainSize: 40, extraSize: 3 });
+    expect(applied.main).toEqual(src.main);
+    expect(applied.extra).toEqual([{ cardId: FUSION, zone: 'extra', copies: 2 }, { cardId: SIDE_FUSION, zone: 'extra', copies: 1 }]);
+    const base = buildEngineModel(src).input;
+    expect(buildEngineModel(sidedSource(src, applied)!).input).toEqual(base);
+    expect(planFingerprint(buildEngineModel(sidedSource(src, applied)!).input, 'first', 'v1')).toBe(planFingerprint(base, 'first', 'v1'));
+  });
+
+  it('l’équilibre se juge zone par zone (S6) : une sortante du main contre une entrante d’Extra est « incomplet »', () => {
+    const crossed: SidePlan = { position: 'first', note: null, outgoing: [{ card_id: 10, copies: 1 }], incoming: [{ card_id: SIDE_FUSION, copies: 1 }] };
+    const applied = applyPlan(deck, crossed, zoneOf);
+    expect(applied).toMatchObject({ status: 'incomplete', issues: [], zones: { main: { outgoing: 1, incoming: 0 }, extra: { outgoing: 0, incoming: 1 } }, mainSize: 39, extraSize: 4, main: null, extra: null });
+    // Chaque zone équilibrée séparément : prêt, les deux zones dérivées.
+    const both: SidePlan = { ...crossed, outgoing: [{ card_id: 10, copies: 1 }, { card_id: LINK, copies: 1 }], incoming: [{ card_id: SIDE_FUSION, copies: 1 }, { card_id: SIDE_STARTER, copies: 1 }] };
+    const ok = applyPlan(deck, both, zoneOf);
+    expect(ok.status).toBe('ready');
+    expect(ok.main!.find((c) => c.cardId === SIDE_STARTER)).toEqual({ cardId: SIDE_STARTER, zone: 'main', copies: 1 });
+    expect(ok.extra!.map((c) => c.cardId)).toEqual([FUSION, SIDE_FUSION]);
+  });
+
+  it('une sortante d’Extra est prise dans l’extra du deck de base, jamais dans le main (S5)', () => {
+    const applied = applyPlan(deck, { position: 'first', note: null, outgoing: [{ card_id: FUSION, copies: 3 }], incoming: [{ card_id: SIDE_FUSION, copies: 1 }] }, zoneOf);
+    expect(applied.status).toBe('review');
+    expect(applied.issues).toEqual([{ kind: 'outgoing-missing', cardId: FUSION, zone: 'extra', wanted: 3, available: 2 }]);
+    // Une carte d'Extra Deck posée dans le main (deck illégal) n'est pas une sortante du main.
+    const misplaced = { ...deck, main: [...deck.main, { cardId: LINK, zone: 'main' as const, copies: 1 }], extra: [] };
+    expect(applyPlan(misplaced, { position: 'first', note: null, outgoing: [{ card_id: LINK, copies: 1 }], incoming: [{ card_id: SIDE_FUSION, copies: 1 }] }, zoneOf).issues).toEqual([{ kind: 'outgoing-missing', cardId: LINK, zone: 'extra', wanted: 1, available: 0 }]);
+  });
+
+  it('une carte de zone inconnue met le plan « à revoir », nommée une fois, jamais devinée (S5)', () => {
+    const withUnknown = { ...deck, side: [...deck.side, { cardId: 999, zone: 'side' as const, copies: 2 }] };
+    const applied = applyPlan(withUnknown, { position: 'first', note: null, outgoing: [{ card_id: 10, copies: 2 }], incoming: [{ card_id: 999, copies: 2 }] }, zoneOf);
+    expect(applied.status).toBe('review');
+    expect(applied.issues).toEqual([{ kind: 'unknown-zone', cardId: 999 }]);
+    expect(applied.main).toBeNull();
+  });
+
+  it('la convention 1–3 vaut aussi pour l’extra dérivé (R3)', () => {
+    const side = [...deck.side, { cardId: FUSION, zone: 'side' as const, copies: 2 }];
+    const applied = applyPlan({ ...deck, side }, { position: 'first', note: null, outgoing: [{ card_id: LINK, copies: 1 }], incoming: [{ card_id: FUSION, copies: 1 }] }, zoneOf);
+    expect(applied).toMatchObject({ status: 'ready', zones: { extra: { outgoing: 1, incoming: 1 } } });
+    expect(applied.extra).toEqual([{ cardId: FUSION, zone: 'extra', copies: 3 }]);
+    const over = applyPlan({ ...deck, side }, { position: 'first', note: null, outgoing: [{ card_id: LINK, copies: 1 }, { card_id: 10, copies: 1 }], incoming: [{ card_id: FUSION, copies: 2 }] }, zoneOf);
+    expect(over.issues).toEqual([{ kind: 'over-limit', cardId: FUSION, zone: 'extra', copies: 4 }]);
   });
 });

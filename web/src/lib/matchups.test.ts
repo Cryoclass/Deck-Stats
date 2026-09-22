@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { addMatchup, copyPlan, describeIssue, planOf, removeFromPlan, removeMatchup, renameMatchup, setPlanNote, swapInPlan } from './matchups.js';
+import { addMatchup, clearPlan, copyPlan, describeIssue, planOf, removeFromPlan, removeMatchup, renameMatchup, setPlanNote, swapInPlan, trySwap, undoSwap } from './matchups.js';
 import { applyPlan } from './sidePlan.js';
 import { parseConfiguration, emptyConfiguration } from '../../../server/src/domain/deckConfiguration.js';
-import type { DeckCard, Matchup } from '../types.js';
+import type { DeckCard, Matchup, SidePlanCard } from '../types.js';
 
 // ─── Étape 10C : mutations pures des adversaires et de leurs plans ───
 
@@ -15,6 +15,9 @@ const BOTH = 4; // ×3 en main ET ×1 en side (9C)
 const main: DeckCard[] = [{ cardId: ASH, zone: 'main', copies: 3 }, { cardId: DROLL, zone: 'main', copies: 1 }, { cardId: FILLER, zone: 'main', copies: 3 }, { cardId: BOTH, zone: 'main', copies: 3 }];
 const side: DeckCard[] = [{ cardId: NIBIRU, zone: 'side', copies: 2 }, { cardId: RULER, zone: 'side', copies: 3 }, { cardId: BOTH, zone: 'side', copies: 1 }];
 const name = (id: number) => `#${id}`;
+// v2 : les échanges se jugent zone par zone ; ici toutes les cartes sont de type main deck (Extra en fin de fichier).
+const MAIN = () => 'main' as const;
+const deck = { main, extra: [], side };
 const M = '00000000-0000-4000-8000-0000000000aa';
 const start = (): Matchup[] => addMatchup([], '  Kewl Tune ', M);
 
@@ -32,7 +35,7 @@ describe('adversaires', () => {
 
 describe('échanger', () => {
   const swap = (list: Matchup[], out: Array<[number, number]>, inn: Array<[number, number]>) =>
-    swapInPlan(list, M, 'second', main, side, out.map(([card_id, copies]) => ({ card_id, copies })), inn.map(([card_id, copies]) => ({ card_id, copies })), name);
+    swapInPlan(list, M, 'second', deck, MAIN, { outgoing: out.map(([card_id, copies]) => ({ card_id, copies })), incoming: inn.map(([card_id, copies]) => ({ card_id, copies })) }, name);
 
   it('ajoute les copies au plan et cumule une carte déjà engagée', () => {
     const once = swap(start(), [[ASH, 1], [DROLL, 1]], [[NIBIRU, 2]]);
@@ -45,7 +48,7 @@ describe('échanger', () => {
     expect(plan.outgoing).toEqual([{ card_id: ASH, copies: 2 }, { card_id: DROLL, copies: 1 }]);
     expect(plan.incoming).toEqual([{ card_id: NIBIRU, copies: 2 }, { card_id: RULER, copies: 1 }]);
     expect(planOf(twice.matchups[0], 'first').outgoing).toEqual([]); // l'autre volet n'a pas bougé
-    expect(applyPlan(main, side, plan).status).toBe('ready');
+    expect(applyPlan(deck, plan, MAIN).status).toBe('ready');
   });
 
   it('refuse une sélection déséquilibrée ou vide (D10), sans rien changer', () => {
@@ -70,7 +73,7 @@ describe('échanger', () => {
 
   it('un plan déjà « à revoir » accepte un échange qui n’aggrave rien', () => {
     const stale: Matchup[] = [{ ...start()[0], plans: [{ position: 'second', note: null, outgoing: [{ card_id: 99, copies: 1 }], incoming: [{ card_id: NIBIRU, copies: 1 }] }] }];
-    expect(applyPlan(main, side, planOf(stale[0], 'second')).status).toBe('review');
+    expect(applyPlan(deck, planOf(stale[0], 'second'), MAIN).status).toBe('review');
     const r = swap(stale, [[ASH, 1]], [[RULER, 1]]);
     expect(r.ok).toBe(true);
   });
@@ -78,7 +81,7 @@ describe('échanger', () => {
 
 describe('retoucher un plan', () => {
   const ready = (): Matchup[] => {
-    const r = swapInPlan(start(), M, 'second', main, side, [{ card_id: ASH, copies: 2 }], [{ card_id: NIBIRU, copies: 2 }], name);
+    const r = swapInPlan(start(), M, 'second', deck, MAIN, { outgoing: [{ card_id: ASH, copies: 2 }], incoming: [{ card_id: NIBIRU, copies: 2 }] }, name);
     if (!r.ok) throw new Error(r.reason);
     return r.matchups;
   };
@@ -88,7 +91,7 @@ describe('retoucher un plan', () => {
     const plan = planOf(list[0], 'second');
     expect(plan.incoming).toEqual([{ card_id: NIBIRU, copies: 1 }]);
     expect(plan.outgoing).toEqual([{ card_id: ASH, copies: 2 }]);
-    expect(applyPlan(main, side, plan).status).toBe('incomplete');
+    expect(applyPlan(deck, plan, MAIN).status).toBe('incomplete');
     expect(planOf(removeFromPlan(list, M, 'second', 'incoming', NIBIRU)[0], 'second').incoming).toEqual([]);
   });
 
@@ -104,7 +107,79 @@ describe('retoucher un plan', () => {
   });
 
   it('les messages d’écart nomment la carte et la zone', () => {
-    expect(describeIssue({ kind: 'outgoing-missing', cardId: 7, wanted: 1, available: 0 }, name)).toBe('#7 : 1 copie à sortir, 0 en main.');
-    expect(describeIssue({ kind: 'incoming-missing', cardId: 8, wanted: 3, available: 2 }, name)).toBe('#8 : 3 copies à faire entrer, 2 en side.');
+    expect(describeIssue({ kind: 'outgoing-missing', cardId: 7, zone: 'main', wanted: 1, available: 0 }, name)).toBe('#7 : 1 copie à sortir, 0 en main.');
+    expect(describeIssue({ kind: 'outgoing-missing', cardId: 7, zone: 'extra', wanted: 2, available: 1 }, name)).toBe('#7 : 2 copies à sortir, 1 en extra.');
+    expect(describeIssue({ kind: 'incoming-missing', cardId: 8, zone: 'main', wanted: 3, available: 2 }, name)).toBe('#8 : 3 copies à faire entrer, 2 en side.');
+    expect(describeIssue({ kind: 'over-limit', cardId: 9, zone: 'extra', copies: 4 }, name)).toBe('#9 : 4 copies dans le extra après échange — convention 1 à 3.');
+    expect(describeIssue({ kind: 'unknown-zone', cardId: 5 }, name)).toBe('#5 : zone inconnue (type de carte absent du catalogue) — main ou extra ?');
+  });
+});
+
+describe('v2 — annuler un échange, vider le plan (D13)', () => {
+  const twoSwaps = (): { list: Matchup[]; first: { outgoing: SidePlanCard[]; incoming: SidePlanCard[] } } => {
+    const first = { outgoing: [{ card_id: ASH, copies: 2 }], incoming: [{ card_id: NIBIRU, copies: 2 }] };
+    const a = swapInPlan(start(), M, 'second', deck, MAIN, first, name);
+    if (!a.ok) throw new Error(a.reason);
+    const b = swapInPlan(a.matchups, M, 'second', deck, MAIN, { outgoing: [{ card_id: ASH, copies: 1 }, { card_id: DROLL, copies: 1 }], incoming: [{ card_id: RULER, copies: 2 }] }, name);
+    if (!b.ok) throw new Error(b.reason);
+    return { list: b.matchups, first };
+  };
+
+  it('annuler le premier échange retire exactement ses copies, le second reste', () => {
+    const { list, first } = twoSwaps();
+    const undone = planOf(undoSwap(list, M, 'second', first)[0], 'second');
+    expect(undone.outgoing).toEqual([{ card_id: ASH, copies: 1 }, { card_id: DROLL, copies: 1 }]);
+    expect(undone.incoming).toEqual([{ card_id: RULER, copies: 2 }]);
+    expect(applyPlan(deck, undone, MAIN).status).toBe('ready');
+  });
+
+  it('annuler après une retouche : jamais sous zéro, le plan peut rester incomplet — rien n’est rééquilibré', () => {
+    const { list, first } = twoSwaps();
+    const retouched = removeFromPlan(list, M, 'second', 'outgoing', ASH, 2); // 2 des 3 Ash retirées à la main : il en reste 1
+    const undone = planOf(undoSwap(retouched, M, 'second', first)[0], 'second');
+    expect(undone.outgoing).toEqual([{ card_id: DROLL, copies: 1 }]); // 1 − 2 ne donne pas « −1 copie » : la carte disparaît
+    expect(undone.incoming).toEqual([{ card_id: RULER, copies: 2 }]);
+    expect(applyPlan(deck, undone, MAIN).status).toBe('incomplete');
+  });
+
+  it('vider le plan retire tous les échanges et garde la note ; l’autre volet ne bouge pas', () => {
+    const { list } = twoSwaps();
+    const noted = setPlanNote(copyPlan(list, M, 'second', 'first'), M, 'second', 'Garder Droll');
+    const cleared = clearPlan(noted, M, 'second');
+    expect(planOf(cleared[0], 'second')).toEqual({ position: 'second', note: 'Garder Droll', outgoing: [], incoming: [] });
+    expect(planOf(cleared[0], 'first').outgoing).toEqual([{ card_id: ASH, copies: 3 }, { card_id: DROLL, copies: 1 }]);
+    expect(applyPlan(deck, planOf(cleared[0], 'second'), MAIN).status).toBe('ready');
+  });
+
+  it('retirer toutes les copies d’une carte d’un coup (liste « Sort » / « Entre »)', () => {
+    const { list } = twoSwaps();
+    expect(planOf(removeFromPlan(list, M, 'second', 'outgoing', ASH, Infinity)[0], 'second').outgoing).toEqual([{ card_id: DROLL, copies: 1 }]);
+  });
+});
+
+describe('v2 — un échange reste dans sa zone (S5, S6)', () => {
+  const FUSION = 40; // ×2 en extra
+  const SIDE_FUSION = 41; // ×1 en side, type Extra Deck
+  const zoneOf = (id: number) => (id === 999 ? null : id === FUSION || id === SIDE_FUSION ? ('extra' as const) : ('main' as const));
+  const deck2 = { main, extra: [{ cardId: FUSION, zone: 'extra' as const, copies: 2 }], side: [...side, { cardId: SIDE_FUSION, zone: 'side' as const, copies: 1 }, { cardId: 999, zone: 'side' as const, copies: 1 }] };
+  const swap2 = (delta: { outgoing: SidePlanCard[]; incoming: SidePlanCard[] }) => swapInPlan(start(), M, 'first', deck2, zoneOf, delta, name);
+
+  it('une carte du main ne s’échange pas contre une carte d’Extra : refus nommé, zone par zone', () => {
+    expect(swap2({ outgoing: [{ card_id: ASH, copies: 1 }], incoming: [{ card_id: SIDE_FUSION, copies: 1 }] })).toEqual({ ok: false, reason: 'Échange refusé : main 1 copie sortante pour 0 entrante ; extra 0 copie sortante pour 1 entrante — il en faut autant de chaque côté, zone par zone.' });
+    expect(swap2({ outgoing: [{ card_id: FUSION, copies: 2 }], incoming: [{ card_id: SIDE_FUSION, copies: 1 }] })).toMatchObject({ ok: false, reason: expect.stringMatching(/^Échange refusé : extra 2 copies sortantes pour 1 entrante/) });
+  });
+
+  it('un échange d’Extra équilibré est accepté, seul ou avec un échange de main dans le même geste', () => {
+    const alone = swap2({ outgoing: [{ card_id: FUSION, copies: 1 }], incoming: [{ card_id: SIDE_FUSION, copies: 1 }] });
+    expect(alone.ok).toBe(true);
+    if (!alone.ok) return;
+    expect(applyPlan(deck2, planOf(alone.matchups[0], 'first'), zoneOf)).toMatchObject({ status: 'ready', zones: { main: { outgoing: 0, incoming: 0 }, extra: { outgoing: 1, incoming: 1 } } });
+    const both = swap2({ outgoing: [{ card_id: FUSION, copies: 1 }, { card_id: ASH, copies: 1 }], incoming: [{ card_id: SIDE_FUSION, copies: 1 }, { card_id: NIBIRU, copies: 1 }] });
+    expect(both.ok).toBe(true);
+  });
+
+  it('une carte de zone inconnue est refusée avant toute autre règle, nommée', () => {
+    expect(swap2({ outgoing: [{ card_id: ASH, copies: 1 }], incoming: [{ card_id: 999, copies: 1 }] })).toEqual({ ok: false, reason: 'Échange refusé : #999 — zone inconnue (type de carte absent du catalogue), impossible de dire si la carte va au main ou à l’extra.' });
+    expect(trySwap(planOf(start()[0], 'first'), deck2, zoneOf, { outgoing: [], incoming: [] }, name)).toEqual({ ok: false, reason: 'Échange refusé : aucune copie sélectionnée.' });
   });
 });

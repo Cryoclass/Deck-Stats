@@ -16,7 +16,7 @@ import { configurationFromState, configurationFromDetail, stateFromConfiguration
 import { addClause, leaf, leavesOf, removeLeavesOfCard } from '../lib/conditions.js';
 import { summaryOfState } from '../lib/summary.js';
 import { nonEngineEffect } from '../lib/nonEngine.js';
-import { ZONE_LABEL } from '../lib/zones.js';
+import { ZONE_LABEL, zoneOfCatalog } from '../lib/zones.js';
 
 interface State {
   revision: number;
@@ -177,6 +177,9 @@ export interface ResultContext {
   /** Cartes étiquetées sans profil au moment du calcul : non comptées (Q5), signalées. */
   unprofiledCardIds: number[];
 }
+
+/** Cartes nommées par les plans de side d'un deck (entrantes et sortantes), zones comprises ou non. */
+const planCardIds = (matchups: readonly Matchup[]): number[] => matchups.flatMap((m) => m.plans.flatMap((p) => [...p.outgoing,...p.incoming].map((c) => c.card_id)));
 
 const toDeck = (m: Map<number, number>, zone: DeckCard['zone']): DeckCard[] =>
   [...m].map(([cardId, copies]) => ({ cardId, copies, zone }));
@@ -447,7 +450,9 @@ export const useDeck = create<State>((set, get) => {
         if (!current()) return;
         const configuration = configurationFromDetail(detail);
         const cardMap = { ...get().cards };
-        const ids = new Set([...configuration.cards.map((c) => c.card_id),...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),...configuration.conditions.flatMap((r) => leavesOf(r.condition).map((l) => l.leaf.card_id))]);
+        // Plans de side v2 (S5) : la zone d'une carte de plan vient de son type → les cartes de plan sont
+        // chargées aussi, même retirées du deck (sinon « zone inconnue » au lieu de « plus en side »).
+        const ids = new Set([...configuration.cards.map((c) => c.card_id),...configuration.pairs.flatMap((p) => [p.card_a_id,p.card_b_id]),...configuration.conditions.flatMap((r) => leavesOf(r.condition).map((l) => l.leaf.card_id)),...planCardIds(configuration.matchups)]);
         // Partie C : les textes des cartes déterminent les annotations par défaut, donc les chiffres (et
         // l'aperçu joint à l'enregistrement) ; sans eux, aucun calcul plutôt qu'un calcul faux.
         try { for (const c of await api.cardsByIds([...ids])) cardMap[c.id] = c; } catch { throw new Error(CATALOG_UNAVAILABLE); }
@@ -510,7 +515,7 @@ export const useDeck = create<State>((set, get) => {
       deriveEffective();
       recompute();
       // Partie C : une carte ajoutée dans le brouillon n'a pas encore son texte ; sans lui, aucun défaut.
-      const missing = d.configuration.cards.map((c) => c.card_id).filter((cardId) => !get().cards[cardId]);
+      const missing = [...d.configuration.cards.map((c) => c.card_id),...planCardIds(d.configuration.matchups)].filter((cardId) => !get().cards[cardId]);
       if (missing.length) void api.cardsByIds(missing).then((loaded) => {
         if (get().deckId !== d.deckId) return;
         set({ cards: { ...get().cards,...Object.fromEntries(loaded.map((c) => [c.id,c])) } });
@@ -671,7 +676,8 @@ export const useDeck = create<State>((set, get) => {
     },
     swapInPlan(matchupId, position, outgoing, incoming) {
       const s = get();
-      const r = swapInto(s.matchups,matchupId,position,s.main,s.side,outgoing,incoming,(id) => s.cards[id]?.name ?? `#${id}`);
+      // v2 (S5, S6) : zone de chaque carte déduite de son type, équilibre jugé zone par zone.
+      const r = swapInto(s.matchups,matchupId,position,{ main: s.main,extra: s.extra,side: s.side },zoneOfCatalog(s.cards),{ outgoing,incoming },(id) => s.cards[id]?.name ?? `#${id}`);
       if (!r.ok) { set({ persistenceError: r.reason }); return false; }
       set({ matchups: r.matchups,persistenceError: null });
       markDirty();

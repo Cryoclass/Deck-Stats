@@ -6,6 +6,7 @@ import { sourceFromDetail } from './deckConfiguration.js';
 import type { Card } from '../types.js';
 import { applyPlan, sidedSource } from './sidePlan.js';
 import { planOf } from './matchups.js';
+import { zoneOfCatalog } from './zones.js';
 import {
   scenarioCounts,
   toComparisonMatrix,
@@ -85,7 +86,8 @@ export function compareSideOf(detail: DeckDetail, library: Library, target: Comp
   const { matchupId, position } = target.plan;
   const matchup = state.matchups.find((m) => m.id === matchupId);
   if (!matchup) throw new Error(`« ${detail.name} » : adversaire introuvable (supprimé depuis ?).`);
-  const applied = applyPlan(state.main, state.side, planOf(matchup, position));
+  // v2 (S5) : la zone de chaque carte du plan vient de son type au catalogue chargé.
+  const applied = applyPlan(state, planOf(matchup, position), zoneOfCatalog(cards));
   const sided = sidedSource(state, applied);
   if (!sided) {
     throw new Error(`Plan ${POSITION_WORD[position]} contre « ${matchup.name} » ${applied.status === 'incomplete' ? 'incomplet' : 'à revoir'} : rien à comparer tant qu’il n’est pas prêt.`);

@@ -313,4 +313,14 @@ describe('Étape 4 — recalcul', () => {
     await settle();
     expect(state().model?.input.types[0].isHopt).toBe(true);
   });
+  // Plans de side v2 (S5, relecture E3) : la zone d'une carte de plan vient de son type, donc le store
+  // charge les objets Card des cartes de plan, même quand elles ne sont plus dans le deck.
+  it('loadDeck charge aussi les cartes nommees par les plans de side, meme retirees du deck', async () => {
+    const M = '00000000-0000-4000-8000-0000000000aa';
+    vi.mocked(api.getDeck).mockResolvedValue({ ...detail('P', 'Deck P'), matchups: [{ id: M, name: 'Kewl Tune', sort_index: 0, plans: [{ position: 'second', note: null, outgoing: [{ card_id: 2, copies: 1 }], incoming: [{ card_id: 77, copies: 1 }] }] }] });
+    vi.mocked(api.cardsByIds).mockClear();
+    await state().loadDeck('P');
+    const asked = vi.mocked(api.cardsByIds).mock.calls.at(-1)![0];
+    expect([...asked].sort()).toEqual([1, 2, 77]);
+  });
 });

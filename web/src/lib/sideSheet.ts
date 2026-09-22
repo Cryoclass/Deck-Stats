@@ -3,7 +3,7 @@ import type { DeckCard, Matchup, SidePlan, SidePlanPosition } from '../types.js'
 import { SIDE_PLAN_POSITIONS } from '../../../server/src/domain/deckConfiguration.js';
 import type { PlanSummary } from '../../../server/src/domain/deckSummary.js';
 import { buildEngineModel, type EngineModelSource } from './engineModel.js';
-import { applyPlan, sidedSource, usablePlanSummary, type AppliedPlan } from './sidePlan.js';
+import { applyPlan, sidedSource, usablePlanSummary, type AppliedPlan, type ZoneOf } from './sidePlan.js';
 import { planOf } from './matchups.js';
 import { ENGINE_VERSION } from './summary.js';
 
@@ -33,9 +33,10 @@ export interface SheetMatchup {
 export const planKey = (matchupId: string, position: SidePlanPosition): string => `${matchupId}:${position}`;
 
 export function sheetOf(
-  source: EngineModelSource & { side: DeckCard[] },
+  source: EngineModelSource & { extra: DeckCard[]; side: DeckCard[] },
   matchups: readonly Matchup[],
   stored: Record<string, unknown>,
+  zoneOf: ZoneOf,
   engineVersion = ENGINE_VERSION,
 ): SheetMatchup[] {
   return [...matchups]
@@ -45,7 +46,7 @@ export function sheetOf(
       name: m.name,
       plans: SIDE_PLAN_POSITIONS.map((position) => {
         const plan = planOf(m, position);
-        const applied = applyPlan(source.main, source.side, plan);
+        const applied = applyPlan(source, plan, zoneOf);
         const sided = sidedSource(source, applied);
         const input = sided ? buildEngineModel(sided).input : null;
         const summary = input ? usablePlanSummary(stored[planKey(m.id, position)], input, position, engineVersion) : null;
