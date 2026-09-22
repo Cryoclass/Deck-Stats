@@ -1,7 +1,7 @@
 # Refonte des plans de side — le deck sidé au centre de l'éditeur
 
-Statut : **plan validé le 22 septembre 2026** (réponses Q1–Q13 en fin de document) ; parties A et B livrées le
-22 septembre 2026 (comptes rendus §12, §13). Rédigé le 17 septembre 2026 sans aucune ligne de code ni de test modifiée.
+Statut : **plan validé le 22 septembre 2026** (réponses Q1–Q13 en fin de document) ; parties A, B et C livrées le
+22 septembre 2026 (comptes rendus §12, §13, §14). Rédigé le 17 septembre 2026 sans aucune ligne de code ni de test modifiée.
 Prompt d'origine : [prompt-refonte-plans-de-side.md](prompt-refonte-plans-de-side.md).
 Inventaire mené en lecture seule sur le dépôt (commit `471fadd`), sur le catalogue de la base de
 dev (une requête `select type, count(*)`, aucune écriture) et sur une restauration jetable de
@@ -924,3 +924,128 @@ corrigés avant le tag, plus les remarques suivies :
 - Parties C (barre de contexte, consommateurs), D (onglet), E (fiche, clôture).
 - Le budget réel dans le navigateur (worker, téléphone) reste à mesurer en C / D ; `lastPassMs` est
   mesuré à la première passe de chaque position.
+
+## 14. Compte rendu de la partie C — l'éditeur en contexte (22 septembre 2026)
+
+**Périmètre** : ce que l'utilisateur voit. Une barre de contexte, et tous les consommateurs de chiffres
+lisent le deck étudié et le nomment. L'onglet « Plans de side » n'est pas refondu (D).
+
+### Livré
+
+- `store/study.ts` : sélecteurs `columnOf(s, position)` (S1 : nom du deck ; S2 : rien sans plan prêt,
+  raison ; S3 : l'aperçu prend la place dans la position ouverte, ancien chiffre atténué en attendant)
+  et `studiedSource(s, position)` (source du moteur du deck étudié). `store/selectors.ts` : le mur tire
+  et note dans le deck étudié.
+- `components/StudyBar.tsx` (nouveau, D3) : sous l'en-tête, sur tous les onglets — sélecteur natif du
+  deck étudié (« Deck de base » / « contre X »), bascule Premier / Second (24 px), raison d'un plan
+  sans chiffre, avis « adversaire introuvable », une ligne de 32 px à 360 px. Les bascules du panneau
+  « Probabilités » et du mur de mains sont retirées : une seule commande.
+- `StatsPanel.tsx` : deux colonnes, chacune sur le deck étudié de sa position, nommée
+  (`data-study-label`, `data-study-kind` = base / sided / preview), atténuation par colonne, plan pas
+  prêt = raison seule, matrice nommée (`data-matrix-title`), cartes sans profil du deck sidé.
+- `QueryMode.tsx` : probabilités sur les deux decks étudiés, nommées, « — » avec la raison.
+- `HandWall.tsx` : mains tirées et notées dans le deck étudié de la position (S1), raison à la place
+  des mains (S2), nom du deck dans la barre du mur.
+- `AnnotationGrid.tsx` + `CardTile.tsx` (D14, Q6) : écarts de tuile du deck étudié (résultat complet
+  du deck sidé, ou du deck de base réutilisé), badge « sort ×n » / « entre ×n », « sort (plan) » à la
+  place de l'écart d'une carte entièrement sortie, écart à la place de « hors calcul » pour une carte
+  de side entrante, bandeau « vous annotez le deck de base ».
+- `EditorPage.tsx` : la barre rendue après le bandeau des annotations par défaut.
+- e2e `study` (nouveau) ; `guards` et `mobile` : les deux gardes de la bascule de contexte désignent
+  la barre (`[data-study-bar]`) ; `guards` : « premier contenu » à 360 px ≤ 180 px au lieu de 140
+  (la barre ajoute 32 px de chrome ; mesuré 162 px). Charte §6.2 et §6.3, AGENTS.md.
+
+### Tests
+
+`store/study.test.ts` (+3 : colonnes deck de base / plan pas prêt, deck sidé et mur tiré dedans,
+aperçu dans la colonne), e2e `study` (C1–C7 à 1440, puis 360 / 390 / 768 / 1440 ; P(≥ 1) à l'écran
+strictement égal au chiffre persisté lu par l'API). Tests existants modifiés : `guards.mjs` (seuil et
+sélecteur, annoncés ci-dessus), `mobile.mjs` (sélecteur de la bascule), tous deux pour D3.
+
+### Vérifications exécutées
+
+- `npm run typecheck` (serveur, web, scripts) · `npm run build` (avertissement ExcelJS attendu) ·
+  `node scripts/test-quiet.mjs` : **376 tests web** (373 après B), **22 serveur**, tous verts.
+- `npm run e2e -w web` complet sur le code final : **12 scénarios OK** (les 11 existants, dont `guards`
+  et `mobile` avec leurs gardes déplacées sur la barre, et `study` C1–C7 aux quatre largeurs). Premier passage de `guards` : « premier contenu
+  à 205 px » à 360 px — la barre tenait sur deux lignes ; contrôles ramenés à 24 px (32 px de barre,
+  premier contenu à 162 px), seuil relevé à 180. Premier passage de `study` : deux gardes du scénario
+  en échec, aucune de l'application — un plan neutre ne change pas les chiffres (S7 : Side Rho est
+  désormais starter dans la fixture) et le titre de la matrice est en majuscules CSS (comparaison
+  insensible à la casse, même piège qu'en 10C). Un 404 en console (chiffres persistés pour un volet
+  absent du plan enregistré) corrigé dans `persistSummary`.
+- Ni migration, ni schéma, ni route, ni deploy/ touchés → ni intégration PostgreSQL, ni séquence, ni
+  répétition pour cette partie (rejoués avant la clôture).
+
+### Contrôle par mutation
+
+5 posées, 5 détectées (garde C5 renforcée pour la dernière).
+
+| # | Mutation | Garde qui tombe |
+| --- | --- | --- |
+| C1 | Un plan pas prêt affiche les chiffres du deck de base à sa place (S2) | `study.test.ts` « colonnes… plan pas prêt : aucune passe, raison » |
+| C2 | L'aperçu n'est jamais montré dans la colonne (S3) | `study.test.ts` « aperçu (S3) : la colonne prend la passe de l'aperçu » |
+| C3 | Le mur tire dans le deck de base au lieu du deck étudié (S1) | `study.test.ts` « le mur tire dans le deck sidé » (la carte entrée se tire) |
+| C4 | La colonne d'un deck sidé se nomme « Deck de base » (S1) | `study.test.ts` (libellés des colonnes) |
+| C5 | Le mur note avec la passe du deck de base | `study.test.ts` « notées avec le modèle ET la passe du deck sidé » (égalité stricte avec `evaluateHands`, inégalité avec la passe de base) |
+
+Mutations posées par script sur les vrais fichiers, restaurés et vérifiés par SHA-256 identique. Les
+gardes visuelles (badges, bandeau, barre) sont tenues par l'e2e `study`, non mutées.
+
+### Relecture indépendante
+
+Sous-agent à contexte neuf (mandat : invariant d'affichage endroit par endroit, D2 / D3 / D14 /
+S1–S3, cas limites de `columnOf`, mur, tuiles, mobile, gardes e2e, style). Verdict : **recevable,
+rien de bloquant, quatre points à corriger**, tous corrigés avant le tag, plus des remarques suivies :
+
+- **E1** — en contexte sidé, tant que le résultat complet du deck sidé n'était pas là, les tuiles
+  affichaient un blanc — qui signifie un écart nul exact (D4 violée pendant 0,5 à 1 s). Corrigé :
+  « … » (`data-delta-pending`) tant que les écarts manquent ; garde e2e C6 sur la valeur d'un écart
+  du deck sidé (Side Rho, Starter Alpha : « −1 : … » non vide).
+- **C1** — le mur de mains aurait suivi l'aperçu dès D (mains tirées dans le deck du plan, notées avec
+  la passe de l'aperçu, signatures d'un autre modèle). Corrigé : `columnOf(…, false)` — le mur
+  montre le plan, jamais l'aperçu (l'aperçu est dans le panneau) ; test étendu.
+- **C3** — l'atténuation et l'infobulle « recalcul en cours » d'une tuile lisaient la péremption du deck
+  de base même en contexte sidé. Corrigé (`deltaStale` du deck étudié).
+- **C7** — badges « sort / entre » posés même pour un plan incomplet ou à revoir, bandeau « chiffres
+  du deck étudié » sous un plan sans chiffre, bandeau pour un adversaire introuvable. Corrigé :
+  badges pour un plan prêt seulement, bandeau qui porte la raison, aucun bandeau sans adversaire.
+- **C6** — messages du mur en contexte sidé (« Calcul initial… », « Charge un deck… » en cas d'erreur).
+  Corrigés.
+- **E2 / C4** — la garde e2e « P(≥ 1) à l'écran = chiffre persisté » compare deux lectures du même
+  store : elle prouve que la persistance D17 atteint l'API depuis l'onglet Annoter et que la colonne
+  affiche la passe persistée, pas que le chiffre est le bon ; la garde « le deck sidé change le
+  chiffre » attrape une colonne qui montrerait le deck de base. L'identité avec le comparateur sidé
+  et l'onglet, annoncée en §8, n'est pas rejouée par l'e2e : elle repose sur `lib/sidePlan.test.ts`
+  (deck sidé = main édité à la main, indicateurs = mode Requête) et `lib/sideSheet.test.ts`
+  (comparateur sidé = `applyPlan`). Dit en « Écarts au plan ».
+- **E3 / E4** — charte : 24 px (pas 28) ; la barre tient sur une ligne à 360 px sans raison de plan,
+  une raison passe à la ligne (non mesurée à 360 px avec un plan incomplet : noté pour D, qui
+  refond l'onglet et rejouera les largeurs).
+- **E6** — `selectDeltas` (code mort) retiré ; règle d'AGENTS.md reformulée (lire `s.result` reste
+  juste pour le deck de base lui-même).
+- **E5** — deux commandes de position dans l'onglet side (barre + onglet) jusqu'à D : accepté.
+- Confirmé par la relecture : chaque bloc chiffré rendu en C lit `columnOf` / `studiedSource` et nomme
+  son deck ; aucun `columnOf` dans un sélecteur `useDeck` ; style conforme (aucune couleur ni taille en
+  dur) ; typecheck et 52 tests ciblés verts.
+
+### Écarts au plan
+
+- La bascule Premier / Second n'apparaît qu'une fois, dans la barre (D3) : les gardes e2e qui la
+  cherchaient dans le panneau et dans le mur ont été déplacées ; le seuil « premier contenu ≤ 140 px »
+  de l'audit 01 passe à 180 px, la barre étant une ligne de chrome décidée par D3.
+- Le scénario e2e a d'abord posé un plan **neutre** (Side Rho non annotée) : les chiffres du deck sidé
+  étaient ceux du deck de base — c'est juste (S7). Side Rho est désormais starter dans la fixture du
+  scénario, restaurée en fin de scénario.
+- §8 annonçait une égalité e2e des chiffres avec l'onglet side et le comparateur sidé : non rejouée par
+  l'e2e (relecture E2) ; l'égalité est tenue par les tests purs (`sidePlan.test.ts`, `sideSheet.test.ts`)
+  et la garde e2e « le deck sidé change le chiffre » attrape une colonne qui montrerait le deck de base.
+- Le mur de mains ne suit pas l'aperçu (relecture C1) : D5 ne le demandait pas, S3 place l'aperçu
+  dans le panneau ; des mains tirées dans un deck et notées avec la passe d'un autre seraient fausses.
+
+### Non fait / reporté
+
+- Onglet « Plans de side » (D) : aperçu et candidats ne sont pas encore affichés là ; `SidePlanner`
+  garde son client.
+- Panneau sous le contenu au téléphone dans l'onglet side (D12, Q10) : partie D.
+- Fiche et PDF (E).

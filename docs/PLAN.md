@@ -66,7 +66,7 @@ l'archive du 8 septembre, décisions D1–D17, règles S1–S10, réponses Q1–
 | --- | --- | --- |
 | A — règles pures | Extra dans les plans (zone par type, équilibre par zone), `isMainDeckType` corrigé, légalité du deck, deck étudié et aperçu en pur, non-régression des plans existants prouvée ; tag `side-v2-a-ok` | ✅ Terminée le 22 sept. 2026 — `deckZoneOfType`, `applyPlan(deck, plan, zoneOf)` par zone avec extra dérivé hors moteur, `trySwap` unique (échange et aperçu), `undoSwap` / `clearPlan`, `deckLegality`, `studiedDeck.ts`, `swapPreview.ts`, garde D15 contre la copie figée de 471fadd (fixtures + 500 plans), contrat §2 / §8 (S1–S10) ; 355 web + 22 serveur, `--gap` avant / après identique sur les 16 decks du 8 sept., 7 mutations détectées + 1 équivalente, relecture indépendante (docs/plans-de-side-v2.md §12). |
 | B — store et calcul | Contexte d'étude (adversaire, position) dans l'URL, résultats par deck étudié et cache, aperçu, écarts de candidats sur un second client ; tag `side-v2-b-ok` | ✅ Terminée le 22 sept. 2026 — mode `second` du worker, `store/study.ts` (decks étudiés par entrée du moteur, deux temps passes → complet derrière le deck de base, cache, aperçu et candidats sur leurs propres clients, persistance des chiffres de plan), état et actions du store (`setStudy`, sélection, `commitSelection`, `undoLastSwap`, `clearOpenPlan`, `runCandidates`), contexte dans `?contre=&position=` (`lib/studyUrl.ts`, `replaceState`) ; 373 web + 22 serveur, 11 scénarios e2e, 9 mutations détectées + 1 équivalente, relecture indépendante (défaut bloquant C1 corrigé : annotation de side → resynchronisation) (docs/plans-de-side-v2.md §13). |
-| C — éditeur en contexte | Barre de contexte, panneau, matrice, requête, mur et tuiles sur le deck étudié et nommés ; e2e `study` ; tag `side-v2-c-ok` | À faire |
+| C — éditeur en contexte | Barre de contexte, panneau, matrice, requête, mur et tuiles sur le deck étudié et nommés ; e2e `study` ; tag `side-v2-c-ok` | ✅ Terminée le 22 sept. 2026 — `StudyBar` (une seule bascule, sélecteur natif, raison d'un plan sans chiffre), `columnOf` / `studiedSource`, panneau / matrice / requête / mur / tuiles sur le deck étudié et nommés (S1, S2, S3), badges « sort / entre » et bandeau de l'onglet Annoter ; e2e `study` (C1–C7, 4 largeurs), `guards` et `mobile` déplacées sur la barre ; 376 web + 22 serveur, 5 mutations détectées, relecture indépendante (docs/plans-de-side-v2.md §14). |
 | D — onglet side refondu | Tuiles par carte, aperçu et écarts de candidats, bloc Extra, barre d'action mobile, annuler / vider, « Enregistrer et ouvrir », règle des 3 copies ; e2e `side` ; tag `side-v2-d-ok` | À faire |
 | E — fiche, PDF, clôture | Extra dans la fiche et le PDF, e2e `sidesheet`, docs ; tags `side-v2-e-ok`, `side-v2-ok` | À faire |
 
@@ -79,6 +79,15 @@ l'archive du 8 septembre, décisions D1–D17, règles S1–S10, réponses Q1–
 ## Compte rendu de la dernière étape
 
 À mettre à jour en fin de chaque tâche (remplacer le contenu, l'historique reste dans docs/etapes-*.md et git).
+
+- **Date** : 22 septembre 2026.
+- **Étape** : hors numérotation, refonte des plans de side, partie C (docs/plans-de-side-v2.md §14). Tag `side-v2-c-ok`, rien poussé. Parties A et B le même jour (§12, §13, tags `side-v2-a-ok`, `side-v2-b-ok`).
+- **Livré** : barre de contexte (`StudyBar`, une seule bascule premier / second, sélecteur du deck étudié, raison d'un plan sans chiffre) ; `columnOf` / `studiedSource` ; panneau, matrice, mode Requête, mur de mains et tuiles sur le deck étudié, chacun nommé (S1), rien sans plan prêt (S2), aperçu dans la colonne de la position ouverte (S3), « … » tant que les écarts du deck sidé manquent ; badges « sort / entre » et bandeau de l'onglet Annoter (D14) ; e2e `study` ; corrections de la relecture.
+- **Vérifications exécutées** : typecheck, build, test-quiet (376 web, 22 serveur), e2e complet (12 scénarios) sur le code final, 5 mutations détectées, relecture indépendante.
+- **Non fait / reporté** : parties D (onglet refondu : aperçu et candidats affichés, panneau sous le contenu au téléphone, règle des 3 copies) et E (fiche, PDF, clôture) ; intégration PostgreSQL, séquence et répétition à rejouer avant la clôture.
+- **Prochaine action** : partie D selon docs/plans-de-side-v2.md §7.
+
+Compte rendu précédent (partie B, même jour) :
 
 - **Date** : 22 septembre 2026.
 - **Étape** : hors numérotation, refonte des plans de side, partie B (docs/plans-de-side-v2.md §13). Tag `side-v2-b-ok`, rien poussé. Partie A le même jour (§12, tag `side-v2-a-ok`).

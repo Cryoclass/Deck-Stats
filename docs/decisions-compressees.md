@@ -378,3 +378,7 @@ Partie B :
 - Réutilisation du deck de base par ENTRÉE du moteur (plan vide, main identique, échange neutre) ; aperçu et candidats réutilisent toute passe connue.
 - Trois clients (base + étudiés, aperçu, candidats), annulation par tâche ; réponse adoptée seulement si sa clé est encore attendue ; caches bornés, vidés à `loadDeck`.
 - Changer de position ou d'adversaire abandonne sélection et historique ; contexte dans l'URL seule (`replaceState`).
+Partie C :
+- Une seule bascule premier / second (barre de contexte, `[data-study-bar]`) ; panneau et mur n'ont plus la leur ; garde « premier contenu » 140 → 180 px.
+- `columnOf` / `studiedSource` = seule lecture des chiffres (S1, S2, S3) ; `useMemo`, jamais un sélecteur `useDeck`.
+- Plan pas prêt : raison à la place de la matrice et des mains ; tuiles : « sort ×n » / « entre ×n », « sort (plan) », écart d'une entrante de side.

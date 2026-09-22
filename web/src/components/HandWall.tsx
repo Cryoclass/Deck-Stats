@@ -3,28 +3,37 @@ import { useDeck } from '../store/deckStore.js';
 import { drawHandsFromStore, noteHandsFromStore } from '../store/selectors.js';
 import { queryMatches, handContext, criterionInvalid } from '../engine/query.js';
 import { imageSmall } from '../types.js';
-import { Segmented } from './ui.js';
-import { CONTEXT_LABEL, CONTEXT_SHORT, CONTEXT_TITLE } from './Header.js';
+import { columnOf, studiedSource } from '../store/study.js';
+import { CONTEXT_LABEL } from './Header.js';
 
 export function HandWall() {
   const result = useDeck((s) => s.result);
-  const model = useDeck((s) => s.model);
-  const stale = useDeck((s) => s.stale);
-  const computing = useDeck((s) => s.computing);
+  // Plans de side v2 (S1, S2) : le mur tire et note dans le deck ÉTUDIÉ de la position courante.
+  const studied = useDeck((s) => s.studied);
+  const preview = useDeck((s) => s.preview);
+  const baseStale = useDeck((s) => s.stale);
+  const baseComputing = useDeck((s) => s.computing);
+  const computeError = useDeck((s) => s.computeError);
+  const resultContext = useDeck((s) => s.resultContext);
   const importance = useDeck((s) => s.importance);
   const setImportance = useDeck((s) => s.setImportance);
   const cards = useDeck((s) => s.cards);
-  const mainLen = useDeck((s) => s.main.length);
-  // Contexte d'analyse UNIQUE (étape 5B) : le même réglage que l'en-tête, la matrice et
+  // Contexte d'analyse UNIQUE (étape 5B) : le même réglage que la barre, la matrice et
   // les deltas — le mur ne porte plus de scénario local (contrat §3).
   const context = useDeck((s) => s.context);
-  const setContext = useDeck((s) => s.setContext);
+  const column = useMemo(
+    () => columnOf({ studied, result, stale: baseStale, computing: baseComputing, computeError, resultContext, context, preview }, context, false), // le mur montre le plan, jamais l'aperçu (S3 : l'aperçu est dans le panneau)
+    [studied, result, baseStale, baseComputing, computeError, resultContext, context, preview],
+  );
+  const stale = column.stale;
+  const computing = column.computing;
+  const mainLen = useDeck((s) => studiedSource(s, s.context)?.main.length ?? 0);
   // Filtre unifié avec le mode requête (§D) : mêmes critères que le panneau de requête.
   const queryCriteria = useDeck((s) => s.queryCriteria);
   const handFilterByQuery = useDeck((s) => s.handFilterByQuery);
   const setHandFilterByQuery = useDeck((s) => s.setHandFilterByQuery);
-  // Signature de composition : change à tout ajout / retrait / modif de copies.
-  const mainSig = useDeck((s) => s.main.map((c) => `${c.cardId}:${c.copies}`).join(','));
+  // Signature de composition du deck étudié : change à tout ajout / retrait / modif de copies, ou de plan.
+  const mainSig = useDeck((s) => (studiedSource(s, s.context)?.main ?? []).map((c) => `${c.cardId}:${c.copies}`).join(','));
 
   const [count, setCount] = useState(60);
   const [rawHands, setRawHands] = useState<number[][]>([]);
@@ -45,13 +54,14 @@ export function HandWall() {
   // l'importance → les mains déjà tirées sont renotées, pas seulement les suivantes.
   const noted = useMemo(
     () => noteHandsFromStore(rawHands, handSize),
-    [rawHands, handSize, result, model, importance],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rawHands, handSize, column.pass, mainSig, importance],
   );
 
   // Le filtre du mur de mains EST la requête (§D) : une main est retenue ssi elle
   // satisfait la requête, évaluée avec le même contexte que les buckets (mêmes
   // signatures non-engine). Requête invalide (min > max) → pas de filtre.
-  const neSignatures = context === 'first' ? result?.first.neSignatures : result?.second.neSignatures;
+  const neSignatures = column.pass?.neSignatures;
   const filterActive =
     handFilterByQuery && !!neSignatures && !queryCriteria.some(criterionInvalid);
 
@@ -64,31 +74,34 @@ export function HandWall() {
     return v;
   }, [noted, filterActive, neSignatures, queryCriteria, sortByNote]);
 
-  if (!result || mainLen === 0) {
+  if (column.reason) {
     return (
-      <div className="flex h-full items-center justify-center text-value text-fg-3">
-        {!result && computing && mainLen > 0
-          ? 'Calcul initial des statistiques…'
-          : 'Charge un deck pour générer des mains de test.'}
+      <div className="flex h-full items-center justify-center p-4 text-center text-value text-warn" data-study-reason>
+        {column.reason}
+      </div>
+    );
+  }
+  if (!column.pass || mainLen === 0) {
+    return (
+      <div className={`flex h-full items-center justify-center p-4 text-center text-value ${column.error ? 'text-neg' : 'text-fg-3'}`}>
+        {column.error
+          ? `Calcul en échec : ${column.error}`
+          : !column.pass && computing && mainLen > 0
+            ? (column.kind === 'sided' ? 'Calcul du deck sidé…' : 'Calcul initial des statistiques…')
+            : 'Charge un deck pour générer des mains de test.'}
       </div>
     );
   }
 
-  const pass = context === 'first' ? result.first : result.second;
+  const pass = column.pass;
 
   return (
     <div className="flex h-full flex-col">
       {/* Barre de contrôle. */}
       <div className="flex flex-wrap items-center gap-3 border-b border-ink-800 px-3 py-2 text-body">
-        <span title={CONTEXT_TITLE}>
-          <Segmented
-            value={context}
-            onChange={setContext}
-            options={[
-              { value: 'first', label: CONTEXT_SHORT.first, title: CONTEXT_LABEL.first },
-              { value: 'second', label: CONTEXT_SHORT.second, title: CONTEXT_LABEL.second },
-            ]}
-          />
+        {/* S1 : le deck et la position dont ces mains sont tirées ; le réglage est dans la barre (D3). */}
+        <span className="truncate text-fg-2" data-study-label="wall" title={CONTEXT_LABEL[context]}>
+          {CONTEXT_LABEL[context]} · {column.label}
         </span>
         {/* Étape 9 (réponse 2 de 7B) : action primaire du mur, cible de 32 px comme Enregistrer. */}
         <button

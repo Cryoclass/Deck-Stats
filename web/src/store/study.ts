@@ -3,7 +3,7 @@ import type { SidePlan, SidePlanPosition } from '../types.js';
 import { SIDE_PLAN_POSITIONS } from '../../../server/src/domain/deckConfiguration.js';
 import type { PlanSummary } from '../../../server/src/domain/deckSummary.js';
 import { api } from '../lib/api.js';
-import { buildEngineModel } from '../lib/engineModel.js';
+import { buildEngineModel, type EngineModelSource } from '../lib/engineModel.js';
 import { planOf, type PlanDirection } from '../lib/matchups.js';
 import { planIndicators, planSummaryFromPass, sidedSource, type AppliedPlan, type PlanIndicators } from '../lib/sidePlan.js';
 import { studiedDeck, type StudiedDeck } from '../lib/studiedDeck.js';
@@ -108,6 +108,50 @@ export function studiedPass(s: Pick<State, 'studied' | 'result' | 'stale'>, posi
   return st.result && !st.stale ? st.result[position] : null;
 }
 
+/** Source du moteur du deck étudié d'une position : l'état lui-même pour le deck de base, le deck sidé
+ *  sinon ; `null` si le plan n'est pas prêt (S2). */
+export function studiedSource(s: Pick<State, 'studied'> & EngineModelSource, position: SidePlanPosition): EngineModelSource | null {
+  const deck = s.studied[position].deck;
+  return deck.kind === 'base' ? s : deck.source;
+}
+
+/** Ce qu'une colonne de chiffres affiche pour une position (S1 : nommée ; S2 : rien sans plan prêt ;
+ *  S3 : l'aperçu prend la place dans la position ouverte). Pur ; à mémoïser côté composant. */
+export interface StudyColumn {
+  position: SidePlanPosition;
+  kind: 'base' | 'sided';
+  /** Nom du deck dont les chiffres sont ceux-ci (« Deck de base », « contre Kewl Tune · second »). */
+  label: string;
+  /** Pourquoi il n'y a pas de chiffre (plan incomplet ou à revoir) ; `null` sinon. */
+  reason: string | null;
+  pass: PassResult | null;
+  stale: boolean;
+  computing: boolean;
+  error: string | null;
+  /** La passe est celle de l'aperçu d'un échange en préparation (position ouverte). */
+  isPreview: boolean;
+  deckSize: number | null;
+}
+
+export function columnOf(s: Pick<State, 'studied' | 'result' | 'stale' | 'computing' | 'computeError' | 'resultContext' | 'context' | 'preview'>, position: SidePlanPosition, withPreview = true): StudyColumn {
+  const st = s.studied[position];
+  const base: StudyColumn = { position, kind: st.deck.kind, label: st.deck.label, reason: null, pass: null, stale: false, computing: false, error: null, isPreview: false, deckSize: null };
+  let column: StudyColumn;
+  if (!st.deck.source) column = { ...base, reason: st.deck.unavailableReason };
+  else if (st.reusesBase) column = { ...base, pass: s.result ? s.result[position] : null, stale: s.stale, computing: s.computing, error: s.computeError, deckSize: s.resultContext?.deckSize ?? null };
+  else column = { ...base, pass: st.result ? st.result[position] : null, stale: st.stale, computing: st.computing, error: st.error, deckSize: st.input?.deckSize ?? null };
+  // Aperçu (S3) : dans la position ouverte, une sélection prête qui change les chiffres prend la place ;
+  // tant que sa passe n'est pas là, l'ancien chiffre reste, atténué.
+  // Le mur de mains ne suit pas l'aperçu (`withPreview = false`) : ses mains sont tirées dans le deck du
+  // plan, elles ne peuvent pas être notées avec la passe d'un autre deck.
+  if (withPreview && position === s.context && s.preview.kind === 'ready' && s.preview.affectsEngine) {
+    const p = s.preview;
+    if (p.pass) column = { ...column, reason: null, pass: p.pass, stale: false, computing: p.computing, error: p.error, isPreview: true, deckSize: p.applied.mainSize };
+    else column = { ...column, stale: column.pass !== null, computing: true, error: p.error, isPreview: true };
+  }
+  return column;
+}
+
 /** Écart d'un candidat (S4) pour l'indicateur choisi : `null` tant que le candidat ou le plan n'est pas calculé. */
 export function candidateDeltaOf(s: Pick<State, 'studied' | 'result' | 'stale' | 'candidates' | 'candidateIndicator' | 'context'>, cardId: number): number | null {
   const entry = s.candidates.cards.find((c) => c.cardId === cardId);
@@ -176,6 +220,8 @@ export function createStudyEngine(get: Get, set: SetState, mainClient: () => Com
     const st = s.studied[position];
     const matchup = st.deck.matchup;
     if (!matchup || s.dirty || !s.deckId || st.deck.kind !== 'sided' || st.stale) return;
+    // Un volet absent du plan enregistré n'a pas de ligne en base (404 sinon) : rien à persister pour lui.
+    if (!s.matchups.find((m) => m.id === matchup.id)?.plans.some((p) => p.position === position)) return;
     const pass = studiedPass(s, position);
     const input = st.reusesBase ? (s.model?.input ?? null) : st.input;
     if (!pass || !input) return;

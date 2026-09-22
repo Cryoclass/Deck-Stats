@@ -9,6 +9,7 @@ import { HandWall } from './HandWall.js';
 import { Inventory } from './Inventory.js';
 import { StatsPanel } from './StatsPanel.js';
 import { SidePlanner } from './SidePlanner.js';
+import { StudyBar } from './StudyBar.js';
 import { Toast } from './Toast.js';
 import { searchForStudy, type StudyParams } from '../lib/studyUrl.js';
 
@@ -158,6 +159,8 @@ export function EditorPage({ id, initialTab, initialStudy }: { id: string; initi
     <div className="flex h-[100dvh] flex-col bg-ink-950 text-fg-2">
       <Header onSave={() => void saveDeck()} onHome={goHome} />
       <DefaultsNotice />
+      {/* Plans de side v2 (D3) : le deck étudié et la position, une seule commande pour tous les onglets. */}
+      <StudyBar />
 
       {draftAvailable && (
         <div className="flex flex-wrap items-center gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-body text-warn">

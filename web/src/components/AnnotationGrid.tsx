@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDeck } from '../store/deckStore.js';
+import { buildEngineModel } from '../lib/engineModel.js';
 import { assignGroups } from '../lib/colors.js';
 import { leavesOf } from '../lib/conditions.js';
 import { nonEngineEffect, type NonEngineEffect } from '../lib/nonEngine.js';
@@ -38,6 +39,11 @@ export function AnnotationGrid({
   const toggleRequirement = useDeck((s) => s.toggleRequirement);
   const extraSideHidden = useDeck((s) => s.extraSideHidden);
   const setExtraSideHidden = useDeck((s) => s.setExtraSideHidden);
+  // Plans de side v2 (D14, S1) : en contexte sidé, les écarts des tuiles sont ceux du deck ÉTUDIÉ de la
+  // position courante ; les cartes que le plan fait sortir ou entrer le disent ; un bandeau rappelle que
+  // les steppers et les modes éditent toujours le deck de BASE.
+  const studiedCurrent = useDeck((s) => s.studied[s.context]);
+  const studyMatchupId = useDeck((s) => s.study.matchupId);
 
   const [mode, setMode] = useState<AnnotationMode>('select');
   // Mode Non-engine (partie D) : profil posé (`null` = étiquette seule) et étiquette facultative
@@ -110,11 +116,38 @@ export function AnnotationGrid({
     return assignGroups(edges);
   }, [pairs, excl, main]);
 
+  const sidedDeltas = studiedCurrent.deck.kind === 'sided' && !studiedCurrent.reusesBase;
   const deltas = useMemo(() => {
     const m = new Map<number, { first: number; second: number }>();
-    if (result && model) model.typeCardIds.forEach((id, i) => m.set(id, result.deltas[i]));
+    if (!sidedDeltas) {
+      if (result && model) model.typeCardIds.forEach((id, i) => m.set(id, result.deltas[i]));
+    } else if (studiedCurrent.result && studiedCurrent.hasDeltas && studiedCurrent.deck.source) {
+      // Écarts du deck sidé : ceux de son résultat complet (D4, deuxième temps), même périmé (atténués).
+      const sided = buildEngineModel(studiedCurrent.deck.source);
+      const r = studiedCurrent.result;
+      sided.typeCardIds.forEach((id, i) => m.set(id, r.deltas[i]));
+    }
     return m;
-  }, [result, model]);
+  }, [result, model, studiedCurrent, sidedDeltas]);
+  // Tant que les écarts du deck sidé ne sont pas calculés, une tuile dit « … » — jamais un blanc, qui
+  // signifie un écart nul exact (D4, relecture E1). Périmés, ils sont atténués comme ceux du deck de base.
+  const deltaPending = sidedDeltas && !(studiedCurrent.result && studiedCurrent.hasDeltas);
+  const deltaStale = sidedDeltas ? studiedCurrent.stale : undefined;
+  // Copies que le plan étudié fait sortir (par carte) ou entrer, pour les badges « sort » / « entre » —
+  // seulement pour un plan PRÊT : un plan incomplet ou à revoir n'a pas de deck étudié (S2).
+  const planMoves = useMemo(() => {
+    const out = new Map<number, number>();
+    const inn = new Map<number, number>();
+    const plan = studiedCurrent.deck.applied?.status === 'ready' ? studiedCurrent.deck.plan : null;
+    if (plan) {
+      for (const c of plan.outgoing) out.set(c.card_id, c.copies);
+      for (const c of plan.incoming) inn.set(c.card_id, c.copies);
+    }
+    return { out, inn };
+  }, [studiedCurrent]);
+  // Bandeau seulement quand un adversaire est réellement étudié (un adversaire introuvable retombe sur le deck de base).
+  const sidedLabel = studyMatchupId !== null && studiedCurrent.deck.kind === 'sided' ? studiedCurrent.deck.label : null;
+  const sidedReason = studiedCurrent.deck.unavailableReason;
 
   // Cartes actuellement liées au pivot (pastille pivot instantanée en mode combo).
   const linkedSet = useMemo(() => {
@@ -203,6 +236,9 @@ export function AnnotationGrid({
   // Props communes d'une tuile annotable, main ou side (étape 10C) : mêmes modes, mêmes marqueurs.
   const tileProps = (cardId: number) => ({
     cardId,
+    studyLabel: sidedLabel,
+    deltaPending,
+    deltaStale,
     groups,
     mode,
     activeCategoryId,
@@ -232,7 +268,7 @@ export function AnnotationGrid({
         <div className="flex flex-col gap-4">
           <ZoneBlock zone="extra" cards={extra} onAdd={() => setAddOpen('extra')} />
           {/* Étape 10C : le side s'annote (vraies tuiles, tous les modes) pour les plans de side ; l'extra reste nu (D17). */}
-          <ZoneBlock zone="side" cards={side} onAdd={() => setAddOpen('side')} renderTile={(c) => <CardTile key={`side-${c.cardId}`} zone="side" {...tileProps(c.cardId)} />} />
+          <ZoneBlock zone="side" cards={side} onAdd={() => setAddOpen('side')} renderTile={(c) => <CardTile key={`side-${c.cardId}`} zone="side" {...tileProps(c.cardId)} planIn={planMoves.inn.get(c.cardId) ?? 0} delta={planMoves.inn.has(c.cardId) ? deltas.get(c.cardId) : undefined} />} />
         </div>
       )}
     </div>
@@ -279,6 +315,11 @@ export function AnnotationGrid({
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {sidedLabel && (
+          <div role="status" data-study-banner className="mb-2 rounded border border-sky-500/20 bg-sky-500/5 px-2 py-1 text-meta text-info/90">
+            {sidedReason ? `Vous annotez le deck de base ; ${sidedReason}` : `Vous annotez le deck de base ; les chiffres des tuiles sont ceux du deck étudié : ${sidedLabel}.`}
+          </div>
+        )}
         <div
           className="grid gap-1.5"
           // Étape 9 (réponse 3 de 7B) : 84 px essayé et mesuré — les trois cibles de 32 px tiennent
@@ -287,7 +328,7 @@ export function AnnotationGrid({
           style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}
         >
           {main.map((c) => (
-            <CardTile key={c.cardId} {...tileProps(c.cardId)} delta={deltas.get(c.cardId)} />
+            <CardTile key={c.cardId} {...tileProps(c.cardId)} delta={deltas.get(c.cardId)} planOut={planMoves.out.get(c.cardId) ?? 0} />
           ))}
           {/* Ajout d'une carte en fin de grille (itération 3, A). */}
           <button

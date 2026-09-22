@@ -12,7 +12,10 @@ import type { ComputeRequest } from '../worker/engine.worker.js';
 import type { FakeWorker } from '../worker/fakeWorker.js';
 import * as workerClient from '../worker/client.js';
 import { COMPUTE_DEBOUNCE_MS, resetStudyEngine, useDeck } from './deckStore.js';
-import { candidateDeltaOf, studiedPass } from './study.js';
+import { candidateDeltaOf, columnOf, studiedPass, studiedSource } from './study.js';
+import { drawHandsFromStore, noteHandsFromStore } from './selectors.js';
+import { prepare } from '../engine/evaluate.js';
+import { buildScorer, evaluateHands } from '../engine/hand.js';
 
 // ─── Plans de side v2, partie B : decks étudiés, aperçu et candidats orchestrés par le store ───
 // Même harnais que recompute.test.ts (vrai `computeClient`, faux worker contrôlable, horloge simulée),
@@ -402,6 +405,8 @@ describe('chiffres des plans persistés depuis le store (D17)', () => {
     expect([id, matchupId, position, revision]).toEqual([deckId, M, 'second', 1]);
     expect(summary.mainSize).toBe(12);
     expect(state().planSummaries[`${M}:second`]).toEqual(summary);
+    // Le volet premier (vide, deck de base réutilisé) n'existe pas dans le plan enregistré : rien n'est envoyé pour lui.
+    expect(vi.mocked(api.putPlanSummary).mock.calls.every(([, , position]) => position === 'second')).toBe(true);
     await respond(1); // résultat complet : même empreinte, pas de second envoi
     expect(vi.mocked(api.putPlanSummary)).toHaveBeenCalledTimes(1);
     // Deck « non enregistré » : rien n'est persisté.
@@ -424,5 +429,70 @@ describe('ouverture d’un deck', () => {
     // Position « premier » et mesures oubliées : l'estimation du budget d'un autre deck ne vaut rien ici.
     expect(state()).toMatchObject({ deckId: 'B', study: { matchupId: null }, context: 'first', lastPassMs: { first: null, second: null }, selection: { outgoing: [], incoming: [] }, swapHistory: [], preview: { kind: 'none' } });
     expect(state().studied.first.reusesBase).toBe(true);
+  });
+});
+
+// ─── Partie C : ce que les consommateurs affichent (S1, S2, S3) ───
+describe('colonnes de chiffres (columnOf) et mur de mains', () => {
+  it('deck de base : deux colonnes nommées « Deck de base » sur le résultat de base ; plan pas prêt : aucune passe, raison (S2)', async () => {
+    seed([{ position: 'second', outgoing: [[NEUTRAL_A, 2]], incoming: [[SIDE_STARTER, 1]] }]);
+    await baseComputed();
+    expect(columnOf(state(), 'second')).toMatchObject({ kind: 'base', label: 'Deck de base', reason: null, pass: state().result!.second, stale: false, computing: false, isPreview: false, deckSize: 12 });
+    state().setStudy(M);
+    tick();
+    const col = columnOf(state(), 'second');
+    expect(col).toMatchObject({ kind: 'sided', label: 'contre Kewl Tune · second', pass: null, isPreview: false });
+    expect(col.reason).toMatch(/incomplet/);
+    expect(columnOf(state(), 'first')).toMatchObject({ kind: 'sided', label: 'contre Kewl Tune · premier', reason: null, pass: state().result!.first }); // volet vide = deck de base, nommé autrement
+    expect(drawHandsFromStore(6, 10)).toEqual([]); // aucune main d'un plan pas prêt
+    expect(noteHandsFromStore([[1, 2, 3, 4, 7, 8]], 6)).toEqual([]);
+  });
+
+  it('deck sidé : la colonne porte la passe du deck étudié, périmée en attendant ; le mur tire dans le deck sidé', async () => {
+    seed([STARTER_SWAP]);
+    await baseComputed();
+    state().setStudy(M);
+    tick();
+    expect(columnOf(state(), 'second')).toMatchObject({ kind: 'sided', label: 'contre Kewl Tune · second', pass: null, computing: true, stale: false });
+    await respond(1);
+    const col = columnOf(state(), 'second');
+    expect(col).toMatchObject({ pass: state().studied.second.result!.second, computing: true, stale: false, deckSize: 12 }); // passes là, écarts en route
+    // Le mur tire dans le main dérivé (SIDE_STARTER entré, un NEUTRAL_A de moins) et note avec la passe du deck sidé.
+    const source = studiedSource(state(), 'second')!;
+    expect(source.main.find((c) => c.cardId === SIDE_STARTER)).toEqual({ cardId: SIDE_STARTER, zone: 'main', copies: 1 });
+    const hands = drawHandsFromStore(6, 40);
+    expect(hands).toHaveLength(40);
+    expect(hands.every((h) => h.length === 6 && h.every((c) => source.main.some((m) => m.cardId === c)))).toBe(true);
+    expect(hands.some((h) => h.includes(SIDE_STARTER))).toBe(true); // la carte entrée par le plan se tire (P(jamais en 40 mains) ≈ 1e-12)
+    const noted = noteHandsFromStore(hands, 6);
+    expect(noted).toHaveLength(40);
+    expect(noted.some((h) => h.starts >= 1)).toBe(true);
+    // Notées avec le modèle ET la passe du deck sidé (jamais la passe du deck de base) : égalité stricte
+    // avec le calcul direct du moteur.
+    const model = buildEngineModel(source);
+    const expected = evaluateHands({ hands, typeIndexByCardId: new Map(model.typeCardIds.map((id, i) => [id, i])), prep: prepare(model.input), context: 'second', scorer: buildScorer(col.pass!, state().importance) });
+    expect(noted).toEqual(expected);
+    const withBasePass = evaluateHands({ hands, typeIndexByCardId: new Map(model.typeCardIds.map((id, i) => [id, i])), prep: prepare(model.input), context: 'second', scorer: buildScorer(state().result!.second, state().importance) });
+    expect(noted).not.toEqual(withBasePass);
+  });
+
+  it('aperçu (S3) : dans la position ouverte, la colonne prend la passe de l’aperçu, dite telle quelle, l’ancien chiffre atténué en attendant', async () => {
+    seed([NEUTRAL_SWAP]);
+    state().setStudy(M);
+    const n = (await baseComputed()) + 1;
+    state().setSelection(sel([[NEUTRAL_B, 1]], [[SIDE_STARTER, 1]]));
+    expect(columnOf(state(), 'second')).toMatchObject({ isPreview: true, computing: true, stale: true, pass: state().result!.second, label: 'contre Kewl Tune · second' });
+    expect(columnOf(state(), 'first')).toMatchObject({ isPreview: false, computing: false }); // l'autre position ne bouge pas
+    tick();
+    await respond(n, 5);
+    const col = columnOf(state(), 'second');
+    expect(col).toMatchObject({ isPreview: true, computing: false, stale: false, deckSize: 12 });
+    expect(col.pass).not.toBe(state().result!.second);
+    expect(col.pass!.context).toBe('second');
+    // Le mur de mains ne suit pas l'aperçu : la colonne « sans aperçu » reste celle du plan.
+    expect(columnOf(state(), 'second', false)).toMatchObject({ isPreview: false, pass: state().result!.second });
+    expect(noteHandsFromStore(drawHandsFromStore(6, 5), 6).every((h) => h.cards.length === 6)).toBe(true);
+    state().clearSelection();
+    expect(columnOf(state(), 'second')).toMatchObject({ isPreview: false, pass: state().result!.second });
   });
 });

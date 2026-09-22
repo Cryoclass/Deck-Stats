@@ -31,6 +31,14 @@ interface Props {
   prereqHighlight?: 'source' | 'required' | null; // relation dirigée dépendante → requise
   prereqDim?: boolean;
   onHoverChange?: (hovered: boolean) => void;
+  // Plans de side v2 (D14) : copies que le plan étudié fait sortir de cette carte (main) ou entrer
+  // (side), et nom du deck étudié pour l'infobulle de l'écart (S1).
+  planOut?: number;
+  planIn?: number;
+  studyLabel?: string | null;
+  /** Écarts du deck sidé pas encore calculés (« … », jamais un blanc = zéro) ; péremption du deck étudié. */
+  deltaPending?: boolean;
+  deltaStale?: boolean;
 }
 
 export function CardTile({
@@ -49,6 +57,11 @@ export function CardTile({
   prereqHighlight = null,
   prereqDim = false,
   onHoverChange,
+  planOut = 0,
+  planIn = 0,
+  studyLabel = null,
+  deltaPending = false,
+  deltaStale,
 }: Props) {
   const card = useDeck((s) => s.cards[cardId]) as Card | undefined;
   const copies = useDeck((s) => s[zone].find((m) => m.cardId === cardId)?.copies ?? 1);
@@ -64,7 +77,8 @@ export function CardTile({
   const context = useDeck((s) => s.context);
   // Q3 (étape 6B, contrat §6) : le delta est une statistique du dernier résultat ; périmé,
   // il reste visible mais atténué comme le panneau — les contrôles de la tuile, eux, restent vifs.
-  const stale = useDeck((s) => s.stale);
+  const baseStale = useDeck((s) => s.stale);
+  const stale = deltaStale ?? baseStale; // le deck dont vient l'écart (relecture C3)
   const inActiveCat = useDeck((s) =>
     activeCategoryId ? !!s.cardCategories.get(cardId)?.has(activeCategoryId) : false,
   );
@@ -92,6 +106,8 @@ export function CardTile({
   // Q5 : étiquetée sans profil → non comptée dans le potentiel, signalée en ambre.
   const unprofiled = labelled && !profile;
   const contextDelta = delta ? (context === 'first' ? delta.first : delta.second) : 0;
+  // Toutes les copies sorties par le plan : la carte n'est plus dans le deck étudié, aucun écart à donner.
+  const fullyOut = zone === 'main' && planOut >= copies;
 
   // Marqueur condition en contour POINTILLÉ (jamais une pastille pleine de combo, §D).
   const border = isPivot
@@ -180,6 +196,16 @@ export function CardTile({
             </span>
           )}
         </span>
+        {/* Plans de side v2 (D14) : ce que le plan étudié fait de cette carte. */}
+        {(planOut > 0 || planIn > 0) && (
+          <span
+            data-plan-move={planOut > 0 ? 'out' : 'in'}
+            className="pointer-events-none absolute bottom-1 right-1 rounded bg-black/75 px-1 text-meta font-medium text-fg-1"
+            title={planOut > 0 ? `${planOut} copie${planOut > 1 ? 's' : ''} sortante${planOut > 1 ? 's' : ''} dans le plan étudié` : `${planIn} copie${planIn > 1 ? 's' : ''} entrante${planIn > 1 ? 's' : ''} dans le plan étudié`}
+          >
+            {planOut > 0 ? `sort ×${planOut}` : `entre ×${planIn}`}
+          </span>
+        )}
         {(deadFirst || deadSecond) && (
           <span className="pointer-events-none absolute bottom-1 left-1 flex gap-1">
             {deadFirst && (
@@ -254,7 +280,7 @@ export function CardTile({
 
       {/* Delta permanent : contribution marginale (§3.2) du contexte d'analyse courant. */}
       <div className="flex items-center gap-0.5 pb-0.5 pl-0.5">
-        {zone !== 'main' ? (
+        {zone !== 'main' && planIn === 0 ? (
           <div
             data-off-calc
             className="min-w-0 flex-1 whitespace-nowrap text-center text-meta leading-none text-fg-3"
@@ -262,16 +288,24 @@ export function CardTile({
           >
             hors calcul
           </div>
+        ) : fullyOut ? (
+          <div
+            data-plan-out
+            className="min-w-0 flex-1 whitespace-nowrap text-center text-meta leading-none text-fg-3"
+            title="Le plan étudié fait sortir toutes les copies de cette carte : elle n'est pas dans le deck étudié."
+          >
+            sort (plan)
+          </div>
         ) : (
         <div
           className={`tnum min-w-0 flex-1 whitespace-nowrap text-center text-meta leading-none text-fg-2 transition-opacity ${
             stale ? 'opacity-45' : ''
           }`}
-          title={`Δ P(≥1 départ théorique) si l'on retire une copie — contexte ${context === 'first' ? 'premier' : 'second'}${
+          title={`Δ P(≥1 départ théorique) si l'on retire une copie — contexte ${context === 'first' ? 'premier' : 'second'}${studyLabel ? ` — ${studyLabel}` : ''}${
             stale ? ' — version précédente, recalcul en cours' : ''
           }`}
         >
-          {delta && Math.abs(contextDelta) > 1e-9 ? `−1 : ${signedPct(-contextDelta)}` : ' '}
+          {deltaPending ? <span data-delta-pending title="Écarts du deck sidé en cours de calcul">…</span> : delta && Math.abs(contextDelta) > 1e-9 ? `−1 : ${signedPct(-contextDelta)}` : ' '}
         </div>
         )}
         <CardMenu cardId={cardId} zone={zone} onOpenDetail={() => setDetailOpen(true)} />

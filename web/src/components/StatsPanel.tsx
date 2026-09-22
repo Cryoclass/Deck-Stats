@@ -1,11 +1,14 @@
+import { useMemo } from 'react';
 import { useDeck } from '../store/deckStore.js';
-import type { AnalysisContext, PassResult } from '../engine/types.js';
+import { buildEngineModel } from '../lib/engineModel.js';
+import { columnOf, type StudyColumn } from '../store/study.js';
+import type { PassResult } from '../engine/types.js';
 import { pct, num, matrixCell } from '../lib/fmt.js';
 import { heatCell } from '../lib/colors.js';
-import { Bar, Segmented } from './ui.js';
+import { Bar } from './ui.js';
 import { QueryMode } from './QueryMode.js';
 import { toComparisonMatrix } from '../engine/compare.js';
-import { CONTEXT_LABEL, CONTEXT_SHORT, CONTEXT_TITLE } from './Header.js';
+import { CONTEXT_LABEL } from './Header.js';
 import { cumulativeOf, resolveView, type Resolved, type StatsView } from '../lib/statsViews.js';
 
 /** « Départs théoriques » (contrat §4) : sources de start disponibles dans la main
@@ -17,8 +20,8 @@ export const STARTS_HINT =
 export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
   const result = useDeck((s) => s.result);
   const liveCategories = useDeck((s) => s.categories);
-  const computing = useDeck((s) => s.computing);
-  const stale = useDeck((s) => s.stale);
+  const baseComputing = useDeck((s) => s.computing);
+  const baseStale = useDeck((s) => s.stale);
   const computeError = useDeck((s) => s.computeError);
   const resultContext = useDeck((s) => s.resultContext);
   const recompute = useDeck((s) => s.recompute);
@@ -29,6 +32,21 @@ export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
   const statsView = useDeck((s) => s.statsView);
   const setStatsView = useDeck((s) => s.setStatsView);
   const cards = useDeck((s) => s.cards);
+  // Plans de side v2 (D2, S1, S2, S3) : deux colonnes, chacune sur le deck ÉTUDIÉ de sa position —
+  // deck de base, ou deck après le plan de l'adversaire étudié — nommé ; un plan pas prêt n'affiche
+  // rien ; l'aperçu d'un échange prend la place dans la position ouverte.
+  const studied = useDeck((s) => s.studied);
+  const preview = useDeck((s) => s.preview);
+  const columns = useMemo(() => {
+    const view = { studied, result, stale: baseStale, computing: baseComputing, computeError, resultContext, context, preview };
+    return { first: columnOf(view, 'first'), second: columnOf(view, 'second') };
+  }, [studied, result, baseStale, baseComputing, computeError, resultContext, context, preview]);
+  const current = columns[context];
+  const computing = columns.first.computing || columns.second.computing;
+  const stale = current.stale;
+  // Cartes étiquetées sans profil (Q5) du deck étudié courant : celles du calcul de base, ou du modèle du deck sidé.
+  const sidedSource = useDeck((s) => (s.studied[s.context].deck.kind === 'sided' ? s.studied[s.context].deck.source : null));
+  const sidedUnprofiled = useMemo(() => (sidedSource ? buildEngineModel(sidedSource).unprofiledCardIds : null), [sidedSource]);
 
   if (!result) {
     // Sans résultat précédent : état initial de calcul, ou erreur avec relance (§6).
@@ -49,8 +67,8 @@ export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
   // cartes sans profil du calcul), jamais avec les libellés de l'état courant — pas de
   // mélange d'anciennes statistiques avec de nouveaux labels.
   const categories = resultContext?.categories ?? liveCategories;
-  const deckSize = resultContext?.deckSize ?? liveDeckSize;
-  const unprofiled = resultContext?.unprofiledCardIds ?? [];
+  const deckSize = current.deckSize ?? resultContext?.deckSize ?? liveDeckSize;
+  const unprofiled = sidedUnprofiled ?? resultContext?.unprofiledCardIds ?? [];
   const outOfBounds = deckSize < 40 || deckSize > 60;
 
   // Cycle : Départs théoriques → Non-engine (total) → une entrée par étiquette (§6).
@@ -74,20 +92,9 @@ export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-800 px-3 py-2">
         <h2 className="text-value font-semibold text-fg-1">Probabilités</h2>
-        {/* Réglage de contexte (étape 5B) : descendu de l'en-tête (audit 01 §4) jusqu'ici,
-            à côté des chiffres qu'il gouverne. Le mur de mains garde le sien. */}
-        <div className="flex items-center gap-1.5 text-meta text-fg-3" title={CONTEXT_TITLE}>
-          <span>contexte</span>
-          <Segmented
-            size="sm"
-            value={context}
-            onChange={setContext}
-            options={[
-              { value: 'first', label: CONTEXT_SHORT.first, title: CONTEXT_LABEL.first },
-              { value: 'second', label: CONTEXT_SHORT.second, title: CONTEXT_LABEL.second },
-            ]}
-          />
-        </div>
+        {/* Le réglage de contexte (deck étudié, position) est dans la barre sous l'en-tête (plans de
+            side v2, D3) : une seule commande pour tous les onglets. Ici, le nom du deck courant (S1). */}
+        <span className="truncate text-meta text-fg-3" data-study-current>{current.isPreview ? `aperçu · ${current.label}` : current.label}</span>
         <span className="tnum ml-auto text-meta text-fg-3">
           {computing ? (
             <span role="status" className="rounded bg-ink-800 px-1.5 py-0.5 text-fg-3">
@@ -103,15 +110,14 @@ export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
 
       {/* Résultat périmé : dit explicitement, avec son contexte, et atténué plus bas. */}
       {stale &&
-        (computeError ? (
-          <ComputeErrorNotice message={computeError} onRetry={recompute} />
+        (current.error ? (
+          <ComputeErrorNotice message={current.error} onRetry={recompute} />
         ) : (
           <div
             role="status"
             className="border-b border-sky-500/20 bg-sky-500/5 px-3 py-1.5 text-meta text-info/90"
           >
-            Recalcul… Statistiques de la version précédente (deck de {deckSize} cartes) affichées
-            en attendant.
+            {current.isPreview ? 'Calcul de l’aperçu… chiffres du plan affichés en attendant.' : `Recalcul… Statistiques de la version précédente (deck de ${deckSize} cartes) affichées en attendant.`}
           </div>
         ))}
 
@@ -171,14 +177,16 @@ export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
         </div>
       )}
 
-      {/* Périmé = estompé par opacité (charte §7.15), jamais masqué ni flouté. */}
-      <div className={`transition-opacity ${stale ? 'opacity-45' : ''}`}>
+      {/* Périmé = estompé par opacité (charte §7.15), jamais masqué ni flouté — colonne par colonne. */}
+      <div>
         <div className="grid grid-cols-1 gap-px bg-ink-800 sm:grid-cols-2">
-          <PassColumn context="first" active={context === 'first'} onSelect={() => setContext('first')} pass={result.first} view={view} />
-          <PassColumn context="second" active={context === 'second'} onSelect={() => setContext('second')} pass={result.second} view={view} />
+          <PassColumn column={columns.first} active={context === 'first'} onSelect={() => setContext('first')} view={view} />
+          <PassColumn column={columns.second} active={context === 'second'} onSelect={() => setContext('second')} view={view} />
         </div>
 
-        <CrossMatrix pass={context === 'first' ? result.first : result.second} column={context} />
+        <div className={`transition-opacity ${stale ? 'opacity-45' : ''}`}>
+          {current.pass ? <CrossMatrix pass={current.pass} column={context} label={current.isPreview ? `aperçu · ${current.label}` : current.label} /> : <div className="border-t border-ink-800 p-3 text-body text-fg-3">Matrice : {current.reason ?? 'en attente du calcul.'}</div>}
+        </div>
       </div>
 
       <QueryMode onShowHands={onShowHands} />
@@ -189,36 +197,47 @@ export function StatsPanel({ onShowHands }: { onShowHands?: () => void }) {
 // Seaux, cumulés et moyennes : lib/statsViews.ts (pur, partagé avec le test d'identité).
 
 function PassColumn({
-  context,
+  column,
   active,
   onSelect,
-  pass,
   view,
 }: {
-  context: AnalysisContext;
+  column: StudyColumn;
   active: boolean;
   onSelect: () => void;
-  pass: PassResult;
   view: StatsView;
 }) {
+  const { position: context, pass } = column;
   const title = CONTEXT_LABEL[context];
-  if (pass.total === 0) return <div className="bg-ink-900 p-3 text-body text-warn">{title} : analyse indisponible. {pass.unavailableReason}</div>;
+  const head = (
+    <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-2">
+      <button
+        onClick={onSelect}
+        title="Choisir ce contexte d’analyse (deltas, matrice, mur de mains)"
+        className={`h-6 rounded px-1.5 text-body font-semibold ${active ? 'bg-ink-700 text-fg-1' : 'text-fg-3 hover:text-fg-1'}`}
+      >
+        {title}
+      </button>
+      <span className="text-meta text-fg-3">
+        {context === 'first' ? 'les 5 cartes initiales' : 'sixième pioche identifiée'}
+      </span>
+      {/* S1 : le deck dont ce sont les chiffres, toujours nommé ; S3 : un aperçu est dit tel quel. */}
+      <span data-study-label={context} data-study-kind={column.isPreview ? 'preview' : column.kind} className={`w-full truncate text-meta ${column.isPreview ? 'text-info' : column.kind === 'sided' ? 'text-fg-2' : 'text-fg-3'}`}>
+        {column.isPreview ? `aperçu · ${column.label}` : column.label}
+      </span>
+    </div>
+  );
+  // S2 : un plan pas prêt n'a AUCUN chiffre, jamais ceux du deck de base à sa place.
+  if (column.reason) return <div data-study-column={context} className="bg-ink-900 p-3">{head}<p className="text-body text-warn">{column.reason}</p></div>;
+  if (!pass) return <div data-study-column={context} className="bg-ink-900 p-3">{head}<p className="text-body text-fg-3">{column.error ?? 'Calcul du deck sidé…'}</p></div>;
+  if (pass.total === 0) return <div data-study-column={context} className="bg-ink-900 p-3 text-body text-warn">{head}{title} : analyse indisponible. {pass.unavailableReason}</div>;
   const r = resolveView(pass, view.id);
   return (
-    <div className={`bg-ink-900 p-3 ${active ? '' : 'opacity-80'}`}>
-      <div className="mb-2 flex items-baseline justify-between">
-        <button
-          onClick={onSelect}
-          title="Choisir ce contexte d’analyse (deltas, matrice, mur de mains)"
-          className={`h-6 rounded px-1.5 text-body font-semibold ${active ? 'bg-ink-700 text-fg-1' : 'text-fg-3 hover:text-fg-1'}`}
-        >
-          {title}
-        </button>
-        <span className="text-meta text-fg-3">
-          {context === 'first' ? 'les 5 cartes initiales' : 'sixième pioche identifiée'}
-        </span>
+    <div data-study-column={context} className={`bg-ink-900 p-3 ${active ? '' : 'opacity-80'}`}>
+      {head}
+      <div className={`transition-opacity ${column.stale ? 'opacity-45' : ''}`}>
+        <DistTable {...r} />
       </div>
-      <DistTable {...r} />
     </div>
   );
 }
@@ -261,7 +280,7 @@ function DistTable({ buckets, color, mean, meanLabel, extra }: Resolved) {
   );
 }
 
-export function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first' | 'second' }) {
+export function CrossMatrix({ pass, column, label }: { pass: PassResult; column: 'first' | 'second'; label?: string }) {
   if (pass.total === 0) return <div className="p-3 text-body text-warn">Matrice indisponible. {pass.unavailableReason}</div>;
   const matrix = toComparisonMatrix(pass, column === 'first' ? 'going_first' : 'going_second', { starterCount: 0, nonEngineCount: 0 });
   const maxNe = Math.max(1, pass.nonEngine.length - 1);
@@ -275,8 +294,8 @@ export function CrossMatrix({ pass, column }: { pass: PassResult; column: 'first
 
   return (
     <div className="border-t border-ink-800 p-3">
-      <div className="mb-2 text-meta uppercase tracking-wide text-fg-3" title={STARTS_HINT}>
-        Matrice départs théoriques × non-engine — {CONTEXT_LABEL[column]}
+      <div data-matrix-title className="mb-2 text-meta uppercase tracking-wide text-fg-3" title={STARTS_HINT}>
+        Matrice départs théoriques × non-engine — {CONTEXT_LABEL[column]}{label ? ` · ${label}` : ''}
       </div>
       <div className="overflow-x-auto">
         <table className="border-separate border-spacing-0.5 text-meta">

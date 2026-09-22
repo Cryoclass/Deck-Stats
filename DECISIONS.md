@@ -2190,3 +2190,19 @@ décisions validées ne sont pas reprises ici ; ce qui suit est ce que l'agent a
   `navigate` ne le réémet pas : quitter l'éditeur et revenir repart du deck de base (Q11).
 - **`resetStudyEngine` exporté pour les tests** : les caches de l'orchestrateur sont au niveau du
   module (comme `computeClient` / `inflight`) et survivraient d'un test à l'autre.
+
+### Partie C — l'éditeur en contexte (22 septembre 2026)
+
+- **Une seule bascule premier / second, dans la barre de contexte.** Le panneau et le mur perdent la
+  leur (D3 : « celle du panneau et du mur deviennent la même commande »). Revient sur le choix de la
+  refonte visuelle (contexte « à côté des chiffres qu'il gouverne ») : le contexte gouverne désormais
+  aussi le deck étudié, il doit être visible de tous les onglets. Coût : 32 px de chrome à 360 px,
+  garde « premier contenu » relevée de 140 à 180 px.
+- **`columnOf` est la seule lecture des chiffres** (panneau, matrice, requête, mur) : un composant qui
+  lirait `s.result` directement afficherait un chiffre du deck de base sous un nom de deck sidé.
+  Objet neuf à chaque appel → `useMemo` sur des champs stables, jamais un sélecteur `useDeck`.
+- **Un plan pas prêt n'a pas de matrice ni de mains** : la raison prend leur place (S2).
+- **Badges de plan sur les tuiles** (« sort ×n » / « entre ×n ») en plus de « sort (plan) » : une carte
+  partiellement sortie garde son écart (elle est encore dans le deck étudié) et dit combien sortent.
+- **Fixture du scénario `study` non neutre** : Side Rho starter — un plan neutre est réutilisé tel quel
+  (S7), ce qu'un scénario « les chiffres changent » ne peut pas vérifier.

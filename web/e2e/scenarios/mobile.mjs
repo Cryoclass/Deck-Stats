@@ -202,8 +202,9 @@ export default async function mobile({ out, log }) {
     point('P7', 'barre de contrôle sans débordement', await bar.evaluate(fits), await bar.evaluate((el) => [el.scrollWidth, el.clientWidth]));
     point('P7', 'body sans défilement horizontal (mur)', await page.evaluate(noBodyScroll));
     pointGe('P7', 'Nouvelles mains (étape 9 : action primaire, 32 px)', await box(wall.locator('button:has-text("Nouvelles mains")')), 32);
-    pointGe('P7', 'contexte Premier', await box(wall.locator('button:has-text("Premier · 5")')), 24);
-    pointGe('P7', 'contexte Second', await box(wall.locator('button:has-text("Second · 5 + pioche")')), 24);
+    // Plans de side v2 (D3) : la bascule premier / second est dans la barre de contexte, sous l'en-tête.
+    pointGe('P7', 'contexte Premier', await box(page.locator('[data-study-bar] button:has-text("Premier · 5")')), 24);
+    pointGe('P7', 'contexte Second', await box(page.locator('[data-study-bar] button:has-text("Second · 5 + pioche")')), 24);
     pointGe('P7', 'sélecteur n', await box(wall.locator('select').first()), 24);
     pointGe('P7', 'filtre par requête', await box(wall.locator('button:has-text("par requête")')), 24);
     pointGe('P7', 'tri', await box(wall.locator('button[title^="Trier"]')), 24);
@@ -232,7 +233,7 @@ export default async function mobile({ out, log }) {
     };
     await rowCheck('premier', 5);
     await shot(page, `mobile-${W}-mains-premier`);
-    await wall.locator('button:has-text("Second · 5 + pioche")').click();
+    await page.locator('[data-study-bar] button:has-text("Second · 5 + pioche")').click();
     await page.waitForTimeout(400);
     await rowCheck('second', 6);
     const badge = rows.first().locator('span.absolute', { hasText: '6ᵉ' });

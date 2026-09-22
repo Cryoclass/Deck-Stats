@@ -354,8 +354,12 @@ compte n'affiche que l'initiale.
 
 N'y figurent **ni réglage d'analyse ni état** (avant la refonte, l'en-tête de l'éditeur
 tenait sur trois lignes et 118 px à 360 px) :
-- le réglage de contexte premier / second vit dans l'en-tête du panneau « Probabilités »,
-  à côté des chiffres qu'il gouverne ;
+- le réglage de contexte vit dans la **barre de contexte** sous l'en-tête (plans de side v2, D3,
+  `StudyBar`) : sélecteur natif du deck étudié (« Deck de base » / « contre X », 24 px), bascule
+  Premier / Second (contrôle segmenté `sm`, 24 px — plancher des cibles secondaires), raison d'un
+  plan sans chiffre en `text-warn` ; `flex-wrap` : les deux commandes tiennent sur une ligne de
+  32 px à 360 px (libellé « Étudier » masqué sous 640 px), une raison passe à la ligne ; une seule
+  commande pour tous les onglets, le panneau et le mur n'ont plus la leur ;
 - le bouton d'enregistrement (`data-save`) dit « Enregistrer » quand il y a du
   non-enregistré et « enregistré 10:04 » au repos, inerte : l'horodatage est son état ;
 - « en ligne / hors-ligne » est une ligne d'état du menu compte ;
@@ -424,6 +428,17 @@ au-delà de 15, repère sans refus —, « + Ajouter » à 32 px `h-8` aligné �
 stepper de la recette §7.6 à 32 px (`h-8 w-8`), aucun delta ni menu ⋯, d'où 80 px et non 96
 (4 colonnes à 360 px, 10 à 1440 px avec le panneau). Le toast de retrait (§7.13) nomme la zone
 quittée (« Retirée du side deck : … ») et son « Annuler » restaure dans cette zone.
+
+Plans de side v2, partie C (22 septembre 2026) — **tout chiffre nomme son deck** (S1) : chaque
+colonne du panneau porte, sous son titre, le nom du deck étudié (`data-study-label`, `text-fg-3`
+pour le deck de base, `text-fg-2` pour un deck sidé, `text-info` préfixé « aperçu · » pour un
+échange en préparation) ; la matrice, les deux résultats du mode Requête et la barre du mur de mains
+le répètent. Un plan pas prêt n'affiche **aucun chiffre** dans sa colonne, seulement sa raison en
+`text-warn` (S2) ; le mur de mains affiche la raison à la place des mains. Sur les tuiles, un badge
+`bg-black/75` en bas à droite dit ce que le plan étudié fait de la carte (« sort ×n » / « entre ×n ») ;
+une carte entièrement sortie remplace son écart par « sort (plan) », une carte de side entrante
+remplace « hors calcul » par son écart ; un bandeau `text-info/90` rappelle en tête de grille que les
+steppers et les modes éditent le deck de base.
 
 Plans de side (étape 10C). Dans la grille d'annotation, le bloc **side** rend de vraies tuiles
 (`CardTile zone="side"`, 96 px comme le main : tous les modes, badges, menu ⋯ qui retire **du side**) ;

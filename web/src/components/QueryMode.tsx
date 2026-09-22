@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useDeck } from '../store/deckStore.js';
+import { columnOf } from '../store/study.js';
 import { queryProbability, criterionInvalid } from '../engine/query.js';
 import type { QueryCriterion, QuerySubject } from '../engine/query.js';
 import { pct } from '../lib/fmt.js';
 import { CONTEXT_LABEL } from './Header.js';
+import type { StudyColumn } from '../store/study.js';
 
 const rid = (): string => Math.random().toString(36).slice(2);
 
@@ -25,8 +27,19 @@ function subjectKey(s: QuerySubject): string {
 
 export function QueryMode({ onShowHands }: { onShowHands?: () => void }) {
   const result = useDeck((s) => s.result);
-  const stale = useDeck((s) => s.stale);
   const context = useDeck((s) => s.context);
+  // Plans de side v2 (S1, S2) : les probabilités sont celles des decks ÉTUDIÉS, une colonne par position.
+  const studied = useDeck((s) => s.studied);
+  const preview = useDeck((s) => s.preview);
+  const baseStale = useDeck((s) => s.stale);
+  const computing = useDeck((s) => s.computing);
+  const computeError = useDeck((s) => s.computeError);
+  const resultContext = useDeck((s) => s.resultContext);
+  const columns = useMemo(
+    () => ({ first: columnOf({ studied, result, stale: baseStale, computing, computeError, resultContext, context, preview }, 'first'), second: columnOf({ studied, result, stale: baseStale, computing, computeError, resultContext, context, preview }, 'second') }),
+    [studied, result, baseStale, computing, computeError, resultContext, context, preview],
+  );
+  const stale = columns.first.stale || columns.second.stale;
   const categories = useDeck((s) => s.categories);
   const criteria = useDeck((s) => s.queryCriteria);
   const setCriteria = useDeck((s) => s.setQueryCriteria);
@@ -57,8 +70,8 @@ export function QueryMode({ onShowHands }: { onShowHands?: () => void }) {
   };
 
   const anyInvalid = criteria.some(criterionInvalid);
-  const pFirst = queryProbability(result.first, criteria);
-  const pSecond = queryProbability(result.second, criteria);
+  const pFirst = columns.first.pass ? queryProbability(columns.first.pass, criteria) : null;
+  const pSecond = columns.second.pass ? queryProbability(columns.second.pass, criteria) : null;
 
   return (
     <div className="border-t border-ink-800 p-3">
@@ -111,8 +124,8 @@ export function QueryMode({ onShowHands }: { onShowHands?: () => void }) {
 
       {/* Étape 4 : probabilités d'un résultat périmé atténuées, critères toujours éditables. */}
       <div className={`mt-3 grid grid-cols-2 gap-2 transition-opacity ${stale ? 'opacity-45' : ''}`}>
-        <QueryResult label={CONTEXT_LABEL.first} value={pFirst} active={context === 'first'} />
-        <QueryResult label={CONTEXT_LABEL.second} value={pSecond} active={context === 'second'} />
+        <QueryResult label={CONTEXT_LABEL.first} deck={columns.first} value={pFirst} active={context === 'first'} />
+        <QueryResult label={CONTEXT_LABEL.second} deck={columns.second} value={pSecond} active={context === 'second'} />
       </div>
       {anyInvalid && (
         <div className="mt-1 text-meta text-neg">
@@ -282,13 +295,16 @@ function Bound({ value, onChange }: { value: number | null; onChange: (v: number
   );
 }
 
-function QueryResult({ label, value, active }: { label: string; value: number | null; active: boolean }) {
+function QueryResult({ label, deck, value, active }: { label: string; deck: StudyColumn; value: number | null; active: boolean }) {
   return (
-    <div className={`rounded-lg border bg-ink-900 p-2 text-center ${active ? 'border-ink-600' : 'border-ink-800'}`}>
+    <div data-query-result={deck.position} className={`rounded-lg border bg-ink-900 p-2 text-center ${active ? 'border-ink-600' : 'border-ink-800'}`} title={deck.reason ?? undefined}>
       <div className="text-meta text-fg-3">{label}</div>
+      {/* S1 : le deck dont c'est le chiffre, toujours nommé ; S3 : un aperçu est dit tel quel. */}
+      <div className="truncate text-meta text-fg-3" data-study-label>{deck.isPreview ? `aperçu · ${deck.label}` : deck.label}</div>
       <div className="tnum text-hero font-semibold text-pos">
         {value === null ? '—' : pct(value, 1)}
       </div>
+      {deck.reason && <div className="text-meta text-warn">{deck.reason}</div>}
     </div>
   );
 }

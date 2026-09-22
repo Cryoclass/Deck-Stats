@@ -44,12 +44,9 @@ export default async function guards() {
     await page.waitForTimeout(400);
     expect('éditeur : en-tête sans débordement', await page.locator('header').evaluate(fits));
     ge('éditeur : Enregistrer 32 px', await box(page.locator('header button[data-save]')), 32);
-    // Refonte visuelle (audit 01 §4) : le réglage de contexte a quitté l'en-tête pour le
-    // panneau « Probabilités », à côté des chiffres qu'il gouverne. À 1440 il est dans le
-    // panneau latéral ; sous 1024 il est dans l'onglet « Stats ».
-    if (cfg.width < 1024) await page.click('nav button[title="Stats"]');
-    ge('panneau : sélecteur de contexte 24 px', await box(page.locator('button[title="Premier · 5 cartes"]').first()), 24);
-    if (cfg.width < 1024) await page.click('nav button[title="Annoter"]');
+    // Plans de side v2 (D3) : le réglage de contexte (deck étudié, position) est dans la barre sous
+    // l'en-tête, visible sur tous les onglets et à toute largeur.
+    ge('barre de contexte : sélecteur de position 24 px', await box(page.locator('[data-study-bar] button[title="Premier · 5 cartes"]')), 24);
     // Chrome avant le premier contenu : 118 px d'en-tête (trois lignes) et 266 px au total
     // à 360 px avant la refonte, soit 34 % de l'écran (audit 01 §4).
     const chrome = await page.evaluate(() => {
@@ -64,7 +61,9 @@ export default async function guards() {
       };
     });
     expect(`chrome : en-tête sur une ligne (${chrome.header} px)`, chrome.header <= 56, chrome);
-    expect(`chrome : premier contenu à ${chrome.firstTile} px`, chrome.firstTile !== null && chrome.firstTile <= 140, chrome);
+    // Plans de side v2 (D3) : la barre de contexte (32 px) s'ajoute sous l'en-tête ; 130 px mesurés avant
+    // elle, 180 px de marge avec elle (deux lignes de barre de modes comprises).
+    expect(`chrome : premier contenu à ${chrome.firstTile} px`, chrome.firstTile !== null && chrome.firstTile <= 180, chrome);
     expect(`onglets : ${chrome.tabs} visibles, aucun masqué`, chrome.navScroll <= chrome.navClient + 1, chrome);
     if (cfg.width < 640) ge('onglets : cible du bas 44 px', await box(page.locator('nav button[title="Annoter"]')), 44);
     const tile = tileOf(page, 'Starter Alpha');
