@@ -114,8 +114,10 @@ export default async function sidesheet({ out }) {
     await page.locator('[data-toggle-names]').uncheck();
     expect('F2 case décochée : noms masqués', (await captions()) === 0);
     expect('F2 notes imprimées', /Kewl Tune : tout sur le board breaker/.test(await page.locator('[data-sheet-matchup="Kewl Tune"]').innerText()));
+    // Recompté après le rechargement : l'onglet éditeur, resté ouvert, a pu persister son volet entre-temps.
+    const missingNow = await page.locator('[data-sheet-figures="missing"]').count();
     const label = await page.locator('[data-compute-all]').innerText();
-    expect('F2 « Tout calculer » annonce les plans restants', label.includes(`Tout calculer (${missing})`), label);
+    expect('F2 « Tout calculer » annonce les plans restants', missingNow <= missing && missingNow >= 12 && label.includes(`Tout calculer (${missingNow})`), { label, missing, missingNow });
 
     // ─── F3 : tout calculer, persistance, relecture ───
     await page.locator('[data-compute-all]').click();

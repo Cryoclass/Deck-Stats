@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampToConvention, deckCardCount, overLimit, parsePastedIds, parseYdk } from './ydk.js';
+import { clampToConvention, deckCardCount, overLimit, overTotal, parsePastedIds, parseYdk } from './ydk.js';
 import { toYdk } from './exportDeck.js';
 
 // ─── Étape 6 (6A) — tolérances du parseur YDK et du collage : rapportées, jamais absorbées ───
@@ -109,5 +109,23 @@ describe('parsePastedIds — inventaire P1–P5', () => {
   it('texte vide ou uniquement des commentaires : aucune carte, aucune ligne rapportée', () => {
     expect(deckCardCount(parsePastedIds('').deck)).toBe(0);
     expect(parsePastedIds('# rien\n\n!rien').ignored).toEqual([]);
+  });
+});
+
+// ─── Plans de side v2 (S9, Q1) : 3 copies au plus toutes zones confondues, rapportées puis réduites explicitement ───
+describe('parseYdk — total toutes zones', () => {
+  it('une carte à 3 en main et 1 en side est rapportée (zones conformes, total 4) ; la réduction retire du side, puis de l’extra, jamais du main', () => {
+    const r = parseYdk(['#main', '1', '1', '1', '2', '#extra', '1', '!side', '1', '2', '2', '2', ''].join(String.fromCharCode(10)));
+    expect(r.overLimit).toEqual([]);
+    expect(r.overTotal).toEqual([
+      { cardId: 1, total: 5, byZone: { main: 3, extra: 1, side: 1 } },
+      { cardId: 2, total: 4, byZone: { main: 1, extra: 0, side: 3 } },
+    ]);
+    const clamped = clampToConvention(r.deck);
+    expect(m(clamped.main)).toEqual({ 1: 3, 2: 1 });
+    expect(m(clamped.extra)).toEqual({});
+    expect(m(clamped.side)).toEqual({ 2: 2 });
+    expect(overTotal(clamped)).toEqual([]);
+    expect(m(r.deck.side)).toEqual({ 1: 1, 2: 3 }); // le rapport d'origine n'est pas modifié
   });
 });

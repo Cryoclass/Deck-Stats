@@ -14,6 +14,7 @@ import { launch, login, shot, deckId, box, checker } from '../lib.mjs';
 import { DECK_A } from './setup.mjs';
 
 const RHO = 90000017; // Side Rho : jamais dans le main de la fixture
+const LAMBDA = 90000011; // Filler Lambda : 3 en main — ne peut pas entrer en side (3 copies toutes zones, S9)
 
 export default async function extraside() {
   const { expect, ge, done } = checker('extra / side');
@@ -94,6 +95,19 @@ export default async function extraside() {
   expect('Z3 Annuler : tuile restaurée dans le side, 1 copie', (await rhoTile().count()) === 1 && (await rhoTile().locator('span.tnum').innerText()).trim() === '1');
   expect('Z3 main toujours inchangé', (await mainTiles().count()) === 15);
   await noRecompute('Z3', ms0);
+
+  // ─── Z3 bis (plans de side v2, S9, Q1) : 3 copies au plus toutes zones confondues — refusé, jamais réduit ───
+  await sideBlock().locator('[data-zone-add="side"]').click();
+  await page.waitForSelector('[data-add-zone="side"]');
+  await page.fill('input[placeholder="Nom de carte ou passcode…"]', 'Filler Lambda'); // 3 copies en main
+  await page.waitForSelector('li button:has-text("Filler Lambda")');
+  expect('Z3 bis Filler Lambda (3 en main) : ajout au side proposé « max »', /max/.test(await page.locator('li button:has-text("Filler Lambda")').innerText()));
+  await page.locator('li button:has-text("Filler Lambda")').click({ force: true });
+  await page.waitForTimeout(200);
+  await page.locator('[data-add-zone="side"]').locator('xpath=..').locator('button[title="Fermer"]').click(); // le bouton « max » ne rend pas le focus au champ : ✕ plutôt qu'Échap
+  await page.waitForSelector('[data-add-zone="side"]', { state: 'detached' });
+  expect('Z3 bis Filler Lambda absent du side (3 copies toutes zones confondues)', (await sideBlock().locator(`[data-zone-tile="side"][data-card-id="${LAMBDA}"]`).count()) === 0);
+  expect('Z3 bis compteur du bloc side inchangé : 1', (await sideBlock().locator('[data-zone-count="side"]').innerText()).trim() === '1');
 
   // ─── Z4 : enregistrement, API, aperçu joint, rechargement ───
   await page.click('header button[data-save]');

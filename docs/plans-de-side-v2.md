@@ -1,7 +1,7 @@
 # Refonte des plans de side — le deck sidé au centre de l'éditeur
 
-Statut : **plan validé le 22 septembre 2026** (réponses Q1–Q13 en fin de document) ; parties A, B et C livrées le
-22 septembre 2026 (comptes rendus §12, §13, §14). Rédigé le 17 septembre 2026 sans aucune ligne de code ni de test modifiée.
+Statut : **plan validé le 22 septembre 2026** (réponses Q1–Q13 en fin de document) ; parties A à D livrées le
+22 septembre 2026 (comptes rendus §12 à §15). Rédigé le 17 septembre 2026 sans aucune ligne de code ni de test modifiée.
 Prompt d'origine : [prompt-refonte-plans-de-side.md](prompt-refonte-plans-de-side.md).
 Inventaire mené en lecture seule sur le dépôt (commit `471fadd`), sur le catalogue de la base de
 dev (une requête `select type, count(*)`, aucune écriture) et sur une restauration jetable de
@@ -1049,3 +1049,134 @@ rien de bloquant, quatre points à corriger**, tous corrigés avant le tag, plus
   garde son client.
 - Panneau sous le contenu au téléphone dans l'onglet side (D12, Q10) : partie D.
 - Fiche et PDF (E).
+
+## 15. Compte rendu de la partie D — l'onglet « Plans de side » refondu (22 septembre 2026)
+
+**Périmètre** : l'onglet qui aide à choisir. Une tuile par carte, la sélection alimente l'aperçu et les
+écarts des candidats du store, l'Extra Deck entre dans les plans, annuler / vider, raisons visibles et
+« Enregistrer et ouvrir », panneau sous le plan au téléphone, règle des 3 copies dans l'éditeur et
+l'import.
+
+### Livré
+
+- `SidePlanner.tsx` réécrit : l'adversaire ouvert **est** l'adversaire étudié (puce = `setStudy`, le
+  premier est ouvert quand aucun ne l'est), la position est celle de la barre (plus de bascule dans
+  l'onglet, relecture C E5) ; **une tuile par carte** (`ChoiceTile`, Q2 : image, nom, « libres / copies »,
+  badge « sort ×n » / « entre ×n », « +k » sélectionnées, clic = +1, clic droit = −1, menu natif
+  neutralisé) ; blocs Main → à sortir, Side → à faire entrer, Extra → à sortir et Side → vers l'extra
+  (D8, zone déduite du type ; carte de zone inconnue inerte et dite) ; écarts des candidats sur les
+  tuiles (S4 : « · » pour zéro, signe et couleur, « … » en cours), sélecteur I1 / I2 / I3, « Calculer les
+  écarts (≈ n s) » au-delà du budget (Q5) ; **barre d'action collante** (sélection, aperçu avec ses trois
+  chiffres et l'écart avec le plan (S3), « Vider la sélection », « Échanger » inerte avec la raison
+  visible) ; plan : listes « Sort / Entre » (✕ retire toutes les copies, D13), écarts, sources
+  neutralisées, chiffres du deck étudié et écart avec le deck de base, « Annuler l'échange »,
+  « Vider le plan » (note conservée), recopie, note ; légalité du deck de base en avertissement (S8,
+  S9) ; **« Enregistrer et ouvrir la fiche » / « Enregistrer et comparer »** avec la raison visible sans
+  survol (D11) ; **panneau « Probabilités » sous le plan** sous 1024 px (D12, Q10). Plus de client de
+  calcul ni de persistance propres à l'onglet : le store (B) fait tout.
+- `EditorPage.tsx` : `withPanel` sous 1024 px pour cet onglet seulement.
+- **Règle des 3 copies toutes zones** (S9, Q1) : `addCard` / `setCopies` refusent au-delà de 3 copies
+  toutes zones confondues (message qui nomme la répartition), le dialogue d'ajout dit « max » ;
+  l'import rapporte `overTotal` (main, extra, side) et la réduction explicite retire du side, puis de
+  l'extra, jamais du main (`clampToConvention`) ; le dialogue de vérification le dit.
+- e2e `side` réécrit (P1–P6 : aperçu avant « Échanger » sans « non enregistré », écarts de candidats,
+  annuler, retrait depuis la liste, raison visible, barre collante et panneau sous le plan à 360 px) ;
+  `extraside` Z3 bis (ajout refusé au-delà de 3 toutes zones).
+
+### Tests
+
+`store/zones.test.ts` et `lib/deckEquivalence.test.ts` **modifiés pour Q1** (une carte à 3 en main ne
+peut plus entrer en side : refus nommé ; à 2 en main, acceptée — annoncé ici) ; `lib/ydk.test.ts` (+1 :
+`overTotal`, réduction side puis extra, rapport d'origine intact). Aucun test React dans le dépôt :
+l'onglet est gardé par l'e2e `side` (réécrit, écart annoncé au §7) et `extraside`.
+
+### Vérifications exécutées
+
+- `npm run typecheck`, `npm run build` (avertissement ExcelJS attendu) : verts.
+- `node scripts/test-quiet.mjs` : **377 web + 22 serveur**, verts (+1 garde `store/sidePlans.test.ts` : retrait de
+  toutes les copies par le ✕, ajoutée après le contrôle par mutation ; +1 `lib/ydk.test.ts`).
+- `npm run e2e -w web` complet, **12 scénarios**, sur le code final (pile jetable 55434 / 8790 / 5178) :
+  `setup`, `guards`, `compare`, `mobile`, `home`, `conditions`, `nonengine`, `extraside` (Z3 bis), `side`
+  (P1–P6 réécrit, 360 / 390 / 768 px), `sidesheet`, `defaults`, `study`.
+- Incidents de la chaîne, tous consignés : (1) Z3 bis — le dialogue d'ajout ne disait pas « max » pour une
+  carte à 3 copies dans une AUTRE zone (le clic était refusé en silence) : ligne rendue cohérente avec
+  `atMax` (badge « ×n toutes zones · max », bouton inerte, infobulle) ; (2) `side` — boucle de rendu
+  (« Maximum update depth exceeded ») : sélecteur `useDeck` rendant un objet neuf (piège déjà écrit en
+  AGENTS.md pour la partie C), remplacé par des sélecteurs simples + `useMemo` ; (3) `sidesheet` F2 — course
+  connue du scénario (l'onglet éditeur persiste son volet après le premier comptage) : recompte après
+  rechargement ; (4) `mobile` — une « strict mode violation » (30 éléments) vue une fois sur un lancement
+  complet, non reproduite sur trois relances, sans modification du scénario : consignée comme non reproduite ;
+  (5) `defaults` — « login → 429 » quand P6 ouvrait un navigateur (donc une connexion) par largeur : le
+  serveur limite le login à 10 par minute ; P6 partage un seul navigateur redimensionné (`setViewportSize`).
+- Intégration PostgreSQL, séquence, répétition : non rejouées (ni schéma, ni serveur, ni deploy/ touchés) ;
+  intégration à rejouer en E comme promis en C.
+
+### Contrôle par mutation
+
+Script `mutations-d.mjs` (hors dépôt, fichiers restaurés et vérifiés par SHA-256) :
+
+| # | Mutation | Détectée par |
+| --- | --- | --- |
+| D1 | `addCard` ne compte plus les autres zones (convention par zone seule) | `store/zones.test.ts`, `lib/deckEquivalence.test.ts` |
+| D2 | `setCopies` ne compte plus les autres zones | `store/zones.test.ts` |
+| D3 | la réduction à l'import retire du main en premier | `lib/ydk.test.ts` |
+| D4 | `overTotal` ne rapporte plus rien | `lib/ydk.test.ts` |
+| D5 | `removeFromPlan` du store ignore le nombre de copies (le ✕ ne retirerait qu'une copie) | **non détectée au premier passage** : garde ajoutée dans `store/sidePlans.test.ts` (`removeFromPlan(…, Infinity)` vide la liste), puis détectée |
+
+5 / 5 détectées. L'onglet lui-même (aucun test React dans le dépôt) est gardé par les e2e `side` et
+`extraside`, non mutés.
+
+### Relecture indépendante
+
+Sous-agent à contexte neuf, sur le code et les captures de la pile en cours (rapport intégral hors dépôt).
+Verdict : recevable sur le fond, un défaut bloquant (E1) — celui de l'incident (2) ci-dessus, corrigé pendant
+la relecture —, deux manquements à l'invariant d'affichage (E2, E3), quatre écarts (E4–E7), deux remarques
+(E8, E9), dix défauts de code ou de test (c1–c10). Traitement :
+
+- **E1** sélecteur objet → boucle de rendu : corrigé (sélecteurs simples + `useMemo`).
+- **E2** l'aperçu montrait les chiffres de la sélection précédente comme ceux de la courante pendant le
+  calcul (D5) : `PreviewFigures` lit `preview.computing` — chiffres atténués (`opacity-45`),
+  « calcul de l'aperçu… », `data-preview="stale"` tant que la nouvelle passe n'est pas là.
+- **E3** entre `setStudy` et le regroupement du store (50 ms), l'onglet lisait le deck étudié de
+  l'adversaire précédent sous le nom du nouveau : `inSync` (le deck étudié doit porter l'adversaire ouvert),
+  sinon statut, tailles, chiffres et écarts sont tenus pour absents (« Calcul du deck sidé… »).
+- **E4** barre collante à toutes les largeurs (D12 la voulait sous 1024 px) : `lg:static`.
+- **E5** gardes plus faibles que §8 : le scénario `side` clique désormais « Enregistrer et ouvrir la
+  fiche » (API : note enregistrée AVANT l'ouverture), puis joue un enregistrement refusé (révision périmée
+  par une écriture de l'API → 409 : page en place, alerte « modifié ailleurs », rien d'ouvert), et P6 se joue
+  à 360, 390 et 768 px.
+- **E6** (les chiffres du plan ne sont pas dans la barre sans sélection) : écart assumé, ajouté ci-dessous.
+- **E7** chiffres du plan et aperçu sans le nom de l'adversaire (S1) : « Deck sidé · contre X · … » et
+  « aperçu · contre X · … » ; garde P5.
+- **E8** l'ouverture automatique du premier adversaire annulait un choix « Deck de base » ultérieur et
+  l'avis « adversaire introuvable » de la barre : ouverture à l'arrivée sur l'onglet seulement (`useRef`),
+  et seulement si aucun adversaire n'est étudié — décision ajoutée à DECISIONS.md.
+- **E9** `aria-label` ajouté sur la tuile (le `title` reste).
+- **c1** « +0.0 » sur un écart au bruit flottant : `exact()` (seuil 1e-9, celui de `CardTile`) avant
+  « · » dans les chiffres du plan, l'aperçu et les candidats. **c2** valeur fine du candidat dans l'infobulle.
+  **c3** « … » seulement quand les candidats tournent (`running`). **c6** « Annuler l'échange » inerte
+  (raison en infobulle) quand les copies du dernier échange ont déjà été retirées à la main. **c9** la
+  garde P2 dit ce qu'elle prouve (« l'aperçu ne touche pas au plan »).
+- Sans suite, consignés : **c4** carte présente en main ET en extra (deck hors format) : `freeCopies` sur
+  `[...main, ...extra]` écrase l'entrée main (C9 de B, marginal) ; **c5** un plan rendu incomplet par ✕ ne
+  se complète pas par une sélection (écart déjà dit) ; **c7** conforme, gardé désormais par P5 ; **c8** Z3
+  bis prouve le libellé et l'absence de tuile, le refus du store reste tenu par les unitaires ; **c10** sous
+  1024 px deux `StatsPanel` sont montées (une masquée par CSS, préexistant).
+
+### Écarts au plan
+
+- D7 : « sélecteur de copies à 32 px » remplacé par le geste clic / clic droit sur la tuile (cible ≥ 32 px)
+  et le compteur « libres / copies » ; un stepper par tuile aurait doublé la hauteur des grilles.
+- La bascule de position de l'onglet disparaît (relecture C, E5) : la barre de contexte est la seule
+  commande ; l'onglet dit « plan premier / second ».
+- Un échange est équilibré en soi (règle `trySwap`) : une sélection ne « complète » pas un plan
+  incomplet ; le scénario `side` P3 rééquilibre en retirant la sortante puis en refaisant l'échange.
+- D12 : sans sélection, la barre ne porte que « Sélection : −0 / +0 » et « Échanger » ; les trois chiffres
+  du plan restent dans le bloc du plan (E6 de la relecture), la barre ne les répète pas.
+- D1 : l'ouverture automatique du premier adversaire ne se fait qu'à l'arrivée sur l'onglet, et seulement
+  si aucun adversaire n'est étudié ; « Deck de base » choisi ensuite dans la barre est respecté.
+
+### Non fait / reporté
+
+- Fiche et PDF avec l'Extra (E) ; clôture (E).
+- Avertissement « hors format » hors de l'onglet side (l'en-tête ne le dit pas).

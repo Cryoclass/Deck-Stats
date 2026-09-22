@@ -19,7 +19,7 @@ import { configurationFromState, configurationFromDetail, stateFromConfiguration
 import { addClause, leaf, leavesOf, removeLeavesOfCard } from '../lib/conditions.js';
 import { summaryOfState } from '../lib/summary.js';
 import { nonEngineEffect } from '../lib/nonEngine.js';
-import { ZONE_LABEL, zoneOfCatalog } from '../lib/zones.js';
+import { ZONE_LABEL, totalCopies, zoneOfCatalog } from '../lib/zones.js';
 
 export interface State {
   revision: number;
@@ -181,7 +181,8 @@ export interface State {
   renameMatchup: (id: string, name: string) => void;
   removeMatchup: (id: string) => void;
   swapInPlan: (matchupId: string, position: SidePlanPosition, outgoing: SidePlanCard[], incoming: SidePlanCard[]) => boolean;
-  removeFromPlan: (matchupId: string, position: SidePlanPosition, direction: PlanDirection, cardId: number) => void;
+  /** `copies` = 1 par défaut ; `Infinity` retire toutes les copies de la carte (D13). */
+  removeFromPlan: (matchupId: string, position: SidePlanPosition, direction: PlanDirection, cardId: number, copies?: number) => void;
   setPlanNote: (matchupId: string, position: SidePlanPosition, note: string) => void;
   copyPlan: (matchupId: string, from: SidePlanPosition, to: SidePlanPosition) => void;
   setPlanSummary: (matchupId: string, position: SidePlanPosition, summary: unknown) => void;
@@ -210,6 +211,10 @@ export interface ResultContext {
 
 /** Cartes nommées par les plans de side d'un deck (entrantes et sortantes), zones comprises ou non. */
 const planCardIds = (matchups: readonly Matchup[]): number[] => matchups.flatMap((m) => m.plans.flatMap((p) => [...p.outgoing,...p.incoming].map((c) => c.card_id)));
+
+/** « main 3, side 1 » : la répartition d'une carte après la quantité demandée dans une zone (message de refus S9). */
+const totalLabel = (s: Pick<State, 'main' | 'extra' | 'side'>, cardId: number, zone: Zone, requested: number): string =>
+  (['main', 'extra', 'side'] as const).map((z) => `${z} ${z === zone ? requested : (s[z].find((c) => c.cardId === cardId)?.copies ?? 0)}`).join(', ');
 
 const toDeck = (m: Map<number, number>, zone: DeckCard['zone']): DeckCard[] =>
   [...m].map(([cardId, copies]) => ({ cardId, copies, zone }));
@@ -607,6 +612,12 @@ export const useDeck = create<State>((set, get) => {
         set({ persistenceError: `${card.name} : déjà ${existing?.copies ?? 0} copie${(existing?.copies ?? 0) > 1 ? 's' : ''} en ${ZONE_LABEL[zone]} — convention 1 à ${MAX_COPIES} par carte et par zone, aucune réduction appliquée.` });
         return false;
       }
+      // Plans de side v2 (S9, Q1) : 3 copies au plus toutes zones confondues — refusé, jamais réduit.
+      const others = totalCopies({ main: get().main, extra: get().extra, side: get().side }, card.id) - (existing?.copies ?? 0);
+      if (others + requested > MAX_COPIES) {
+        set({ persistenceError: `${card.name} : ${others + requested} copies toutes zones confondues (${totalLabel(get(), card.id, zone, requested)}) — ${MAX_COPIES} au plus, comme au format officiel ; aucune réduction appliquée.` });
+        return false;
+      }
       const cards = { ...get().cards, [card.id]: card };
       const list = existing
         ? get()[zone].map((m) => (m.cardId === card.id ? { ...m, copies: requested } : m))
@@ -624,6 +635,11 @@ export const useDeck = create<State>((set, get) => {
       }
       if (!Number.isInteger(copies) || copies > MAX_COPIES) {
         set({ persistenceError: `Quantité ${copies} refusée en ${ZONE_LABEL[zone]} : convention 1 à ${MAX_COPIES} copies par carte et par zone, aucune réduction appliquée.` });
+        return false;
+      }
+      const others = totalCopies({ main: get().main, extra: get().extra, side: get().side }, cardId) - (get()[zone].find((m) => m.cardId === cardId)?.copies ?? 0);
+      if (others + copies > MAX_COPIES) {
+        set({ persistenceError: `${get().cards[cardId]?.name ?? `#${cardId}`} : ${others + copies} copies toutes zones confondues (${totalLabel(get(), cardId, zone, copies)}) — ${MAX_COPIES} au plus, comme au format officiel ; aucune réduction appliquée.` });
         return false;
       }
       set({ [zone]: get()[zone].map((m) => (m.cardId === cardId ? { ...m, copies } : m)), persistenceError: null });
@@ -752,8 +768,8 @@ export const useDeck = create<State>((set, get) => {
       studySync();
       return true;
     },
-    removeFromPlan(matchupId, position, direction, cardId) {
-      set({ matchups: removeFromPlanIn(get().matchups,matchupId,position,direction,cardId) });
+    removeFromPlan(matchupId, position, direction, cardId, copies = 1) {
+      set({ matchups: removeFromPlanIn(get().matchups,matchupId,position,direction,cardId,copies) });
       markDirty();
       studySync();
     },

@@ -40,18 +40,23 @@ describe('Étape 9C — extra et side éditables',() => {
     expect(s.addCard(RHO,1,'side')).toBe(false); // quatrième copie refusée, aucune réduction
     expect(useDeck.getState().persistenceError).toMatch(/Side Rho : déjà 3 copies en side deck — convention 1 à 3/);
     expect(zones().side).toEqual([{ cardId:7,zone:'side',copies:3 }]);
-    // La même carte peut être en main (3) et en side (1) : la convention est par zone.
+    // La même carte peut être en main ET en side, dans la limite de 3 copies toutes zones confondues
+    // (plans de side v2, S9, Q1) : à 3 en main, refusée en side ; à 2 en main, acceptée.
+    expect(s.addCard(UN,1,'side')).toBe(false);
+    expect(useDeck.getState().persistenceError).toMatch(/Un : 4 copies toutes zones confondues \(main 3, extra 0, side 1\) — 3 au plus/);
+    expect(s.setCopies(1,2,'main')).toBe(true);
     expect(s.addCard(UN,1,'side')).toBe(true);
     expect(zones().side.map((c) => [c.cardId,c.copies])).toEqual([[7,3],[1,1]]);
-    expect(zones().main.find((c) => c.cardId===1)?.copies).toBe(3);
+    expect(s.setCopies(1,3,'main')).toBe(false); // remonter le main à 3 dépasserait 3 au total
+    expect(zones().main.find((c) => c.cardId===1)?.copies).toBe(2);
     expect(s.setCopies(7,4,'side')).toBe(false);
     expect(useDeck.getState().persistenceError).toMatch(/Quantité 4 refusée en side deck/);
     expect(s.setCopies(7,2,'side')).toBe(true);
     expect(zones().side[0].copies).toBe(2);
-    expect(zones().main).toEqual([{ cardId:1,zone:'main',copies:3 },{ cardId:2,zone:'main',copies:3 }]);
+    expect(zones().main).toEqual([{ cardId:1,zone:'main',copies:2 },{ cardId:2,zone:'main',copies:3 }]);
     const configuration=configurationFromState(useDeck.getState());
     expect(configuration.cards).toEqual([
-      { card_id:1,zone:'main',copies:3 },{ card_id:2,zone:'main',copies:3 },
+      { card_id:1,zone:'main',copies:2 },{ card_id:2,zone:'main',copies:3 },
       { card_id:7,zone:'side',copies:2 },{ card_id:1,zone:'side',copies:1 },
     ]);
   });

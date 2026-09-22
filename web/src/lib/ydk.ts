@@ -6,7 +6,8 @@ export interface ParsedDeck {
   side: Map<number, number>;
 }
 
-/** Convention de composition (contrat §2) : 1 à 3 copies par carte et par zone. */
+/** Convention de composition (contrat §2) : 1 à 3 copies par carte et par zone — et, depuis les plans de
+ *  side v2 (S9), 3 copies au plus TOUTES ZONES CONFONDUES (règle officielle), pour l'éditeur et l'import. */
 export const MAX_COPIES = 3;
 
 /**
@@ -24,6 +25,8 @@ export interface ParseReport {
   unknownHeaders: Array<{ line: number; text: string }>;
   /** Cartes au-delà de la convention 1–3, avec la quantité demandée. */
   overLimit: Array<{ cardId: number; zone: Zone; copies: number }>;
+  /** Cartes au-delà de 3 copies toutes zones confondues (S9), zones ≤ 3 chacune ou non. */
+  overTotal: Array<{ cardId: number; total: number; byZone: Record<Zone, number> }>;
 }
 
 const emptyDeck = (): ParsedDeck => ({ main: new Map(), extra: new Map(), side: new Map() });
@@ -36,7 +39,19 @@ function add(map: Map<number, number>, id: number, count: number): void {
 }
 
 function finish(deck: ParsedDeck, ignored: ParseReport['ignored'], unknownHeaders: ParseReport['unknownHeaders']): ParseReport {
-  return { deck, ignored, unknownHeaders, overLimit: overLimit(deck) };
+  return { deck, ignored, unknownHeaders, overLimit: overLimit(deck), overTotal: overTotal(deck) };
+}
+
+/** Cartes au-delà de 3 copies toutes zones confondues (S9). */
+export function overTotal(deck: ParsedDeck): ParseReport['overTotal'] {
+  const ids = new Set([...deck.main.keys(), ...deck.extra.keys(), ...deck.side.keys()]);
+  const out: ParseReport['overTotal'] = [];
+  for (const cardId of ids) {
+    const byZone: Record<Zone, number> = { main: deck.main.get(cardId) ?? 0, extra: deck.extra.get(cardId) ?? 0, side: deck.side.get(cardId) ?? 0 };
+    const total = byZone.main + byZone.extra + byZone.side;
+    if (total > MAX_COPIES) out.push({ cardId, total, byZone });
+  }
+  return out;
 }
 
 /** Cartes hors convention (copies > 3) d'un deck brut. */
@@ -48,10 +63,22 @@ export function overLimit(deck: ParsedDeck): ParseReport['overLimit'] {
   return out;
 }
 
-/** Réduction EXPLICITE à la convention 1–3, après décision de l'utilisateur. */
+/** Réduction EXPLICITE à la convention, après décision de l'utilisateur : 3 par zone, puis 3 au total
+ *  toutes zones confondues (S9) en retirant d'abord des copies du side, puis de l'extra — le main, qui
+ *  seul est analysé, garde les siennes. Une carte tombée à 0 dans une zone en disparaît. */
 export function clampToConvention(deck: ParsedDeck): ParsedDeck {
   const clamp = (m: Map<number, number>) => new Map([...m].map(([id, n]) => [id, Math.min(MAX_COPIES, n)]));
-  return { main: clamp(deck.main), extra: clamp(deck.extra), side: clamp(deck.side) };
+  const out = { main: clamp(deck.main), extra: clamp(deck.extra), side: clamp(deck.side) };
+  for (const { cardId } of overTotal(out)) {
+    for (const zone of ['side', 'extra'] as const) {
+      const total = (out.main.get(cardId) ?? 0) + (out.extra.get(cardId) ?? 0) + (out.side.get(cardId) ?? 0);
+      if (total <= MAX_COPIES) break;
+      const keep = Math.max(0, (out[zone].get(cardId) ?? 0) - (total - MAX_COPIES));
+      if (keep === 0) out[zone].delete(cardId);
+      else out[zone].set(cardId, keep);
+    }
+  }
+  return out;
 }
 
 export function deckCardCount(deck: ParsedDeck): number {

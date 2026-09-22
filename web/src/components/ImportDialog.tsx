@@ -63,7 +63,7 @@ export function ImportDialog({
     const known = new Set(resolved.map((c) => c.id));
     const unknownCardIds = catalogueError ? [] : ids.filter((id) => !known.has(id));
     const anomalies =
-      report.ignored.length > 0 || report.unknownHeaders.length > 0 || report.overLimit.length > 0 ||
+      report.ignored.length > 0 || report.unknownHeaders.length > 0 || report.overLimit.length > 0 || report.overTotal.length > 0 ||
       unknownCardIds.length > 0 || catalogueError || report.deck.main.size === 0;
     if (!anomalies) return create(report.deck, deckName, resolved);
     setReview({ report, name: deckName, resolved, unknownCardIds, catalogueError });
@@ -227,6 +227,18 @@ function ReviewPanel({
         </Notice>
       )}
 
+      {report.overTotal.length > 0 && (
+        <Notice tone="amber" title={`Plus de ${MAX_COPIES} copies toutes zones confondues (format officiel)`}>
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {report.overTotal.map((o) => (
+              <li key={`total-${o.cardId}`}>
+                {nameOf(o.cardId)} : <span className="tnum">{o.total}</span> copies (main {o.byZone.main}, extra {o.byZone.extra}, side {o.byZone.side}) → ramenée à {MAX_COPIES} si vous importez, en retirant d’abord du side, puis de l’extra.
+              </li>
+            ))}
+          </ul>
+        </Notice>
+      )}
+
       {report.ignored.length > 0 && (
         <Notice tone="amber" title={`${report.ignored.length} ligne${report.ignored.length > 1 ? 's' : ''} non reconnue${report.ignored.length > 1 ? 's' : ''} (aucune carte ajoutée pour elles)`}>
           <ul className="mt-1 flex max-h-32 flex-col gap-0.5 overflow-y-auto font-mono">
@@ -275,7 +287,7 @@ function ReviewPanel({
           disabled={busy}
           className="rounded bg-emerald-600 px-3 py-1.5 text-value font-medium text-black disabled:opacity-40"
         >
-          {busy ? 'Création…' : report.overLimit.length > 0 ? `Importer avec ${MAX_COPIES} copies maximum` : 'Importer quand même'}
+          {busy ? 'Création…' : report.overLimit.length > 0 || report.overTotal.length > 0 ? `Importer avec ${MAX_COPIES} copies maximum` : 'Importer quand même'}
         </button>
       </div>
     </div>

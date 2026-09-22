@@ -97,6 +97,8 @@ describe('Étape 10C — adversaires et échanges',() => {
       { position:'second',note:'Garder Nibiru',outgoing:[{ card_id:MAIN_A,copies:2 }],incoming:[{ card_id:SIDE,copies:2 }] },
     ] }]);
     expect(vi.mocked(saveDraft).mock.calls.at(-1)![0].configuration.matchups).toEqual(c.matchups);
+    useDeck.getState().removeFromPlan(id,'second','incoming',SIDE,Infinity); // v2 (D13) : le ✕ de la liste retire toutes les copies
+    expect(configurationFromState(useDeck.getState()).matchups[0]!.plans[1]!.incoming).toEqual([]);
     useDeck.getState().removeMatchup(id);
     expect(configurationFromState(useDeck.getState()).matchups).toEqual([]);
   });

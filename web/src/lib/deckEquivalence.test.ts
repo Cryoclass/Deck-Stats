@@ -162,16 +162,20 @@ describe('Étape 6 — équivalence création / import', () => {
     expect(s.addCard(X, 1, 'extra')).toBe(true);
     expect(s.addCard(X, 1, 'extra')).toBe(true);
     expect(s.addCard(Y, 1, 'side')).toBe(true);
-    expect(s.addCard(A, 1, 'side')).toBe(true); // A est aussi en main : la convention 1–3 est par zone
+    // B est aussi en main (2 copies) : la convention 1–3 est par zone, ET 3 copies au plus toutes zones
+    // confondues (plans de side v2, S9) — A, à 3 en main, est refusée en side.
+    expect(s.addCard(A, 1, 'side')).toBe(false);
+    expect(useDeck.getState().persistenceError).toMatch(/4 copies toutes zones confondues/);
+    expect(s.addCard(B, 1, 'side')).toBe(true);
     const manual = { ...useDeck.getState() };
     const manualConfig = configurationFromState(manual);
     expect(manualConfig.cards.filter((c) => c.zone !== 'main')).toEqual([
-      { card_id: 7, zone: 'extra', copies: 2 }, { card_id: 8, zone: 'side', copies: 1 }, { card_id: 1, zone: 'side', copies: 1 },
+      { card_id: 7, zone: 'extra', copies: 2 }, { card_id: 8, zone: 'side', copies: 1 }, { card_id: 2, zone: 'side', copies: 1 },
     ]);
     expect(buildEngineModel(canonical(manual))).toEqual(mainOnly);
 
     // 2. Import YDK avec les sections #extra et !side, par le chemin réel.
-    const ydk = ['#main', '1', '1', '1', '2', '2', '3', '3', '4', '5', '6', '6', '6', '#extra', '7', '7', '!side', '8', '1', ''].join('\n');
+    const ydk = ['#main', '1', '1', '1', '2', '2', '3', '3', '4', '5', '6', '6', '6', '#extra', '7', '7', '!side', '8', '2', ''].join('\n');
     const report = parseYdk(ydk);
     expect(report).toMatchObject({ ignored: [], unknownHeaders: [], overLimit: [] });
     vi.mocked(api.createDeck).mockResolvedValue({ id: deckId });
@@ -191,7 +195,7 @@ describe('Étape 6 — équivalence création / import', () => {
 
     expect(zonesOf(fromYdk)).toEqual(zonesOf(manual));
     expect(zonesOf(fromJson)).toEqual(zonesOf(manual));
-    expect(zonesOf(manual).filter(([zone]) => zone !== 'main')).toEqual([['extra', 7, 2], ['side', 1, 1], ['side', 8, 1]]);
+    expect(zonesOf(manual).filter(([zone]) => zone !== 'main')).toEqual([['extra', 7, 2], ['side', 2, 1], ['side', 8, 1]]);
     expect(buildEngineModel(canonical(fromYdk))).toEqual(mainOnly);
     expect(buildEngineModel(canonical(fromJson))).toEqual(mainOnly);
     expect(mainOnly.input.deckSize).toBe(12);
@@ -201,6 +205,6 @@ describe('Étape 6 — équivalence création / import', () => {
     // YDK réexporté puis relu : les trois sections reviennent identiques.
     const roundTrip = parseYdk(toYdk(manualConfig.cards.map((c) => ({ cardId: c.card_id, zone: c.zone, copies: c.copies }))));
     expect([...roundTrip.deck.extra]).toEqual([[7, 2]]);
-    expect([...roundTrip.deck.side]).toEqual([[8, 1], [1, 1]]);
+    expect([...roundTrip.deck.side]).toEqual([[8, 1], [2, 1]]);
   });
 });

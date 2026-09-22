@@ -382,3 +382,9 @@ Partie C :
 - Une seule bascule premier / second (barre de contexte, `[data-study-bar]`) ; panneau et mur n'ont plus la leur ; garde « premier contenu » 140 → 180 px.
 - `columnOf` / `studiedSource` = seule lecture des chiffres (S1, S2, S3) ; `useMemo`, jamais un sélecteur `useDeck`.
 - Plan pas prêt : raison à la place de la matrice et des mains ; tuiles : « sort ×n » / « entre ×n », « sort (plan) », écart d'une entrante de side.
+Partie D :
+- Adversaire ouvert = adversaire étudié ; position = barre (plus de bascule dans l'onglet) ; clic +1 / clic droit −1 par tuile ; ✕ des listes = toutes les copies.
+- Aperçu et écarts de candidats lus dans le store ; « Échanger » actif sur aperçu ou `not-ready`, inerte sinon avec la raison ; « Enregistrer et ouvrir » (D11).
+- 3 copies toutes zones : refus dans `addCard` / `setCopies`, « max » au dialogue, `overTotal` à l'import, réduction side → extra, jamais main.
+- Panneau sous le plan sous 1024 px dans l'onglet side seulement (`withPanel`) ; barre d'action collante sous 1024 px seulement.
+- Ouverture du premier adversaire à l'arrivée sur l'onglet seulement ; deck étudié lu seulement s'il porte l'adversaire ouvert ; aperçu en cours = chiffres précédents atténués.

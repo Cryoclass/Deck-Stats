@@ -3,7 +3,7 @@ import { useDeck } from '../store/deckStore.js';
 import { api } from '../lib/api.js';
 import type { Card, Zone } from '../types.js';
 import { MAX_COPIES } from '../lib/ydk.js';
-import { EXTRA_SIDE_SOFT_LIMIT, ZONE_LABEL, overSoftLimit, zoneCount } from '../lib/zones.js';
+import { EXTRA_SIDE_SOFT_LIMIT, ZONE_LABEL, overSoftLimit, totalCopies, zoneCount } from '../lib/zones.js';
 import { CardImage } from './CardImage.js';
 
 /**
@@ -17,8 +17,13 @@ import { CardImage } from './CardImage.js';
 export function AddCardDialog({ zone = 'main', onClose }: { zone?: Zone; onClose: () => void }) {
   const addCard = useDeck((s) => s.addCard);
   const list = useDeck((s) => s[zone]);
+  const main = useDeck((s) => s.main);
+  const extra = useDeck((s) => s.extra);
+  const side = useDeck((s) => s.side);
   const deckSize = zoneCount(list);
   const copiesOf = (id: number) => list.find((m) => m.cardId === id)?.copies ?? 0;
+  // Plans de side v2 (S9) : le plafond est aussi celui du format, 3 copies toutes zones confondues.
+  const totalOf = (id: number) => totalCopies({ main, extra, side }, id);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Card[]>([]);
@@ -56,7 +61,7 @@ export function AddCardDialog({ zone = 'main', onClose }: { zone?: Zone; onClose
 
   // Étape 6 (C1) : à 3 copies, l'ajout est refusé explicitement (bouton désactivé,
   // libellé « max ») ; le store refuse aussi, sans réduction silencieuse.
-  const atMax = (card: Card) => copiesOf(card.id) >= MAX_COPIES;
+  const atMax = (card: Card) => copiesOf(card.id) >= MAX_COPIES || totalOf(card.id) >= MAX_COPIES;
   const add = (card: Card) => {
     if (atMax(card)) return;
     addCard(card, 1, zone);
@@ -125,12 +130,20 @@ export function AddCardDialog({ zone = 'main', onClose }: { zone?: Zone; onClose
           <ul className="flex flex-col gap-0.5">
             {results.map((card, i) => {
               const inDeck = copiesOf(card.id);
+              const total = totalOf(card.id);
+              const full = atMax(card);
               return (
                 <li key={card.id}>
                   <button
                     onClick={() => add(card)}
-                    disabled={inDeck >= MAX_COPIES}
-                    title={inDeck >= MAX_COPIES ? `Déjà ${MAX_COPIES} copies : convention 1–${MAX_COPIES} par carte et par zone` : undefined}
+                    disabled={full}
+                    title={
+                      inDeck >= MAX_COPIES
+                        ? `Déjà ${MAX_COPIES} copies : convention 1–${MAX_COPIES} par carte et par zone`
+                        : full
+                          ? `Déjà ${total} copies toutes zones confondues : ${MAX_COPIES} au plus, comme au format officiel`
+                          : undefined
+                    }
                     className={`flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-ink-800 disabled:cursor-default disabled:hover:bg-transparent ${
                       i === 0 ? 'ring-1 ring-inset ring-emerald-500/30' : ''
                     }`}
@@ -147,6 +160,10 @@ export function AddCardDialog({ zone = 'main', onClose }: { zone?: Zone; onClose
                     {inDeck >= MAX_COPIES ? (
                       <span className="tnum shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-meta text-warn">
                         ×{inDeck} · max
+                      </span>
+                    ) : full ? (
+                      <span className="tnum shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-meta text-warn">
+                        ×{total} toutes zones · max
                       </span>
                     ) : inDeck > 0 ? (
                       <span className="tnum shrink-0 rounded bg-emerald-500/20 px-1.5 py-0.5 text-meta text-pos">

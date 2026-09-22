@@ -444,7 +444,22 @@ Plans de side (étape 10C). Dans la grille d'annotation, le bloc **side** rend d
 (`CardTile zone="side"`, 96 px comme le main : tous les modes, badges, menu ⋯ qui retire **du side**) ;
 à la place du delta, « hors calcul » en `text-fg-3` (ni delta ni couleur de groupe : ces cartes ne
 sont pas dans le calcul du deck de base). L'extra garde `ZoneCardTile` (80 px, nu). L'onglet
-« Plans de side » de l'éditeur : puces d'adversaire à 32 px (`h-8`, active `bg-ink-700`) en
+« Plans de side » **v2, partie D (22 septembre 2026)** : puces d'adversaire à 32 px (la puce active est
+l'adversaire étudié de la barre) ; ligne de l'adversaire (nom, « plan premier / second », puce d'état,
+tailles « main 40 → 40 · extra 15 → 15 ») ; avertissement de format en bandeau ambre ; grilles d'une
+**tuile par carte** (`repeat(auto-fill, minmax(84px, 1fr))`, image au ratio 59/86, nom en `text-meta`
+`text-fg-2` tronqué, « libres / copies » en `tnum`) : sélectionnée = `ring-2 ring-emerald-300` + voile
+`emerald-500/20` et « +k » ; engagée = image `opacity-45` + badge « sort ×n » / « entre ×n » ; épuisée =
+`opacity-60` ; écart du candidat en `text-pos` / `text-neg`, « · » pour zéro, « … » en cours ; blocs
+Main / Side, puis Extra / Side → extra quand l'un des deux existe ; **barre d'action collante** en bas
+(`sticky bottom-0`, `bg-ink-950/95`) : sélection, aperçu (« aperçu · second » en `text-info`, trois
+chiffres, écart avec le plan), « Vider la sélection », « Échanger » (32 px, `bg-ink-700`, inerte avec la
+raison en `text-warn` dessous) ; plan : listes en puces de 24 px (✕ = toutes les copies), « Annuler
+l'échange », « Vider le plan », recopie, note, puis « Fiche imprimable » / « Comparer » qui deviennent
+« Enregistrer et ouvrir… » avec la raison en `text-fg-3` à côté ; sous 1024 px, le panneau
+« Probabilités » est rendu sous le plan (`[data-side-panel]`, bordure `ink-800`).
+
+Ancienne description (étape 10C, remplacée) : puces d'adversaire à 32 px (`h-8`, active `bg-ink-700`) en
 `flex-wrap`, champ d'ajout et « + Ajouter » à 32 px ; ligne de l'adversaire en `flex-wrap` (nom en
 champ transparent, contrôle segmenté Premier / Second, puce d'état en triplet — émeraude « Prêt »,
 ambre « Incomplet » / « À revoir » —, taille « main 40 → 40 » en `tnum`, « Supprimer l'adversaire »

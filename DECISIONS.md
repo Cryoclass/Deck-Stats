@@ -2206,3 +2206,27 @@ décisions validées ne sont pas reprises ici ; ce qui suit est ce que l'agent a
   partiellement sortie garde son écart (elle est encore dans le deck étudié) et dit combien sortent.
 - **Fixture du scénario `study` non neutre** : Side Rho starter — un plan neutre est réutilisé tel quel
   (S7), ce qu'un scénario « les chiffres changent » ne peut pas vérifier.
+
+### Partie D — l'onglet « Plans de side » refondu (22 septembre 2026)
+
+- **L'adversaire ouvert dans l'onglet est l'adversaire étudié** (une seule notion, `study.matchupId`) ; le
+  premier adversaire s'ouvre quand aucun n'est étudié. La position vient de la barre : plus de bascule
+  dans l'onglet.
+- **Clic = +1, clic droit = −1 sur la tuile** au lieu d'un stepper par tuile (D7) : moins haut, même
+  précision ; le compteur « libres / copies » et « +k » disent l'état.
+- **Le ✕ des listes « Sort / Entre » retire toutes les copies** de la carte (D13) ; la copie par copie
+  reste possible par la sélection.
+- **« Échanger » est actif dès qu'un aperçu existe ou qu'un échange acceptable ne rend pas le plan prêt**
+  (`not-ready` : plan déjà incomplet, l'échange n'aggrave rien) ; une sélection déséquilibrée le laisse
+  inerte, raison visible.
+- **Règle des 3 copies toutes zones à l'import** : la réduction explicite retire d'abord du side, puis de
+  l'extra, jamais du main (seul analysé) ; l'ordre est dit dans le dialogue.
+- **Panneau sous le plan au téléphone** : rendu dans l'onglet (`withPanel`), l'onglet « Stats » reste pour
+  les autres onglets (Q10).
+- **Ouverture du premier adversaire à l'arrivée seulement** (relecture D, E8) : l'onglet pose `setStudy`
+  une fois, si aucun adversaire n'est étudié ; choisir « Deck de base » ensuite, ou un `?contre=` inconnu
+  (avis de la barre), n'est pas annulé par l'onglet.
+- **Le deck étudié n'est lu par l'onglet que s'il porte l'adversaire ouvert** (E3) : pendant le
+  regroupement du store, statut, tailles et chiffres sont absents plutôt que ceux de l'adversaire précédent.
+- **L'aperçu en cours garde les chiffres précédents atténués** avec « calcul de l'aperçu… » (D5, E2) ;
+  « Annuler l'échange » est inerte quand ses copies ont déjà été retirées à la main (c6).

@@ -54,6 +54,8 @@ export function EditorPage({ id, initialTab, initialStudy }: { id: string; initi
   const [compact, setCompact] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches,
   );
+  // Plans de side v2 (D12, Q10) : sous 1024 px, l'onglet « Plans de side » rend le panneau sous son contenu.
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && !window.matchMedia('(min-width: 1024px)').matches);
 
   useEffect(() => {
     let alive = true;
@@ -116,6 +118,7 @@ export function EditorPage({ id, initialTab, initialStudy }: { id: string; initi
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
     const onChange = () => {
+      setNarrow(!mq.matches);
       if (mq.matches) setTab((t) => (t === 'stats' ? 'annotate' : t));
     };
     onChange();
@@ -208,7 +211,7 @@ export function EditorPage({ id, initialTab, initialStudy }: { id: string; initi
             {tab === 'combos' && <ComboList />}
             {tab === 'hands' && <HandWall />}
             {tab === 'inventory' && <Inventory onFocusCard={focusCard} />}
-            {tab === 'side' && <SidePlanner />}
+            {tab === 'side' && <SidePlanner withPanel={narrow} />}
             {tab === 'stats' && <StatsPanel onShowHands={() => setTab('hands')} />}
           </div>
         </main>
