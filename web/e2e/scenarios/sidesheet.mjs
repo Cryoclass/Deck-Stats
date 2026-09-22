@@ -6,16 +6,20 @@
 //      un cadre SORT (pointillé) et un cadre ENTRE (plein) ; vignettes chargées, GROS badge « ×n »
 //      (≥ 28 px) sur une carte en plusieurs copies ; noms masqués par défaut, case « Noms des
 //      cartes » qui les affiche et se retient au rechargement ; notes ; plan incomplet signalé
-//      sans chiffre ; « — » avant calcul ;
+//      sans chiffre ; « — » avant calcul ; plans de side v2 (D8) : le plan premier de « Kewl Tune »
+//      échange aussi une carte d'Extra — dans SORT et ENTRE, elle figure sous l'intertitre « Extra »,
+//      à part des cartes du main, et nulle part ailleurs ;
 //   F3 « Tout calculer » : 13 plans prêts chiffrés, persistés (API), « Chiffres à jour » ;
-//      rechargement : chiffres relus depuis le cache, rien à calculer ;
+//      rechargement : chiffres relus depuis le cache, rien à calculer ; S7 : les chiffres de
+//      « Kewl Tune » premier (avec Extra) sont ceux de « Yubel » premier (même échange de main) ;
 //   F4 impression : fond blanc, barre d'outils masquée, badges et cadres en couleurs forcées
 //      (`print-color-adjust: exact`), PDF A4 (fonds non imprimés, comme par défaut dans Chrome)
 //      de 3 pages au plus pour 7 adversaires, soit au moins 3 adversaires par page ; puis
 //      « Télécharger le PDF » (plus de bouton « Imprimer ») : fichier nommé, 3 pages au plus,
-//      adversaires, cadres SORT / ENTRE et notes en texte, illustrations intégrées ;
+//      adversaires, cadres SORT / ENTRE, intertitre EXTRA et notes en texte, illustrations intégrées ;
 //   F5 comparateur Deck A vs Deck A sidé (plan second de « Kewl Tune ») : trois sections, nom du deck
-//      sidé, note d'information, matrices différentes ; plan incomplet : refus explicite ;
+//      sidé, note d'information, matrices différentes ; plan premier (avec Extra) : comparé sur son
+//      main dérivé, nommé « (premier) » ; plan incomplet : refus explicite ;
 //   puis la fixture est restaurée (aucun adversaire, side vide, starters d'origine), vérifiée par l'API.
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -28,6 +32,8 @@ const IOTA = 90000009; // Quick-Play Iota : 2 en main, 1 en side
 const LAMBDA = 90000011; // Filler Lambda : 3 en main
 const MU = 90000012; // Filler Mu : 3 en main
 const NU = 90000013; // Filler Nu : 3 en main
+const PI = 90000016; // Extra Pi : Fusion, 1 en extra (v2, D8)
+const CHI = 90000032; // Extra Chi : Synchro, 1 en side — entre à la place d'Extra Pi
 const NAMES = ['Kewl Tune', 'Snake-Eye', 'Yubel', 'Tenpai', 'Branded', 'Ryzeal', 'Maliss'];
 
 export default async function sidesheet({ out }) {
@@ -50,13 +56,13 @@ export default async function sidesheet({ out }) {
   expect('fixture : side vide, aucun adversaire', before.cards.every((c) => c.zone !== 'side') && (before.matchups ?? []).length === 0);
 
   // Sept adversaires aux plans réalistes (trois cartes par liste en premier) ; « Snake-Eye » a un
-  // plan second incomplet (3 sortent, 2 entrent).
+  // plan second incomplet (3 sortent, 2 entrent) ; « Kewl Tune » premier échange aussi Extra Pi ↔ Extra Chi.
   const ids = NAMES.map(() => randomUUID());
   const matchups = NAMES.map((name, i) => ({
     id: ids[i], name, sort_index: i, plans: [
       { position: 'first', note: `${name} : garder un Rho pour leur tour 1`,
-        outgoing: [{ card_id: MU, copies: 1 }, { card_id: NU, copies: 1 }, { card_id: LAMBDA, copies: 1 }],
-        incoming: [{ card_id: RHO, copies: 1 }, { card_id: OMICRON, copies: 1 }, { card_id: IOTA, copies: 1 }] },
+        outgoing: [{ card_id: MU, copies: 1 }, { card_id: NU, copies: 1 }, { card_id: LAMBDA, copies: 1 }, ...(i === 0 ? [{ card_id: PI, copies: 1 }] : [])],
+        incoming: [{ card_id: RHO, copies: 1 }, { card_id: OMICRON, copies: 1 }, { card_id: IOTA, copies: 1 }, ...(i === 0 ? [{ card_id: CHI, copies: 1 }] : [])] },
       { position: 'second', note: `${name} : tout sur le board breaker`,
         outgoing: [{ card_id: MU, copies: 2 }, { card_id: NU, copies: 1 }],
         incoming: name === 'Snake-Eye' ? [{ card_id: RHO, copies: 2 }] : [{ card_id: RHO, copies: 2 }, { card_id: OMICRON, copies: 1 }] },
@@ -64,7 +70,7 @@ export default async function sidesheet({ out }) {
   }));
   await put({
     ...original,
-    cards: [...original.cards, { card_id: RHO, zone: 'side', copies: 3 }, { card_id: OMICRON, zone: 'side', copies: 2 }, { card_id: IOTA, zone: 'side', copies: 1 }],
+    cards: [...original.cards, { card_id: RHO, zone: 'side', copies: 3 }, { card_id: OMICRON, zone: 'side', copies: 2 }, { card_id: IOTA, zone: 'side', copies: 1 }, { card_id: PI, zone: 'extra', copies: 1 }, { card_id: CHI, zone: 'side', copies: 1 }],
     matchups,
   });
   const kewl = ids[0];
@@ -88,6 +94,15 @@ export default async function sidesheet({ out }) {
     expect('F2 sept adversaires dans l’ordre d’ajout', JSON.stringify(order) === JSON.stringify(NAMES), order);
     expect('F2 deux volets par adversaire', (await page.locator('[data-sheet-plan]').count()) === 14);
     expect('F2 chaque volet a un cadre SORT et un cadre ENTRE', (await page.locator('[data-swap-box="out"]').count()) === 14 && (await page.locator('[data-swap-box="in"]').count()) === 14);
+    // v2 (D8) : l'Extra dans les cadres, sous un intertitre, à part du main, et seulement là où le plan en a.
+    const kewlFirst = page.locator('[data-sheet-matchup="Kewl Tune"] [data-sheet-plan="first"]');
+    expect('F2 Extra : intertitre « Extra » dans SORT et ENTRE de Kewl Tune premier, nulle part ailleurs', (await page.locator('[data-sheet-zone="extra"]').count()) === 2 && (await kewlFirst.locator('[data-sheet-zone="extra"]').count()) === 2 && /^Extra$/i.test((await kewlFirst.locator('[data-sheet-zone="extra"] [data-sheet-zone-label]').first().innerText()).trim()));
+    expect('F2 Extra : Extra Pi sort sous « Extra », Extra Chi entre sous « Extra », les cartes du main hors de l’intertitre',
+      (await kewlFirst.locator(`[data-swap-box="out"] [data-sheet-zone="extra"] [data-sheet-card="${PI}"]`).count()) === 1
+      && (await kewlFirst.locator(`[data-swap-box="in"] [data-sheet-zone="extra"] [data-sheet-card="${CHI}"]`).count()) === 1
+      && (await kewlFirst.locator('[data-sheet-zone="extra"] [data-sheet-card]').count()) === 2
+      && (await kewlFirst.locator('[data-swap-box="out"] [data-sheet-card]').count()) === 4
+      && (await kewlFirst.getAttribute('data-status')) === 'ready');
     const styles = await page.locator('[data-swap-box]').first().evaluate((el) => getComputedStyle(el).borderStyle);
     const stylesIn = await page.locator('[data-swap-box="in"]').first().evaluate((el) => getComputedStyle(el).borderStyle);
     expect('F2 SORT en pointillé, ENTRE en trait plein (lisible en noir et blanc)', styles === 'dashed' && stylesIn === 'solid', { styles, stylesIn });
@@ -132,6 +147,8 @@ export default async function sidesheet({ out }) {
     await page.reload();
     await page.waitForSelector('[data-sheet-matchup]');
     expect('F3 rechargement : chiffres relus, rien à calculer', (await ready()) === 13 && (await page.locator('[data-compute-all]').isDisabled()));
+    const figuresOf = (name, position) => page.locator(`[data-sheet-matchup="${name}"] [data-sheet-plan="${position}"] [data-sheet-figures="ready"]`).innerText();
+    expect('F3 S7 : l’Extra ne change pas les chiffres — Kewl Tune premier (avec Extra) = Yubel premier', (await figuresOf('Kewl Tune', 'first')) === (await figuresOf('Yubel', 'first')) && /\d/.test(await figuresOf('Kewl Tune', 'first')), { kewl: await figuresOf('Kewl Tune', 'first'), yubel: await figuresOf('Yubel', 'first') });
     await shot(page, 'sidesheet-1440', { fullPage: true });
 
     // ─── F4 : impression ───
@@ -166,10 +183,10 @@ export default async function sidesheet({ out }) {
     const bytes = (await (await import('node:fs/promises')).readFile(file)).toString('latin1');
     const downloadedPages = (bytes.match(/\/Type\s*\/Page(?![a-z])/g) ?? []).length;
     expect('F4 PDF téléchargé : au moins 3 adversaires par page A4 (7 en 3 pages au plus)', downloadedPages >= 1 && downloadedPages <= 3, downloadedPages);
-    const words = ['Kewl Tune', 'Maliss', '- SORT', '+ ENTRE', 'tout sur le board breaker'];
+    const words = ['Kewl Tune', 'Maliss', '- SORT', '+ ENTRE', 'EXTRA', 'tout sur le board breaker'];
     expect('F4 PDF : adversaires, cadres SORT / ENTRE et notes', words.every((w) => bytes.includes(w)), words.filter((w) => !bytes.includes(w)));
     const embedded = (bytes.match(/\/Subtype\s*\/Image/g) ?? []).length;
-    expect('F4 PDF : les illustrations sont intégrées (6 cartes distinctes)', embedded >= 6, embedded);
+    expect('F4 PDF : les illustrations sont intégrées (8 cartes distinctes, Extra compris)', embedded >= 8, embedded);
 
     // ─── F5 : comparateur sur un deck sidé ───
     // Side Rho devient starter : l'échange Filler Mu ↔ Side Rho change alors le deck. Deux cartes
@@ -188,16 +205,23 @@ export default async function sidesheet({ out }) {
     const deltaSecond = await page.locator('section').nth(1).locator('table').nth(2).locator('tbody td[title]').allTextContents();
     expect('F5 Δ second : au moins une cellule non nulle', deltaSecond.some((t) => t.trim() !== '' && t.trim() !== '·'), deltaSecond);
     await shot(page, 'sidesheet-compare', { fullPage: true });
+    // v2 : un plan qui échange aussi de l'Extra se compare sur son main dérivé (l'Extra reste hors moteur).
+    await page.goto(`/compare/${id}/${id}~${kewl}~first`);
+    await page.waitForSelector('h2:has-text("Synthèse")', { timeout: 30000 });
+    const headerFirst = await page.locator('header').first().innerText();
+    expect('F5 plan premier avec Extra : le côté B est nommé « (premier) »', /B\. Deck A — Kewl Tune \(premier\)/.test(headerFirst), headerFirst);
+    const notesFirst = (await page.locator('div.mb-4 > div').allTextContents()).join(' | ');
+    expect('F5 plan premier avec Extra : le plan est appliqué (matrices différentes), seul le scénario premier correspond', /seul le scénario premier correspond à ce plan/.test(notesFirst) && !/matrices identiques/.test(notesFirst), notesFirst);
     await page.goto(`/compare/${id}/${id}~${snake}~second`);
     await page.waitForSelector('text=/incomplet : rien à comparer/', { timeout: 20000 });
     expect('F5 plan incomplet : refus explicite', true);
   } finally {
     await put(original).catch((e) => expect('restauration de la fixture', false, String(e)));
     const after = await detail().catch(() => null);
-    expect('fixture restaurée (side vide, aucun adversaire, starters d’origine)',
-      !!after && after.cards.every((c) => c.zone !== 'side') && (after.matchups ?? []).length === 0
+    expect('fixture restaurée (side et extra vides, aucun adversaire, starters d’origine)',
+      !!after && after.cards.every((c) => c.zone !== 'side' && c.zone !== 'extra') && (after.matchups ?? []).length === 0
         && JSON.stringify([...after.starters].sort()) === JSON.stringify([...original.starters].sort()),
-      after && { side: after.cards.filter((c) => c.zone === 'side'), matchups: (after.matchups ?? []).length });
+      after && { side: after.cards.filter((c) => c.zone === 'side'), extra: after.cards.filter((c) => c.zone === 'extra'), matchups: (after.matchups ?? []).length });
     await browser.close();
   }
   done();

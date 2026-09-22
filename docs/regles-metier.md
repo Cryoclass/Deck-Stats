@@ -498,7 +498,8 @@ d'ajout avec D, S1–S4 et S10 avec les parties B à D.
   l'empreinte de ses chiffres : un plan sans carte d'Extra rend exactement le main dérivé, l'entrée
   du moteur et, à version de moteur donnée, l'empreinte qu'il rendait avant la v2 (garde
   `lib/sidePlanLegacy.test.ts` ; la version du moteur, elle, change une fois avec la correction de
-  `cardDefaults.ts`).
+  `cardDefaults.ts`). La fiche et le PDF impriment les cartes d'Extra d'un cadre sous un intertitre
+  « Extra », à part de celles du main (`groupByZone`), et une carte de zone inconnue à part, nommée.
 - **S8 — Légalité.** Un échange équilibré conserve les tailles de zone et le total de chaque carte :
   le deck sidé est hors format si et seulement si le deck de base l'est (main hors 40–60, Extra ou
   side au-delà de 15, carte d'Extra dans le main ou l'inverse, 3 copies toutes zones) ; c'est un

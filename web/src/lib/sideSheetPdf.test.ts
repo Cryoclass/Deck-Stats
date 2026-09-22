@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { blockHeight, cardsPerRow, FIRST_PAGE_TOP, paginate, PDF, pdfText } from './sideSheetPdf.js';
-import type { SheetMatchup } from './sideSheet.js';
+import { blockHeight, boxHeight, cardsPerRow, FIRST_PAGE_TOP, paginate, PDF, pdfText } from './sideSheetPdf.js';
+import type { SheetMatchup, ZoneGroups } from './sideSheet.js';
 
 // ─── Étape 10D : mise en page du PDF de la fiche (pure ; jsPDF n'est chargé qu'au téléchargement) ───
 
 const list = (n: number, from: number) => Array.from({ length: n }, (_, i) => ({ card_id: from + i, copies: 1 }));
-const plan = (position: 'first' | 'second', out: number, inn: number, note: string | null) => ({
+const groups = (l: ReturnType<typeof list>, extra = 0): ZoneGroups => ({ main: l.slice(0, l.length - extra), extra: l.slice(l.length - extra), unknown: [] });
+const plan = (position: 'first' | 'second', out: number, inn: number, note: string | null, extra = 0) => ({
   matchupId: 'm', position, input: null, summary: null, applied: { status: 'ready' },
   plan: { position, note, outgoing: list(out, 1), incoming: list(inn, 100) },
+  groups: { outgoing: groups(list(out, 1), extra), incoming: groups(list(inn, 100), extra) },
 });
 const matchup = (out: number, inn: number, note: string | null = 'Une note d’une ligne') =>
   ({ id: 'm', name: 'Adversaire', plans: [plan('first', out, inn, note), plan('second', out, inn, note)] }) as unknown as SheetMatchup;
@@ -42,5 +44,36 @@ describe('texte du PDF (polices standard, Latin-1)', () => {
   it('ramène la typographie courante à un équivalent lisible et remplace le reste', () => {
     expect(pdfText('≥ 1 départ – “Kewl” … œuvre ★ à l’écran')).toBe('>= 1 départ - "Kewl" ... oeuvre ? à l\'écran');
     expect(pdfText('Évolution · ×2')).toBe('Évolution · ×2');
+  });
+});
+
+describe('PDF de la fiche : l’Extra dans les cadres (v2, D8)', () => {
+  it('un cadre à Extra ajoute l’intertitre et ses rangées ; sans Extra, hauteur inchangée', () => {
+    const three = groups(list(3, 1));
+    expect(boxHeight(three, false)).toBe(PDF.boxHead + 2 * ((PDF.artW * 86) / 59 + PDF.cardGap));
+    const mixed: ZoneGroups = { main: list(2, 1), extra: list(1, 50), unknown: [] };
+    expect(boxHeight(mixed, false)).toBe(boxHeight(groups(list(2, 1)), false) + PDF.zoneLabelH + (PDF.artW * 86) / 59 + PDF.cardGap);
+    const extraOnly: ZoneGroups = { main: [], extra: list(1, 50), unknown: [] };
+    expect(boxHeight(extraOnly, false)).toBe(PDF.boxHead + PDF.zoneLabelH + (PDF.artW * 86) / 59 + PDF.cardGap);
+    expect(boxHeight({ main: [], extra: [], unknown: [] }, false)).toBe(PDF.boxHead + 5);
+    // Zone inconnue : même règle que l'Extra (intertitre + rangées), après l'Extra.
+    const all: ZoneGroups = { main: list(2, 1), extra: list(1, 50), unknown: list(3, 900) };
+    expect(boxHeight(all, true)).toBe(boxHeight(mixed, true) + PDF.zoneLabelH + 2 * ((PDF.artW * 86) / 59 + PDF.cardNameH + PDF.cardGap));
+  });
+
+  it('un adversaire à Extra (4 cartes par liste) parmi des plans de 3 : encore 3 adversaires sur la première page, noms masqués', () => {
+    const withExtra = { ...matchup(3, 3), plans: [plan('first', 4, 4, 'Une note d’une ligne', 1), plan('second', 3, 3, 'Une note d’une ligne')] } as unknown as SheetMatchup;
+    const heights = [withExtra, matchup(3, 3), matchup(3, 3), matchup(3, 3)].map((m) => blockHeight(m, false, () => 1));
+    expect(paginate(heights)[0].length).toBeGreaterThanOrEqual(3);
+    // Noms affichés : la première page n'en tient plus que 2 avec ce bloc (dit dans la charte), jamais moins.
+    const named = [withExtra, matchup(3, 3), matchup(3, 3)].map((m) => blockHeight(m, true, () => 1));
+    expect(paginate(named)[0].length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('un bloc dont un plan porte de l’Extra est plus haut du seul intertitre et de la rangée en plus', () => {
+    const without = blockHeight(matchup(3, 3), false, () => 1);
+    const withExtra = { ...matchup(3, 3), plans: [plan('first', 4, 4, 'Une note d’une ligne', 1), plan('second', 3, 3, 'Une note d’une ligne')] } as unknown as SheetMatchup;
+    // 3 cartes de main = 2 rangées ; +1 carte d'Extra = intertitre + 1 rangée.
+    expect(blockHeight(withExtra, false, () => 1)).toBe(without + PDF.zoneLabelH + (PDF.artW * 86) / 59 + PDF.cardGap);
   });
 });

@@ -493,7 +493,14 @@ blanc, cadres pointillé rouge / plein vert sur fond pâle, vignettes de 14 mm, 
 pagination à blocs entiers. Cible prouvée par l'e2e `sidesheet` : au moins 3 adversaires par page
 A4 (sept en trois pages au plus), 4 si les plans sont petits (`lib/sideSheetPdf.test.ts`).
 Comparateur sur un deck sidé : même page, nom « Deck — Adversaire (position) » et note
-d'information bleue (§7.12, `info`).
+d'information bleue (§7.12, `info`). **Plans de side v2, partie E (22 septembre 2026)** : dans un
+cadre SORT / ENTRE, les cartes du main d'abord, puis celles de l'Extra Deck sous un intertitre
+« Extra » (`text-meta font-semibold uppercase tracking-wide text-fg-3`, `mt-2` s'il suit des cartes
+du main), puis « Zone inconnue » en `text-warn` pour une carte dont le type n'est pas chargé ; le
+PDF reprend « EXTRA » / « ZONE INCONNUE » (6,5 pt gras, 4 mm réservés) dans le même ordre. Cible de
+pagination avec un plan à Extra (4 cartes par liste) parmi des plans de 3 : encore 3 adversaires sur la
+première page noms masqués (première page remplie à 287,6 mm sur 289) ; noms affichés, 2 seulement
+sur la première page — garde `lib/sideSheetPdf.test.ts`.
 
 ### 6.4 Ascenseurs
 

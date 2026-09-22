@@ -1,7 +1,7 @@
 # Refonte des plans de side — le deck sidé au centre de l'éditeur
 
-Statut : **plan validé le 22 septembre 2026** (réponses Q1–Q13 en fin de document) ; parties A à D livrées le
-22 septembre 2026 (comptes rendus §12 à §15). Rédigé le 17 septembre 2026 sans aucune ligne de code ni de test modifiée.
+Statut : **plan validé le 22 septembre 2026** (réponses Q1–Q13 en fin de document) ; parties A à E livrées le
+22 septembre 2026 (comptes rendus §12 à §16), chantier clos (§17). Rédigé le 17 septembre 2026 sans aucune ligne de code ni de test modifiée.
 Prompt d'origine : [prompt-refonte-plans-de-side.md](prompt-refonte-plans-de-side.md).
 Inventaire mené en lecture seule sur le dépôt (commit `471fadd`), sur le catalogue de la base de
 dev (une requête `select type, count(*)`, aucune écriture) et sur une restauration jetable de
@@ -1180,3 +1180,114 @@ la relecture —, deux manquements à l'invariant d'affichage (E2, E3), quatre �
 
 - Fiche et PDF avec l'Extra (E) ; clôture (E).
 - Avertissement « hors format » hors de l'onglet side (l'en-tête ne le dit pas).
+
+## 16. Compte rendu de la partie E — fiche, PDF, clôture (22 septembre 2026)
+
+**Périmètre** : l'Extra Deck dans la fiche imprimable et le PDF (D8), le comparateur vérifié sur un
+plan à Extra, la route des chiffres prouvée avec un plan à Extra, la clôture du chantier.
+
+### Livré
+
+- `lib/sideSheet.ts` : `ZoneGroups` et `groupByZone(list, zoneOf)` — les cartes d'un cadre sont
+  groupées par zone de jeu (main, puis Extra, puis zone inconnue), jamais mêlées ; `SheetPlan.groups`
+  est calculé une fois par `sheetOf` et lu tel quel par l'écran et le PDF (même source, D8).
+- `SideSheet.tsx` : dans chaque cadre SORT / ENTRE, les cartes du main puis, sous un intertitre
+  « Extra » (`[data-sheet-zone="extra"]`), celles de l'Extra ; « Zone inconnue » (`text-warn`) pour une
+  carte dont le type n'est pas chargé (plan « à revoir », déjà signalé sans chiffre). Rien d'autre ne
+  change : chiffres, « — », « Tout calculer », noms, impression.
+- `lib/sideSheetPdf.ts` : `boxHeight(groups, showNames)` réserve l'intertitre (`PDF.zoneLabelH` = 4 mm)
+  et les rangées de chaque groupe ; `drawBox` dessine main, « EXTRA », « ZONE INCONNUE » (ambre) dans
+  cet ordre. Le dessin et la hauteur lisent les mêmes groupes.
+- Comparateur : inchangé (plan §5.5). Prouvé plutôt qu'affirmé : un plan à Extra se compare sur son
+  main dérivé (même main qu'un plan sans Extra au même échange de main) ; un plan d'Extra seul rend le
+  deck de base, et la note « matrices identiques » de `engine/compare.ts` le dit.
+- Serveur : rien à changer. Le contrôle « main − sortantes + entrantes » de `PUT …/plans/:position/summary`
+  compte toutes les zones : juste pour tout plan prêt, équilibré zone par zone (S6, S7) — dit dans le
+  test d'intégration 10B, qui porte désormais un échange d'Extra (604 ↔ 605).
+- e2e `sidesheet` étendu : fixture avec « Extra Pi » (Fusion, ×1 en extra) et une nouvelle carte
+  synthétique « Extra Chi » (90000032, Synchro, ×1 en side) ; le plan premier de « Kewl Tune » les
+  échange. F2 : intertitre « Extra » dans SORT et ENTRE de ce volet seulement, Extra Pi / Extra Chi
+  dessous, cartes du main hors de l'intertitre, volet prêt ; F3 : chiffres de « Kewl Tune » premier
+  = « Yubel » premier (S7 à l'écran) ; F4 : « EXTRA » dans le PDF, 8 illustrations ; F5 : comparateur
+  sur le plan premier avec Extra (nommé « (premier) », plan appliqué).
+
+### Tests
+
+`lib/sideSheet.test.ts` (+3 : groupes par zone ; S7 — entrée du moteur et chiffre identiques avec ou
+sans Extra, plan d'Extra seul = deck de base au moteur avec extra dérivé ; comparateur sur un plan à
+Extra et sur un plan d'Extra seul) ; `lib/sideSheetPdf.test.ts` (+2 : hauteur d'un cadre avec Extra,
+bloc plus haut du seul intertitre et de la rangée en plus ; le gabarit de plan du test porte `groups`).
+`server/tests/persistence.integration.ts` 10B : plan à Extra. Aucun test existant modifié pour faire
+passer du code.
+
+### Vérifications exécutées
+
+- `npm run typecheck`, `npm run build` (avertissement ExcelJS attendu) : verts.
+- `node scripts/test-quiet.mjs` : **383 web + 22 serveur**, verts (+3 `sideSheet.test.ts`, +3 `sideSheetPdf.test.ts`, dont la garde de pagination ajoutée après la relecture).
+- Intégration PostgreSQL (conteneur jetable `testhand-step23-db` sur 55433, détruit ensuite) :
+  `auth` 13, `persistence` 17 (10B avec un plan à Extra), `purge` 13 — verts.
+- `npm run e2e -w web` : `sidesheet` seul d'abord (F1–F5 étendus), puis la suite complète de clôture,
+  **12 scénarios verts** sur le code final (pile jetable 55434 / 8790 / 5178), rejouée une seconde fois
+  après les retouches de la relecture (attribut d'intertitre, restauration de la fixture sur l'extra).
+- Séquence de migration et répétition : non rejouées — aucune migration, aucun script de deploy/ ni
+  schéma touché par le chantier (§5.2) ; le déploiement suit la variante « déploiement courant »
+  (docs/deploy-runbook.md, C0–C6). `__ENGINE_VERSION__` a changé une fois (correction de
+  `cardDefaults.ts`, partie A) : aperçus et chiffres de plan se recalculent à l'identique (D15).
+
+### Contrôle par mutation
+
+Script `mutations-e.mjs` (hors dépôt, fichiers restaurés et vérifiés par SHA-256) :
+
+| # | Mutation | Détectée par |
+| --- | --- | --- |
+| E1 | Extra imprimé dans le main (`groupByZone` ignore la zone) | `lib/sideSheet.test.ts` |
+| E2 | le PDF ne réserve pas la place de l'intertitre « EXTRA » | `lib/sideSheetPdf.test.ts` (2 tests) |
+| E3 | chiffre de plan périmé par un échange d'Extra (l'extra dérivé entre dans le moteur) | `lib/sidePlan.test.ts`, `lib/sideSheet.test.ts` |
+| E4 | « Tout calculer » compte aussi les plans pas prêts | `lib/sideSheet.test.ts` (2 tests) |
+| E5 | le comparateur range toute carte de plan dans le main (zone du catalogue ignorée) | `lib/sideSheet.test.ts` |
+
+5 / 5 détectées.
+
+### Relecture indépendante
+
+Sous-agent à contexte neuf, sur le diff non commité (rapport intégral hors dépôt). Verdict : recevable, aucun défaut bloquant ; les invariants (S7 hors moteur et hors empreinte, rien d'un plan pas prêt, chiffre sous l'empreinte courante seulement, zone inconnue nommée, mêmes groupes pour l'écran et le PDF, hauteurs cohérentes avec le dessin, serveur zone-agnostique juste pour un plan prêt) ont été vérifiés fichier par fichier. Deux écarts « avant commit / avant tag » : la clôture documentaire n'était pas encore dans le diff, l'e2e complet pas encore annoncé — les deux sont faits ci-dessus. Remarques traitées : **(3)** pagination avec un plan à Extra, mesurée par la relecture (noms masqués : première page `[0,1,2]`, remplie à 287,6 mm sur 289 ; noms affichés : 2 adversaires seulement sur la première page) — garde unitaire ajoutée (`sideSheetPdf.test.ts` : 3 sur la première page noms masqués, jamais moins de 2 noms affichés) et dit dans la charte ; **c1** section « zone inconnue » de `boxHeight` exercée ; **c2** la restauration de la fixture vérifie aussi l'extra ; **c3** `mt-2` conditionnel pour la zone inconnue ; **c5** intertitre désigné par `[data-sheet-zone-label]`. Sans suite, consignés : **(4)** le cas « Extra seul » du comparateur n'est couvert qu'en unitaire (§8 ne l'exige pas à l'écran) ; **c4** la garde F3 « Kewl Tune premier = Yubel premier » prouve l'égalité S7, pas que le plan est appliqué (ce que F5 et `branded.input` = `kewl.input` avec `deckSize` prouvent).
+
+### Écarts au plan
+
+- Aucun sur le fond. Le plan prévoyait « comparateur vérifié sur un plan à Extra » : vérifié par test
+  unitaire (main dérivé identique, plan d'Extra seul = base) et à l'écran (F5) sans toucher au
+  comparateur.
+- Le plan disait « tests d'intégration PostgreSQL une fois pour prouver la route des chiffres avec un
+  plan à Extra » : le test 10B existant porte l'échange d'Extra plutôt qu'un test de plus (même route,
+  même preuve, un test de moins à maintenir).
+
+### Non fait / reporté
+
+- Aucune carte d'Extra dans un plan de production au 22 septembre (Q8) : le rendu réel de l'intertitre
+  sur un vrai deck sera vu après déploiement.
+
+## 17. Clôture du chantier (22 septembre 2026)
+
+- **Livré** : parties A à E, tags `side-v2-a-ok` … `side-v2-e-ok`, `side-v2-ok` sur le dernier commit ;
+  rien poussé, aucune migration, aucun changement de deploy/ ni du serveur (hors un test).
+- **Invariants prouvés** : non-régression des plans existants (D15, `--gap` avant / après, Q8 mesuré :
+  aucun plan de production ne change de statut) ; aucun chiffre sans son deck (S1, S2 : `columnOf` /
+  `studiedSource`, `inSync` de l'onglet, e2e `study` et `side`) ; l'aperçu n'est jamais enregistré ni
+  persisté (S3) ; l'Extra hors moteur et hors empreinte (S7) ; empreinte de plan jamais réduite ;
+  oracle et cas de référence intacts.
+- **Ce qui change pour l'utilisateur** : la barre de contexte (adversaire, position) commande tout
+  l'éditeur ; le panneau, la matrice, le mode Requête, le mur et les tuiles parlent du deck étudié ;
+  l'onglet « Plans de side » choisit (tuile par carte, aperçu, écarts de candidats, Extra, annuler /
+  vider, raisons visibles, panneau sous le plan au téléphone) ; 3 copies toutes zones à l'éditeur et à
+  l'import ; la fiche et le PDF impriment l'Extra à part.
+- **À surveiller après déploiement** : une carte de plan absente du catalogue chargé (« zone
+  inconnue ») rend son plan « à revoir » et le nomme (§11) ; « hors format » sur un deck existant
+  (avertissement seul) ; premier ouverture d'un gros deck à paires (Q13, perf hors chantier).
+- **Points ouverts, hors chantier** : Q13 (performance du moteur sur les gros decks à paires) ;
+  avertissement « hors format » hors de l'onglet side ; une carte présente en main ET en extra (deck
+  hors format) partage ses copies entre les deux tuiles (relecture D, c4, marginal) ; un plan rendu
+  incomplet par ✕ se complète en refaisant l'échange (c5) ; deux `StatsPanel` montées sous 1024 px
+  (préexistant).
+- **Retour arrière** : code par `git checkout 471fadd` (dernier commit avant le chantier) + build + up ;
+  données : rien à défaire (aucune migration ; `plan_summaries` et `decks.summary` sont des caches
+  réinvalidés par la version du moteur).

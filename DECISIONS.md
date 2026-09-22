@@ -2230,3 +2230,17 @@ décisions validées ne sont pas reprises ici ; ce qui suit est ce que l'agent a
   regroupement du store, statut, tailles et chiffres sont absents plutôt que ceux de l'adversaire précédent.
 - **L'aperçu en cours garde les chiffres précédents atténués** avec « calcul de l'aperçu… » (D5, E2) ;
   « Annuler l'échange » est inerte quand ses copies ont déjà été retirées à la main (c6).
+
+### Partie E — fiche, PDF, clôture (22 septembre 2026)
+
+- **Les cadres de la fiche groupent par zone** (`groupByZone`, calculé une fois dans `sheetOf`) : main,
+  puis « Extra » sous un intertitre, puis « Zone inconnue » ; l'écran et le PDF lisent les mêmes groupes,
+  aucun des deux ne redéduit une zone.
+- **Comparateur inchangé** : un plan à Extra se compare sur son main dérivé ; un plan d'Extra seul
+  compare le deck de base à lui-même et la note « matrices identiques » suffit — prouvé par test plutôt
+  que par un cas d'écran de plus.
+- **Serveur inchangé** : le contrôle « main − sortantes + entrantes » de la route des chiffres compte
+  toutes les zones et reste juste pour tout plan prêt (équilibré zone par zone) ; le test d'intégration
+  10B porte désormais un échange d'Extra plutôt qu'un test supplémentaire.
+- **Clôture sans migration ni répétition** : rien de deploy/, du schéma ni du serveur n'a changé ;
+  déploiement en variante « courante ».

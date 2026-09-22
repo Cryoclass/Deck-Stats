@@ -3,7 +3,7 @@ import { api, type DeckDetail } from '../lib/api.js';
 import { useRouter } from '../lib/router.js';
 import { configurationFromDetail, sourceFromDetail } from '../lib/deckConfiguration.js';
 import { planComputeMode, planFingerprint, planSummaryFromPass } from '../lib/sidePlan.js';
-import { plansToCompute, planKey, sheetOf, type SheetPlan } from '../lib/sideSheet.js';
+import { plansToCompute, planKey, sheetOf, type SheetPlan, type ZoneGroups } from '../lib/sideSheet.js';
 import { createEngineClient } from '../worker/client.js';
 import { ComputeCancelled, type ComputeClient } from '../worker/computeClient.js';
 import { pct } from '../lib/fmt.js';
@@ -19,9 +19,11 @@ import type { PlanSummary } from '../../../server/src/domain/deckSummary.js';
 // grandes illustrations, le nombre de copies en GROS badge sur l'image, puis les trois chiffres et
 // la note. Le sens ne repose jamais sur la couleur seule (libellé + style de bordure : lisible en
 // noir et blanc et par un daltonien). Les noms sont masqués par défaut (case « Noms des cartes »,
-// non imprimée, mémorisée sur le navigateur). Cible : 3 adversaires par page A4, 4 si les plans
-// sont petits. « — » plutôt qu'un chiffre périmé (R9) ; « Tout calculer » en série. « Télécharger le
-// PDF » construit le fichier dans le navigateur (lib/sideSheetPdf.ts) : l'utilisateur imprime le PDF.
+// non imprimée, mémorisée sur le navigateur). Plans de side v2 (D8) : dans chaque cadre, les cartes
+// du main d'abord, puis celles de l'Extra Deck sous un intertitre « Extra » (l'Extra ne compte pas
+// dans les chiffres, S7). Cible : 3 adversaires par page A4, 4 si les plans sont petits. « — »
+// plutôt qu'un chiffre périmé (R9) ; « Tout calculer » en série. « Télécharger le PDF » construit
+// le fichier dans le navigateur (lib/sideSheetPdf.ts) : l'utilisateur imprime le PDF.
 
 type Loaded = { detail: DeckDetail; library: Library; cards: Record<number, Card> };
 
@@ -246,8 +248,8 @@ function SheetColumn({ p, name, img, showNames }: { p: SheetPlan; name: (id: num
         <p className="text-meta text-fg-3 print:text-black/70">Aucun échange (deck de base)</p>
       ) : (
         <div className="flex flex-wrap gap-2">
-          <SwapBox kind="out" list={p.plan.outgoing} name={name} img={img} showNames={showNames} />
-          <SwapBox kind="in" list={p.plan.incoming} name={name} img={img} showNames={showNames} />
+          <SwapBox kind="out" groups={p.groups.outgoing} name={name} img={img} showNames={showNames} />
+          <SwapBox kind="in" groups={p.groups.incoming} name={name} img={img} showNames={showNames} />
         </div>
       )}
       {p.applied.status === 'ready' && <Figures summary={p.summary} />}
@@ -259,8 +261,9 @@ function SheetColumn({ p, name, img, showNames }: { p: SheetPlan; name: (id: num
 /** Un cadre du volet : SORT (pointillé, rouge) ou ENTRE (plein, vert), titré. Couleurs forcées à
  *  l'impression (`print-exact`) : Chrome n'imprime pas les fonds par défaut, et un badge noir
  *  à texte blanc sortirait invisible. */
-function SwapBox({ kind, list, name, img, showNames }: { kind: 'out' | 'in'; list: SidePlanCard[]; name: (id: number) => string; img: (id: number) => string; showNames: boolean }) {
+function SwapBox({ kind, groups, name, img, showNames }: { kind: 'out' | 'in'; groups: ZoneGroups; name: (id: number) => string; img: (id: number) => string; showNames: boolean }) {
   const out = kind === 'out';
+  const empty = groups.main.length + groups.extra.length + groups.unknown.length === 0;
   return (
     <div
       data-swap-box={kind}
@@ -271,27 +274,47 @@ function SwapBox({ kind, list, name, img, showNames }: { kind: 'out' | 'in'; lis
       <div className={`mb-1.5 text-body font-bold uppercase tracking-wide ${out ? 'text-neg print:text-red-800' : 'text-pos print:text-emerald-800'}`}>
         {out ? '− Sort' : '+ Entre'}
       </div>
-      {list.length === 0 ? (
+      {empty ? (
         <p className="text-meta text-fg-3 print:text-black/60">—</p>
       ) : (
-        <div className="flex flex-wrap gap-2.5 print:gap-2">
-          {list.map((c) => (
-            <figure key={c.card_id} data-sheet-card={c.card_id} className="relative m-0 w-14 print:w-[14mm]">
-              <img src={img(c.card_id)} alt={name(c.card_id)} title={name(c.card_id)} className="aspect-[59/86] w-full rounded object-cover" />
-              {c.copies > 1 && (
-                <span
-                  data-copies-badge
-                  title={`${c.copies} copies`}
-                  className="print-exact absolute -bottom-1.5 -right-1.5 flex h-8 min-w-8 items-center justify-center rounded-full bg-black px-1.5 text-head font-extrabold leading-none text-white ring-2 ring-white print:h-[7mm] print:min-w-[7mm] print:text-[12pt]"
-                >
-                  ×{c.copies}
-                </span>
-              )}
-              {showNames && <figcaption className="mt-1 truncate text-meta leading-tight text-fg-3 print:text-black">{name(c.card_id)}</figcaption>}
-            </figure>
-          ))}
-        </div>
+        <>
+          <CardRow list={groups.main} name={name} img={img} showNames={showNames} />
+          {groups.extra.length > 0 && (
+            <div data-sheet-zone="extra" className={groups.main.length > 0 ? 'mt-2' : ''}>
+              <div data-sheet-zone-label className="mb-1 text-meta font-semibold uppercase tracking-wide text-fg-3 print:text-black/70">Extra</div>
+              <CardRow list={groups.extra} name={name} img={img} showNames={showNames} />
+            </div>
+          )}
+          {groups.unknown.length > 0 && (
+            <div data-sheet-zone="unknown" className={groups.main.length + groups.extra.length > 0 ? 'mt-2' : ''}>
+              <div data-sheet-zone-label className="mb-1 text-meta font-semibold uppercase tracking-wide text-warn print:text-black/70">Zone inconnue</div>
+              <CardRow list={groups.unknown} name={name} img={img} showNames={showNames} />
+            </div>
+          )}
+        </>
       )}
+    </div>
+  );
+}
+
+function CardRow({ list, name, img, showNames }: { list: SidePlanCard[]; name: (id: number) => string; img: (id: number) => string; showNames: boolean }) {
+  return (
+    <div className="flex flex-wrap gap-2.5 print:gap-2">
+      {list.map((c) => (
+        <figure key={c.card_id} data-sheet-card={c.card_id} className="relative m-0 w-14 print:w-[14mm]">
+          <img src={img(c.card_id)} alt={name(c.card_id)} title={name(c.card_id)} className="aspect-[59/86] w-full rounded object-cover" />
+          {c.copies > 1 && (
+            <span
+              data-copies-badge
+              title={`${c.copies} copies`}
+              className="print-exact absolute -bottom-1.5 -right-1.5 flex h-8 min-w-8 items-center justify-center rounded-full bg-black px-1.5 text-head font-extrabold leading-none text-white ring-2 ring-white print:h-[7mm] print:min-w-[7mm] print:text-[12pt]"
+            >
+              ×{c.copies}
+            </span>
+          )}
+          {showNames && <figcaption className="mt-1 truncate text-meta leading-tight text-fg-3 print:text-black">{name(c.card_id)}</figcaption>}
+        </figure>
+      ))}
     </div>
   );
 }

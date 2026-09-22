@@ -1,5 +1,5 @@
 import type { EngineInput } from '../engine/types.js';
-import type { DeckCard, Matchup, SidePlan, SidePlanPosition } from '../types.js';
+import type { DeckCard, Matchup, SidePlan, SidePlanCard, SidePlanPosition } from '../types.js';
 import { SIDE_PLAN_POSITIONS } from '../../../server/src/domain/deckConfiguration.js';
 import type { PlanSummary } from '../../../server/src/domain/deckSummary.js';
 import { buildEngineModel, type EngineModelSource } from './engineModel.js';
@@ -11,12 +11,33 @@ import { ENGINE_VERSION } from './summary.js';
 // Un bloc par adversaire (ordre d'ajout, Q4), un volet par position. Un chiffre ne figure sur la
 // fiche que s'il porte l'empreinte du deck sidé COURANT (R9) : sinon « — », jamais un vieux chiffre.
 // Un plan qui n'est pas prêt n'a ni entrée de moteur ni chiffre (R4, R5).
+// Plans de side v2 (D8, S5) : les cartes d'un cadre sont groupées par zone de jeu — main d'abord,
+// puis « Extra » sous un intertitre, puis « zone inconnue » (plan « à revoir ») ; jamais mêlées.
+
+/** Les cartes d'une liste du plan par zone de jeu, dans l'ordre d'impression. */
+export interface ZoneGroups {
+  main: SidePlanCard[];
+  extra: SidePlanCard[];
+  /** Type absent du catalogue chargé : le plan est « à revoir », la carte est nommée à part. */
+  unknown: SidePlanCard[];
+}
+
+export function groupByZone(list: readonly SidePlanCard[], zoneOf: ZoneOf): ZoneGroups {
+  const groups: ZoneGroups = { main: [], extra: [], unknown: [] };
+  for (const c of list) {
+    const zone = zoneOf(c.card_id);
+    (zone === 'extra' ? groups.extra : zone === null ? groups.unknown : groups.main).push(c);
+  }
+  return groups;
+}
 
 export interface SheetPlan {
   matchupId: string;
   position: SidePlanPosition;
   plan: SidePlan;
   applied: AppliedPlan;
+  /** Cadres SORT / ENTRE groupés par zone (D8) : ce qui s'imprime, l'écran et le PDF lisent la même chose. */
+  groups: { outgoing: ZoneGroups; incoming: ZoneGroups };
   /** Entrée du moteur du deck sidé ; `null` si le plan n'est pas prêt. */
   input: EngineInput | null;
   /** Chiffres affichables, ou `null` (« — » : à calculer, ou plan pas prêt). */
@@ -50,7 +71,8 @@ export function sheetOf(
         const sided = sidedSource(source, applied);
         const input = sided ? buildEngineModel(sided).input : null;
         const summary = input ? usablePlanSummary(stored[planKey(m.id, position)], input, position, engineVersion) : null;
-        return { matchupId: m.id, position, plan, applied, input, summary };
+        const groups = { outgoing: groupByZone(plan.outgoing, zoneOf), incoming: groupByZone(plan.incoming, zoneOf) };
+        return { matchupId: m.id, position, plan, applied, groups, input, summary };
       }),
     }));
 }

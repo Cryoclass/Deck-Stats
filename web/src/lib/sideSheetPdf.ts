@@ -1,5 +1,5 @@
 import type { jsPDF as JsPdf } from 'jspdf';
-import type { SheetMatchup, SheetPlan } from './sideSheet.js';
+import type { SheetMatchup, SheetPlan, ZoneGroups } from './sideSheet.js';
 import type { SidePlanCard } from '../types.js';
 
 // ─── PDF de la fiche des plans de side (étape 10D, 11 septembre 2026) ───
@@ -8,7 +8,9 @@ import type { SidePlanCard } from '../types.js';
 // volets premier / second, cadres SORT (pointillé, rouge) et ENTRE (plein, vert), grandes
 // illustrations, gros badge « ×n » sur les cartes en plusieurs copies, noms selon la case, trois
 // chiffres, note. Cible : 3 adversaires par page A4 avec des listes de 3 cartes, 4 si les plans sont
-// petits ; un bloc n'est jamais coupé entre deux pages. Le sens ne repose jamais sur la couleur
+// petits ; un bloc n'est jamais coupé entre deux pages. Plans de side v2 (D8) : dans un cadre, les
+// cartes du main puis, sous un intertitre « EXTRA », celles de l'Extra Deck (et « ZONE INCONNUE »
+// pour un plan à revoir) — jamais mêlées. Le sens ne repose jamais sur la couleur
 // seule (libellé + style de bordure). Images : lues par la page (canvas → JPEG), donc de MÊME
 // ORIGINE — relais /api/cards/:id/image, le CDN n'envoyant pas d'en-tête CORS — ou `data:` ; une
 // image illisible devient un cadre portant le nom de la carte.
@@ -24,7 +26,7 @@ export interface SheetPdfInput {
 }
 
 // ─── Géométrie (millimètres) ───
-export const PDF = { pageW: 210, pageH: 297, margin: 8, headerH: 13, blockGap: 2, blockPad: 2.5, nameH: 6.5, colGap: 6, boxGap: 3, labelH: 4.5, boxHead: 6.5, artW: 14, cardGap: 3, cardNameH: 4, figuresH: 4.5, noteLine: 3.6 } as const;
+export const PDF = { pageW: 210, pageH: 297, margin: 8, headerH: 13, blockGap: 2, blockPad: 2.5, nameH: 6.5, colGap: 6, boxGap: 3, labelH: 4.5, boxHead: 6.5, artW: 14, cardGap: 3, cardNameH: 4, figuresH: 4.5, noteLine: 3.6, zoneLabelH: 4 } as const;
 const ART_H = (PDF.artW * 86) / 59;
 const CONTENT_W = PDF.pageW - 2 * PDF.margin;
 const COL_W = (CONTENT_W - 2 * PDF.blockPad - PDF.colGap) / 2;
@@ -51,14 +53,19 @@ export function pdfText(s: string): string {
     .replace(/[^ -~ -ÿ]/g, '?');
 }
 
-function boxHeight(n: number, showNames: boolean): number {
+const rowsOf = (n: number) => Math.ceil(n / cardsPerRow);
+
+/** Hauteur d'un cadre : rangées du main, puis intertitre + rangées de l'Extra, puis de la zone inconnue. */
+export function boxHeight(groups: ZoneGroups, showNames: boolean): number {
+  const n = groups.main.length + groups.extra.length + groups.unknown.length;
   if (n === 0) return PDF.boxHead + 5;
-  return PDF.boxHead + Math.ceil(n / cardsPerRow) * rowH(showNames);
+  const section = (list: readonly unknown[], labelled: boolean) => (list.length === 0 ? 0 : (labelled ? PDF.zoneLabelH : 0) + rowsOf(list.length) * rowH(showNames));
+  return PDF.boxHead + section(groups.main, false) + section(groups.extra, true) + section(groups.unknown, true);
 }
 
 function planHeight(p: SheetPlan, showNames: boolean, noteLines: (note: string) => number): number {
   const empty = p.plan.outgoing.length === 0 && p.plan.incoming.length === 0;
-  const boxes = empty ? 6 : Math.max(boxHeight(p.plan.outgoing.length, showNames), boxHeight(p.plan.incoming.length, showNames));
+  const boxes = empty ? 6 : Math.max(boxHeight(p.groups.outgoing, showNames), boxHeight(p.groups.incoming, showNames));
   const figures = p.applied.status === 'ready' ? PDF.figuresH : 0;
   const note = p.plan.note ? noteLines(p.plan.note) * PDF.noteLine + 1 : 0;
   return PDF.labelH + boxes + figures + note;
@@ -138,7 +145,8 @@ function drawCard(doc: JsPdf, input: SheetPdfInput, images: Map<number, string>,
   }
 }
 
-function drawBox(doc: JsPdf, input: SheetPdfInput, images: Map<number, string>, kind: 'out' | 'in', list: SidePlanCard[], x: number, y: number, h: number): void {
+function drawBox(doc: JsPdf, input: SheetPdfInput, images: Map<number, string>, kind: 'out' | 'in', groups: ZoneGroups, x: number, y: number, h: number): void {
+  const total = groups.main.length + groups.extra.length + groups.unknown.length;
   const style = kind === 'out' ? OUT : IN;
   doc.setLineWidth(0.5);
   doc.setDrawColor(...style.border);
@@ -150,17 +158,32 @@ function drawBox(doc: JsPdf, input: SheetPdfInput, images: Map<number, string>, 
   doc.setFontSize(8);
   doc.setTextColor(...style.text);
   doc.text(kind === 'out' ? '- SORT' : '+ ENTRE', x + 2, y + 4.3);
-  if (list.length === 0) {
+  if (total === 0) {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...GREY);
     doc.text('-', x + 2, y + PDF.boxHead + 3);
     return;
   }
-  list.forEach((c, i) => {
-    const col = i % cardsPerRow;
-    const row = Math.floor(i / cardsPerRow);
-    drawCard(doc, input, images, c, x + 2 + col * (PDF.artW + PDF.cardGap), y + PDF.boxHead + row * rowH(input.showNames));
-  });
+  let cy = y + PDF.boxHead;
+  const section = (list: SidePlanCard[], label: string | null, color: Rgb) => {
+    if (list.length === 0) return;
+    if (label) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(...color);
+      doc.text(label, x + 2, cy + 2.8);
+      cy += PDF.zoneLabelH;
+    }
+    list.forEach((c, i) => {
+      const col = i % cardsPerRow;
+      const row = Math.floor(i / cardsPerRow);
+      drawCard(doc, input, images, c, x + 2 + col * (PDF.artW + PDF.cardGap), cy + row * rowH(input.showNames));
+    });
+    cy += rowsOf(list.length) * rowH(input.showNames);
+  };
+  section(groups.main, null, GREY);
+  section(groups.extra, 'EXTRA', GREY);
+  section(groups.unknown, 'ZONE INCONNUE', AMBER);
 }
 
 function drawPlan(doc: JsPdf, input: SheetPdfInput, images: Map<number, string>, p: SheetPlan, x: number, y: number): void {
@@ -183,9 +206,9 @@ function drawPlan(doc: JsPdf, input: SheetPdfInput, images: Map<number, string>,
     doc.text(pdfText('Aucun échange (deck de base)'), x, cy + 4);
     cy += 6;
   } else {
-    const h = Math.max(boxHeight(p.plan.outgoing.length, input.showNames), boxHeight(p.plan.incoming.length, input.showNames));
-    drawBox(doc, input, images, 'out', p.plan.outgoing, x, cy, h);
-    drawBox(doc, input, images, 'in', p.plan.incoming, x + BOX_W + PDF.boxGap, cy, h);
+    const h = Math.max(boxHeight(p.groups.outgoing, input.showNames), boxHeight(p.groups.incoming, input.showNames));
+    drawBox(doc, input, images, 'out', p.groups.outgoing, x, cy, h);
+    drawBox(doc, input, images, 'in', p.groups.incoming, x + BOX_W + PDF.boxGap, cy, h);
     cy += h;
   }
   if (p.applied.status === 'ready') {

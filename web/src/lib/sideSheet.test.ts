@@ -3,10 +3,11 @@ import { computePass } from '../engine/enumerate.js';
 import { parseConfiguration } from '../../../server/src/domain/deckConfiguration.js';
 import { libraryState, stateFromConfiguration } from './deckConfiguration.js';
 import { applyPlan, planSummaryFromPass } from './sidePlan.js';
-import { planKey, plansToCompute, sheetOf } from './sideSheet.js';
+import { groupByZone, planKey, plansToCompute, sheetOf } from './sideSheet.js';
 import { compareSegment, compareSideOf, parseCompareTarget, sidedNotice } from './comparison.js';
 import type { DeckDetail } from './api.js';
 import type { Library } from '../types.js';
+import { zoneOfCatalog } from './zones.js';
 
 // ─── Étape 10D : la fiche imprimable et le comparateur sur un deck sidé ───
 
@@ -96,5 +97,72 @@ describe('comparateur sur un deck sidé', () => {
   it('un plan pas prêt ou un adversaire disparu : refus explicite, rien n’est comparé', () => {
     expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, B, 'second')), catalog)).toThrow('Plan second contre « Snake-Eye » incomplet : rien à comparer tant qu’il n’est pas prêt.');
     expect(() => compareSideOf(detail, library, parseCompareTarget(compareSegment(DECK, '00000000-0000-4000-8000-0000000000ff', 'first')), catalog)).toThrow(/adversaire introuvable/);
+  });
+});
+
+// ─── Plans de side v2, partie E : l'Extra Deck dans la fiche et le comparateur (D8, S5, S7) ───
+const EXTRA_PI = 40; // Fusion, ×1 en extra
+const EXTRA_CHI = 41; // Synchro, ×1 en side
+const catalogV2 = {
+  ...catalog,
+  [EXTRA_PI]: { id: EXTRA_PI, name: 'Extra Pi', type: 'Fusion Monster' },
+  [EXTRA_CHI]: { id: EXTRA_CHI, name: 'Extra Chi', type: 'Synchro Monster' },
+};
+const zoneV2 = zoneOfCatalog(catalogV2 as never);
+const C = '00000000-0000-4000-8000-0000000000c1';
+const D = '00000000-0000-4000-8000-0000000000d2';
+const configurationV2 = parseConfiguration({
+  ...configuration,
+  cards: [...configuration.cards, { card_id: EXTRA_PI, zone: 'extra', copies: 1 }, { card_id: EXTRA_CHI, zone: 'side', copies: 1 }],
+  matchups: [
+    ...configuration.matchups,
+    // Même échange de main que « Kewl Tune » second, plus un échange d'Extra : mêmes chiffres (S7).
+    { id: C, name: 'Branded', sort_index: 2, plans: [
+      { position: 'second', note: null, outgoing: [{ card_id: 10, copies: 2 }, { card_id: EXTRA_PI, copies: 1 }], incoming: [{ card_id: SIDE, copies: 2 }, { card_id: EXTRA_CHI, copies: 1 }] },
+    ] },
+    // Échange d'Extra seul : le main dérivé est le deck de base.
+    { id: D, name: 'Ryzeal', sort_index: 3, plans: [
+      { position: 'first', note: null, outgoing: [{ card_id: EXTRA_PI, copies: 1 }], incoming: [{ card_id: EXTRA_CHI, copies: 1 }] },
+    ] },
+  ],
+});
+const sourceV2 = { ...stateFromConfiguration(configurationV2), ...libraryState(library) };
+const detailV2: DeckDetail = { ...detail, cards: configurationV2.cards, matchups: configurationV2.matchups };
+
+describe('fiche imprimable — Extra Deck (v2)', () => {
+  it('les cartes d’un cadre sont groupées par zone : main, puis Extra, puis zone inconnue — jamais mêlées', () => {
+    const list = [{ card_id: EXTRA_PI, copies: 1 }, { card_id: 10, copies: 2 }, { card_id: 999, copies: 1 }];
+    expect(groupByZone(list, zoneV2)).toEqual({ main: [{ card_id: 10, copies: 2 }], extra: [{ card_id: EXTRA_PI, copies: 1 }], unknown: [{ card_id: 999, copies: 1 }] });
+    const sheet = sheetOf(sourceV2, sourceV2.matchups, {}, zoneV2, 'v1');
+    const branded = sheet.find((m) => m.name === 'Branded')!.plans[1];
+    expect(branded.applied.status).toBe('ready');
+    expect(branded.groups).toEqual({
+      outgoing: { main: [{ card_id: 10, copies: 2 }], extra: [{ card_id: EXTRA_PI, copies: 1 }], unknown: [] },
+      incoming: { main: [{ card_id: SIDE, copies: 2 }], extra: [{ card_id: EXTRA_CHI, copies: 1 }], unknown: [] },
+    });
+  });
+
+  it('S7 : l’Extra ne change ni l’entrée du moteur ni l’empreinte — mêmes chiffres qu’un plan sans Extra', () => {
+    const sheet = sheetOf(sourceV2, sourceV2.matchups, {}, zoneV2, 'v1');
+    const kewl = sheet.find((m) => m.name === 'Kewl Tune')!.plans[1];
+    const branded = sheet.find((m) => m.name === 'Branded')!.plans[1];
+    expect(branded.input).toEqual(kewl.input);
+    const summary = planSummaryFromPass(computePass(kewl.input!, 'second'), kewl.input!, 'second', 'v1')!;
+    const printed = sheetOf(sourceV2, sourceV2.matchups, { [planKey(C, 'second')]: summary }, zoneV2, 'v1');
+    expect(printed.find((m) => m.name === 'Branded')!.plans[1].summary).toEqual(summary);
+    // Échange d'Extra seul : deck de base au moteur, extra dérivé pour la fiche.
+    const ryzeal = sheet.find((m) => m.name === 'Ryzeal')!.plans[0];
+    expect(ryzeal.applied).toMatchObject({ status: 'ready', extraSize: 1, extra: [{ cardId: EXTRA_CHI, copies: 1 }] });
+    expect(ryzeal.input).toEqual(sheet.find((m) => m.name === 'Snake-Eye')!.plans[0].input);
+  });
+
+  it('comparateur : un plan à Extra se compare sur son main dérivé ; un plan d’Extra seul compare le deck de base à lui-même', () => {
+    const branded = compareSideOf(detailV2, library, parseCompareTarget(compareSegment(DECK, C, 'second')), catalogV2 as never);
+    expect(branded.name).toBe('Deck — Branded (second)');
+    expect(branded.source.main).toEqual(applyPlan(sourceV2, sourceV2.matchups.find((m) => m.id === C)!.plans[0], zoneV2).main);
+    expect(branded.source.main).toEqual(compareSideOf(detailV2, library, parseCompareTarget(compareSegment(DECK, A, 'second')), catalogV2 as never).source.main);
+    const ryzeal = compareSideOf(detailV2, library, parseCompareTarget(compareSegment(DECK, D, 'first')), catalogV2 as never);
+    expect(ryzeal.source.main).toEqual(sourceV2.main);
+    expect(ryzeal.plan).toEqual({ matchupName: 'Ryzeal', position: 'first' });
   });
 });

@@ -414,10 +414,13 @@ test('side plans are saved, ordered, reloaded and duplicated; a matchup keeps it
 });
 
 // ─── Étape 10B : chiffres d'un plan de side ───
+// Plans de side v2 (partie E) : le plan échange aussi une carte d'Extra (604 ↔ 605). Le contrat serveur ne
+// connaît pas les zones d'un plan (structure seule) et vérifie « main − sortantes + entrantes » toutes
+// zones confondues : juste pour tout plan prêt, équilibré zone par zone (S6, S7), donc 5 ici.
 test('a side plan summary is written only for the current revision and the saved plan, survives an unrelated save, and never touches the revision',async () => {
   const m=randomUUID();
-  const c=emptyConfiguration('Plan chiffré',[{ card_id:601,zone:'main',copies:3 },{ card_id:602,zone:'main',copies:2 },{ card_id:603,zone:'side',copies:2 }]);
-  c.matchups=[{ id:m,name:'Kewl Tune',sort_index:0,plans:[{ position:'second',note:null,outgoing:[{ card_id:602,copies:2 }],incoming:[{ card_id:603,copies:2 }] }] }];
+  const c=emptyConfiguration('Plan chiffré',[{ card_id:601,zone:'main',copies:3 },{ card_id:602,zone:'main',copies:2 },{ card_id:603,zone:'side',copies:2 },{ card_id:604,zone:'extra',copies:1 },{ card_id:605,zone:'side',copies:1 }]);
+  c.matchups=[{ id:m,name:'Kewl Tune',sort_index:0,plans:[{ position:'second',note:null,outgoing:[{ card_id:602,copies:2 },{ card_id:604,copies:1 }],incoming:[{ card_id:603,copies:2 },{ card_id:605,copies:1 }] }] }];
   const id=await create(c);
   const url=(position='second',matchup=m) => `/decks/${id}/matchups/${matchup}/plans/${position}/summary`;
   const s=(mainSize=5) => ({ engineVersion:'v1',fingerprint:'0123456789abcdef',mainSize,startOne:0.8,nonEngineTwo:0.3,strongHand:0.2,computedAt:'2026-09-11T10:00:00.000Z' });

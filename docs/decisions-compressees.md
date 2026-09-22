@@ -382,6 +382,10 @@ Partie C :
 - Une seule bascule premier / second (barre de contexte, `[data-study-bar]`) ; panneau et mur n'ont plus la leur ; garde « premier contenu » 140 → 180 px.
 - `columnOf` / `studiedSource` = seule lecture des chiffres (S1, S2, S3) ; `useMemo`, jamais un sélecteur `useDeck`.
 - Plan pas prêt : raison à la place de la matrice et des mains ; tuiles : « sort ×n » / « entre ×n », « sort (plan) », écart d'une entrante de side.
+Partie E :
+- Cadres de la fiche groupés par zone (`groupByZone`, une fois dans `sheetOf`) : main, « Extra », « Zone inconnue » ; écran et PDF lisent les mêmes groupes.
+- Comparateur et serveur inchangés (main dérivé ; contrôle de taille toutes zones juste pour un plan prêt) ; test 10B avec un échange d'Extra.
+- Clôture sans migration : déploiement en variante courante ; retour du code par `git checkout 471fadd`.
 Partie D :
 - Adversaire ouvert = adversaire étudié ; position = barre (plus de bascule dans l'onglet) ; clic +1 / clic droit −1 par tuile ; ✕ des listes = toutes les copies.
 - Aperçu et écarts de candidats lus dans le store ; « Échanger » actif sur aperçu ou `not-ready`, inerte sinon avec la raison ; « Enregistrer et ouvrir » (D11).

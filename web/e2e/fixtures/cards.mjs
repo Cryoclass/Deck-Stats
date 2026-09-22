@@ -24,6 +24,9 @@ export const CARDS = [
   // déclenche la détection (limite par nom → HOPT, handtrap générique → Flexible) ; Tau un texte neutre.
   [90000030, 'Auto Sigma', 'Effect Monster', '#2c7a7b', 'When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that effect. You can only use this effect of "Auto Sigma" once per turn.'],
   [90000031, 'Reference Tau', 'Effect Monster', '#285e61'],
+  // Plans de side v2 (partie E, scénario `sidesheet`) : une carte d'Extra Deck pour le side, à échanger
+  // contre « Extra Pi » — l'Extra entre dans les plans sans toucher aux chiffres (S7).
+  [90000032, 'Extra Chi', 'Synchro Monster', '#44337a'],
 ];
 
 const svg = (name, color) => {
